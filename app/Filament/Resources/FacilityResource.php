@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\FacilityResource\Pages;
+use App\Models\County;
 use App\Models\Facility;
 use App\Models\Subcounty;
 use App\Models\FacilityType;
@@ -45,7 +46,7 @@ class FacilityResource extends Resource
 
                 Forms\Components\Toggle::make('is_hub')
                     ->label('Is Hub Facility?')
-                     ->default(true)   
+                     ->default(true)
                     ->live(), // <--- Needed to reactively update fields
 
                 Forms\Components\Select::make('hub_id')
@@ -86,6 +87,9 @@ class FacilityResource extends Resource
                 Tables\Columns\TextColumn::make('created_at')->date()->label('Created'),
             ])
             ->filters([
+                 Tables\Filters\SelectFilter::make('county_id')
+                    ->label('County')
+                    ->options(County::all()->pluck('name', 'id')),
                 Tables\Filters\SelectFilter::make('subcounty_id')
                     ->label('Subcounty')
                     ->options(Subcounty::all()->pluck('name', 'id')),

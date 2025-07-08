@@ -2,14 +2,18 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Module extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'description', 'program_id'];
+    protected $fillable = [
+        'name',
+        'description',
+        'program_id',
+    ];
 
     public function program()
     {
@@ -19,5 +23,10 @@ class Module extends Model
     public function topics()
     {
         return $this->hasMany(Topic::class);
+    }
+
+    public function trainingLinks()
+    {
+        return $this->hasMany(ItemTrainingLink::class);
     }
 }
