@@ -23,4 +23,10 @@ class Program extends Model
     {
         return $this->hasMany(ItemTrainingLink::class);
     }
+
+
+     public function trainings()
+    {
+        return $this->hasMany(Training::class);
+    }
 }

@@ -13,6 +13,7 @@ use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Model;
+use Livewire\Attributes\Computed;
 
 class AssessParticipants extends Page
 {
@@ -25,35 +26,37 @@ class AssessParticipants extends Page
     public $participants;
     public $objectives;
     public $grades;
+    public bool $isSaving = false;
 
     public function mount(Training $record): void
     {
         $this->training = $record;
-        $this->participants = $record->participants()->with('objectiveResults')->get();
+        $this->participants = $record->participants()->with(['objectiveResults', 'cadre', 'department'])->get();
         $this->objectives = $record->sessions()
             ->with('objectives')
             ->get()
             ->pluck('objectives')
-            ->flatten();
+            ->flatten()
+            ->sortBy('objective_order');
         $this->grades = Grade::all();
 
         // Initialize form data
-        $formData = [];
+        $formData = ['results' => []];
+        
         foreach ($this->participants as $participant) {
             foreach ($this->objectives as $objective) {
-                $existingResult = ParticipantObjectiveResult::where('training_participant_id', $participant->id)
+                $existingResult = $participant->objectiveResults
                     ->where('objective_id', $objective->id)
                     ->first();
 
-                $key = "results.{$participant->id}.{$objective->id}";
-                $formData[$key] = [
-                    'result' => $existingResult?->result ?? 'not_skilled',
-                    'grade_id' => $existingResult?->grade_id ?? null,
+                $formData['results'][$participant->id][$objective->id] = [
+                    'grade_id' => $existingResult?->grade_id,
                     'comments' => $existingResult?->comments ?? '',
                 ];
             }
         }
 
+        $this->data = $formData;
         $this->form->fill($formData);
     }
 
@@ -65,36 +68,42 @@ class AssessParticipants extends Page
             $participantFields = [];
 
             foreach ($this->objectives as $objective) {
-                $participantFields[] = Forms\Components\Section::make()
-                    ->heading($objective->objective_text)
-                    ->description("Type: {$objective->type}")
+                $participantFields[] = Forms\Components\Grid::make(3)
                     ->schema([
-                        Forms\Components\Radio::make("results.{$participant->id}.{$objective->id}.result")
-                            ->label('Skill Assessment')
-                            ->options([
-                                'skilled' => 'Skilled',
-                                'not_skilled' => 'Not Skilled',
-                            ])
-                            ->inline()
-                            ->required(),
+                        Forms\Components\Placeholder::make('objective_text')
+                            ->label('Objective')
+                            ->content($objective->objective_text)
+                            ->extraAttributes(['class' => 'font-medium']),
+
+                        Forms\Components\Placeholder::make('objective_type')
+                            ->label('Type')
+                            ->content(ucfirst($objective->type))
+                            ->extraAttributes([
+                                'class' => $objective->type === 'skill' 
+                                    ? 'text-blue-600 dark:text-blue-400' 
+                                    : 'text-gray-600 dark:text-gray-400'
+                            ]),
 
                         Forms\Components\Select::make("results.{$participant->id}.{$objective->id}.grade_id")
                             ->label('Grade')
                             ->options($this->grades->pluck('name', 'id'))
-                            ->required(),
+                            ->placeholder('Select Grade')
+                            ->required()
+                            ->extraAttributes(['class' => 'max-w-xs']),
 
                         Forms\Components\Textarea::make("results.{$participant->id}.{$objective->id}.comments")
-                            ->label('Comments')
-                            ->rows(2),
+                            ->label('Comments (Optional)')
+                            ->rows(2)
+                            ->columnSpan(3),
                     ])
-                    ->columns(3)
-                    ->compact();
+                    ->extraAttributes(['class' => 'border-b pb-4 mb-4']);
             }
 
             $schema[] = Forms\Components\Section::make($participant->name)
-                ->description("Cadre: {$participant->cadre?->name} | Dept: {$participant->department?->name}")
+                ->description("Cadre: {$participant->cadre?->name} | Department: {$participant->department?->name}")
                 ->schema($participantFields)
-                ->collapsible();
+                ->collapsible()
+                ->collapsed(false);
         }
 
         return $form
@@ -104,33 +113,63 @@ class AssessParticipants extends Page
 
     public function save(): void
     {
-        $data = $this->form->getState();
+        $this->isSaving = true;
+        
+        try {
+            $data = $this->form->getState();
+            
+            $savedCount = 0;
+            $totalAssessments = 0;
 
-        foreach ($data['results'] as $participantId => $objectives) {
-            foreach ($objectives as $objectiveId => $result) {
-                ParticipantObjectiveResult::updateOrCreate(
-                    [
-                        'training_participant_id' => $participantId,
-                        'objective_id' => $objectiveId,
-                    ],
-                    [
-                        'result' => $result['result'],
-                        'grade_id' => $result['grade_id'],
-                        'comments' => $result['comments'] ?? null,
-                    ]
-                );
+            foreach ($data['results'] as $participantId => $objectives) {
+                foreach ($objectives as $objectiveId => $result) {
+                    if (!empty($result['grade_id'])) {
+                        $totalAssessments++;
+                        
+                        ParticipantObjectiveResult::updateOrCreate(
+                            [
+                                'training_participant_id' => $participantId,
+                                'objective_id' => $objectiveId,
+                            ],
+                            [
+                                'result' => 'assessed',
+                                'grade_id' => $result['grade_id'],
+                                'comments' => $result['comments'] ?? null,
+                            ]
+                        );
+                        
+                        $savedCount++;
+                    }
+                }
             }
-        }
 
-        // Update participant outcomes based on their results
-        foreach ($this->participants as $participant) {
-            $this->updateParticipantOutcome($participant);
-        }
+            // Update participant outcomes based on their results
+            foreach ($this->participants as $participant) {
+                $this->updateParticipantOutcome($participant);
+            }
 
-        Notification::make()
-            ->title('Assessments saved successfully')
-            ->success()
-            ->send();
+            // Show success notification with details
+            Notification::make()
+                ->title('Assessments Saved Successfully')
+                ->body("Saved {$savedCount} assessments for {$this->participants->count()} participants.")
+                ->success()
+                ->duration(5000)
+                ->send();
+
+            // Refresh the page data
+            $this->mount($this->training);
+            
+        } catch (\Exception $e) {
+            Notification::make()
+                ->title('Error Saving Assessments')
+                ->body('An error occurred while saving. Please try again.')
+                ->danger()
+                ->send();
+                
+           // \Log::error('Assessment save error: ' . $e->getMessage());
+        } finally {
+            $this->isSaving = false;
+        }
     }
 
     protected function updateParticipantOutcome(TrainingParticipant $participant): void
@@ -144,14 +183,24 @@ class AssessParticipants extends Page
             return;
         }
 
-        // Simple logic: if all objectives are passed, participant passes
-        // You can customize this logic based on your requirements
-        $allPassed = $results->every(function ($result) {
+        // Calculate overall outcome based on pass/fail grades
+        $totalObjectives = $this->objectives->count();
+        $assessedObjectives = $results->count();
+        $passedObjectives = $results->filter(function ($result) {
             return $result->grade && strtolower($result->grade->name) === 'pass';
-        });
+        })->count();
 
-        // Assuming you have a grade for overall outcome
-        $outcomeGrade = Grade::where('name', $allPassed ? 'Pass' : 'Fail')->first();
+        // Determine overall outcome (customize this logic as needed)
+        $passPercentage = ($passedObjectives / $totalObjectives) * 100;
+        
+        if ($assessedObjectives < $totalObjectives) {
+            // Not all objectives assessed yet
+            return;
+        }
+
+        // Example logic: 80% or more objectives passed = Pass
+        $outcomeGradeName = $passPercentage >= 80 ? 'Pass' : 'Fail';
+        $outcomeGrade = Grade::where('name', $outcomeGradeName)->first();
         
         if ($outcomeGrade) {
             $participant->update(['outcome_id' => $outcomeGrade->id]);
@@ -165,6 +214,26 @@ class AssessParticipants extends Page
                 ->label('Back to Training')
                 ->url($this->getResource()::getUrl('edit', ['record' => $this->training]))
                 ->icon('heroicon-o-arrow-left'),
+        ];
+    }
+    
+    public function getAssessmentProgressProperty(): array
+    {
+        $totalPossible = $this->participants->count() * $this->objectives->count();
+        $totalAssessed = 0;
+        
+        foreach ($this->participants as $participant) {
+            $totalAssessed += $participant->objectiveResults
+                ->whereIn('objective_id', $this->objectives->pluck('id'))
+                ->count();
+        }
+        
+        $percentage = $totalPossible > 0 ? round(($totalAssessed / $totalPossible) * 100) : 0;
+        
+        return [
+            'total' => $totalPossible,
+            'assessed' => $totalAssessed,
+            'percentage' => $percentage
         ];
     }
 }

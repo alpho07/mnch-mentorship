@@ -121,4 +121,9 @@ class User extends Authenticatable
     {
         return $this->isAboveSite() || $this->scopedFacilityIds()->contains($facilityId);
     }
+
+      public function organizedTrainings()
+    {
+        return $this->hasMany(Training::class, 'organizer_id');
+    }
 }

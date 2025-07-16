@@ -1,6 +1,5 @@
 <?php
 namespace App\Models;
-
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -19,6 +18,8 @@ class TrainingParticipant extends Model
         'is_tot',
         'outcome_id',
     ];
+
+    //protected $with = ['cadre', 'department', 'outcome'];
 
     public function training()
     {
@@ -42,7 +43,7 @@ class TrainingParticipant extends Model
 
     public function outcome()
     {
-        return $this->belongsTo(Grade::class);
+        return $this->belongsTo(Grade::class, 'outcome_id');
     }
 
     public function sessionAttendances()
@@ -52,6 +53,6 @@ class TrainingParticipant extends Model
 
     public function objectiveResults()
     {
-        return $this->hasMany(ParticipantObjectiveResult::class);
+        return $this->hasMany(ParticipantObjectiveResult::class, 'training_participant_id')->with('grade');
     }
 }

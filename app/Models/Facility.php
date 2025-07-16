@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Facility extends Model
 {
-    protected $fillable = ['name', 'subcounty_id', 'facility_type_id', 'is_hub', 'hub_id','mfl_code','lat','long'];
+    protected $fillable = ['name', 'subcounty_id', 'facility_type_id', 'is_hub', 'hub_id', 'mfl_code', 'lat', 'long'];
 
     public function subcounty()
     {
@@ -26,5 +26,10 @@ class Facility extends Model
     public function hub()
     {
         return $this->belongsTo(Facility::class, 'hub_id');
+    }
+
+    public function trainings()
+    {
+        return $this->hasMany(Training::class);
     }
 }

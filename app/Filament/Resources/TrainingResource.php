@@ -230,23 +230,178 @@ class TrainingResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('program')
-                    ->relationship('program', 'name'),
+                // Training Type Filter
+                Tables\Filters\SelectFilter::make('title')
+                    ->label('Training Type')
+                    ->options(Training::distinct()->pluck('title', 'title')),
 
+                // Program Filter (Static - from programs table)
+                Tables\Filters\SelectFilter::make('program')
+                    ->multiple()
+                    ->relationship('program', 'name')
+                    ->preload(),
+
+                // County Filter (via Subcounty)
+                Tables\Filters\SelectFilter::make('county')
+                    ->label('County')
+                    ->multiple()
+                    ->options(\App\Models\County::pluck('name', 'id'))
+                    ->query(function (Builder $query, array $data): Builder {
+                        if (!empty($data['values'])) {
+                            return $query->whereHas('facility.subcounty.county', function ($q) use ($data) {
+                                $q->whereIn('counties.id', $data['values']);
+                            });
+                        }
+                        return $query;
+                    }),
+
+                // Subcounty Filter
+                Tables\Filters\SelectFilter::make('subcounty')
+                    ->label('Subcounty')
+                    ->multiple()
+                    ->options(\App\Models\Subcounty::pluck('name', 'id'))
+                    ->query(function (Builder $query, array $data): Builder {
+                        if (!empty($data['values'])) {
+                            return $query->whereHas('facility.subcounty', function ($q) use ($data) {
+                                $q->whereIn('subcounties.id', $data['values']);
+                            });
+                        }
+                        return $query;
+                    }),
+
+                // Facility Filter (Dynamic - only facilities with trainings)
                 Tables\Filters\SelectFilter::make('facility')
+                    ->multiple()
+                    ->options(function () {
+                        return \App\Models\Facility::whereHas('trainings')
+                            ->pluck('name', 'id');
+                    })
                     ->relationship('facility', 'name'),
 
+                // Department Filter (Static - from departments table)
+                Tables\Filters\SelectFilter::make('departments')
+                    ->label('Department')
+                    ->multiple()
+                    ->options(\App\Models\Department::pluck('name', 'id'))
+                    ->query(function (Builder $query, array $data): Builder {
+                        if (!empty($data['values'])) {
+                            return $query->whereHas('departments', function ($q) use ($data) {
+                                $q->whereIn('departments.id', $data['values']);
+                            });
+                        }
+                        return $query;
+                    }),
+
+                // Cadre Filter (Static - from cadres table)
+                Tables\Filters\SelectFilter::make('cadre')
+                    ->label('Cadre')
+                    ->multiple()
+                    ->options(\App\Models\Cadre::pluck('name', 'id'))
+                    ->query(function (Builder $query, array $data): Builder {
+                        if (!empty($data['values'])) {
+                            return $query->whereHas('participants.cadre', function ($q) use ($data) {
+                                $q->whereIn('cadres.id', $data['values']);
+                            });
+                        }
+                        return $query;
+                    }),
+
+                // Facility Type Filter (Static - assuming you have facility types)
+                Tables\Filters\SelectFilter::make('facility_type')
+                    ->label('Facility Type')
+                    ->multiple()
+                    ->options(\App\Models\FacilityType::pluck('name', 'id'))
+                    ->query(function (Builder $query, array $data): Builder {
+                        if (!empty($data['values'])) {
+                            return $query->whereHas('facility.facilityType', function ($q) use ($data) {
+                                $q->whereIn('facility_types.id', $data['values']);
+                            });
+                        }
+                        return $query;
+                    }),
+
+                // Trained By/Organizer Filter (Dynamic - only organizers who have conducted trainings)
+                Tables\Filters\SelectFilter::make('organizer')
+                    ->label('Trained By')
+                    ->multiple()
+                    ->options(function () {
+                        return \App\Models\User::whereHas('organizedTrainings')
+                            ->pluck('name', 'id');
+                    })
+                    ->relationship('organizer', 'name'),
+
+                // Location Filter (Dynamic - only locations where trainings happened)
+                Tables\Filters\SelectFilter::make('location')
+                    ->label('Location/Room')
+                    ->multiple()
+                    ->options(function () {
+                        return Training::whereNotNull('location')
+                            ->where('location', '!=', '')
+                            ->distinct()
+                            ->pluck('location', 'location');
+                    }),
+
+                // Approach Filter (Static)
                 Tables\Filters\SelectFilter::make('approach')
+                    ->multiple()
                     ->options([
                         'onsite' => 'Onsite',
                         'virtual' => 'Virtual',
                         'hybrid' => 'Hybrid',
                     ]),
 
+                // Period Filter (Custom date range in MMM-YYYY format)
+                Tables\Filters\Filter::make('period')
+                    ->form([
+                        Forms\Components\Select::make('month')
+                            ->options([
+                                '01' => 'January',
+                                '02' => 'February',
+                                '03' => 'March',
+                                '04' => 'April',
+                                '05' => 'May',
+                                '06' => 'June',
+                                '07' => 'July',
+                                '08' => 'August',
+                                '09' => 'September',
+                                '10' => 'October',
+                                '11' => 'November',
+                                '12' => 'December',
+                            ])
+                            ->placeholder('Select Month'),
+                        Forms\Components\Select::make('year')
+                            ->options(function () {
+                                $years = [];
+                                for ($year = 2020; $year <= date('Y') + 2; $year++) {
+                                    $years[$year] = $year;
+                                }
+                                return $years;
+                            })
+                            ->placeholder('Select Year'),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query
+                            ->when(
+                                $data['month'] && $data['year'],
+                                fn (Builder $q): Builder => $q->whereMonth('start_date', $data['month'])
+                                    ->whereYear('start_date', $data['year'])
+                            );
+                    })
+                    ->indicateUsing(function (array $data): ?string {
+                        if ($data['month'] && $data['year']) {
+                            $monthName = \Carbon\Carbon::createFromFormat('m', $data['month'])->format('M');
+                            return "Period: {$monthName}-{$data['year']}";
+                        }
+                        return null;
+                    }),
+
+                // Date Range Filter (Alternative to period)
                 Tables\Filters\Filter::make('start_date')
                     ->form([
-                        Forms\Components\DatePicker::make('start_from'),
-                        Forms\Components\DatePicker::make('start_until'),
+                        Forms\Components\DatePicker::make('start_from')
+                            ->label('From Date'),
+                        Forms\Components\DatePicker::make('start_until')
+                            ->label('To Date'),
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         return $query
@@ -260,8 +415,8 @@ class TrainingResource extends Resource
                 Tables\Actions\Action::make('assess')
                     ->label('Assess')
                     ->icon('heroicon-o-clipboard-document-check')
-                    ->url(fn (Training $record): string => static::getUrl('assess', ['record' => $record]))
-                    ->visible(fn (Training $record): bool => $record->participants()->exists() && $record->sessions()->whereHas('objectives')->exists()),
+                    ->url(fn(Training $record): string => static::getUrl('assess', ['record' => $record]))
+                    ->visible(fn(Training $record): bool => $record->participants()->exists() && $record->sessions()->whereHas('objectives')->exists()),
                 Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
