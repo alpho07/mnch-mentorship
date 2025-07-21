@@ -1,0 +1,381 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "COUNTY": "Baringo" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[35.74,-0.47],[36.09,-0.36],[36.13,0.12],[35.85,0.37],[35.53,0.13],[35.74,-0.47]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "COUNTY": "Bomet" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[35.25,-0.97],[35.48,-0.91],[35.36,-0.60],[35.07,-0.64],[35.25,-0.97]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "COUNTY": "Bungoma" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[34.58,0.40],[34.80,0.48],[34.78,0.95],[34.58,0.93],[34.58,0.40]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "COUNTY": "Busia" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[34.08,0.13],[34.29,0.12],[34.31,0.49],[34.09,0.48],[34.08,0.13]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "COUNTY": "Elgeyo Marakwet" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[35.37,0.24],[35.74,0.19],[35.73,0.68],[35.46,0.69],[35.37,0.24]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "COUNTY": "Embu" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[37.40,-0.43],[37.60,-0.39],[37.64,-0.08],[37.40,-0.09],[37.40,-0.43]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "COUNTY": "Garissa" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[39.63,-1.28],[40.45,-0.93],[40.74,0.69],[39.72,1.66],[39.33,0.44],[39.63,-1.28]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "COUNTY": "Homa Bay" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[34.47,-0.65],[34.87,-0.51],[34.77,-0.13],[34.47,-0.24],[34.47,-0.65]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "COUNTY": "Isiolo" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[37.57,0.39],[38.43,0.55],[38.27,1.24],[37.73,1.23],[37.57,0.39]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "COUNTY": "Kajiado" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[36.41,-2.00],[37.51,-2.00],[37.37,-1.10],[36.43,-1.09],[36.41,-2.00]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "COUNTY": "Kakamega" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[34.57,0.24],[34.93,0.23],[34.93,0.68],[34.58,0.67],[34.57,0.24]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "COUNTY": "Kericho" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[35.17,-0.28],[35.52,-0.28],[35.41,0.05],[35.15,0.06],[35.17,-0.28]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "COUNTY": "Kiambu" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[36.48,-1.18],[37.13,-1.16],[37.12,-0.94],[36.49,-0.96],[36.48,-1.18]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "COUNTY": "Kilifi" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[39.85,-3.62],[40.37,-3.61],[40.36,-3.12],[39.83,-3.13],[39.85,-3.62]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "COUNTY": "Kirinyaga" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[37.20,-0.48],[37.39,-0.47],[37.40,-0.12],[37.20,-0.13],[37.20,-0.48]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "COUNTY": "Kisii" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[34.66,-0.89],[34.94,-0.91],[34.93,-0.63],[34.65,-0.63],[34.66,-0.89]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "COUNTY": "Kisumu" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[34.58,-0.21],[34.94,-0.19],[34.93,0.22],[34.58,0.21],[34.58,-0.21]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "COUNTY": "Kitui" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[37.72,-2.27],[38.54,-2.28],[38.54,-1.48],[37.70,-1.47],[37.72,-2.27]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "COUNTY": "Kwale" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[39.27,-4.27],[39.72,-4.27],[39.70,-3.87],[39.24,-3.87],[39.27,-4.27]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "COUNTY": "Laikipia" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[36.54,0.26],[37.11,0.27],[37.12,0.80],[36.53,0.79],[36.54,0.26]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "COUNTY": "Lamu" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[40.90,-2.52],[41.25,-2.51],[41.26,-1.72],[40.92,-1.74],[40.90,-2.52]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "COUNTY": "Machakos" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[37.16,-1.77],[37.83,-1.78],[37.80,-1.13],[37.15,-1.13],[37.16,-1.77]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "COUNTY": "Makueni" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[37.33,-2.30],[38.11,-2.31],[38.08,-1.64],[37.32,-1.64],[37.33,-2.30]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "COUNTY": "Mandera" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[40.12,2.42],[41.14,2.41],[41.16,3.92],[40.11,3.91],[40.12,2.42]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "COUNTY": "Marsabit" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[37.91,2.09],[39.20,2.08],[39.22,3.39],[37.90,3.40],[37.91,2.09]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "COUNTY": "Meru" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[37.61,0.16],[38.25,0.17],[38.23,0.85],[37.62,0.85],[37.61,0.16]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "COUNTY": "Migori" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[34.31,-1.12],[34.66,-1.13],[34.67,-0.66],[34.32,-0.65],[34.31,-1.12]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "COUNTY": "Mombasa" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[39.55,-4.07],[39.73,-4.08],[39.72,-3.98],[39.54,-3.98],[39.55,-4.07]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "COUNTY": "Murang'a" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[36.91,-0.91],[37.34,-0.89],[37.32,-0.57],[36.92,-0.59],[36.91,-0.91]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "COUNTY": "Nairobi" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[36.70,-1.36],[36.92,-1.35],[36.93,-1.19],[36.71,-1.20],[36.70,-1.36]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "COUNTY": "Nakuru" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[36.07,-0.60],[36.51,-0.60],[36.50,0.14],[36.06,0.13],[36.07,-0.60]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "COUNTY": "Nandi" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[35.11,0.00],[35.45,0.01],[35.43,0.36],[35.10,0.36],[35.11,0.00]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "COUNTY": "Narok" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[35.63,-1.69],[36.35,-1.68],[36.32,-0.91],[35.61,-0.92],[35.63,-1.69]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "COUNTY": "Nyamira" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[34.90,-0.72],[35.18,-0.72],[35.17,-0.44],[34.90,-0.44],[34.90,-0.72]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "COUNTY": "Nyandarua" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[36.21,-0.44],[36.60,-0.43],[36.59,0.01],[36.21,0.01],[36.21,-0.44]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "COUNTY": "Nyeri" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[36.88,-0.56],[37.24,-0.56],[37.23,-0.16],[36.89,-0.16],[36.88,-0.56]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "COUNTY": "Samburu" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[36.54,0.96],[37.38,0.96],[37.36,1.57],[36.53,1.57],[36.54,0.96]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "COUNTY": "Siaya" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[34.18,0.19],[34.53,0.18],[34.52,0.45],[34.19,0.46],[34.18,0.19]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "COUNTY": "Taita Taveta" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[38.18,-3.43],[38.91,-3.43],[38.89,-2.97],[38.17,-2.97],[38.18,-3.43]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "COUNTY": "Tana River" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[39.11,-2.39],[40.27,-2.40],[40.28,-1.28],[39.11,-1.27],[39.11,-2.39]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "COUNTY": "Tharaka-Nithi" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[37.50,-0.50],[37.82,-0.49],[37.81,-0.11],[37.51,-0.11],[37.50,-0.50]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "COUNTY": "Trans Nzoia" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[34.95,0.68],[35.30,0.67],[35.30,1.06],[34.96,1.06],[34.95,0.68]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "COUNTY": "Turkana" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[34.00,2.49],[36.05,2.49],[36.04,4.47],[34.00,4.47],[34.00,2.49]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "COUNTY": "Uasin Gishu" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[35.18,0.17],[35.48,0.17],[35.48,0.62],[35.18,0.61],[35.18,0.17]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "COUNTY": "Vihiga" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[34.58,0.02],[34.80,0.01],[34.79,0.23],[34.57,0.24],[34.58,0.02]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "COUNTY": "Wajir" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[39.54,1.74],[41.08,1.74],[41.07,3.33],[39.53,3.33],[39.54,1.74]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "COUNTY": "West Pokot" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[34.86,1.03],[35.30,1.03],[35.29,1.65],[34.85,1.64],[34.86,1.03]]]
+      }
+    }
+  ]
+}

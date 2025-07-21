@@ -13,7 +13,12 @@ class ListTrainingCoverages extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make(),
+            Actions\Action::make('dashboard')
+                ->label('View Dashboard')
+                ->icon('heroicon-o-chart-bar')
+                ->url(fn (): string => '/admin/training-dashboard') // Direct URL to standalone page
+                ->color('primary')
+                ->openUrlInNewTab(false),
         ];
     }
 }

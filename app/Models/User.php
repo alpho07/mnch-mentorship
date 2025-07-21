@@ -2,32 +2,24 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, HasRoles;
+    use HasFactory, Notifiable, HasRoles, SoftDeletes;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
-
-
-        'password',
         'facility_id',
+        'department_id',
         'cadre_id',
         'role',
-        'name',
         'first_name',
         'middle_name',
         'last_name',
@@ -35,23 +27,15 @@ class User extends Authenticatable
         'id_number',
         'phone',
         'status',
+        'password',
+        'email_verified_at',
     ];
 
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var list<string>
-     */
     protected $hidden = [
         'password',
         'remember_token',
     ];
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
@@ -60,7 +44,44 @@ class User extends Authenticatable
         ];
     }
 
+    // Computed Attributes
+    public function getFullNameAttribute(): string
+    {
+        return trim("{$this->first_name} {$this->middle_name} {$this->last_name}");
+    }
+
+    public function getNameAttribute(): string
+    {
+        return $this->full_name;
+    }
+
     // Relationships
+    public function facility(): BelongsTo
+    {
+        return $this->belongsTo(Facility::class);
+    }
+
+    public function department(): BelongsTo
+    {
+        return $this->belongsTo(Department::class);
+    }
+
+    public function cadre(): BelongsTo
+    {
+        return $this->belongsTo(Cadre::class);
+    }
+
+    public function organizedTrainings(): HasMany
+    {
+        return $this->hasMany(Training::class, 'organizer_id');
+    }
+
+    public function trainingParticipations(): HasMany
+    {
+        return $this->hasMany(TrainingParticipant::class);
+    }
+
+    // Many-to-many relationships for user access scoping
     public function counties(): BelongsToMany
     {
         return $this->belongsToMany(County::class, 'county_user');
@@ -76,54 +97,51 @@ class User extends Authenticatable
         return $this->belongsToMany(Facility::class, 'facility_user');
     }
 
-    public function homeFacility(): BelongsTo
-    {
-        return $this->belongsTo(Facility::class, 'facility_id');
-    }
-
-    public function cadre(): BelongsTo
-    {
-        return $this->belongsTo(Cadre::class, 'cadre_id');
-    }
-
-    // Check if user is above-site (Super Admin/Division/National)
-    public function isAboveSite()
+    // Authorization Helper Methods
+    public function isAboveSite(): bool
     {
         return $this->hasRole(['Super Admin', 'Division Lead', 'National Mentor Lead']);
     }
 
-    // Returns all allowed county IDs for this user
     public function scopedCountyIds()
     {
         return $this->isAboveSite()
-            ? \App\Models\County::pluck('id')
+            ? County::pluck('id')
             : $this->counties()->pluck('id');
     }
 
-    // Returns all allowed subcounty IDs
     public function scopedSubcountyIds()
     {
         return $this->isAboveSite()
-            ? \App\Models\Subcounty::pluck('id')
+            ? Subcounty::pluck('id')
             : $this->subcounties()->pluck('id');
     }
 
-    // Returns all allowed facility IDs
     public function scopedFacilityIds()
     {
         return $this->isAboveSite()
-            ? \App\Models\Facility::pluck('id')
+            ? Facility::pluck('id')
             : $this->facilities()->pluck('id');
     }
 
-    // Returns true if user can access a specific facility
-    public function canAccessFacility($facilityId)
+    public function canAccessFacility(int $facilityId): bool
     {
         return $this->isAboveSite() || $this->scopedFacilityIds()->contains($facilityId);
     }
 
-      public function organizedTrainings()
+    // Query Scopes
+    public function scopeByRole($query, string $role)
     {
-        return $this->hasMany(Training::class, 'organizer_id');
+        return $query->where('role', $role);
+    }
+
+    public function scopeByStatus($query, string $status)
+    {
+        return $query->where('status', $status);
+    }
+
+    public function scopeByFacility($query, int $facilityId)
+    {
+        return $query->where('facility_id', $facilityId);
     }
 }

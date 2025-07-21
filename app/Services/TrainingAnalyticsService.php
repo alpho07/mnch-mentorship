@@ -44,68 +44,82 @@ class TrainingAnalyticsService
     }
 
     /**
-     * Get monthly training trends
+     * Get monthly training trends - FIXED
      */
     public function getMonthlyTrends(array $filters = []): array
     {
         $query = Training::select(
             DB::raw('YEAR(start_date) as year'),
             DB::raw('MONTH(start_date) as month'),
-            DB::raw('COUNT(*) as training_count'),
-            DB::raw('COUNT(DISTINCT facility_id) as facility_count')
+            DB::raw('COUNT(*) as training_count')
         )
-            ->with('participants')
             ->groupBy('year', 'month')
             ->orderBy('year')
             ->orderBy('month');
 
         $this->applyAllFilters($query, $filters);
 
-        return $query->get()->map(function ($item) {
+        $trainings = $query->get();
+
+        return $trainings->map(function ($item) use ($filters) {
             $date = Carbon::createFromDate($item->year, $item->month, 1);
+
+            // Get participant count for this month with filters applied
+            $participantQuery = TrainingParticipant::whereHas('training', function ($q) use ($filters, $item) {
+                $this->applyAllFilters($q, $filters);
+                $q->whereYear('start_date', $item->year)
+                    ->whereMonth('start_date', $item->month);
+            });
+
             return [
                 'period' => $date->format('M Y'),
                 'month_year' => $date->format('Y-m'),
                 'trainings' => $item->training_count,
-                'facilities' => $item->facility_count,
-                'participants' => $item->participants->count(),
+                'participants' => $participantQuery->count(),
+                'facilities' => Training::whereYear('start_date', $item->year)
+                    ->whereMonth('start_date', $item->month)
+                    ->when(!empty($filters), function ($q) use ($filters) {
+                        $this->applyAllFilters($q, $filters);
+                    })
+                    ->distinct('facility_id')
+                    ->count(),
             ];
         })->toArray();
     }
 
     /**
-     * Get county-wise training distribution
+     * Get county-wise training distribution - FIXED
      */
     public function getCountyDistribution(array $filters = []): array
     {
         $query = County::select('counties.id', 'counties.name')
-            ->withCount([
-                'subcounties as training_count' => function ($q) use ($filters) {
-                    $q->withCount([
-                        'facilities as facility_training_count' => function ($subQ) use ($filters) {
-                            $subQ->whereHas('trainings', function ($trainQ) use ($filters) {
-                                $this->applyAllFilters($trainQ, $filters);
-                            });
-                        }
-                    ]);
-                }
-            ])
             ->whereHas('subcounties.facilities.trainings', function ($q) use ($filters) {
                 $this->applyAllFilters($q, $filters);
             });
 
-        return $query->get()->map(function ($county) {
-            $trainingCount = Training::whereHas('facility.subcounty.county', function ($q) use ($county) {
+        return $query->get()->map(function ($county) use ($filters) {
+            // Get training count for this county with filters
+            $trainingQuery = Training::whereHas('facility.subcounty.county', function ($q) use ($county) {
                 $q->where('id', $county->id);
-            })->count();
+            });
+            $this->applyAllFilters($trainingQuery, $filters);
+            $trainingCount = $trainingQuery->count();
 
-            $participantCount = TrainingParticipant::whereHas('training.facility.subcounty.county', function ($q) use ($county) {
+            // Get participant count for this county with filters
+            $participantQuery = TrainingParticipant::whereHas('training.facility.subcounty.county', function ($q) use ($county) {
                 $q->where('id', $county->id);
-            })->count();
+            })->whereHas('training', function ($q) use ($filters) {
+                $this->applyAllFilters($q, $filters);
+            });
+            $participantCount = $participantQuery->count();
 
-            $facilityCount = Facility::whereHas('subcounty.county', function ($q) use ($county) {
+            // Get facility count for this county with filters
+            $facilityQuery = Facility::whereHas('subcounty.county', function ($q) use ($county) {
                 $q->where('id', $county->id);
-            })->whereHas('trainings')->count();
+            })->whereHas('trainings', function ($q) use ($filters) {
+                $this->applyAllFilters($q, $filters);
+            });
+            $facilityCount = $facilityQuery->count();
 
             return [
                 'county' => $county->name,
@@ -114,23 +128,23 @@ class TrainingAnalyticsService
                 'facilities' => $facilityCount,
                 'intensity' => $trainingCount, // For heatmap coloring
             ];
-        })->toArray();
+        })->filter(function ($county) {
+            return $county['trainings'] > 0; // Only show counties with training data
+        })->values()->toArray();
     }
 
     /**
-     * Get cadre distribution
+     * Get cadre distribution - FIXED
      */
     public function getCadreDistribution(array $filters = []): array
     {
-        $query = DB::table('training_participants')
-            ->join('cadres', 'training_participants.cadre_id', '=', 'cadres.id')
-            ->join('trainings', 'training_participants.training_id', '=', 'trainings.id')
+        $query = TrainingParticipant::join('cadres', 'training_participants.cadre_id', '=', 'cadres.id')
             ->select('cadres.name as cadre', DB::raw('COUNT(*) as count'))
+            ->whereHas('training', function ($q) use ($filters) {
+                $this->applyAllFilters($q, $filters);
+            })
             ->groupBy('cadres.id', 'cadres.name')
             ->orderBy('count', 'desc');
-
-        // Apply filters through join
-        $this->applyJoinFilters($query, $filters);
 
         return $query->get()->map(function ($item) {
             return [
@@ -141,18 +155,17 @@ class TrainingAnalyticsService
     }
 
     /**
-     * Get facility type distribution
+     * Get facility type distribution - FIXED
      */
     public function getFacilityTypeDistribution(array $filters = []): array
     {
-        $query = DB::table('trainings')
-            ->join('facilities', 'trainings.facility_id', '=', 'facilities.id')
+        $query = Training::join('facilities', 'trainings.facility_id', '=', 'facilities.id')
             ->join('facility_types', 'facilities.facility_type_id', '=', 'facility_types.id')
             ->select('facility_types.name as facility_type', DB::raw('COUNT(DISTINCT trainings.id) as training_count'))
             ->groupBy('facility_types.id', 'facility_types.name')
             ->orderBy('training_count', 'desc');
 
-        $this->applyJoinFilters($query, $filters);
+        $this->applyAllFilters($query, $filters);
 
         return $query->get()->map(function ($item) {
             return [
@@ -163,7 +176,7 @@ class TrainingAnalyticsService
     }
 
     /**
-     * Get training approach distribution
+     * Get training approach distribution - FIXED
      */
     public function getApproachDistribution(array $filters = []): array
     {
@@ -182,11 +195,11 @@ class TrainingAnalyticsService
     }
 
     /**
-     * Get retention analysis (participants who attended multiple trainings)
+     * Get retention analysis (participants who attended multiple trainings) - FIXED
      */
     public function getRetentionAnalysis(array $filters = []): array
     {
-        $query = TrainingParticipant::select('email', DB::raw('COUNT(DISTINCT training_id) as training_count'))
+        $participantQuery = TrainingParticipant::select('email', DB::raw('COUNT(DISTINCT training_id) as training_count'))
             ->whereNotNull('email')
             ->where('email', '!=', '')
             ->whereHas('training', function ($q) use ($filters) {
@@ -195,10 +208,12 @@ class TrainingAnalyticsService
             ->groupBy('email')
             ->havingRaw('COUNT(DISTINCT training_id) > 1');
 
-        $retentionData = $query->get();
-        $totalUniqueParticipants = TrainingParticipant::whereHas('training', function ($q) use ($filters) {
+        $retentionData = $participantQuery->get();
+
+        $totalUniqueQuery = TrainingParticipant::whereHas('training', function ($q) use ($filters) {
             $this->applyAllFilters($q, $filters);
-        })->distinct('email')->count('email');
+        });
+        $totalUniqueParticipants = $totalUniqueQuery->distinct('email')->count('email');
 
         return [
             'repeat_participants' => $retentionData->count(),
@@ -216,12 +231,11 @@ class TrainingAnalyticsService
     }
 
     /**
-     * Get top performing organizers
+     * Get top performing organizers - FIXED
      */
     public function getTopOrganizers(array $filters = [], int $limit = 10): array
     {
-        $query = DB::table('trainings')
-            ->join('users', 'trainings.organizer_id', '=', 'users.id')
+        $query = Training::join('users', 'trainings.organizer_id', '=', 'users.id')
             ->select(
                 'users.name as organizer',
                 DB::raw('COUNT(DISTINCT trainings.id) as training_count'),
@@ -231,63 +245,49 @@ class TrainingAnalyticsService
             ->orderBy('training_count', 'desc')
             ->limit($limit);
 
-        $this->applyJoinFilters($query, $filters);
+        $this->applyAllFilters($query, $filters);
 
-        return $query->get()->map(function ($item) {
+        return $query->get()->map(function ($item) use ($filters) {
+            // Get participant count for this organizer with filters
+            $participantCount = TrainingParticipant::whereHas('training', function ($q) use ($filters, $item) {
+                $this->applyAllFilters($q, $filters);
+                $q->whereHas('organizer', function ($userQ) use ($item) {
+                    $userQ->where('name', $item->organizer);
+                });
+            })->count();
+
             return [
                 'organizer' => $item->organizer,
                 'trainings' => $item->training_count,
                 'facilities' => $item->facility_count,
+                'participants' => $participantCount,
             ];
         })->toArray();
     }
 
-    /**
-     * Apply filters to join queries
-     */
-    private function applyJoinFilters($query, array $filters): void
+
+    public function debugFacilityTypes(array $filters = []): array
     {
-        // Time-based filters
-        if (!empty($filters['years'])) {
-            $query->whereIn(DB::raw('YEAR(trainings.start_date)'), $filters['years']);
-        }
+        // Check if facilities have facility_type_id
+        $facilitiesWithoutType = \App\Models\Facility::whereNull('facility_type_id')->count();
 
-        if (!empty($filters['quarters'])) {
-            $query->where(function ($q) use ($filters) {
-                foreach ($filters['quarters'] as $quarter) {
-                    if (str_contains($quarter, '-Q')) {
-                        [$year, $quarterPart] = explode('-Q', $quarter);
-                        $quarterNum = (int) $quarterPart;
-                        $q->orWhere(function ($subQ) use ($year, $quarterNum) {
-                            $subQ->whereYear('trainings.start_date', $year)
-                                ->whereRaw('QUARTER(trainings.start_date) = ?', [$quarterNum]);
-                        });
-                    }
-                }
-            });
-        }
+        // Check if trainings have facilities
+        $trainingsWithoutFacility = \App\Models\Training::whereNull('facility_id')->count();
 
-        if (!empty($filters['months'])) {
-            $query->where(function ($q) use ($filters) {
-                foreach ($filters['months'] as $month) {
-                    if (str_contains($month, '-')) {
-                        [$year, $monthNum] = explode('-', $month);
-                        $q->orWhere(function ($subQ) use ($year, $monthNum) {
-                            $subQ->whereYear('trainings.start_date', $year)
-                                ->whereMonth('trainings.start_date', $monthNum);
-                        });
-                    }
-                }
-            });
-        }
+        // Check basic query
+        $basicQuery = \App\Models\Training::join('facilities', 'trainings.facility_id', '=', 'facilities.id')
+            ->whereNotNull('facilities.facility_type_id')
+            ->count();
 
-        // Other filters
-        if (!empty($filters['programs'])) {
-            $query->whereIn('trainings.program_id', $filters['programs']);
-        }
+        // Check if facility_types table has data
+        $facilityTypesCount = \App\Models\FacilityType::count();
 
-        if (!empty($filters['approaches'])) {
-            $query->whereIn('trainings.approach', $filters['approaches']);
-        }
+        return [
+            'facilities_without_type' => $facilitiesWithoutType,
+            'trainings_without_facility' => $trainingsWithoutFacility,
+            'trainings_with_facility_type' => $basicQuery,
+            'total_facility_types' => $facilityTypesCount,
+            'sample_facility_types' => \App\Models\FacilityType::take(5)->pluck('name')->toArray(),
+        ];
     }
 }
