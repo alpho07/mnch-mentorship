@@ -12,10 +12,10 @@
             {{$this->form }}
         </x-filament::card>
 
-         {{--<div class="grid grid-cols-1 gap-6">
+         <div class="grid grid-cols-1 gap-6">
             <livewire:training-coverage-stats-widget :program_id="$program_id" :period="$period" :county_id="$county_id"
                 :subcounty_id="$subcounty_id" :facility_id="$facility_id" :department_id="$department_id" :cadre_id="$cadre_id" />
-        </div>--}}
+        </div>
 
         {{--<div class="grid grid-cols-1 gap-6">
             <livewire:training-charts-widget :program_id="$program_id" :period="$period" :county_id="$county_id" :subcounty_id="$subcounty_id"

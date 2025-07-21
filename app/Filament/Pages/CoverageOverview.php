@@ -54,11 +54,11 @@ class CoverageOverview extends Page
     protected function getFooterWidgets(): array
     {
         return [
-            KenyaTrainingHeatmapWidget::class,
-           // TrainingsByMonthChartWidget::class,
-            //TrainingsByCountyChartWidget::class,
-            //ParticipantsByDepartmentChartWidget::class,
-            //ParticipantsByCadreChartWidget::class,
+            //KenyaTrainingHeatmapWidget::class,
+           TrainingsByMonthChartWidget::class,
+           TrainingsByCountyChartWidget::class,
+           ParticipantsByDepartmentChartWidget::class,
+           ParticipantsByCadreChartWidget::class,
         ];
     }
 
