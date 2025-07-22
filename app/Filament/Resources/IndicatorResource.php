@@ -41,7 +41,7 @@ class IndicatorResource extends Resource
                             ->rows(3)
                             ->columnSpanFull(),
 
-                        Forms\Components\Select::make('calculation_type')
+                            /*Forms\Components\Select::make('calculation_type')
                             ->required()
                             ->options([
                                 'percentage' => 'Percentage (%)',
@@ -50,13 +50,13 @@ class IndicatorResource extends Resource
                                 'ratio' => 'Ratio',
                             ]),
 
-                        Forms\Components\TextInput::make('target_value')
+                    Forms\Components\TextInput::make('target_value')
                             ->numeric()
                             ->suffix(fn (Forms\Get $get): string => match ($get('calculation_type')) {
                                 'percentage' => '%',
                                 'rate' => 'per 1000',
                                 default => '',
-                            }),
+                            }),*/
 
                         Forms\Components\Toggle::make('is_active')
                             ->default(true),
@@ -103,7 +103,7 @@ class IndicatorResource extends Resource
                     ->sortable()
                     ->badge(),
 
-                Tables\Columns\TextColumn::make('calculation_type')
+                /*Tables\Columns\TextColumn::make('calculation_type')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
                         'percentage' => 'success',
@@ -120,7 +120,7 @@ class IndicatorResource extends Resource
                             'percentage' => '%',
                             'rate' => ' per 1000',
                             default => '',
-                        } : '-'),
+                        } : '-'),*/
 
                 Tables\Columns\IconColumn::make('is_active')
                     ->boolean(),
