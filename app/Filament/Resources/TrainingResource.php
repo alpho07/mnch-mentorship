@@ -27,6 +27,11 @@ class TrainingResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-presentation-chart-bar';
     protected static ?string $navigationGroup = 'Training Management';
 
+       public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
+
     public static function form(Forms\Form $form): Forms\Form
     {
         return $form->schema([

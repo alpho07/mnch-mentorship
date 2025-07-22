@@ -97,18 +97,18 @@ class Facility extends Model
     public function scopeWithinRadius($query, float $lat, float $lng, float $radius)
     {
         return $query->whereNotNull('lat')
-                    ->whereNotNull('long')
-                    ->selectRaw("*, (
+            ->whereNotNull('long')
+            ->selectRaw("*, (
                         6371 * acos(
-                            cos(radians(?)) * 
-                            cos(radians(lat)) * 
-                            cos(radians(long) - radians(?)) + 
-                            sin(radians(?)) * 
+                            cos(radians(?)) *
+                            cos(radians(lat)) *
+                            cos(radians(long) - radians(?)) +
+                            sin(radians(?)) *
                             sin(radians(lat))
                         )
                     ) AS distance", [$lat, $lng, $lat])
-                    ->having('distance', '<', $radius)
-                    ->orderBy('distance');
+            ->having('distance', '<', $radius)
+            ->orderBy('distance');
     }
 
     // Computed Attributes
@@ -130,7 +130,31 @@ class Facility extends Model
                 'longitude' => (float) $this->long,
             ];
         }
-        
+
         return null;
+    }
+
+    public function reportTemplates(): BelongsToMany
+    {
+        return $this->belongsToMany(ReportTemplate::class, 'facility_report_templates')
+            ->withPivot(['start_date', 'end_date'])
+            ->withTimestamps();
+    }
+
+    public function monthlyReports(): HasMany
+    {
+        return $this->hasMany(MonthlyReport::class);
+    }
+
+    public function getActiveReportTemplatesAttribute()
+    {
+        return $this->reportTemplates()
+            ->wherePivot('start_date', '<=', now())
+            ->where(function ($query) {
+                $query->wherePivot('end_date', '>=', now())
+                    ->orWherePivot('end_date', null);
+            })
+            ->where('is_active', true)
+            ->get();
     }
 }

@@ -16,8 +16,18 @@
     </style>
 </head>
 <body class="bg-gray-100 p-8">
+    <div>
+    <a href="{{url('admin/coverage-overview')}}"
+       class="inline-flex items-center px-5 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-semibold rounded-full shadow-lg hover:from-blue-600 hover:to-indigo-600 hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+    >
+        <svg class="w-5 h-5 mr-2 -ml-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+        </svg>
+        Back To Dashboard
+    </a>
+</div>
     <div class="max-w-6xl mx-auto">
-        <h1 class="text-3xl font-bold mb-3 text-gray-900">Kenya Training “Fire” Heatmap</h1>
+        <h1 class="text-3xl font-bold mb-3 text-gray-900">MNCH Mentorship Trainings - Heatmap</h1>
         <div class="mb-3">
             <div class="flex flex-wrap items-center text-xs gap-2">
                 <div class="flex items-center gap-1"><span class="block w-4 h-4 bg-gray-300 border rounded"></span> No Data: Review &amp; Audit</div>

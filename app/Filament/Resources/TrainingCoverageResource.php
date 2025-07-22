@@ -22,6 +22,11 @@ class TrainingCoverageResource extends Resource
     protected static ?string $navigationGroup = 'Analytics & Reports';
     protected static ?int $navigationSort = 1;
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
+
     public static function form(Form $form): Form
     {
         return $form->schema([
@@ -149,14 +154,14 @@ class TrainingCoverageResource extends Resource
                         }
 
                         if (!empty($data['quarters'])) {
-                            $quarters = array_map(function($q) {
+                            $quarters = array_map(function ($q) {
                                 return str_replace('-', ' ', $q);
                             }, $data['quarters']);
                             $indicators[] = 'Quarters: ' . implode(', ', $quarters);
                         }
 
                         if (!empty($data['months'])) {
-                            $months = array_map(function($m) {
+                            $months = array_map(function ($m) {
                                 [$year, $month] = explode('-', $m);
                                 return \Carbon\Carbon::createFromDate($year, $month, 1)->format('M Y');
                             }, $data['months']);
@@ -301,7 +306,8 @@ class TrainingCoverageResource extends Resource
                 // Special Filters
                 Tables\Filters\Filter::make('has_tot')
                     ->label('Has TOT Participants')
-                    ->query(fn(Builder $query): Builder =>
+                    ->query(
+                        fn(Builder $query): Builder =>
                         $query->whereHas('participants', fn($q) => $q->where('is_tot', true))
                     )
                     ->toggle(),
@@ -315,10 +321,14 @@ class TrainingCoverageResource extends Resource
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         return $query
-                            ->when($data['start_from'],
-                                fn(Builder $q, $date): Builder => $q->whereDate('start_date', '>=', $date))
-                            ->when($data['start_until'],
-                                fn(Builder $q, $date): Builder => $q->whereDate('start_date', '<=', $date));
+                            ->when(
+                                $data['start_from'],
+                                fn(Builder $q, $date): Builder => $q->whereDate('start_date', '>=', $date)
+                            )
+                            ->when(
+                                $data['start_until'],
+                                fn(Builder $q, $date): Builder => $q->whereDate('start_date', '<=', $date)
+                            );
                     })
                     ->indicateUsing(function (array $data): array {
                         $indicators = [];

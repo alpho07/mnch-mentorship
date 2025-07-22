@@ -12,6 +12,10 @@ class OrgUnitExplorer extends Page
     protected static ?string $title = 'Organization Unit Explorer';
 
     public $counties;
+     public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
 
     public function mount(): void
     {

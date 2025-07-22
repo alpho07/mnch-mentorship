@@ -19,7 +19,8 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 class FacilityTypeResource extends Resource
 {
     protected static ?string $model = FacilityType::class;
-
+    
+    protected static ?string $navigationGroup = 'Organization Units';
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
 
     public static function form(Form $form): Form

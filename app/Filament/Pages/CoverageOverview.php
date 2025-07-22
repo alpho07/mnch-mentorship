@@ -24,10 +24,12 @@ class CoverageOverview extends Page
 {
     protected static ?string $navigationIcon = 'heroicon-o-chart-bar';
     protected static string $view = 'filament.pages.coverage-overview';
+    protected static ?string $navigationGroup = 'Dashboards';
     protected static ?string $title = 'Training Overview';
-    protected static ?string $navigationLabel = 'Training Dashboard';
+    protected static ?string $navigationLabel = 'Training Coverage';
     protected static ?int $navigationSort = 1;
     protected static ?string $slug = 'coverage-overview';
+    
 
     // Filter Properties
     public ?array $program_id = [];
@@ -47,7 +49,7 @@ class CoverageOverview extends Page
     protected function getHeaderWidgets(): array
     {
         return [
-          //  \App\Filament\Widgets\TrainingCoverageStatsWidget::class,
+            //  \App\Filament\Widgets\TrainingCoverageStatsWidget::class,
         ];
     }
 
@@ -55,10 +57,10 @@ class CoverageOverview extends Page
     {
         return [
             //KenyaTrainingHeatmapWidget::class,
-           TrainingsByMonthChartWidget::class,
-           TrainingsByCountyChartWidget::class,
-           ParticipantsByDepartmentChartWidget::class,
-           ParticipantsByCadreChartWidget::class,
+            TrainingsByMonthChartWidget::class,
+            TrainingsByCountyChartWidget::class,
+            ParticipantsByDepartmentChartWidget::class,
+            ParticipantsByCadreChartWidget::class,
         ];
     }
 
@@ -91,7 +93,7 @@ class CoverageOverview extends Page
                     ->options(fn() => $this->getCountyOptions())
                     ->searchable()
                     ->live()
-                    ->afterStateUpdated(function() {
+                    ->afterStateUpdated(function () {
                         $this->resetCascadingFilters(['subcounty_id', 'facility_id']);
                         $this->emitFiltersUpdated();
                     })
@@ -103,7 +105,7 @@ class CoverageOverview extends Page
                     ->options(fn() => $this->getSubcountyOptions())
                     ->searchable()
                     ->live()
-                    ->afterStateUpdated(function() {
+                    ->afterStateUpdated(function () {
                         $this->resetCascadingFilters(['facility_id']);
                         $this->emitFiltersUpdated();
                     })
@@ -233,8 +235,13 @@ class CoverageOverview extends Page
     public function clearFilters(): void
     {
         $this->reset([
-            'program_id', 'period', 'county_id', 'subcounty_id', 'facility_id',
-            'department_id', 'cadre_id'
+            'program_id',
+            'period',
+            'county_id',
+            'subcounty_id',
+            'facility_id',
+            'department_id',
+            'cadre_id'
         ]);
 
         $this->emitFiltersUpdated();

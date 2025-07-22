@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Filament\Resources;
+
 use App\Filament\Resources\TrainingOverviewResource\Pages;
 
 use App\Models\Training;
@@ -19,7 +20,8 @@ class TrainingOverviewResource extends Resource
     protected static ?string $navigationGroup = 'Training Management';
     protected static ?string $navigationLabel = 'Training Overview';
     protected static ?string $slug = 'training-overview';
-    protected static ?int $navigationSort = 1; // Show this first in navigation
+   
+ 
 
     public static function table(Tables\Table $table): Tables\Table
     {
@@ -53,7 +55,7 @@ class TrainingOverviewResource extends Resource
 
                 Tables\Columns\TextColumn::make('latest_training_date')
                     ->label('Latest Training')
-                    ->formatStateUsing(fn ($state) => $state ? \Carbon\Carbon::parse($state)->format('M-Y') : '-')
+                    ->formatStateUsing(fn($state) => $state ? \Carbon\Carbon::parse($state)->format('M-Y') : '-')
                     ->sortable(),
             ])
             ->filters([
@@ -68,10 +70,14 @@ class TrainingOverviewResource extends Resource
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         return $query
-                            ->when($data['from'], fn(Builder $q, $date): Builder =>
+                            ->when(
+                                $data['from'],
+                                fn(Builder $q, $date): Builder =>
                                 $q->whereDate('start_date', '>=', $date)
                             )
-                            ->when($data['to'], fn(Builder $q, $date): Builder =>
+                            ->when(
+                                $data['to'],
+                                fn(Builder $q, $date): Builder =>
                                 $q->whereDate('start_date', '<=', $date)
                             );
                     }),
@@ -80,7 +86,8 @@ class TrainingOverviewResource extends Resource
                 Tables\Actions\Action::make('view_trainings')
                     ->label('View')
                     ->icon('heroicon-o-eye')
-                    ->url(fn($record): string =>
+                    ->url(
+                        fn($record): string =>
                         TrainingResource::getUrl('index', ['tableFilters' => [
                             'title' => ['value' => $record->title]
                         ]])

@@ -29,6 +29,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+    \App\Models\MonthlyReport::observe(\App\Observers\MonthlyReportObserver::class);
+
+
         FilamentAsset::register([
             Js::make('kenya-heatmap', asset('local.js')),
             Css::make('leaflet', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'),

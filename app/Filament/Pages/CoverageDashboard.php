@@ -31,6 +31,11 @@ class CoverageDashboard extends Page implements HasForms
     protected static ?string $navigationIcon = 'heroicon-o-chart-bar-square';
     protected static ?int $navigationSort = 1;
 
+     public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
+
     // Form data property
     public ?array $data = [];
 
