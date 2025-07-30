@@ -82,7 +82,7 @@
                             </div>
                             <div class="text-center stat-card bg-white p-4 rounded-xl shadow-sm border">
                                 <div class="text-3xl font-bold text-green-600">
-                                    {{ number_format('3,899' /*$mapData['totalParticipants']*/) }}</div>
+                                    {{ number_format(3899 /*$mapData['totalParticipants']*/) }}</div>
                                 <div class="text-gray-600 text-sm">Total Participants</div>
                             </div>
                             <div class="text-center stat-card bg-white p-4 rounded-xl shadow-sm border">
