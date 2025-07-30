@@ -50,7 +50,7 @@ class User extends Authenticatable
         return trim("{$this->first_name} {$this->middle_name} {$this->last_name}");
     }
 
-    public function getNameAttribute(): string
+    public function getFullName1Attribute(): string
     {
         return $this->full_name;
     }

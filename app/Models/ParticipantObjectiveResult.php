@@ -9,108 +9,101 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class ParticipantObjectiveResult extends Model
 {
     use HasFactory;
-    
+
     protected $fillable = [
+        'participant_id',
         'objective_id',
-        'training_participant_id',
+        'score',
         'grade_id',
-        'result',
-        'comments',
+        'assessed_by',
+        'assessment_date',
+        'feedback',
     ];
 
-    protected $with = ['grade'];
+    protected $casts = [
+        'assessment_date' => 'datetime',
+        'score' => 'decimal:2',
+    ];
 
     // Relationships
-    public function objective(): BelongsTo
-    {
-        return $this->belongsTo(Objective::class);
-    }
-    
     public function participant(): BelongsTo
     {
-        return $this->belongsTo(TrainingParticipant::class, 'training_participant_id');
-    }
-    
-    public function grade(): BelongsTo
-    {
-        return $this->belongsTo(Grade::class);
+        return $this->belongsTo(TrainingParticipant::class, 'participant_id');
     }
 
-    // Query Scopes
+    public function objective(): BelongsTo
+    {
+        return $this->belongsTo(Objective::class, 'objective_id');
+    }
+
+    public function grade(): BelongsTo
+    {
+        return $this->belongsTo(Grade::class, 'grade_id');
+    }
+
+    public function assessor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assessed_by');
+    }
+
+    // Computed Attributes
+    public function getPassedAttribute(): bool
+    {
+        if (!$this->score || !$this->objective) {
+            return false;
+        }
+
+        $passCriteria = $this->objective->pass_criteria ?? 70;
+        return $this->score >= $passCriteria;
+    }
+
+    public function getGradeNameAttribute(): ?string
+    {
+        return $this->grade?->name;
+    }
+
+    public function getFormattedScoreAttribute(): string
+    {
+        return $this->score ? number_format($this->score, 1) . '%' : 'Not scored';
+    }
+
+    public function getFormattedAssessmentDateAttribute(): ?string
+    {
+        return $this->assessment_date?->format('M j, Y');
+    }
+
+    // Scopes
+    public function scopeByParticipant($query, int $participantId)
+    {
+        return $query->where('participant_id', $participantId);
+    }
+
     public function scopeByObjective($query, int $objectiveId)
     {
         return $query->where('objective_id', $objectiveId);
     }
 
-    public function scopeByParticipant($query, int $participantId)
-    {
-        return $query->where('training_participant_id', $participantId);
-    }
-
-    public function scopeByGrade($query, int $gradeId)
-    {
-        return $query->where('grade_id', $gradeId);
-    }
-
-    public function scopeWithComments($query)
-    {
-        return $query->whereNotNull('comments')->where('comments', '!=', '');
-    }
-
-    public function scopeByResultRange($query, $min, $max)
-    {
-        return $query->whereRaw('CAST(result AS DECIMAL(5,2)) BETWEEN ? AND ?', [$min, $max]);
-    }
-
     public function scopePassed($query)
     {
-        // Assuming 'passed' grades or numeric results >= 50
-        return $query->where(function ($q) {
-            $q->whereHas('grade', function ($gradeQuery) {
-                $gradeQuery->whereIn('name', ['Pass', 'Passed', 'Competent']);
-            })->orWhereRaw('CAST(result AS DECIMAL(5,2)) >= 50');
+        return $query->whereHas('objective', function ($q) {
+            $q->whereRaw('participant_objective_results.score >= COALESCE(objectives.pass_criteria, 70)');
         });
     }
 
     public function scopeFailed($query)
     {
-        return $query->where(function ($q) {
-            $q->whereHas('grade', function ($gradeQuery) {
-                $gradeQuery->whereIn('name', ['Fail', 'Failed', 'Not Competent']);
-            })->orWhereRaw('CAST(result AS DECIMAL(5,2)) < 50');
+        return $query->whereHas('objective', function ($q) {
+            $q->whereRaw('participant_objective_results.score < COALESCE(objectives.pass_criteria, 70)');
         });
     }
 
-    // Computed Attributes
-    public function getNumericResultAttribute(): ?float
+    public function scopeAssessedBy($query, int $userId)
     {
-        return is_numeric($this->result) ? (float) $this->result : null;
+        return $query->where('assessed_by', $userId);
     }
 
-    public function getIsPassedAttribute(): bool
+    public function scopeAssessedBetween($query, $startDate, $endDate)
     {
-        // Check if grade indicates pass or numeric result >= 50
-        if ($this->grade) {
-            $passGrades = ['Pass', 'Passed', 'Competent', 'Satisfactory'];
-            if (in_array($this->grade->name, $passGrades)) {
-                return true;
-            }
-        }
-
-        return $this->numeric_result >= 50;
-    }
-
-    public function getHasCommentsAttribute(): bool
-    {
-        return !empty($this->comments);
-    }
-
-    public function getResultDisplayAttribute(): string
-    {
-        if ($this->grade) {
-            return $this->grade->name . ($this->result ? " ({$this->result})" : '');
-        }
-
-        return $this->result ?? 'No Result';
+        return $query->whereBetween('assessment_date', [$startDate, $endDate]);
     }
 }

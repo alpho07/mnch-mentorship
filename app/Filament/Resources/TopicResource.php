@@ -16,6 +16,7 @@ class TopicResource extends Resource
     protected static ?string $model = Topic::class;
     protected static ?string $navigationIcon = 'heroicon-o-book-open';
     protected static ?string $navigationGroup = 'Curriculum';
+    protected static ?int $navigationSort = 3;
 
     public static function form(Form $form): Form
     {
@@ -53,7 +54,10 @@ class TopicResource extends Resource
             ]);
     }
 
-    public static function getRelations(): array { return []; }
+    public static function getRelations(): array
+    {
+        return [];
+    }
 
     public static function getPages(): array
     {

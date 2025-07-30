@@ -17,3 +17,4 @@ class ListSuppliers extends ListRecords
         ];
     }
 }
+

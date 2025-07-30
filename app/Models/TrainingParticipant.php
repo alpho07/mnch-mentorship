@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class TrainingParticipant extends Model
 {
@@ -14,20 +14,20 @@ class TrainingParticipant extends Model
     protected $fillable = [
         'training_id',
         'user_id',
-        'name',
-        'cadre_id',
-        'department_id',
-        'mobile',
-        'email',
-        'is_tot',
+        'registration_date',
+        'attendance_status',
+        'completion_status',
         'outcome_id',
+        'completion_date',
+        'certificate_issued',
+        'notes'
     ];
 
     protected $casts = [
-        'is_tot' => 'boolean',
+        'registration_date' => 'datetime',
+        'completion_date' => 'datetime',
+        'certificate_issued' => 'boolean',
     ];
-
-    protected $with = ['cadre', 'department', 'outcome'];
 
     // Relationships
     public function training(): BelongsTo
@@ -40,95 +40,88 @@ class TrainingParticipant extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function cadre(): BelongsTo
-    {
-        return $this->belongsTo(Cadre::class);
-    }
-
-    public function department(): BelongsTo
-    {
-        return $this->belongsTo(Department::class);
-    }
-
     public function outcome(): BelongsTo
     {
         return $this->belongsTo(Grade::class, 'outcome_id');
     }
 
+    // Scopes
+    public function scopeCompleted($query)
+    {
+        return $query->where('completion_status', 'completed');
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->whereIn('attendance_status', ['registered', 'attending']);
+    }
+
+    public function scopeInProgress($query)
+    {
+        return $query->where('completion_status', 'in_progress');
+    }
+
     public function objectiveResults(): HasMany
     {
-        return $this->hasMany(ParticipantObjectiveResult::class, 'training_participant_id');
-    }
-
-    // Query Scopes
-    public function scopeByTraining($query, int $trainingId)
-    {
-        return $query->where('training_id', $trainingId);
-    }
-
-    public function scopeByCadre($query, int $cadreId)
-    {
-        return $query->where('cadre_id', $cadreId);
-    }
-
-    public function scopeByDepartment($query, int $departmentId)
-    {
-        return $query->where('department_id', $departmentId);
-    }
-
-    public function scopeTrainersOfTrainers($query)
-    {
-        return $query->where('is_tot', true);
-    }
-
-    public function scopeRegularParticipants($query)
-    {
-        return $query->where('is_tot', false);
-    }
-
-    public function scopeWithOutcome($query)
-    {
-        return $query->whereNotNull('outcome_id');
-    }
-
-    public function scopeByOutcome($query, int $gradeId)
-    {
-        return $query->where('outcome_id', $gradeId);
+        return $this->hasMany(ParticipantObjectiveResult::class, 'participant_id');
     }
 
     // Computed Attributes
-    public function getDisplayNameAttribute(): string
+    public function getIsCompletedAttribute(): bool
     {
-        return $this->name ?? $this->user?->full_name ?? 'Unknown Participant';
+        return $this->completion_status === 'completed';
     }
 
-    public function getContactInfoAttribute(): array
+    public function getFullNameAttribute(): string
     {
+        return $this->user?->full_name ?? 'Unknown User';
+    }
+
+    public function getFacilityNameAttribute(): string
+    {
+        return $this->user?->facility?->name ?? 'Unknown Facility';
+    }
+
+    public function getOverallScoreAttribute(): ?float
+    {
+        $results = $this->objectiveResults;
+        if ($results->isEmpty()) {
+            return null;
+        }
+
+        return $results->avg('score');
+    }
+
+    public function getOverallGradeAttribute(): string
+    {
+        $averageScore = $this->getOverallScoreAttribute();
+
+        if ($averageScore === null) {
+            return 'Not Assessed';
+        }
+
+        if ($averageScore >= 90) return 'Excellent';
+        if ($averageScore >= 80) return 'Very Good';
+        if ($averageScore >= 70) return 'Good';
+        if ($averageScore >= 60) return 'Fair';
+        return 'Needs Improvement';
+    }
+
+    public function getAssessmentProgressAttribute(): array
+    {
+        $training = $this->training;
+        if (!$training) {
+            return ['assessed' => 0, 'total' => 0, 'percentage' => 0];
+        }
+
+        $totalObjectives = Objective::where('training_id', $training->id)->count();
+        $assessedObjectives = $this->objectiveResults()->count();
+
         return [
-            'email' => $this->email ?? $this->user?->email,
-            'mobile' => $this->mobile ?? $this->user?->phone,
+            'assessed' => $assessedObjectives,
+            'total' => $totalObjectives,
+            'percentage' => $totalObjectives > 0 ? round(($assessedObjectives / $totalObjectives) * 100, 1) : 0
         ];
     }
-
-    public function getIsRegisteredUserAttribute(): bool
-    {
-        return !is_null($this->user_id);
-    }
-
-    public function getObjectiveResultsCountAttribute(): int
-    {
-        return $this->objectiveResults()->count();
-    }
-
-    public function getAverageScoreAttribute(): ?float
-    {
-        $results = $this->objectiveResults()
-            ->whereNotNull('result')
-            ->pluck('result')
-            ->filter(function ($result) {
-                return is_numeric($result);
-            });
-
-        return $results->isEmpty() ? null : $results->avg();
-    }
 }
+

@@ -31,6 +31,11 @@ class Module extends Model
         return $this->hasMany(TrainingSession::class);
     }
 
+    public function topics(): HasMany
+    {
+        return $this->hasMany(Topic::class);
+    }
+
     // Query Scopes
     public function scopeByProgram($query, int $programId)
     {
@@ -47,6 +52,11 @@ class Module extends Model
         return $query->has('trainingSessions');
     }
 
+    public function scopeWithTopics($query)
+    {
+        return $query->has('topics');
+    }
+
     public function scopeActive($query)
     {
         return $query->whereHas('trainingSessions.training', function ($q) {
@@ -58,6 +68,11 @@ class Module extends Model
     public function getSessionCountAttribute(): int
     {
         return $this->trainingSessions()->count();
+    }
+
+    public function getTopicCountAttribute(): int
+    {
+        return $this->topics()->count();
     }
 
     public function getTrainingCountAttribute(): int

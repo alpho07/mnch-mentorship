@@ -14,14 +14,26 @@ class TrainingSession extends Model
     protected $fillable = [
         'training_id',
         'module_id',
-        'name',
-        'session_time',
         'methodology_id',
+        'title',
+        'session_date',
+        'start_time',
+        'end_time',
+        'facilitator_id',
+        'location',
+        'materials_used',
+        'attendance_count',
+        'session_notes',
+        'status',
     ];
 
-    protected $with = ['module', 'methodology'];
+    protected $casts = [
+        'session_date' => 'date',
+        'start_time' => 'datetime',
+        'end_time' => 'datetime',
+        'materials_used' => 'array',
+    ];
 
-    // Relationships
     public function training(): BelongsTo
     {
         return $this->belongsTo(Training::class);
@@ -37,57 +49,15 @@ class TrainingSession extends Model
         return $this->belongsTo(Methodology::class);
     }
 
-    public function objectives(): HasMany
+    public function facilitator(): BelongsTo
     {
-        return $this->hasMany(Objective::class);
+        return $this->belongsTo(User::class, 'facilitator_id');
     }
 
-    // Query Scopes
-    public function scopeByTraining($query, int $trainingId)
+    public function getDurationHoursAttribute(): float
     {
-        return $query->where('training_id', $trainingId);
-    }
+        if (!$this->start_time || !$this->end_time) return 0;
 
-    public function scopeByModule($query, int $moduleId)
-    {
-        return $query->where('module_id', $moduleId);
-    }
-
-    public function scopeByMethodology($query, int $methodologyId)
-    {
-        return $query->where('methodology_id', $methodologyId);
-    }
-
-    public function scopeWithObjectives($query)
-    {
-        return $query->has('objectives');
-    }
-
-    // Computed Attributes
-    public function getObjectiveCountAttribute(): int
-    {
-        return $this->objectives()->count();
-    }
-
-    public function getSkillObjectivesCountAttribute(): int
-    {
-        return $this->objectives()->where('type', 'skill')->count();
-    }
-
-    public function getNonSkillObjectivesCountAttribute(): int
-    {
-        return $this->objectives()->where('type', 'non-skill')->count();
-    }
-
-    public function getSessionDurationAttribute(): ?string
-    {
-        // Parse session_time if it's in a specific format
-        return $this->session_time;
-    }
-
-
-    public function training_session_materials()
-    {
-        return $this->belongsToMany(InventoryItem::class, 'session_inventories', 'training_session_id', 'inventory_item_id');
+        return $this->start_time->diffInHours($this->end_time);
     }
 }

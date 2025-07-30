@@ -22,6 +22,11 @@ class TrainingCoverageDashboard extends Page
     protected static ?string $title = 'Training Coverage Dashboard';
     protected static ?string $slug = 'training-dashboard';
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
+
     // Filter properties
     public array $years = [];
     public array $quarters = [];
@@ -333,14 +338,14 @@ class TrainingCoverageDashboard extends Page
         }
 
         if (!empty($filters['quarters'])) {
-            $quarters = array_map(function($q) {
+            $quarters = array_map(function ($q) {
                 return str_replace('-', ' ', $q);
             }, $filters['quarters']);
             $summary['Quarters'] = implode(', ', $quarters);
         }
 
         if (!empty($filters['months'])) {
-            $months = array_map(function($m) {
+            $months = array_map(function ($m) {
                 [$year, $month] = explode('-', $m);
                 return \Carbon\Carbon::createFromDate($year, $month, 1)->format('M Y');
             }, $filters['months']);

@@ -29,6 +29,10 @@ class CoverageOverview extends Page
     protected static ?string $navigationLabel = 'Training Coverage';
     protected static ?int $navigationSort = 1;
     protected static ?string $slug = 'coverage-overview';
+      public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
     
 
     // Filter Properties
@@ -57,10 +61,10 @@ class CoverageOverview extends Page
     {
         return [
             //KenyaTrainingHeatmapWidget::class,
-            TrainingsByMonthChartWidget::class,
-            TrainingsByCountyChartWidget::class,
-            ParticipantsByDepartmentChartWidget::class,
-            ParticipantsByCadreChartWidget::class,
+            //TrainingsByMonthChartWidget::class,
+            //TrainingsByCountyChartWidget::class,
+            //ParticipantsByDepartmentChartWidget::class,
+            //ParticipantsByCadreChartWidget::class,
         ];
     }
 

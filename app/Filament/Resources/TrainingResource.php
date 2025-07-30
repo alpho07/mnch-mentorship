@@ -3,425 +3,431 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\TrainingResource\Pages;
+use App\Filament\Resources\TrainingResource\RelationManagers;
 use App\Models\Training;
-use App\Models\TrainingSession;
-use App\Models\SessionInventory;
-use App\Models\TrainingParticipant;
+use App\Models\Program;
+use App\Models\User;
+use App\Models\Module;
+use App\Models\Methodology;
 use App\Models\Facility;
 use App\Models\Department;
-use App\Models\User;
-use App\Models\Program;
-use App\Models\InventoryItem;
-use App\Models\Methodology;
-use Filament\Resources\Resource;
+use App\Models\Cadre;
 use Filament\Forms;
-use Filament\Forms\Get;
-use Filament\Forms\Set;
+use Filament\Forms\Form;
+use Filament\Resources\Resource;
 use Filament\Tables;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Tables\Table;
+use Filament\Infolists;
+use Filament\Infolists\Infolist;
+use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
 
 class TrainingResource extends Resource
 {
     protected static ?string $model = Training::class;
-    protected static ?string $navigationIcon = 'heroicon-o-presentation-chart-bar';
+    protected static ?string $navigationIcon = 'heroicon-o-academic-cap';
     protected static ?string $navigationGroup = 'Training Management';
+    protected static ?string $navigationLabel = 'Trainings';
+    protected static ?string $modelLabel = 'Training';
+    protected static ?string $pluralModelLabel = 'Trainings';
+    protected static ?int $navigationSort = 1;
 
        public static function shouldRegisterNavigation(): bool
     {
         return false;
     }
 
-    public static function form(Forms\Form $form): Forms\Form
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->where('type', 'global_training');
+    }
+
+    public static function form(Form $form): Form
     {
         return $form->schema([
-            Forms\Components\Section::make('Training Details')
-                ->description('Set up the general details of the training event.')
-                ->schema([
-                    Forms\Components\TextInput::make('title')->required()->maxLength(255),
-                    Forms\Components\Select::make('program_id')
-                        ->relationship('program', 'name')
-                        ->live()
-                        ->required(),
+            Forms\Components\Wizard::make([
+                // Wizard Step 1: Basic Training Setup
+                Forms\Components\Wizard\Step::make('Training Setup')
+                    ->description('Basic training information and scheduling')
+                    ->icon('heroicon-o-information-circle')
+                    ->schema([
+                        Forms\Components\Section::make('Training Information')
+                            ->description('Enter the basic details for your global training program')
+                            ->schema([
+                                Forms\Components\TextInput::make('title')
+                                    ->label('Training Title')
+                                    ->required()
+                                    ->maxLength(255)
+                                    ->placeholder('e.g., Advanced Clinical Skills Training Program')
+                                    ->live(onBlur: true)
+                                    ->afterStateUpdated(function (Forms\Set $set, $state) {
+                                        if (!empty($state)) {
+                                            $identifier = 'GT-' . strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $state), 0, 6)) .
+                                                         '-' . date('y') . str_pad(rand(100, 999), 3, '0', STR_PAD_LEFT);
+                                            $set('identifier', $identifier);
+                                        }
+                                    })
+                                    ->columnSpanFull(),
 
-                    Forms\Components\Select::make('facility_id')
-                        ->label('Facility')
-                        ->relationship('facility', 'name')
-                        ->getOptionLabelFromRecordUsing(fn($record) => "{$record->name} - {$record->mfl_code}")
-                        ->searchable()
-                        ->required(),
+                                Forms\Components\Select::make('programs')
+                                    ->label('Training Programs')
+                                    ->multiple()
+                                    ->relationship('programs', 'name')
+                                    ->required()
+                                    ->searchable()
+                                    ->preload()
+                                    ->live()
+                                    ->helperText('Select one or more programs for this training')
+                                    ->createOptionForm([
+                                        Forms\Components\TextInput::make('name')
+                                            ->required()
+                                            ->maxLength(255),
+                                        Forms\Components\Textarea::make('description'),
+                                    ])
+                                    ->columnSpanFull(),
 
-                    Forms\Components\Select::make('departments')
-                        ->label('Departments Involved')
-                        ->multiple()
-                        ->preload()
-                        ->relationship('departments', 'name')
-                        ->required(),
+                                Forms\Components\Select::make('organizer_id')
+                                    ->label('Training Organizer')
+                                    ->relationship('organizer', 'first_name')
+                                    ->getOptionLabelFromRecordUsing(fn (Model $record) => $record->full_name . ' (' . $record->facility?->name . ')')
+                                    ->searchable()
+                                    ->preload()
+                                    ->required()
+                                    ->default(auth()->id())
+                                    ->helperText('Person responsible for organizing this training'),
 
-                    Forms\Components\Select::make('organizer_id')
-                        ->label('Mentor/Organizer')
-                        ->relationship('organizer', 'name')
-                        ->searchable()
-                        ->required(),
+                                Forms\Components\TextInput::make('location')
+                                    ->label('Training Location')
+                                    ->required()
+                                    ->placeholder('e.g., National Training Center, Nairobi')
+                                    ->helperText('Where the training will be conducted'),
+                            ]),
 
-                    Forms\Components\TextInput::make('location')->label('Location/Room'),
+                        Forms\Components\Section::make('Schedule & Approach')
+                            ->description('Set the training dates and teaching approaches')
+                            ->schema([
+                                Forms\Components\Grid::make(2)->schema([
+                                    Forms\Components\DatePicker::make('start_date')
+                                        ->label('Start Date')
+                                        ->required()
+                                        ->minDate(now())
+                                        ->live(),
 
-                    Forms\Components\DatePicker::make('start_date')
-                        ->minDate(now())
-                        ->required(),
+                                    Forms\Components\DatePicker::make('end_date')
+                                        ->label('End Date')
+                                        ->required()
+                                        ->after('start_date'),
+                                ]),
 
-                    Forms\Components\DatePicker::make('end_date')
-                        ->required()
-                        ->minDate(fn(Get $get) => $get('start_date') ?: now())
-                        ->afterStateUpdated(function (Set $set, $state, Get $get) {
-                            if ($get('start_date') && $state && $state < $get('start_date')) {
-                                $set('end_date', null);
-                            }
-                        }),
+                                Forms\Components\Select::make('training_approaches')
+                                    ->label('Training Approaches')
+                                    ->multiple()
+                                    ->options([
+                                        'classroom' => 'Classroom Learning',
+                                        'practical' => 'Practical Sessions',
+                                        'simulation' => 'Simulation-based',
+                                        'mentorship' => 'Mentorship',
+                                        'peer_learning' => 'Peer Learning',
+                                        'case_studies' => 'Case Studies',
+                                        'workshops' => 'Workshops',
+                                        'field_work' => 'Field Work',
+                                    ])
+                                    ->required()
+                                    ->helperText('Select the teaching approaches for this training'),
 
-                    Forms\Components\Select::make('approach')
-                        ->label('Training Approach')
-                        ->options([
-                            'onsite' => 'Onsite',
-                            'virtual' => 'Virtual',
-                            'hybrid' => 'Hybrid',
-                        ])
-                        ->required(),
+                                Forms\Components\Hidden::make('identifier'),
+                                Forms\Components\Hidden::make('type')->default('global_training'),
+                                Forms\Components\Hidden::make('status')->default('draft'),
+                            ]),
+                    ]),
 
-                    Forms\Components\Textarea::make('notes')->label('General Notes'),
-                ])->columns(2),
+                // Wizard Step 2: Content & Methods
+                Forms\Components\Wizard\Step::make('Content & Methods')
+                    ->description('Select training modules and methodologies')
+                    ->icon('heroicon-o-book-open')
+                    ->schema([
+                        Forms\Components\Section::make('Training Content')
+                            ->description('Choose the specific modules and teaching methods')
+                            ->schema([
+                                Forms\Components\Select::make('modules')
+                                    ->label('Training Modules')
+                                    ->multiple()
+                                    ->relationship('modules', 'name')
+                                    ->searchable()
+                                    ->preload()
+                                    ->options(function (Forms\Get $get) {
+                                        $programIds = $get('programs');
+                                        if (!$programIds) {
+                                            return Module::pluck('name', 'id');
+                                        }
 
-            Forms\Components\Repeater::make('sessions')
-                ->columnSpanFull()
-                ->label('Sessions')
-                ->relationship()
-                ->createItemButtonLabel('Add Session')
-                ->schema([
-                    Forms\Components\Select::make('module_id')
-                        ->label('Module')
-                        ->options(function (Get $get) {
-                            $programId = $get('../../program_id');
-                            if ($programId) {
-                                return \App\Models\Module::where('program_id', $programId)->pluck('name', 'id');
-                            }
-                            return [];
-                        })
-                        ->required()
-                        ->searchable(),
+                                        // Get unique modules from selected programs
+                                        return Module::whereIn('program_id', $programIds)
+                                            ->distinct()
+                                            ->pluck('name', 'id');
+                                    })
+                                    ->helperText('Modules will be filtered based on selected programs')
+                                    ->columnSpanFull(),
 
-                    Forms\Components\TextInput::make('session_time')
-                        ->label('Session Duration (Minutes)')
-                        ->numeric()
-                        ->required(),
+                                Forms\Components\Select::make('methodologies')
+                                    ->label('Teaching Methodologies')
+                                    ->multiple()
+                                    ->relationship('methodologies', 'name')
+                                    ->searchable()
+                                    ->preload()
+                                    ->helperText('Select the teaching and learning methods')
+                                    ->createOptionForm([
+                                        Forms\Components\TextInput::make('name')
+                                            ->required()
+                                            ->maxLength(255),
+                                        Forms\Components\Textarea::make('description'),
+                                    ])
+                                    ->columnSpanFull(),
+                            ]),
+                    ]),
 
-                    Forms\Components\TextInput::make('name')
-                        ->label('Session Name')
-                        ->required(),
+                // Wizard Step 3: Participants
+                Forms\Components\Wizard\Step::make('Participants')
+                    ->description('Add training participants from different facilities')
+                    ->icon('heroicon-o-users')
+                    ->schema([
+                        Forms\Components\Section::make('Training Participants')
+                            ->description('Add participants who will attend this global training')
+                            ->schema([
+                                Forms\Components\Repeater::make('participants')
+                                    ->label('Training Participants')
+                                    ->schema([
+                                        Forms\Components\Grid::make(2)->schema([
+                                            Forms\Components\TextInput::make('name')
+                                                ->label('Full Name')
+                                                ->required()
+                                                ->placeholder('John Doe'),
 
-                    Forms\Components\Select::make('methodology_id')
-                        ->label('Methodology')
-                        ->relationship('methodology', 'name')
-                        ->searchable()
-                        ->required(),
+                                            Forms\Components\TextInput::make('phone')
+                                                ->label('Phone Number')
+                                                ->required()
+                                                ->tel()
+                                                ->placeholder('+254712345678')
+                                                ->live(onBlur: true)
+                                                ->afterStateUpdated(function (Forms\Set $set, $state, Forms\Get $get) {
+                                                    if (!empty($state)) {
+                                                        // Search for existing user by phone
+                                                        $user = User::where('phone', $state)->first();
+                                                        if ($user) {
+                                                            $set('name', $user->full_name);
+                                                            $set('email', $user->email);
+                                                            $set('department', $user->department?->name);
+                                                            $set('cadre', $user->cadre?->name);
+                                                            $set('facility_name', $user->facility?->name);
+                                                            $set('mfl_code', $user->facility?->mfl_code);
 
-                    Forms\Components\Select::make('training_session_materials')
-                        ->label('Materials')
-                        ->multiple()
-                        ->relationship('training_session_materials', 'name')
-                        ->preload()
-                        ->searchable(),
+                                                            Notification::make()
+                                                                ->title('User Found')
+                                                                ->body("Found existing user: {$user->full_name}")
+                                                                ->success()
+                                                                ->send();
+                                                        }
+                                                    }
+                                                }),
+                                        ]),
 
-                    Forms\Components\Repeater::make('objectives')
-                        ->label('Objectives')
-                        ->relationship()
-                        ->orderColumn('objective_order')
-                        ->schema([
-                            Forms\Components\TextInput::make('objective_text')
-                                ->label('Objective')
-                                ->required(),
-                            Forms\Components\Select::make('type')
-                                ->options(['skill' => 'Skill', 'non-skill' => 'Non-Skill'])
-                                ->required(),
-                            Forms\Components\Hidden::make('objective_order'),
-                        ])
-                        ->columns(2)
-                        ->reorderable()
-                        ->maxItems(10),
-                ])
-                ->orderColumn('id')
-                ->defaultItems(1),
+                                        Forms\Components\Grid::make(2)->schema([
+                                            Forms\Components\TextInput::make('email')
+                                                ->label('Email Address')
+                                                ->email()
+                                                ->placeholder('john@example.com'),
 
-            Forms\Components\Section::make('Participants')
-                ->description('Add or select participants. Each participant can have a cadre and department.')
-                ->schema([
-                    Forms\Components\Repeater::make('participants')
-                        ->relationship()
-                        ->createItemButtonLabel('Add Participant')
-                        ->schema([
-                            Forms\Components\TextInput::make('name')->required(),
-                            Forms\Components\Select::make('cadre_id')
-                                ->label('Cadre')
-                                ->relationship('cadre', 'name')
-                                ->searchable()
-                                ->required(),
-                            Forms\Components\Select::make('department_id')
-                                ->label('Department')
-                                ->relationship('department', 'name')
-                                ->searchable(),
-                            Forms\Components\TextInput::make('mobile')
-                                ->label('Mobile')
-                                ->tel()
-                                ->required(),
-                            Forms\Components\TextInput::make('email')
-                                ->email()
-                                ->nullable(),
-                            Forms\Components\Toggle::make('is_tot')
-                                ->label('Is TOT')
-                                ->default(false),
-                        ])
-                        ->columns(3)
-                        ->maxItems(30),
-                ]),
+                                            Forms\Components\Grid::make(2)->schema([
+                                                Forms\Components\TextInput::make('facility_name')
+                                                    ->label('Facility Name')
+                                                    ->required()
+                                                    ->placeholder('District Hospital')
+                                                    ->live(onBlur: true)
+                                                    ->afterStateUpdated(function (Forms\Set $set, $state) {
+                                                        if (!empty($state)) {
+                                                            $facility = Facility::where('name', 'like', "%{$state}%")->first();
+                                                            if ($facility) {
+                                                                $set('mfl_code', $facility->mfl_code);
+                                                            }
+                                                        }
+                                                    }),
+
+                                                Forms\Components\TextInput::make('mfl_code')
+                                                    ->label('MFL Code')
+                                                    ->placeholder('12345'),
+                                            ]),
+                                        ]),
+
+                                        Forms\Components\Grid::make(2)->schema([
+                                            Forms\Components\TextInput::make('department')
+                                                ->label('Department')
+                                                ->required()
+                                                ->placeholder('Clinical Services')
+                                                ->datalist(Department::pluck('name')->toArray()),
+
+                                            Forms\Components\TextInput::make('cadre')
+                                                ->label('Cadre')
+                                                ->required()
+                                                ->placeholder('Nurse')
+                                                ->datalist(Cadre::pluck('name')->toArray()),
+                                        ]),
+                                    ])
+                                    ->addActionLabel('Add Participant')
+                                    ->reorderableWithButtons()
+                                    ->collapsible()
+                                    ->itemLabel(fn (array $state): ?string => $state['name'] ?? null)
+                                    ->columnSpanFull()
+                                    ->minItems(1),
+                            ]),
+                    ]),
+
+                // Wizard Step 4: Preview & Save
+                Forms\Components\Wizard\Step::make('Preview & Save')
+                    ->description('Review training details before saving')
+                    ->icon('heroicon-o-eye')
+                    ->schema([
+                        Forms\Components\Section::make('Training Summary')
+                            ->description('Review all training details before saving')
+                            ->schema([
+                                Forms\Components\Placeholder::make('review_title')
+                                    ->label('Training Title')
+                                    ->content(fn (Forms\Get $get): string => $get('title') ?? 'Not set'),
+
+                                Forms\Components\Placeholder::make('review_programs')
+                                    ->label('Programs')
+                                    ->content(function (Forms\Get $get): string {
+                                        $programIds = $get('programs') ?? [];
+                                        if (empty($programIds)) return 'None selected';
+
+                                        $programs = Program::whereIn('id', $programIds)->pluck('name');
+                                        return $programs->join(', ');
+                                    }),
+
+                                Forms\Components\Placeholder::make('review_schedule')
+                                    ->label('Schedule')
+                                    ->content(function (Forms\Get $get): string {
+                                        $start = $get('start_date');
+                                        $end = $get('end_date');
+                                        if (!$start || !$end) return 'Not set';
+
+                                        return "From {$start} to {$end}";
+                                    }),
+
+                                Forms\Components\Placeholder::make('review_location')
+                                    ->label('Location')
+                                    ->content(fn (Forms\Get $get): string => $get('location') ?? 'Not set'),
+
+                                Forms\Components\Placeholder::make('review_participants')
+                                    ->label('Participants')
+                                    ->content(function (Forms\Get $get): string {
+                                        $participants = $get('participants') ?? [];
+                                        $count = count($participants);
+
+                                        if ($count === 0) return 'No participants added';
+
+                                        return "{$count} participant(s) registered";
+                                    }),
+
+                                Forms\Components\Placeholder::make('review_organizer')
+                                    ->label('Organizer')
+                                    ->content(function (Forms\Get $get): string {
+                                        $organizerId = $get('organizer_id');
+                                        if (!$organizerId) return 'Not set';
+
+                                        $organizer = User::find($organizerId);
+                                        return $organizer?->full_name ?? 'Unknown';
+                                    }),
+                            ])
+                            ->columns(2),
+                    ]),
+            ])
+            ->columnSpanFull()
+            ->persistStepInQueryString(),
         ]);
     }
 
-    public static function table(Tables\Table $table): Tables\Table
+    public static function table(Table $table): Table
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('title')
+                Tables\Columns\TextColumn::make('identifier')
+                    ->label('Training Code')
                     ->searchable()
-                    ->sortable(),
+                    ->badge()
+                    ->color('primary')
+                    ->copyable(),
 
-                Tables\Columns\TextColumn::make('program.name')
-                    ->label('Program')
-                    ->sortable(),
+                Tables\Columns\TextColumn::make('title')
+                    ->label('Training Title')
+                    ->searchable()
+                    ->sortable()
+                    ->weight('bold')
+                    ->wrap()
+                    ->limit(50),
 
-                Tables\Columns\TextColumn::make('facility.name')
-                    ->label('Facility')
-                    ->sortable(),
+                Tables\Columns\TextColumn::make('programs_count')
+                    ->label('Programs')
+                    ->counts('programs')
+                    ->badge()
+                    ->color('info'),
 
-                Tables\Columns\TextColumn::make('organizer.name')
+                Tables\Columns\TextColumn::make('organizer.full_name')
                     ->label('Organizer')
-                    ->sortable(),
+                    ->searchable()
+                    ->limit(25),
+
+                Tables\Columns\TextColumn::make('location')
+                    ->label('Location')
+                    ->searchable()
+                    ->limit(30),
 
                 Tables\Columns\TextColumn::make('start_date')
+                    ->label('Start Date')
                     ->date()
-                    ->sortable(),
-
-                Tables\Columns\TextColumn::make('end_date')
-                    ->date()
-                    ->sortable(),
-
-                Tables\Columns\TextColumn::make('approach')
+                    ->sortable()
                     ->badge()
-                    ->colors([
-                        'primary' => 'onsite',
-                        'success' => 'virtual',
-                        'warning' => 'hybrid',
-                    ]),
-
-                Tables\Columns\TextColumn::make('sessions_count')
-                    ->label('Sessions')
-                    ->counts('sessions'),
+                    ->color(fn (Training $record): string => match(true) {
+                        $record->start_date->isFuture() => 'warning',
+                        $record->start_date->isToday() => 'success',
+                        default => 'gray'
+                    }),
 
                 Tables\Columns\TextColumn::make('participants_count')
                     ->label('Participants')
-                    ->counts('participants'),
+                    ->counts('participants')
+                    ->badge()
+                    ->color('success'),
 
-                Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('status')
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'draft' => 'gray',
+                        'published' => 'info',
+                        'ongoing' => 'warning',
+                        'completed' => 'success',
+                        'cancelled' => 'danger',
+                        default => 'gray',
+                    }),
             ])
+            ->defaultSort('created_at', 'desc')
             ->filters([
-                // Training Type Filter
-                Tables\Filters\SelectFilter::make('title')
-                    ->label('Training Type')
-                    ->options(Training::distinct()->pluck('title', 'title')),
-
-                // Program Filter (Static - from programs table)
-                Tables\Filters\SelectFilter::make('program')
-                    ->multiple()
-                    ->relationship('program', 'name')
-                    ->preload(),
-
-                // County Filter (via Subcounty)
-                Tables\Filters\SelectFilter::make('county')
-                    ->label('County')
-                    ->multiple()
-                    ->options(\App\Models\County::pluck('name', 'id'))
-                    ->query(function (Builder $query, array $data): Builder {
-                        if (!empty($data['values'])) {
-                            return $query->whereHas('facility.subcounty.county', function ($q) use ($data) {
-                                $q->whereIn('counties.id', $data['values']);
-                            });
-                        }
-                        return $query;
-                    }),
-
-                // Subcounty Filter
-                Tables\Filters\SelectFilter::make('subcounty')
-                    ->label('Subcounty')
-                    ->multiple()
-                    ->options(\App\Models\Subcounty::pluck('name', 'id'))
-                    ->query(function (Builder $query, array $data): Builder {
-                        if (!empty($data['values'])) {
-                            return $query->whereHas('facility.subcounty', function ($q) use ($data) {
-                                $q->whereIn('subcounties.id', $data['values']);
-                            });
-                        }
-                        return $query;
-                    }),
-
-                // Facility Filter (Dynamic - only facilities with trainings)
-                Tables\Filters\SelectFilter::make('facility')
-                    ->multiple()
-                    ->options(function () {
-                        return \App\Models\Facility::whereHas('trainings')
-                            ->pluck('name', 'id');
-                    })
-                    ->relationship('facility', 'name'),
-
-                // Department Filter (Static - from departments table)
-                Tables\Filters\SelectFilter::make('departments')
-                    ->label('Department')
-                    ->multiple()
-                    ->options(\App\Models\Department::pluck('name', 'id'))
-                    ->query(function (Builder $query, array $data): Builder {
-                        if (!empty($data['values'])) {
-                            return $query->whereHas('departments', function ($q) use ($data) {
-                                $q->whereIn('departments.id', $data['values']);
-                            });
-                        }
-                        return $query;
-                    }),
-
-                // Cadre Filter (Static - from cadres table)
-                Tables\Filters\SelectFilter::make('cadre')
-                    ->label('Cadre')
-                    ->multiple()
-                    ->options(\App\Models\Cadre::pluck('name', 'id'))
-                    ->query(function (Builder $query, array $data): Builder {
-                        if (!empty($data['values'])) {
-                            return $query->whereHas('participants.cadre', function ($q) use ($data) {
-                                $q->whereIn('cadres.id', $data['values']);
-                            });
-                        }
-                        return $query;
-                    }),
-
-                // Facility Type Filter (Static - assuming you have facility types)
-                Tables\Filters\SelectFilter::make('facility_type')
-                    ->label('Facility Type')
-                    ->multiple()
-                    ->options(\App\Models\FacilityType::pluck('name', 'id'))
-                    ->query(function (Builder $query, array $data): Builder {
-                        if (!empty($data['values'])) {
-                            return $query->whereHas('facility.facilityType', function ($q) use ($data) {
-                                $q->whereIn('facility_types.id', $data['values']);
-                            });
-                        }
-                        return $query;
-                    }),
-
-                // Trained By/Organizer Filter (Dynamic - only organizers who have conducted trainings)
-                Tables\Filters\SelectFilter::make('organizer')
-                    ->label('Trained By')
-                    ->multiple()
-                    ->options(function () {
-                        return \App\Models\User::whereHas('organizedTrainings')
-                            ->pluck('name', 'id');
-                    })
-                    ->relationship('organizer', 'name'),
-
-                // Location Filter (Dynamic - only locations where trainings happened)
-                Tables\Filters\SelectFilter::make('location')
-                    ->label('Location/Room')
-                    ->multiple()
-                    ->options(function () {
-                        return Training::whereNotNull('location')
-                            ->where('location', '!=', '')
-                            ->distinct()
-                            ->pluck('location', 'location');
-                    }),
-
-                // Approach Filter (Static)
-                Tables\Filters\SelectFilter::make('approach')
-                    ->multiple()
+                Tables\Filters\SelectFilter::make('status')
                     ->options([
-                        'onsite' => 'Onsite',
-                        'virtual' => 'Virtual',
-                        'hybrid' => 'Hybrid',
+                        'draft' => 'Draft',
+                        'published' => 'Published',
+                        'ongoing' => 'Ongoing',
+                        'completed' => 'Completed',
                     ]),
 
-                // Period Filter (Custom date range in MMM-YYYY format)
-                Tables\Filters\Filter::make('period')
-                    ->form([
-                        Forms\Components\Select::make('month')
-                            ->options([
-                                '01' => 'January',
-                                '02' => 'February',
-                                '03' => 'March',
-                                '04' => 'April',
-                                '05' => 'May',
-                                '06' => 'June',
-                                '07' => 'July',
-                                '08' => 'August',
-                                '09' => 'September',
-                                '10' => 'October',
-                                '11' => 'November',
-                                '12' => 'December',
-                            ])
-                            ->placeholder('Select Month'),
-                        Forms\Components\Select::make('year')
-                            ->options(function () {
-                                $years = [];
-                                for ($year = 2020; $year <= date('Y') + 2; $year++) {
-                                    $years[$year] = $year;
-                                }
-                                return $years;
-                            })
-                            ->placeholder('Select Year'),
-                    ])
-                    ->query(function (Builder $query, array $data): Builder {
-                        return $query
-                            ->when(
-                                $data['month'] && $data['year'],
-                                fn (Builder $q): Builder => $q->whereMonth('start_date', $data['month'])
-                                    ->whereYear('start_date', $data['year'])
-                            );
-                    })
-                    ->indicateUsing(function (array $data): ?string {
-                        if ($data['month'] && $data['year']) {
-                            $monthName = \Carbon\Carbon::createFromFormat('m', $data['month'])->format('M');
-                            return "Period: {$monthName}-{$data['year']}";
-                        }
-                        return null;
-                    }),
-
-                // Date Range Filter (Alternative to period)
-                Tables\Filters\Filter::make('start_date')
-                    ->form([
-                        Forms\Components\DatePicker::make('start_from')
-                            ->label('From Date'),
-                        Forms\Components\DatePicker::make('start_until')
-                            ->label('To Date'),
-                    ])
-                    ->query(function (Builder $query, array $data): Builder {
-                        return $query
-                            ->when($data['start_from'], fn(Builder $q, $date): Builder => $q->whereDate('start_date', '>=', $date))
-                            ->when($data['start_until'], fn(Builder $q, $date): Builder => $q->whereDate('start_date', '<=', $date));
-                    }),
+                Tables\Filters\Filter::make('upcoming')
+                    ->query(fn (Builder $query): Builder => $query->where('start_date', '>', now()))
+                    ->label('Upcoming Trainings'),
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
-                Tables\Actions\Action::make('assess')
-                    ->label('Assess')
-                    ->icon('heroicon-o-clipboard-document-check')
-                    ->url(fn(Training $record): string => static::getUrl('assess', ['record' => $record]))
-                    ->visible(fn(Training $record): bool => $record->participants()->exists() && $record->sessions()->whereHas('objectives')->exists()),
                 Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
@@ -429,30 +435,33 @@ class TrainingResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ])
-            ->defaultSort('created_at', 'desc');
+            ->emptyStateHeading('No global trainings found')
+            ->emptyStateDescription('Create your first multi-facility training program.')
+            ->emptyStateIcon('heroicon-o-academic-cap');
     }
 
     public static function getRelations(): array
     {
         return [
-            // Add custom relations tabs here if needed
+            RelationManagers\ParticipantsRelationManager::class,
+            RelationManagers\ObjectivesRelationManager::class,
         ];
     }
 
     public static function getPages(): array
     {
         return [
-            'index'  => Pages\ListTrainings::route('/'),
+            'index' => Pages\ListTrainings::route('/'),
             'create' => Pages\CreateTraining::route('/create'),
-            'edit'   => Pages\EditTraining::route('/{record}/edit'),
-            'view'   => Pages\ViewTraining::route('/{record}'),
-            'assess' => Pages\AssessParticipants::route('/{record}/assess'),
+            'view' => Pages\ViewTraining::route('/{record}'),
+            'edit' => Pages\EditTraining::route('/{record}/edit'),
         ];
     }
 
-    public static function getEloquentQuery(): Builder
+    public static function getNavigationBadge(): ?string
     {
-        return parent::getEloquentQuery()
-            ->with(['program', 'facility', 'organizer', 'departments', 'sessions.objectives', 'sessions.training_session_materials', 'participants']);
+        return static::getModel()::where('type', 'global_training')
+            ->where('status', 'ongoing')
+            ->count() ?: null;
     }
 }

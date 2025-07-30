@@ -11,8 +11,12 @@ use Filament\Forms;
 class LocationResource extends Resource
 {
     protected static ?string $model = Location::class;
-     protected static ?string $navigationIcon = 'heroicon-o-truck';
+    protected static ?string $navigationIcon = 'heroicon-o-truck';
     protected static ?string $navigationGroup = 'Inventory';
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
 
     public static function form(Forms\Form $form): Forms\Form
     {
@@ -34,9 +38,9 @@ class LocationResource extends Resource
             Tables\Columns\TextColumn::make('latitude'),
             Tables\Columns\TextColumn::make('longitude'),
         ])
-        ->filters([])
-        ->actions([Tables\Actions\EditAction::make()])
-        ->bulkActions([Tables\Actions\DeleteBulkAction::make()]);
+            ->filters([])
+            ->actions([Tables\Actions\EditAction::make()])
+            ->bulkActions([Tables\Actions\DeleteBulkAction::make()]);
     }
 
     public static function getPages(): array

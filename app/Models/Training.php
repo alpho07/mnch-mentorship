@@ -8,45 +8,71 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Collection;
 
 class Training extends Model
 {
     use HasFactory, SoftDeletes;
 
+
     protected $fillable = [
         'title',
-        'program_id',
-        'facility_id',
+        'description',
+        'type', // 'global_training' or 'facility_mentorship'
+        'status',
+        'identifier',
+        'program_id', // Keep for backward compatibility
+        'facility_id', // nullable for global trainings
         'organizer_id',
+        'mentor_id',
         'location',
         'start_date',
         'end_date',
-        'approach',
+        'registration_deadline',
+        'max_participants',
+        'target_audience',
+        'completion_criteria',
+        'materials_needed',
+        'learning_outcomes',
+        'prerequisites',
+        'training_approaches', // Array of approaches
         'notes',
-        'identifier',
     ];
 
     protected $casts = [
         'start_date' => 'date',
         'end_date' => 'date',
+        'registration_deadline' => 'datetime',
+        'materials_needed' => 'array',
+        'learning_outcomes' => 'array',
+        'prerequisites' => 'array',
+        'training_approaches' => 'array',
     ];
 
-    protected $with = ['facility', 'program', 'organizer'];
-
     // Relationships
-    public function facility(): BelongsTo
-    {
-        return $this->belongsTo(Facility::class);
-    }
-
     public function program(): BelongsTo
     {
         return $this->belongsTo(Program::class);
     }
 
+    public function programs(): BelongsToMany
+    {
+        return $this->belongsToMany(Program::class, 'training_programs', 'training_id', 'program_id');
+    }
+
+    public function facility(): BelongsTo
+    {
+        return $this->belongsTo(Facility::class);
+    }
+
     public function organizer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'organizer_id');
+    }
+
+    public function mentor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'mentor_id');
     }
 
     public function participants(): HasMany
@@ -61,72 +87,131 @@ class Training extends Model
 
     public function departments(): BelongsToMany
     {
-        return $this->belongsToMany(
-            Department::class, 
-            'training_departments', 
-            'training_id', 
-            'department_id'
-        );
+        return $this->belongsToMany(Department::class, 'training_departments');
     }
 
-    // Query Scopes
-    public function scopeByDateRange($query, $start, $end)
+    public function modules(): BelongsToMany
     {
-        return $query->whereBetween('start_date', [$start, $end]);
+        return $this->belongsToMany(Module::class, 'training_modules');
     }
 
-    public function scopeByApproach($query, string $approach)
+    public function methodologies(): BelongsToMany
     {
-        return $query->where('approach', $approach);
+        return $this->belongsToMany(Methodology::class, 'training_methodologies');
     }
 
-    public function scopeByProgram($query, int $programId)
+    public function targetFacilities(): BelongsToMany
     {
-        return $query->where('program_id', $programId);
+        return $this->belongsToMany(Facility::class, 'training_target_facilities', 'training_id', 'facility_id');
     }
 
-    public function scopeByFacility($query, int $facilityId)
+    // Helper Methods
+    public function isGlobalTraining(): bool
     {
-        return $query->where('facility_id', $facilityId);
+        return $this->type === 'global_training';
     }
 
-    public function scopeUpcoming($query)
+    public function isFacilityMentorship(): bool
     {
-        return $query->where('start_date', '>=', now());
+        return $this->type === 'facility_mentorship';
     }
 
-    public function scopeCompleted($query)
+    public function getCompletionRateAttribute(): float
     {
-        return $query->where('end_date', '<', now());
+        $total = $this->participants()->count();
+        if ($total === 0) return 0;
+
+        $completed = $this->participants()
+            ->where('completion_status', 'completed')
+            ->count();
+
+        return round(($completed / $total) * 100, 2);
+    }
+
+    public function getAverageScoreAttribute(): float
+    {
+        // Simple implementation for now
+        return 0;
+    }
+
+    // Scopes
+    public function scopeGlobalTrainings($query)
+    {
+        return $query->where('type', 'global_training');
+    }
+
+    public function scopeFacilityMentorships($query)
+    {
+        return $query->where('type', 'facility_mentorship');
+    }
+
+    public function scopeRegistrationOpen($query)
+    {
+        return $query->where('status', 'registration_open')
+                    ->where('registration_deadline', '>=', now());
     }
 
     public function scopeOngoing($query)
     {
-        return $query->where('start_date', '<=', now())
-                    ->where('end_date', '>=', now());
+        return $query->where('status', 'ongoing');
     }
 
-    // Computed Attributes
-    public function getStatusAttribute(): string
+    public function scopeUpcoming($query)
     {
-        $now = now();
-        
-        if ($this->start_date > $now) {
-            return 'upcoming';
-        } elseif ($this->end_date < $now) {
-            return 'completed';
-        } else {
-            return 'ongoing';
-        }
+        return $query->where('start_date', '>', now());
     }
 
-    public function getDurationDaysAttribute(): int
+    public function scopeCompleted($query)
     {
-        return $this->start_date->diffInDays($this->end_date) + 1;
+        return $query->where('status', 'completed');
     }
 
-    public function getParticipantCountAttribute(): int
+    // Analytics methods
+    public function getParticipantsByFacility(): Collection
     {
-        return $this->participants()->count();
+        return $this->participants()
+            ->with('user.facility')
+            ->get()
+            ->groupBy('user.facility.name')
+            ->map(fn ($participants) => $participants->count());
     }
+
+    public function getParticipantsByCadre(): Collection
+    {
+        return $this->participants()
+            ->with('user.cadre')
+            ->get()
+            ->groupBy('user.cadre.name')
+            ->map(fn ($participants) => $participants->count());
+    }
+
+    public function getCompletionStats(): array
+    {
+        $total = $this->participants()->count();
+        $completed = $this->participants()->where('completion_status', 'completed')->count();
+        $inProgress = $this->participants()->where('completion_status', 'in_progress')->count();
+
+        return [
+            'total' => $total,
+            'completed' => $completed,
+            'in_progress' => $inProgress,
+            'completion_rate' => $total > 0 ? round(($completed / $total) * 100, 2) : 0,
+        ];
+    }
+
+    // Relationship assignment methods
+    public function assignPrograms(array $programIds): void
+    {
+        $this->programs()->sync($programIds);
+    }
+
+    public function assignModules(array $moduleIds): void
+    {
+        $this->modules()->sync($moduleIds);
+    }
+
+    public function assignMethodologies(array $methodologyIds): void
+    {
+        $this->methodologies()->sync($methodologyIds);
+    } 
 }

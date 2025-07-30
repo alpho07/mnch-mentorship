@@ -15,6 +15,7 @@ class MethodologyResource extends Resource
     protected static ?string $model = Methodology::class;
     protected static ?string $navigationIcon = 'heroicon-o-light-bulb';
     protected static ?string $navigationGroup = 'Curriculum';
+      protected static ?int $navigationSort = 4;
 
     public static function form(Form $form): Form
     {

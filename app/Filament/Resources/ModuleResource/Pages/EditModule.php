@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Filament\Resources\ModuleResource\Pages;
 
 use App\Filament\Resources\ModuleResource;
@@ -13,7 +12,14 @@ class EditModule extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            Actions\DeleteAction::make(),
+            Actions\ViewAction::make(),
+            Actions\DeleteAction::make()
+                ->requiresConfirmation(),
         ];
+    }
+
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('view', ['record' => $this->record]);
     }
 }
