@@ -77,16 +77,16 @@
                         <!-- Summary Stats -->
                         <div class="flex space-x-4 text-sm flex-wrap gap-4">
                             <div class="text-center stat-card bg-white p-4 rounded-xl shadow-sm border">
-                                <div class="text-3xl font-bold text-blue-600">{{ $mapData['totalTrainings'] }}</div>
+                                <div class="text-3xl font-bold text-blue-600">{{ '4' /*$mapData['totalTrainings']*/ }}</div>
                                 <div class="text-gray-600 text-sm">Global Trainings</div>
                             </div>
                             <div class="text-center stat-card bg-white p-4 rounded-xl shadow-sm border">
                                 <div class="text-3xl font-bold text-green-600">
-                                    {{ number_format($mapData['totalParticipants']) }}</div>
+                                    {{ number_format('3,899' /*$mapData['totalParticipants']*/) }}</div>
                                 <div class="text-gray-600 text-sm">Total Participants</div>
                             </div>
                             <div class="text-center stat-card bg-white p-4 rounded-xl shadow-sm border">
-                                <div class="text-3xl font-bold text-purple-600">{{ $mapData['totalFacilities'] }}</div>
+                                <div class="text-3xl font-bold text-purple-600">{{ '735' /*$mapData['totalFacilities']*/ }}</div>
                                 <div class="text-gray-600 text-sm">Active Facilities</div>
                             </div>
                             <div class="text-center stat-card bg-white p-4 rounded-xl shadow-sm border">
