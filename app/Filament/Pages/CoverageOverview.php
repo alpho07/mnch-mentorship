@@ -53,8 +53,13 @@ class CoverageOverview extends Page
     protected function getHeaderWidgets(): array
     {
         return [
-            //  \App\Filament\Widgets\TrainingCoverageStatsWidget::class,
+            //  \App\Filament\Widgets\TrainingCoverageStatsWidget::class, 
         ];
+    }
+
+
+    protected function test(){
+
     }
 
     protected function getFooterWidgets(): array
