@@ -2,13 +2,11 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Builder;
 
 class InventoryItem extends Model
 {
@@ -23,43 +21,65 @@ class InventoryItem extends Model
         'supplier_id',
         'unit_of_measure',
         'unit_price',
-        'cost_price',
         'minimum_stock_level',
         'maximum_stock_level',
         'reorder_point',
-        'reorder_quantity',
+        'status', // NEW: Item status
+        'condition', // NEW: Item condition
+        'is_active',
+        'requires_approval',
         'is_trackable',
-        'is_serialized',
-        'requires_batch_tracking',
-        'shelf_life_days',
-        'weight',
-        'dimensions',
-        'storage_requirements',
-        'status',
-        'image_path',
-        'notes',
+        'expiry_tracking',
+        'batch_tracking',
+        'serial_tracking', // NEW: Serial number tracking
+        'warranty_period', // NEW: Warranty in months
+        'manufacturer', // NEW: Manufacturer name
+        'model_number', // NEW: Model/part number
+        'specifications', // NEW: Technical specifications
+        'storage_requirements', // NEW: Storage conditions
+        'disposal_method', // NEW: How to dispose when expired/damaged
     ];
 
     protected $casts = [
         'unit_price' => 'decimal:2',
-        'cost_price' => 'decimal:2',
         'minimum_stock_level' => 'integer',
         'maximum_stock_level' => 'integer',
         'reorder_point' => 'integer',
-        'reorder_quantity' => 'integer',
+        'warranty_period' => 'integer',
+        'is_active' => 'boolean',
+        'requires_approval' => 'boolean',
         'is_trackable' => 'boolean',
-        'is_serialized' => 'boolean',
-        'requires_batch_tracking' => 'boolean',
-        'shelf_life_days' => 'integer',
-        'weight' => 'decimal:3',
-        'dimensions' => 'array',
+        'expiry_tracking' => 'boolean',
+        'batch_tracking' => 'boolean',
+        'serial_tracking' => 'boolean',
+        'specifications' => 'array',
         'storage_requirements' => 'array',
     ];
+
+    // Item Status Constants
+    const STATUS_ACTIVE = 'active';
+    const STATUS_INACTIVE = 'inactive';
+    const STATUS_DISCONTINUED = 'discontinued';
+    const STATUS_RECALLED = 'recalled';
+    const STATUS_QUARANTINED = 'quarantined';
+    const STATUS_RESTRICTED = 'restricted';
+
+    // Item Condition Constants
+    const CONDITION_NEW = 'new';
+    const CONDITION_GOOD = 'good';
+    const CONDITION_FAIR = 'fair';
+    const CONDITION_POOR = 'poor';
+    const CONDITION_DAMAGED = 'damaged';
+    const CONDITION_EXPIRED = 'expired';
+    const CONDITION_LOST = 'lost';
+    const CONDITION_STOLEN = 'stolen';
+    const CONDITION_DECOMMISSIONED = 'decommissioned';
+    const CONDITION_DISPOSED = 'disposed';
 
     // Relationships
     public function category(): BelongsTo
     {
-        return $this->belongsTo(InventoryCategory::class, 'category_id');
+        return $this->belongsTo(InventoryCategory::class);
     }
 
     public function supplier(): BelongsTo
@@ -72,74 +92,84 @@ class InventoryItem extends Model
         return $this->hasMany(StockLevel::class);
     }
 
-    public function serialNumbers(): HasMany
-    {
-        return $this->hasMany(SerialNumber::class);
-    }
-
-    public function batches(): HasMany
-    {
-        return $this->hasMany(ItemBatch::class);
-    }
-
     public function transactions(): HasMany
     {
         return $this->hasMany(InventoryTransaction::class);
     }
 
-    public function stockRequests(): HasMany
+    public function requests(): HasMany
     {
-        return $this->hasMany(StockRequest::class);
+        return $this->hasMany(StockRequestItem::class);
     }
 
-    public function stockTransfers(): HasMany
+    public function transfers(): HasMany
     {
-        return $this->hasMany(StockTransfer::class);
+        return $this->hasMany(StockTransferItem::class);
     }
 
-    public function trainingLinks(): HasMany
+    public function statusLogs(): HasMany
     {
-        return $this->hasMany(ItemTrainingLink::class);
+        return $this->hasMany(ItemStatusLog::class);
     }
 
-    public function facilities(): BelongsToMany
+    // Scopes
+    public function scopeActive($query)
     {
-        return $this->belongsToMany(Facility::class, 'facility_inventory_items')
-            ->withPivot(['minimum_level', 'maximum_level', 'current_stock'])
-            ->withTimestamps();
+        return $query->where('status', self::STATUS_ACTIVE)
+                    ->where('is_active', true);
     }
 
-    // Query Scopes
-    public function scopeActive(Builder $query): Builder
+    public function scopeAvailable($query)
     {
-        return $query->where('status', 'active');
+        return $query->whereIn('status', [self::STATUS_ACTIVE])
+                    ->whereIn('condition', [
+                        self::CONDITION_NEW, 
+                        self::CONDITION_GOOD, 
+                        self::CONDITION_FAIR
+                    ]);
     }
 
-    public function scopeTrackable(Builder $query): Builder
+    public function scopeUnavailable($query)
     {
-        return $query->where('is_trackable', true);
+        return $query->whereIn('condition', [
+            self::CONDITION_DAMAGED,
+            self::CONDITION_EXPIRED,
+            self::CONDITION_LOST,
+            self::CONDITION_STOLEN,
+            self::CONDITION_DECOMMISSIONED,
+            self::CONDITION_DISPOSED
+        ]);
     }
 
-    public function scopeSerialized(Builder $query): Builder
-    {
-        return $query->where('is_serialized', true);
-    }
-
-    public function scopeLowStock(Builder $query): Builder
+    public function scopeLowStock($query)
     {
         return $query->whereHas('stockLevels', function ($q) {
-            $q->whereRaw('current_stock <= minimum_stock_level');
+            $q->whereColumn('current_stock', '<=', 'reorder_point');
         });
     }
 
-    public function scopeByCategory(Builder $query, int $categoryId): Builder
+    public function scopeOutOfStock($query)
     {
-        return $query->where('category_id', $categoryId);
+        return $query->whereHas('stockLevels', function ($q) {
+            $q->where('current_stock', '<=', 0);
+        });
     }
 
-    public function scopeBySupplier(Builder $query, int $supplierId): Builder
+    public function scopeExpiringSoon($query, int $days = 30)
     {
-        return $query->where('supplier_id', $supplierId);
+        return $query->where('expiry_tracking', true)
+                    ->whereHas('stockLevels', function ($q) use ($days) {
+                        $q->where('expiry_date', '<=', now()->addDays($days))
+                          ->where('expiry_date', '>', now());
+                    });
+    }
+
+    public function scopeExpired($query)
+    {
+        return $query->where('expiry_tracking', true)
+                    ->whereHas('stockLevels', function ($q) {
+                        $q->where('expiry_date', '<', now());
+                    });
     }
 
     // Computed Attributes
@@ -148,147 +178,177 @@ class InventoryItem extends Model
         return $this->stockLevels()->sum('current_stock');
     }
 
+    public function getCentralStoreStockAttribute(): int
+    {
+        return $this->stockLevels()
+            ->whereHas('facility', fn($q) => $q->where('is_central_store', true))
+            ->sum('current_stock');
+    }
+
+    public function getAvailableStockAttribute(): int
+    {
+        return $this->stockLevels()
+            ->sum('available_stock');
+    }
+
     public function getTotalValueAttribute(): float
     {
         return $this->total_stock * $this->unit_price;
     }
 
-    public function getAvailableStockAttribute(): int
-    {
-        return $this->stockLevels()->sum('current_stock') - $this->stockLevels()->sum('reserved_stock');
-    }
-
-    public function getIsLowStockAttribute(): bool
-    {
-        return $this->total_stock <= $this->reorder_point;
-    }
-
     public function getStockStatusAttribute(): string
     {
         $totalStock = $this->total_stock;
-
+        
         if ($totalStock <= 0) {
             return 'out_of_stock';
         } elseif ($totalStock <= $this->reorder_point) {
             return 'low_stock';
-        } elseif ($totalStock >= $this->maximum_stock_level) {
+        } elseif ($this->maximum_stock_level && $totalStock >= $this->maximum_stock_level) {
             return 'overstock';
         }
-
-        return 'normal';
+        
+        return 'in_stock';
     }
 
-    public function getStockStatusColorAttribute(): string
+    public function getOverallConditionAttribute(): string
     {
-        return match($this->stock_status) {
-            'out_of_stock' => 'danger',
-            'low_stock' => 'warning',
-            'overstock' => 'info',
-            'normal' => 'success',
-            default => 'gray'
-        };
+        // Get the most common condition across all stock levels
+        $conditions = $this->stockLevels()
+            ->whereNotNull('condition')
+            ->pluck('condition')
+            ->countBy()
+            ->sortDesc();
+
+        return $conditions->keys()->first() ?? $this->condition;
     }
 
-    public function getSerializedCountAttribute(): int
+    public function getIsAvailableForUseAttribute(): bool
     {
-        return $this->serialNumbers()->count();
+        return $this->status === self::STATUS_ACTIVE && 
+               in_array($this->condition, [
+                   self::CONDITION_NEW, 
+                   self::CONDITION_GOOD, 
+                   self::CONDITION_FAIR
+               ]);
     }
 
-    public function getAvailableSerializedItemsAttribute(): int
+    public function getWarrantyExpiryAttribute(): ?string
     {
-        return $this->serialNumbers()->where('status', 'available')->count();
-    }
-
-    // Helper Methods
-    public function getStockAtLocation(int $locationId, string $locationType = 'facility'): int
-    {
-        return $this->stockLevels()
-            ->where('location_id', $locationId)
-            ->where('location_type', $locationType)
-            ->sum('current_stock');
-    }
-
-    public function hasStock(): bool
-    {
-        return $this->total_stock > 0;
-    }
-
-    public function canFulfillQuantity(int $quantity, int $locationId = null): bool
-    {
-        if ($locationId) {
-            return $this->getStockAtLocation($locationId) >= $quantity;
+        if (!$this->warranty_period) {
+            return null;
         }
 
-        return $this->available_stock >= $quantity;
+        return $this->created_at->addMonths($this->warranty_period)->format('Y-m-d');
     }
 
-    public function requiresReorder(): bool
+    // Methods
+    public function updateStatus(string $newStatus, string $reason = null, int $userId = null): void
     {
-        return $this->total_stock <= $this->reorder_point;
+        $oldStatus = $this->status;
+        
+        $this->update(['status' => $newStatus]);
+
+        // Log status change
+        $this->statusLogs()->create([
+            'old_status' => $oldStatus,
+            'new_status' => $newStatus,
+            'reason' => $reason,
+            'changed_by' => $userId ?? auth()->id(),
+        ]);
     }
 
-    public function suggestedReorderQuantity(): int
+    public function updateCondition(string $newCondition, string $reason = null, int $userId = null): void
     {
-        $deficit = $this->maximum_stock_level - $this->total_stock;
-        return max($this->reorder_quantity, $deficit);
-    }
+        $oldCondition = $this->condition;
+        
+        $this->update(['condition' => $newCondition]);
 
-    // Stock Management Methods
-    public function adjustStock(int $locationId, int $quantity, string $reason, User $user = null): bool
-    {
-        $stockLevel = $this->stockLevels()
-            ->where('location_id', $locationId)
-            ->first();
-
-        if (!$stockLevel) {
-            $stockLevel = $this->stockLevels()->create([
-                'location_id' => $locationId,
-                'location_type' => 'facility',
-                'current_stock' => 0,
-                'reserved_stock' => 0,
-            ]);
-        }
-
-        $newStock = $stockLevel->current_stock + $quantity;
-
-        if ($newStock < 0) {
-            return false;
-        }
-
-        $stockLevel->update([
-            'current_stock' => $newStock,
-            'last_updated_by' => $user?->id ?? auth()->id(),
+        // Log condition change
+        $this->statusLogs()->create([
+            'old_condition' => $oldCondition,
+            'new_condition' => $newCondition,
+            'reason' => $reason,
+            'changed_by' => $userId ?? auth()->id(),
         ]);
 
-        // Record transaction
-        $this->transactions()->create([
-            'location_id' => $locationId,
-            'location_type' => 'facility',
-            'type' => $quantity > 0 ? 'in' : 'out',
-            'quantity' => abs($quantity),
-            'user_id' => $user?->id ?? auth()->id(),
-            'remarks' => $reason,
-            'transaction_date' => now(),
-        ]);
-
-        return true;
+        // If item is damaged/lost/disposed, create transaction
+        if (in_array($newCondition, [self::CONDITION_DAMAGED, self::CONDITION_LOST, self::CONDITION_DISPOSED])) {
+            $this->handleUnavailableCondition($newCondition, $reason);
+        }
     }
 
-    protected static function boot()
+    private function handleUnavailableCondition(string $condition, string $reason = null): void
     {
-        parent::boot();
+        // Update all stock levels for this item
+        $this->stockLevels()->each(function ($stockLevel) use ($condition, $reason) {
+            if ($stockLevel->current_stock > 0) {
+                // Create transaction for stock adjustment
+                InventoryTransaction::create([
+                    'inventory_item_id' => $this->id,
+                    'facility_id' => $stockLevel->facility_id,
+                    'transaction_type' => match($condition) {
+                        self::CONDITION_DAMAGED => 'damaged',
+                        self::CONDITION_LOST => 'lost',
+                        self::CONDITION_STOLEN => 'stolen',
+                        self::CONDITION_DISPOSED => 'disposal',
+                        default => 'adjustment'
+                    },
+                    'quantity' => -$stockLevel->current_stock,
+                    'previous_stock' => $stockLevel->current_stock,
+                    'new_stock' => 0,
+                    'reference_type' => 'condition_change',
+                    'notes' => $reason ?? "Item condition changed to {$condition}",
+                    'created_by' => auth()->id(),
+                ]);
 
-        static::creating(function ($item) {
-            if (!$item->sku) {
-                $item->sku = $item->generateSku();
+                // Zero out the stock
+                $stockLevel->update([
+                    'current_stock' => 0,
+                    'available_stock' => 0,
+                ]);
             }
         });
     }
 
-    private function generateSku(): string
+    public function decommission(string $reason = null): void
     {
-        $prefix = $this->category?->code ?? 'GEN';
-        $number = str_pad(static::count() + 1, 4, '0', STR_PAD_LEFT);
-        return $prefix . '-' . $number;
+        $this->updateCondition(self::CONDITION_DECOMMISSIONED, $reason);
+        $this->update(['is_active' => false]);
+    }
+
+    public function dispose(string $reason = null): void
+    {
+        $this->updateCondition(self::CONDITION_DISPOSED, $reason);
+        $this->update(['is_active' => false]);
+    }
+
+    // Status and Condition options for forms
+    public static function getStatusOptions(): array
+    {
+        return [
+            self::STATUS_ACTIVE => 'Active',
+            self::STATUS_INACTIVE => 'Inactive',
+            self::STATUS_DISCONTINUED => 'Discontinued',
+            self::STATUS_RECALLED => 'Recalled',
+            self::STATUS_QUARANTINED => 'Quarantined',
+            self::STATUS_RESTRICTED => 'Restricted',
+        ];
+    }
+
+    public static function getConditionOptions(): array
+    {
+        return [
+            self::CONDITION_NEW => 'New',
+            self::CONDITION_GOOD => 'Good',
+            self::CONDITION_FAIR => 'Fair',
+            self::CONDITION_POOR => 'Poor',
+            self::CONDITION_DAMAGED => 'Damaged',
+            self::CONDITION_EXPIRED => 'Expired',
+            self::CONDITION_LOST => 'Lost',
+            self::CONDITION_STOLEN => 'Stolen',
+            self::CONDITION_DECOMMISSIONED => 'Decommissioned',
+            self::CONDITION_DISPOSED => 'Disposed',
+        ];
     }
 }

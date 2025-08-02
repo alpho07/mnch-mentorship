@@ -21,6 +21,11 @@ return new class extends Migration
             $table->string('lat')->nullable();
             $table->string('long')->nullable();
             $table->unsignedBigInteger('hub_id')->nullable(); // If spoke, FK to hub facility
+            $table->boolean('is_central_store')->default(false);
+            $table->string('storage_capacity')->nullable();
+            $table->json('operating_hours')->nullable();
+            $table->text('storage_conditions')->nullable();
+            $table->text('distribution_notes')->nullable();
             $table->timestamps();
 
             $table->foreign('subcounty_id')->references('id')->on('subcounties')->cascadeOnDelete();
