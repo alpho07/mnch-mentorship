@@ -7,8 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class TrainingSession extends Model
-{
+class TrainingSession extends Model {
+
     use HasFactory;
 
     protected $fillable = [
@@ -26,7 +26,6 @@ class TrainingSession extends Model
         'session_notes',
         'status',
     ];
-
     protected $casts = [
         'session_date' => 'date',
         'start_time' => 'datetime',
@@ -34,30 +33,28 @@ class TrainingSession extends Model
         'materials_used' => 'array',
     ];
 
-    public function training(): BelongsTo
-    {
+    public function training(): BelongsTo {
         return $this->belongsTo(Training::class);
     }
 
-    public function module(): BelongsTo
-    {
+    public function module(): BelongsTo {
         return $this->belongsTo(Module::class);
     }
 
-    public function methodology(): BelongsTo
-    {
+    public function methodology(): BelongsTo {
         return $this->belongsTo(Methodology::class);
     }
 
-    public function facilitator(): BelongsTo
-    {
+    public function facilitator(): BelongsTo {
         return $this->belongsTo(User::class, 'facilitator_id');
     }
 
-    public function getDurationHoursAttribute(): float
-    {
-        if (!$this->start_time || !$this->end_time) return 0;
+    public function getDurationHoursAttribute(): float {
+        if (!$this->start_time || !$this->end_time)
+            return 0;
 
         return $this->start_time->diffInHours($this->end_time);
     }
+
+   
 }

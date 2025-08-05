@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Resource extends Model
@@ -128,20 +127,25 @@ class Resource extends Model
         return $query->where('visibility', 'public');
     }
 
-    public function scopeAccessibleTo($query, User $user)
+    public function scopeAccessibleTo($query, ?User $user)
     {
         return $query->where(function ($q) use ($user) {
-            $q->where('visibility', 'public')
-              ->orWhere(function ($subQ) use ($user) {
-                  $subQ->where('visibility', 'authenticated')
-                       ->when($user->id, fn($authQ) => $authQ->where('author_id', $user->id))
-                       ->orWhereHas('accessGroups', fn($groupQ) =>
-                           $groupQ->whereHas('users', fn($userQ) => $userQ->where('users.id', $user->id))
-                       )
-                       ->orWhereHas('scopedFacilities', fn($facQ) =>
-                           $facQ->whereIn('facilities.id', $user->scopedFacilityIds())
-                       );
-              });
+            // Always include public resources
+            $q->where('visibility', 'public');
+            
+            // If user is authenticated, add additional access levels
+            if ($user) {
+                $q->orWhere(function ($subQ) use ($user) {
+                    $subQ->where('visibility', 'authenticated')
+                         ->orWhere('author_id', $user->id)
+                         ->orWhereHas('accessGroups', fn($groupQ) =>
+                             $groupQ->whereHas('users', fn($userQ) => $userQ->where('users.id', $user->id))
+                         )
+                         ->orWhereHas('scopedFacilities', fn($facQ) =>
+                             $facQ->whereIn('facilities.id', $user->scopedFacilityIds())
+                         );
+                });
+            }
         });
     }
 
@@ -166,20 +170,46 @@ class Resource extends Model
                     ->orderByDesc('views_count');
     }
 
-    // Helper Methods
-    public function canUserAccess(User $user): bool
+    public function scopeSearch($query, string $search)
     {
-        if ($this->visibility === 'public') return true;
-        if (!$user) return false;
+        return $query->where(function ($q) use ($search) {
+            $q->where('title', 'like', "%{$search}%")
+              ->orWhere('excerpt', 'like', "%{$search}%")
+              ->orWhere('content', 'like', "%{$search}%")
+              ->orWhereHas('tags', fn($tagQ) => $tagQ->where('name', 'like', "%{$search}%"))
+              ->orWhereHas('category', fn($catQ) => $catQ->where('name', 'like', "%{$search}%"));
+        });
+    }
 
-        if ($this->author_id === $user->id) return true;
+    // Helper Methods
+    public function canUserAccess(?User $user): bool
+    {
+        // Public resources are always accessible
+        if ($this->visibility === 'public') {
+            return true;
+        }
 
-        if ($this->visibility === 'authenticated') return true;
+        // If no user is provided (guest), only public resources are accessible
+        if (!$user) {
+            return false;
+        }
 
+        // Author can always access their own resources
+        if ($this->author_id === $user->id) {
+            return true;
+        }
+
+        // Authenticated users can access authenticated resources
+        if ($this->visibility === 'authenticated') {
+            return true;
+        }
+
+        // Check access groups
         if ($this->accessGroups()->whereHas('users', fn($q) => $q->where('users.id', $user->id))->exists()) {
             return true;
         }
 
+        // Check scoped facilities
         if ($this->scopedFacilities()->whereIn('facilities.id', $user->scopedFacilityIds())->exists()) {
             return true;
         }
@@ -187,24 +217,35 @@ class Resource extends Model
         return false;
     }
 
-    public function incrementViews(User $user = null, string $ipAddress = null): void
+    public function incrementViews(?User $user = null, ?string $ipAddress = null): void
     {
         $this->increment('view_count');
 
         $this->views()->create([
             'user_id' => $user?->id,
-            'ip_address' => $ipAddress,
+            'ip_address' => $ipAddress ?: request()->ip(),
             'user_agent' => request()->userAgent(),
         ]);
     }
 
-    public function incrementDownloads(User $user = null): void
+    public function incrementDownloads(?User $user = null): void
     {
         $this->increment('download_count');
 
         if ($user) {
-            $this->downloads()->create(['user_id' => $user->id]);
+            $this->downloads()->create([
+                'user_id' => $user->id,
+                'ip_address' => request()->ip(),
+            ]);
         }
+    }
+
+    public function updateInteractionCounts(): void
+    {
+        $this->update([
+            'like_count' => $this->interactions()->where('type', 'like')->count(),
+            'dislike_count' => $this->interactions()->where('type', 'dislike')->count(),
+        ]);
     }
 
     // Computed Attributes
@@ -228,5 +269,30 @@ class Resource extends Model
         }
 
         return round($size, 2) . ' ' . $units[$unit];
+    }
+
+    public function getInteractionLikeCountAttribute(): int
+    {
+        return $this->interactions()->where('type', 'like')->count();
+    }
+
+    public function getInteractionDislikeCountAttribute(): int
+    {
+        return $this->interactions()->where('type', 'dislike')->count();
+    }
+
+    public function getBookmarkCountAttribute(): int
+    {
+        return $this->interactions()->where('type', 'bookmark')->count();
+    }
+
+    public function getCommentCountAttribute(): int
+    {
+        return $this->comments()->approved()->count();
+    }
+
+    public function getRouteKeyName()
+    {
+        return 'slug';
     }
 }
