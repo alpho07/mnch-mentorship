@@ -6,6 +6,7 @@ use App\Filament\Resources\InventoryItemResource\Pages;
 use App\Models\InventoryItem;
 use App\Models\InventoryCategory;
 use App\Models\Supplier;
+use App\Models\Facility;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;

@@ -19,7 +19,7 @@ class ListGlobalTrainings extends ListRecords
     {
         return [
             Actions\CreateAction::make()
-                ->label('New Global Training')
+                ->label('New MOH Training')
                 ->icon('heroicon-o-plus')
                 ->color('primary'),
 
@@ -43,7 +43,7 @@ class ListGlobalTrainings extends ListRecords
 
     public function getTitle(): string
     {
-        return 'Global Trainings';
+        return 'MOH Trainings';
     }
 
     public function getSubheading(): ?string

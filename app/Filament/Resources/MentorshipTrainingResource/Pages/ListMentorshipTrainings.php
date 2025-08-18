@@ -13,6 +13,9 @@ use Illuminate\Database\Eloquent\Builder;
 class ListMentorshipTrainings extends ListRecords
 {
     protected static string $resource = MentorshipTrainingResource::class;
+    
+  
+
 
     protected function getHeaderActions(): array
     {

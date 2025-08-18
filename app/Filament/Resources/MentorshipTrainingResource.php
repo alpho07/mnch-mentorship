@@ -44,10 +44,10 @@ class MentorshipTrainingResource extends Resource
 {
     protected static ?string $model = Training::class;
     protected static ?string $navigationIcon = 'heroicon-o-academic-cap';
-    protected static ?string $navigationLabel = 'Mentorship Training';
+    protected static ?string $navigationLabel = 'Mentorship';
     protected static ?string $navigationGroup = 'Training Management';
     protected static ?int $navigationSort = 2;
-    protected static ?string $slug = 'mentorship-trainings';
+    protected static ?string $slug = 'mentorships';
     protected static ?string $recordTitleAttribute = 'title';
 
     public static function getEloquentQuery(): Builder
@@ -133,7 +133,7 @@ class MentorshipTrainingResource extends Resource
                     Forms\Components\Hidden::make('facility_assessment_status'),
                 ]),
 
-            Section::make('Training Content')
+            Section::make('Mentorship Content')
                 ->description('Select programs, modules, and training methodologies')
                 ->collapsible()
                 ->schema([

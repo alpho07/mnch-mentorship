@@ -37,6 +37,11 @@ class MenteeProfileResource extends Resource
     protected static ?string $slug = 'mentee-profiles';
 
     protected static ?string $recordTitleAttribute = 'full_name';
+    
+       public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
 
     // Only show users who have participated in mentorship trainings
     public static function getEloquentQuery(): Builder

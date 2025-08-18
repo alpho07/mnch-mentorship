@@ -12,7 +12,7 @@
                     <div>
                         <h2 class="text-xl font-bold text-blue-900">{{ $record->title }}</h2>
                         <p class="text-sm text-blue-700">
-                            Global Training • {{ $record->identifier }} •
+                            MOH Training • {{ $record->identifier }} •
                             {{ $record->start_date?->format('M j, Y') }} to {{ $record->end_date?->format('M j, Y') }}
                         </p>
                         <p class="text-sm text-blue-600 mt-1">{{ $record->location }}</p>

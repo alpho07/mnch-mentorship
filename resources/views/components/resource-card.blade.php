@@ -216,7 +216,7 @@
                         showToast('An error occurred', 'error');
                     });
             @else
-                window.location.href = '{{ url('login') }}';
+                window.location.href = '{{ url('admin/login') }}';
             @endauth
             }
 

@@ -6,18 +6,23 @@ use App\Models\County;
 use App\Models\Training;
 use App\Models\TrainingParticipant;
 use App\Models\Facility;
+use App\Models\User;
 use Filament\Widgets\Widget;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Collection;
 
+/**
+ * This widget maintains backward compatibility while adding enhanced features
+ */
 class KenyaTrainingHeatmapWidget extends Widget
 {
-    protected static string $view = 'filament.widgets.kenya-training-heatmap';
+    protected static string $view = 'filament.widgets.enhanced-kenya-training-heatmap';
 
     protected int | string | array $columnSpan = 'full';
 
-    protected static ?string $heading = 'Training Coverage Across Kenya';
+    protected static ?string $heading = 'Enhanced Training Coverage Across Kenya';
 
     // Filter properties
     public ?array $filterData = [];
@@ -38,7 +43,9 @@ class KenyaTrainingHeatmapWidget extends Widget
             'facility_id' => [],
             'department_id' => null,
             'cadre_id' => null,
-            'training_type' => [], // global_training, facility_mentorship, or both
+            'training_type' => [],
+            'status' => [],
+            'date_range' => null,
         ];
     }
 
@@ -80,28 +87,42 @@ class KenyaTrainingHeatmapWidget extends Widget
             $query->whereIn('type', $this->filterData['training_type']);
         }
 
+        // Apply status filter
+        if (isset($this->filterData['status']) && !empty($this->filterData['status'])) {
+            $query->whereIn('status', $this->filterData['status']);
+        }
+
+        // Apply date range filter
+        if (isset($this->filterData['date_range']) && !empty($this->filterData['date_range'])) {
+            switch ($this->filterData['date_range']) {
+                case 'last-6-months':
+                    $query->where('start_date', '>=', now()->subMonths(6));
+                    break;
+                case '2024':
+                    $query->whereYear('start_date', 2024);
+                    break;
+                case '2023':
+                    $query->whereYear('start_date', 2023);
+                    break;
+            }
+        }
+
         // Apply geographic filters
         if (isset($this->filterData['facility_id']) && !empty($this->filterData['facility_id'])) {
             $query->where(function ($q) {
-                // For facility mentorship - direct facility relationship
                 $q->whereIn('facility_id', $this->filterData['facility_id'])
-                  // For global training - participants from these facilities
                   ->orWhereHas('participants.user', function ($participantQuery) {
                       $participantQuery->whereIn('facility_id', $this->filterData['facility_id']);
                   });
             });
         } elseif (isset($this->filterData['subcounty_id']) && !empty($this->filterData['subcounty_id'])) {
             $query->where(function ($q) {
-                // For facility mentorship
                 $q->whereHas('facility', fn(Builder $subQ) => $subQ->whereIn('subcounty_id', $this->filterData['subcounty_id']))
-                  // For global training participants
                   ->orWhereHas('participants.user.facility', fn(Builder $subQ) => $subQ->whereIn('subcounty_id', $this->filterData['subcounty_id']));
             });
         } elseif (isset($this->filterData['county_id']) && !empty($this->filterData['county_id'])) {
             $query->where(function ($q) {
-                // For facility mentorship
                 $q->whereHas('facility.subcounty', fn(Builder $subQ) => $subQ->whereIn('county_id', $this->filterData['county_id']))
-                  // For global training participants
                   ->orWhereHas('participants.user.facility.subcounty', fn(Builder $subQ) => $subQ->whereIn('county_id', $this->filterData['county_id']));
             });
         }
@@ -161,7 +182,7 @@ class KenyaTrainingHeatmapWidget extends Widget
             return collect($finalCountyData);
 
         } catch (\Exception $e) {
-            \Log::error('Heatmap data error: ' . $e->getMessage());
+            \Log::error('Enhanced Heatmap data error: ' . $e->getMessage());
             return $this->getSampleCountyData();
         }
     }
@@ -225,11 +246,11 @@ class KenyaTrainingHeatmapWidget extends Widget
         if ($trainings == 0) return 0;
 
         // Enhanced intensity calculation
-        $trainingScore = $trainings * 2; // Weight trainings more heavily
-        $participantScore = ($participants / max(1, $trainings)) * 1.5; // Average participants per training
-        $facilityScore = $facilities * 3; // Facilities with training coverage
+        $trainingScore = $trainings * 2;
+        $participantScore = ($participants / max(1, $trainings)) * 1.5;
+        $facilityScore = $facilities * 3;
 
-        return ($trainingScore + $participantScore + $facilityScore) / 6.5; // Normalize
+        return ($trainingScore + $participantScore + $facilityScore) / 6.5;
     }
 
     public function getIntensityLevels()
@@ -262,6 +283,8 @@ class KenyaTrainingHeatmapWidget extends Widget
                     ? round($countyData->sum('participants') / $countyData->sum('trainings'), 1) 
                     : 0,
                 'top_counties' => $countyData->sortByDesc('intensity')->take(5)->pluck('name'),
+                'completion_rate' => $this->calculateOverallCompletionRate(),
+                'performance_metrics' => $this->getPerformanceMetrics(),
             ],
             'debug' => [
                 'filterData' => $this->filterData,
@@ -271,9 +294,65 @@ class KenyaTrainingHeatmapWidget extends Widget
         ];
     }
 
+    private function calculateOverallCompletionRate(): float
+    {
+        $totalParticipants = TrainingParticipant::count();
+        if ($totalParticipants === 0) return 0;
+
+        $completedParticipants = TrainingParticipant::where('completion_status', 'completed')->count();
+        return round(($completedParticipants / $totalParticipants) * 100, 1);
+    }
+
+    private function getPerformanceMetrics(): array
+    {
+        return [
+            'total_mentorships' => Training::where('type', 'facility_mentorship')->count(),
+            'average_score' => $this->getAverageScore(),
+            'pass_rate' => $this->calculatePassRate(),
+            'attrition_rate' => $this->calculateAttritionRate(),
+        ];
+    }
+
+    private function getAverageScore(): float
+    {
+        // Safe method to get average score
+        $scores = TrainingParticipant::whereNotNull('overall_score')
+            ->where('overall_score', '>', 0)
+            ->avg('overall_score');
+        
+        return round($scores ?: 0, 1);
+    }
+
+    private function calculatePassRate(): float
+    {
+        $totalAssessed = TrainingParticipant::whereNotNull('overall_score')
+            ->where('overall_score', '>', 0)
+            ->count();
+            
+        if ($totalAssessed === 0) return 0;
+
+        $passed = TrainingParticipant::where('overall_score', '>=', 70)->count();
+        return round(($passed / $totalAssessed) * 100, 1);
+    }
+
+    private function calculateAttritionRate(): float
+    {
+        // Safe calculation without requiring status logs
+        $totalMentees = User::whereHas('trainingParticipations')->count();
+        if ($totalMentees === 0) return 0;
+
+        // Use a simple inactive status calculation
+        $inactive = User::where('status', 'inactive')
+            ->orWhere('status', 'resigned')
+            ->orWhere('status', 'transferred')
+            ->count();
+
+        return round(($inactive / $totalMentees) * 100, 1);
+    }
+
     private function getSampleCountyData()
     {
-        // Sample data for testing when no real data exists
+        // Enhanced sample data for testing when no real data exists
         $kenyanCounties = [
             'Nairobi', 'Mombasa', 'Kwale', 'Kilifi', 'Tana River', 'Lamu', 'Taita Taveta',
             'Garissa', 'Wajir', 'Mandera', 'Marsabit', 'Isiolo', 'Meru', 'Tharaka Nithi',
@@ -285,12 +364,13 @@ class KenyaTrainingHeatmapWidget extends Widget
         ];
 
         return collect($kenyanCounties)->map(function ($county) {
+            $trainings = rand(0, 8);
             return [
                 'name' => $county,
-                'trainings' => rand(0, 5),
-                'participants' => rand(0, 150),
-                'facilities' => rand(0, 10),
-                'intensity' => rand(0, 100),
+                'trainings' => $trainings,
+                'participants' => $trainings > 0 ? rand(25, 200) : 0,
+                'facilities' => $trainings > 0 ? rand(5, 25) : 0,
+                'intensity' => $trainings > 0 ? rand(15, 100) : 0,
                 'training_details' => []
             ];
         });
@@ -303,6 +383,9 @@ class KenyaTrainingHeatmapWidget extends Widget
             $totalCounties = $countyData->count();
             $activeCounties = $countyData->filter(fn($c) => $c['trainings'] > 0)->count();
             $coveragePercentage = $totalCounties > 0 ? round(($activeCounties / $totalCounties) * 100, 1) : 0;
+            
+            // Get performance data
+            $performanceMetrics = $this->getPerformanceMetrics();
             
             // Get top and bottom performers
             $topPerformers = $countyData
@@ -328,11 +411,11 @@ class KenyaTrainingHeatmapWidget extends Widget
             $totalParticipants = $countyData->sum('participants');
             $avgParticipantsPerTraining = $totalTrainings > 0 ? round($totalParticipants / $totalTrainings, 1) : 0;
             
-            // Generate insights
+            // Generate enhanced insights
             $insights = [
-                'coverage' => $this->generateCoverageInsight($coveragePercentage, $zeroTrainingCounties, $activeCounties),
-                'participation' => $this->generateParticipationInsight($topPerformers, $avgParticipantsPerTraining, $totalParticipants),
-                'recommendations' => $this->generateRecommendations($bottomPerformers, $zeroTrainingCounties, $topPerformers)
+                'coverage' => $this->generateEnhancedCoverageInsight($coveragePercentage, $zeroTrainingCounties, $activeCounties, $performanceMetrics),
+                'participation' => $this->generateEnhancedParticipationInsight($topPerformers, $avgParticipantsPerTraining, $totalParticipants, $performanceMetrics),
+                'recommendations' => $this->generateEnhancedRecommendations($bottomPerformers, $zeroTrainingCounties, $topPerformers, $performanceMetrics)
             ];
             
             return $insights;
@@ -340,43 +423,62 @@ class KenyaTrainingHeatmapWidget extends Widget
         } catch (\Exception $e) {
             \Log::error('AI Insights generation error: ' . $e->getMessage());
             return [
-                'coverage' => 'Training coverage analysis in progress. Please check back later.',
-                'participation' => 'Participation trend analysis being computed.',
-                'recommendations' => 'Strategic recommendations will be available shortly.'
+                'coverage' => 'Enhanced training coverage analysis in progress. Drill down into counties for detailed insights.',
+                'participation' => 'Advanced participation trend analysis with individual profiles being computed.',
+                'recommendations' => 'Strategic recommendations with drill-down capabilities will be available shortly.'
             ];
         }
     }
 
-    private function generateCoverageInsight($coveragePercentage, $zeroTrainingCounties, $activeCounties)
+    private function generateEnhancedCoverageInsight($coveragePercentage, $zeroTrainingCounties, $activeCounties, $performanceMetrics)
     {
+        $baseInsight = '';
+        
         if ($coveragePercentage >= 80) {
-            return "Excellent coverage achieved at {$coveragePercentage}%! Only {$zeroTrainingCounties} counties remain without training programs.";
+            $baseInsight = "Excellent coverage achieved at {$coveragePercentage}%! Only {$zeroTrainingCounties} counties remain without training programs.";
         } elseif ($coveragePercentage >= 60) {
-            return "Good coverage at {$coveragePercentage}%, but {$zeroTrainingCounties} counties still need attention. Focus on expanding reach.";
+            $baseInsight = "Good coverage at {$coveragePercentage}%, but {$zeroTrainingCounties} counties still need attention.";
         } elseif ($coveragePercentage >= 40) {
-            return "Moderate coverage at {$coveragePercentage}%. {$zeroTrainingCounties} counties lack training programs - significant opportunity for expansion.";
+            $baseInsight = "Moderate coverage at {$coveragePercentage}%. {$zeroTrainingCounties} counties lack training programs.";
         } else {
-            return "Low coverage at {$coveragePercentage}%. {$zeroTrainingCounties} counties without training programs. Urgent intervention needed.";
+            $baseInsight = "Low coverage at {$coveragePercentage}%. {$zeroTrainingCounties} counties without training programs need urgent intervention.";
         }
+
+        $enhancement = " Click on counties to explore training programs, facilities, and individual participant profiles.";
+        
+        if ($performanceMetrics['average_score'] > 0) {
+            $enhancement .= " Overall average score: {$performanceMetrics['average_score']}%.";
+        }
+
+        return $baseInsight . $enhancement;
     }
 
-    private function generateParticipationInsight($topPerformers, $avgParticipantsPerTraining, $totalParticipants)
+    private function generateEnhancedParticipationInsight($topPerformers, $avgParticipantsPerTraining, $totalParticipants, $performanceMetrics)
     {
         $performance = '';
         if (count($topPerformers) > 0) {
             $performance = "Top performing counties: " . implode(', ', $topPerformers) . ". ";
         }
         
+        $engagementLevel = '';
         if ($avgParticipantsPerTraining >= 50) {
-            return $performance . "High engagement with {$avgParticipantsPerTraining} avg participants per training. Training programs are well-attended.";
+            $engagementLevel = "High engagement with {$avgParticipantsPerTraining} avg participants per training.";
         } elseif ($avgParticipantsPerTraining >= 30) {
-            return $performance . "Moderate engagement with {$avgParticipantsPerTraining} avg participants per training. Room for improvement in participation rates.";
+            $engagementLevel = "Moderate engagement with {$avgParticipantsPerTraining} avg participants per training.";
         } else {
-            return $performance . "Low engagement with {$avgParticipantsPerTraining} avg participants per training. Consider reviewing training scheduling and outreach.";
+            $engagementLevel = "Low engagement with {$avgParticipantsPerTraining} avg participants per training.";
         }
+
+        $enhancement = " Drill down to view individual participant profiles and training outcomes.";
+        
+        if ($performanceMetrics['pass_rate'] > 0) {
+            $enhancement .= " Current pass rate: {$performanceMetrics['pass_rate']}%.";
+        }
+
+        return $performance . $engagementLevel . $enhancement;
     }
 
-    private function generateRecommendations($bottomPerformers, $zeroTrainingCounties, $topPerformers)
+    private function generateEnhancedRecommendations($bottomPerformers, $zeroTrainingCounties, $topPerformers, $performanceMetrics)
     {
         $recommendations = [];
         
@@ -393,11 +495,21 @@ class KenyaTrainingHeatmapWidget extends Widget
         if (count($topPerformers) > 0) {
             $recommendations[] = "Leverage " . implode(', ', $topPerformers) . " as regional training hubs";
         }
+
+        if ($performanceMetrics['attrition_rate'] > 15) {
+            $recommendations[] = "Address high attrition rate of {$performanceMetrics['attrition_rate']}% through enhanced support";
+        }
+
+        if ($performanceMetrics['pass_rate'] < 70) {
+            $recommendations[] = "Improve training quality to increase pass rate from {$performanceMetrics['pass_rate']}%";
+        }
         
         if (empty($recommendations)) {
             $recommendations[] = "Maintain current training quality and explore expansion opportunities";
         }
+
+        $enhancement = " Use drill-down features to identify specific facilities and participants needing support.";
         
-        return implode('. ', $recommendations) . '.';
+        return implode('. ', $recommendations) . '.' . $enhancement;
     }
 }

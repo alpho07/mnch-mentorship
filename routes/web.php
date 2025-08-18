@@ -7,14 +7,23 @@ use App\Http\Controllers\Frontend\CategoryController;
 use App\Http\Controllers\Frontend\SearchController;
 use App\Http\Controllers\Frontend\CommentController;
 use App\Http\Controllers\Frontend\InteractionController;
+use App\Http\Controllers\TrainingHeatmapController;
+use App\Http\Controllers\TrainingPagesController;
 
-// Training specific routes (keep existing)
-Route::get('/training-heatmap', function () {
-    $widget = new \App\Filament\Widgets\KenyaTrainingHeatmapWidget();
-    return view('dashboard', ['widget' => $widget]);
-})->name('training.heatmap');
+use App\Http\Controllers\Analytics\KenyaHeatmapController;
+use App\Http\Controllers\Analytics\TrainingExplorerController;
 
-Route::get('/training/{training}/participants/template', function ($trainingId) {
+/*
+  |--------------------------------------------------------------------------
+  | Web Routes - Complete Resource Management System
+  |--------------------------------------------------------------------------
+ */
+
+
+
+
+// Training participant template download
+Route::get('/{training}/participants/template', function ($trainingId) {
     $csv = Writer::createFromString('');
 
     // Add headers
@@ -58,136 +67,203 @@ Route::get('/training/{training}/participants/template', function ($trainingId) 
         'Content-Type' => 'text/csv',
         'Content-Disposition' => "attachment; filename=\"{$filename}\"",
     ]);
-})->name('training.participants.template');
+})->name('participants.template');
 
-// Homepage
 Route::get('/', [ResourceController::class, 'home'])->name('home');
 
-// Resource Center Routes with improved organization
+// ===== RESOURCE CENTER ROUTES =====
 Route::prefix('resources')->name('resources.')->group(function () {
-    // Main resource routes
+
+    // === MAIN RESOURCE ROUTES ===
     Route::get('/', [ResourceController::class, 'index'])->name('index');
-    Route::get('/search', [SearchController::class, 'index'])->name('search');
+    Route::get('/search', [SearchController::class, 'index'])
+            ->name('search')
+            ->middleware('throttle:search');
     Route::get('/browse', [ResourceController::class, 'browse'])->name('browse');
 
-    // Filter routes with consistent naming
+    // === USER-SPECIFIC ROUTES (AUTHENTICATED) ===
+    Route::middleware('auth')->group(function () {
+        Route::get('/bookmarks', [ResourceController::class, 'bookmarks'])->name('bookmarks');
+        Route::get('/downloads', [ResourceController::class, 'downloads'])->name('downloads');
+    });
+
+    // === FILTER & BROWSE ROUTES ===
     Route::get('/category/{category:slug}', [CategoryController::class, 'show'])->name('category');
     Route::get('/type/{type:slug}', [ResourceController::class, 'byType'])->name('type');
     Route::get('/tag/{tag:slug}', [ResourceController::class, 'byTag'])->name('tag');
 
-    // Individual resource routes
+    // === INDIVIDUAL RESOURCE ROUTES ===
     Route::get('/{resource:slug}', [ResourceController::class, 'show'])->name('show');
 
-    // Download route with middleware
+    // === FILE HANDLING ROUTES ===
     Route::get('/{resource:slug}/download', [ResourceController::class, 'download'])
-        ->name('download')
-        ->middleware(['auth', 'throttle:10,1']); // Rate limit downloads
+            ->name('download');
+    //->middleware('throttle:downloads');
 
-    // Resource interactions (require auth with rate limiting)
-    Route::middleware(['auth', 'throttle:30,1'])->group(function () {
+    Route::get('/{resource:slug}/preview', [ResourceController::class, 'preview'])
+            ->name('preview');
+    //->middleware('throttle:previews');
+
+    Route::get('/{resource:slug}/thumbnail', [ResourceController::class, 'thumbnail'])
+            ->name('thumbnail');
+
+    // === RESOURCE INTERACTIONS (AUTHENTICATED USERS) ===
+    Route::middleware(['auth', 'throttle:interactions'])->group(function () {
         Route::post('/{resource:slug}/like', [InteractionController::class, 'like'])->name('like');
         Route::post('/{resource:slug}/dislike', [InteractionController::class, 'dislike'])->name('dislike');
         Route::post('/{resource:slug}/bookmark', [InteractionController::class, 'bookmark'])->name('bookmark');
     });
 
-    // Comment routes with proper middleware
+    // === COMMENT ROUTES ===
     Route::middleware('auth')->group(function () {
         Route::post('/{resource:slug}/comment', [CommentController::class, 'store'])
-            ->name('comment.store')
-            ->middleware('throttle:10,1');
+                ->name('comment.store')
+                ->middleware('throttle:comments');
 
         Route::put('/comment/{comment}', [CommentController::class, 'update'])
-            ->name('comment.update')
-            ->middleware('throttle:5,1');
+                ->name('comment.update')
+                ->middleware('throttle:comment-updates');
 
         Route::delete('/comment/{comment}', [CommentController::class, 'destroy'])
-            ->name('comment.destroy');
+                ->name('comment.destroy');
     });
 
-    // Public comment routes (for guests) with heavy rate limiting
+    // Public comment routes for guests
     Route::post('/{resource:slug}/comment/guest', [CommentController::class, 'storeGuest'])
-        ->name('comment.guest')
-        ->middleware('throttle:3,1'); // Stricter rate limit for guests
+            ->name('comment.guest')
+            ->middleware('throttle:guest-comments');
 });
 
-// Category Routes
+// ===== CATEGORY ROUTES =====
 Route::prefix('categories')->name('categories.')->group(function () {
     Route::get('/', [CategoryController::class, 'index'])->name('index');
     Route::get('/{category:slug}', [CategoryController::class, 'show'])->name('show');
 });
 
-// API Routes for AJAX functionality
-Route::prefix('api/v1')->name('api.')->middleware(['auth', 'throttle:60,1'])->group(function () {
-    Route::post('/resources/{resource:slug}/interactions/{type}', [InteractionController::class, 'toggle'])
-        ->name('interactions.toggle')
-        ->where('type', 'like|dislike|bookmark|share');
+// ===== API ROUTES FOR AJAX FUNCTIONALITY =====
+Route::prefix('api/v1')->name('api.')->middleware('throttle:api')->group(function () {
 
-    // Add other API endpoints as needed
-    Route::get('/resources/{resource:slug}/stats', function (\App\Models\Resource $resource) {
-        if (!$resource->canUserAccess(auth()->user())) {
-            abort(403);
-        }
+    // === AUTHENTICATED API ENDPOINTS ===
+    Route::middleware('auth')->group(function () {
+        Route::post('/resources/{resource:slug}/interactions/{type}', [InteractionController::class, 'toggle'])
+                ->name('interactions.toggle')
+                ->where('type', 'like|dislike|bookmark|share');
 
-        return response()->json([
-            'views' => $resource->view_count,
-            'downloads' => $resource->download_count,
-            'likes' => $resource->like_count,
-            'comments' => $resource->comments()->approved()->count(),
-        ]);
-    })->name('resource.stats');
+        Route::get('/resources/{resource:slug}/stats', function (\App\Models\Resource $resource) {
+            if (!$resource->canUserAccess(auth()->user())) {
+                abort(403);
+            }
+
+            return response()->json([
+                        'views' => $resource->view_count,
+                        'downloads' => $resource->download_count,
+                        'likes' => $resource->like_count,
+                        'comments' => $resource->comments()->approved()->count(),
+            ]);
+        })->name('resource.stats');
+    });
 });
 
-// Admin redirect (if not using subdomain)
-Route::redirect('/admin', '/admin/login')->name('admin');
-
-// Health check route with caching
+// ===== UTILITY & SEO ROUTES =====
 Route::get('/health', function () {
     return cache()->remember('health_check', 60, function () {
-        return response()->json([
-            'status' => 'ok',
-            'timestamp' => now(),
-            'resources_count' => \App\Models\Resource::published()->count(),
-            'categories_count' => \App\Models\ResourceCategory::active()->count(),
-        ]);
-    });
+                return response()->json([
+                            'status' => 'ok',
+                            'timestamp' => now(),
+                            'resources_count' => \App\Models\Resource::published()->count(),
+                            'categories_count' => \App\Models\ResourceCategory::active()->count(),
+                ]);
+            });
 })->name('health');
 
-// Sitemap route for SEO
 Route::get('/sitemap.xml', function () {
     return cache()->remember('sitemap', 3600, function () {
-        $resources = \App\Models\Resource::published()
-            ->public()
-            ->select(['slug', 'updated_at'])
-            ->get();
+                $resources = \App\Models\Resource::published()
+                        ->public()
+                        ->select(['slug', 'updated_at'])
+                        ->get();
 
-        $categories = \App\Models\ResourceCategory::active()
-            ->select(['slug', 'updated_at'])
-            ->get();
+                $categories = \App\Models\ResourceCategory::active()
+                        ->select(['slug', 'updated_at'])
+                        ->get();
 
-        return response()->view('sitemap', compact('resources', 'categories'))
-            ->header('Content-Type', 'text/xml');
-    });
+                return response()->view('sitemap', compact('resources', 'categories'))
+                                ->header('Content-Type', 'text/xml');
+            });
 })->name('sitemap');
 
-// RSS Feed route (optional)
 Route::get('/feed', function () {
-    $resources = \App\Models\Resource::published()
-        ->public()
-        ->latest('published_at')
-        ->limit(20)
-        ->with(['author', 'category'])
-        ->get();
+    return cache()->remember('rss_feed', 1800, function () {
+                $resources = \App\Models\Resource::published()
+                        ->public()
+                        ->latest('published_at')
+                        ->limit(20)
+                        ->with(['author', 'category'])
+                        ->get();
 
-    return response()->view('feed.rss', compact('resources'))
-        ->header('Content-Type', 'application/rss+xml');
+                return response()->view('feed.rss', compact('resources'))
+                                ->header('Content-Type', 'application/rss+xml');
+            });
 })->name('feed');
 
-// Robots.txt route
 Route::get('/robots.txt', function () {
     $content = "User-agent: *\n";
     $content .= "Allow: /\n";
     $content .= "Sitemap: " . route('sitemap') . "\n";
 
     return response($content, 200)
-        ->header('Content-Type', 'text/plain');
+                    ->header('Content-Type', 'text/plain');
 })->name('robots');
+
+// ===== ADMIN ROUTES =====
+Route::middleware(['auth', 'throttle:admin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('/stats', function () {
+        $stats = cache()->remember('admin_stats', 300, function () {
+            return [
+                'resources' => [
+                    'total' => \App\Models\Resource::count(),
+                    'published' => \App\Models\Resource::published()->count(),
+                    'draft' => \App\Models\Resource::where('status', 'draft')->count(),
+                ],
+                'activity' => [
+                    'views_today' => \App\Models\ResourceView::whereDate('created_at', today())->count(),
+                    'downloads_today' => \App\Models\ResourceDownload::whereDate('created_at', today())->count(),
+                ]
+            ];
+        });
+
+        return response()->json($stats);
+    })->name('stats');
+});
+
+// ===== REDIRECTS & FALLBACKS =====
+Route::redirect('/admin', '/admin/login')->name('admin');
+Route::redirect('/resource/{slug}', '/resources/{slug}', 301);
+Route::redirect('/category/{slug}', '/resources/category/{slug}', 301); 
+
+Route::middleware(['web'])->prefix('analytics')->name('analytics.')->group(function () {
+    // Heatmap (controller-based replacement for the widget usage)
+    Route::get('/heatmap', [KenyaHeatmapController::class, 'index'])->name('heatmap');
+    Route::get('/heatmap/data', [KenyaHeatmapController::class, 'data'])->name('heatmap.data');
+    Route::get('/geo/kenyan-counties.geojson', [KenyaHeatmapController::class, 'geojson'])->name('heatmap.geojson');
+
+    // Explorer (County → Trainings → Facility → Participants → Profile)
+    Route::get('/training-explorer', [TrainingExplorerController::class, 'index'])->name('training-explorer');
+
+    // JSON APIs used by Explorer
+    Route::get('/counties', [TrainingExplorerController::class, 'apiCounties'])->name('counties');
+    Route::get('/{county}/trainings', [TrainingExplorerController::class, 'apiCountyTrainings'])->name('county.trainings');
+    Route::get('/{county}/trainings/{training}/facilities', [TrainingExplorerController::class, 'apiTrainingFacilities'])->name('training.facilities');
+    Route::get('/trainings/{training}/facilities/{facility}/participants', [TrainingExplorerController::class, 'apiFacilityParticipants'])->name('facility.participants');
+    Route::get('/participants/{user}', [TrainingExplorerController::class, 'apiParticipantProfile'])->name('participant.profile');
+    
+       Route::get('/participants/{user}', [TrainingExplorerController::class, 'apiParticipantProfile'])->name('participant.profile');
+    Route::get('/participants/{user}/attrition-logs', [TrainingExplorerController::class, 'apiAttritionLogs'])->name('participant.attrition.logs');
+    Route::post('/participants/{user}/attrition-logs', [TrainingExplorerController::class, 'storeAttritionLog'])->name('participant.attrition.store');
+}); 
+ 
+
+
+
+
+

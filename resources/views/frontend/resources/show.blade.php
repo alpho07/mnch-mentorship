@@ -127,7 +127,7 @@
                                     Save
                                 </button>
                             @else
-                                <a href="{{ url('login') }}"
+                                <a href="{{ url('admin/login') }}"
                                    class="flex items-center px-4 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors">
                                     <i class="far fa-heart mr-2"></i>
                                     {{ $resource->like_count }}
@@ -260,7 +260,7 @@
                 @else
                     <div class="mb-8 p-4 bg-gray-50 rounded-lg border border-gray-200">
                         <p class="text-gray-600 mb-3">Please log in to leave a comment.</p>
-                        <a href="{{ url('login') }}"
+                        <a href="{{ url('admin/login') }}"
                            class="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
                             <i class="fas fa-sign-in-alt mr-2"></i>
                             Login to Comment

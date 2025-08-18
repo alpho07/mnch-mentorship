@@ -34,13 +34,13 @@ class GlobalTrainingResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-academic-cap';
 
-    protected static ?string $navigationLabel = 'Trainings';
+    protected static ?string $navigationLabel = 'MOH';
 
     protected static ?string $navigationGroup = 'Training Management';
 
     protected static ?int $navigationSort = 1;
 
-    protected static ?string $slug = 'global-trainings';
+    protected static ?string $slug = 'moh-trainings';
 
     protected static ?string $recordTitleAttribute = 'title';
 
@@ -460,7 +460,7 @@ class GlobalTrainingResource extends Resource
     public static function getNavigationBadge(): ?string
     {
         $count = static::getModel()::where('type', 'global_training')
-            ->where('status', 'ongoing')
+            ->where('status', 'completed')
             ->count();
 
         return $count > 0 ? (string) $count : null;

@@ -92,4 +92,10 @@ class CreateMentorshipTraining extends CreateRecord
                     ->url($this->getResource()::getUrl('assessments', ['record' => $this->record])),
             ]);
     }
+    
+      public function getTitle(): string
+    {
+        return 'New Mentorship';
+    }
+
 }

@@ -1,52 +1,72 @@
 <?php
 
 return [
-
     /*
-    |--------------------------------------------------------------------------
-    | Default Filesystem Disk
-    |--------------------------------------------------------------------------
-    |
-    | Here you may specify the default filesystem disk that should be used
-    | by the framework. The "local" disk, as well as a variety of cloud
-    | based disks are available to your application for file storage.
-    |
-    */
+      |--------------------------------------------------------------------------
+      | Default Filesystem Disk
+      |--------------------------------------------------------------------------
+      |
+      | Here you may specify the default filesystem disk that should be used
+      | by the framework. The "local" disk, as well as a variety of cloud
+      | based disks are available to your application for file storage.
+      |
+     */
 
     'default' => env('FILESYSTEM_DISK', 'local'),
-
     /*
-    |--------------------------------------------------------------------------
-    | Filesystem Disks
-    |--------------------------------------------------------------------------
-    |
-    | Below you may configure as many filesystem disks as necessary, and you
-    | may even configure multiple disks for the same driver. Examples for
-    | most supported storage drivers are configured here for reference.
-    |
-    | Supported drivers: "local", "ftp", "sftp", "s3"
-    |
-    */
-
+      |--------------------------------------------------------------------------
+      | Filesystem Disks
+      |--------------------------------------------------------------------------
+      |
+      | Below you may configure as many filesystem disks as necessary, and you
+      | may even configure multiple disks for the same driver. Examples for
+      | most supported storage drivers are configured here for reference.
+      |
+      | Supported drivers: "local", "ftp", "sftp", "s3"
+      |
+     */
     'disks' => [
-
         'local' => [
             'driver' => 'local',
-            'root' => storage_path('app/private'),
-            'serve' => true,
+            'root' => storage_path('app'),
             'throw' => false,
             'report' => false,
         ],
-
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),
-            'url' => env('APP_URL').'/storage',
+            'url' => env('APP_URL') . '/storage',
             'visibility' => 'public',
             'throw' => false,
             'report' => false,
         ],
-
+        // Private disk for secure resource files
+        'private' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private'),
+            'visibility' => 'private',
+            'serve' => false, // Files should not be directly accessible
+            'throw' => false,
+            'report' => false,
+        ],
+        // Optional: Separate disk for resource files with organized structure
+        'resources' => [
+            'driver' => 'local',
+            'root' => storage_path('app/resources'),
+            'visibility' => 'private',
+            'throw' => false,
+            'report' => false,
+        ],
+        'thumbnails' => [
+            'driver' => 'local',
+            'root' => storage_path('app/public/thumbnails'),
+            'url' => env('APP_URL') . '/storage/thumbnails',
+            'visibility' => 'public',
+            'throw' => false,
+        ],
+        
+        
+        // S3 configuration for production
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),
@@ -59,22 +79,29 @@ return [
             'throw' => false,
             'report' => false,
         ],
-
+        // Optional: S3 configuration for private resources
+        's3-private' => [
+            'driver' => 's3',
+            'key' => env('AWS_ACCESS_KEY_ID'),
+            'secret' => env('AWS_SECRET_ACCESS_KEY'),
+            'region' => env('AWS_DEFAULT_REGION'),
+            'bucket' => env('AWS_PRIVATE_BUCKET', env('AWS_BUCKET')),
+            'visibility' => 'private',
+            'throw' => false,
+            'report' => false,
+        ],
     ],
-
     /*
-    |--------------------------------------------------------------------------
-    | Symbolic Links
-    |--------------------------------------------------------------------------
-    |
-    | Here you may configure the symbolic links that will be created when the
-    | `storage:link` Artisan command is executed. The array keys should be
-    | the locations of the links and the values should be their targets.
-    |
-    */
-
+      |--------------------------------------------------------------------------
+      | Symbolic Links
+      |--------------------------------------------------------------------------
+      |
+      | Here you may configure the symbolic links that will be created when the
+      | `storage:link` Artisan command is executed. The array keys should be
+      | the locations of the links and the values should be their targets.
+      |
+     */
     'links' => [
         public_path('storage') => storage_path('app/public'),
     ],
-
 ];

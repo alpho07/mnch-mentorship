@@ -241,7 +241,7 @@ class StockLevelResource extends Resource
                     ->label('Transfer Stock')
                     ->icon('heroicon-o-arrow-right-circle')
                     ->color('info')
-                    ->url(fn ($record) => route('filament.admin.resources.stock-transfers.create', [
+                    ->url(fn ($record) => route('filament.admin.resources.stock-requests.create', [
                         'from_facility_id' => $record->facility_id,
                         'item_id' => $record->inventory_item_id,
                     ])),

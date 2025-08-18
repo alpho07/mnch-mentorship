@@ -82,3 +82,4 @@ class CategoryController extends Controller
 
         return view('frontend.categories.show', compact('category', 'resources'));
     }
+}

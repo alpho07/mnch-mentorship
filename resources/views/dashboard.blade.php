@@ -1,27 +1,11 @@
-<!DOCTYPE html>
-<html lang="en">
+@extends('layouts.app')
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description"
-        content="Kenya Training Coverage Dashboard - Interactive heatmap showing global training participation across counties">
-    <title>Kenya Training Coverage Dashboard</title>
+@section('title', 'MOH Trainings Heatmap')
 
-    <!-- External CSS Dependencies -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://cdn.tailwindcss.com"></script>
+@section('content')
+<div x-data="mohHeatmap">
 
-    <!-- Custom Heatmap Styles - External CSS File -->
-    <link rel="stylesheet" href="{{ asset('css/map.css') }}">
-
-    <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml"
-        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23059669'><path d='M2 10a8 8 0 018-8v8h8a8 8 0 11-16 0z'/></svg>">
-</head>
-
-<body class="bg-gray-50">
-    @php
+   @php
         $widgetId = $widgetId ?? ($widget->getId() ?? 'kenya-heatmap-' . uniqid());
         $mapData = $widget->getMapData();
         $aiInsights = $widget->getAIInsights();
@@ -39,20 +23,17 @@
                             MNCH Training Coverage Dashboard
                         </h1>
                         <p class="mt-2 text-gray-600">
-                            Comprehensive analytics of global training participation across all 47 counties
+                            Comprehensive analytics of MOH training participation across all 47 counties
                         </p>
                     </div>
-                    <div class="flex items-center space-x-3">
-                        <a href="{{ url('admin') }}"
-                            class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md shadow hover:shadow-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
-                            <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1">
-                                </path>
-                            </svg>
-                            Login
-                        </a>
-                    </div>
+                     <div class="flex items-center space-x-3">
+             
+                    <a href="{{ url('admin') }}"
+                        class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md shadow transition-all duration-200">
+                        <i class="fas fa-tachometer-alt mr-2"></i>
+                        Admin Dashboard
+                    </a>
+                </div>
                 </div>
             </div>
 
@@ -70,7 +51,7 @@
                                 </svg>
                                 Interactive Training Heatmap
                             </h2>
-                            <p class="text-sm text-gray-600 mt-1">Click on counties for detailed global training
+                            <p class="text-sm text-gray-600 mt-1">Click on counties for detailed MOH training
                                 breakdown</p>
                         </div>
 
@@ -78,7 +59,7 @@
                         <div class="flex space-x-4 text-sm flex-wrap gap-4">
                             <div class="text-center stat-card bg-white p-4 rounded-xl shadow-sm border">
                                 <div class="text-3xl font-bold text-blue-600">{{ '4' /*$mapData['totalTrainings']*/ }}</div>
-                                <div class="text-gray-600 text-sm">Global Trainings</div>
+                                <div class="text-gray-600 text-sm">MOH Trainings</div>
                             </div>
                             <div class="text-center stat-card bg-white p-4 rounded-xl shadow-sm border">
                                 <div class="text-3xl font-bold text-green-600">
@@ -320,7 +301,7 @@
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="text-lg font-semibold text-gray-900">{{ $county['trainings'] }}
                                         </div>
-                                        <div class="text-sm text-gray-500">Global trainings</div>
+                                        <div class="text-sm text-gray-500">MOH trainings</div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="text-lg font-semibold text-gray-900">
@@ -418,7 +399,7 @@
             <div class="flex items-center justify-between mb-6 sticky top-0 bg-white pb-4 border-b z-50">
                 <div>
                     <h3 id="county-modal-title-{{ $widgetId }}" class="text-2xl font-bold text-gray-900"></h3>
-                    <p class="text-sm text-gray-600 mt-1">Global training participation breakdown</p>
+                    <p class="text-sm text-gray-600 mt-1">MOH training participation breakdown</p>
                 </div>
                 <button onclick="closeCountyModal('{{ $widgetId }}')"
                     class="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-3 rounded-full transition-colors">
@@ -439,11 +420,12 @@
     <div id="toast-container" class="fixed top-4 right-4 space-y-2" style="z-index: 10001;"></div>
 
     <!-- External JavaScript -->
+@push('scripts')
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <!-- Inline JavaScript -->
     <script>
-        // Global variables
+        // MOH variables
         let mapInstance = null;
         let geoJsonLayer = null;
 
@@ -597,7 +579,7 @@
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
                     <div class="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-xl text-center border border-blue-200 stat-card">
                         <div class="text-3xl font-bold text-blue-600">${countyData.trainings}</div>
-                        <div class="text-sm text-blue-700 font-medium">Global Trainings</div>
+                        <div class="text-sm text-blue-700 font-medium">MOH Trainings</div>
                     </div>
                     <div class="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-xl text-center border border-green-200 stat-card">
                         <div class="text-3xl font-bold text-green-600">${countyData.participants.toLocaleString()}</div>
@@ -622,7 +604,7 @@
                                 <svg class="w-6 h-6 mr-2 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
                                     <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                 </svg>
-                                Global Training Participation
+                                MOH Training Participation
                             </h4>
                             <span class="bg-blue-100 text-blue-800 text-xs font-semibold px-3 py-1 rounded-full">
                                 ${countyData.training_details.length} Training${countyData.training_details.length !== 1 ? 's' : ''}
@@ -693,7 +675,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                         </svg>
                         <h3 class="text-lg font-medium text-gray-900 mb-2">No Training Data Available</h3>
-                        <p class="text-gray-500 mb-4">This county has not participated in any global training programs yet.</p>
+                        <p class="text-gray-500 mb-4">This county has not participated in any MOH training programs yet.</p>
                         <div class="space-y-3">
                             <div class="inline-flex items-center px-4 py-2 rounded-lg text-sm bg-yellow-100 text-yellow-800">
                                 💡 Consider including this county in upcoming training cycles
@@ -968,6 +950,5 @@
             });
         });
     </script>
-</body>
-
-</html>
+    @endpush
+@endsection

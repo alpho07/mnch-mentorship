@@ -118,7 +118,7 @@
                         </button>
                     @endif
                 @else
-                    <a href="{{ route('login') }}"
+                    <a href="{{ url('admin/login') }}"
                        class="text-sm text-gray-500 hover:text-primary-600 transition-colors">
                         <i class="fas fa-reply mr-1"></i>Reply
                     </a>
