@@ -46,6 +46,11 @@ class EditGlobalTraining extends EditRecord
         // Ensure type is always set for global training
         $data['type'] = 'global_training';
 
+        // Preserve the original mentor_id (don't overwrite with current user on edit)
+        if (empty($data['mentor_id'])) {
+            $data['mentor_id'] = $this->record->mentor_id ?? auth()->id();
+        }
+
         return $data;
     }
 
@@ -64,6 +69,10 @@ class EditGlobalTraining extends EditRecord
 
         if (isset($this->data['methodologies'])) {
             $this->record->methodologies()->sync($this->data['methodologies']);
+        }
+
+        if (isset($this->data['locations'])) {
+            $this->record->locations()->sync($this->data['locations']);
         }
     }
 }

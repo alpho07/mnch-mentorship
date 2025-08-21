@@ -59,15 +59,25 @@ class ListGlobalTrainings extends ListRecords
                 ->badge($this->getTabCount('all'))
                 ->badgeColor('gray'),
 
-            'ongoing' => Tab::make('Ongoing')
+            'national' => Tab::make('National Led')
+                ->modifyQueryUsing(fn (Builder $query) => $query->where('lead_type', 'national'))
+                ->badge($this->getTabCount('national'))
+                ->badgeColor('primary'),
+
+            'county' => Tab::make('County Led')
+                ->modifyQueryUsing(fn (Builder $query) => $query->where('lead_type', 'county'))
+                ->badge($this->getTabCount('county'))
+                ->badgeColor('success'),
+
+            'partner' => Tab::make('Partner Led')
+                ->modifyQueryUsing(fn (Builder $query) => $query->where('lead_type', 'partner'))
+                ->badge($this->getTabCount('partner'))
+                ->badgeColor('warning'),
+
+            /*'ongoing' => Tab::make('Ongoing')
                 ->modifyQueryUsing(fn (Builder $query) => $query->where('status', 'ongoing'))
                 ->badge($this->getTabCount('ongoing'))
                 ->badgeColor('success'),
-
-           /* 'registration_open' => Tab::make('Registration Open')
-                ->modifyQueryUsing(fn (Builder $query) => $query->where('status', 'registration_open'))
-                ->badge($this->getTabCount('registration_open'))
-                ->badgeColor('warning'),*/
 
             'upcoming' => Tab::make('Upcoming')
                 ->modifyQueryUsing(fn (Builder $query) => $query->where('start_date', '>', now()))
@@ -82,7 +92,7 @@ class ListGlobalTrainings extends ListRecords
             'draft' => Tab::make('Drafts')
                 ->modifyQueryUsing(fn (Builder $query) => $query->where('status', 'draft'))
                 ->badge($this->getTabCount('draft'))
-                ->badgeColor('secondary'),
+                ->badgeColor('secondary'),*/
         ];
     }
 
@@ -97,6 +107,8 @@ class ListGlobalTrainings extends ListRecords
                 'programs',
                 'modules.program',
                 'methodologies',
+                'county',
+                'partner',
                 'participants.user.facility.subcounty.county'
             ])
             ->get();
@@ -113,6 +125,8 @@ class ListGlobalTrainings extends ListRecords
                 'Description',
                 'Status',
                 'Type',
+                'Lead Type',
+                'Lead Organization',
                 'Location',
                 'Start Date',
                 'End Date',
@@ -148,12 +162,22 @@ class ListGlobalTrainings extends ListRecords
                     return "{$module->program->name} - {$module->name}";
                 })->implode('; ');
 
+                // Get lead organization based on lead type
+                $leadOrganization = match ($training->lead_type) {
+                    'national' => 'Ministry of Health',
+                    'county' => $training->county?->name ?? 'Not specified',
+                    'partner' => $training->partner?->name ?? 'Not specified',
+                    default => 'Not specified',
+                };
+
                 $row = [
                     $training->identifier,
                     $training->title,
                     $training->description,
                     ucfirst($training->status),
                     ucfirst(str_replace('_', ' ', $training->type)),
+                    ucfirst($training->lead_type),
+                    $leadOrganization,
                     $training->location,
                     $training->start_date?->format('Y-m-d'),
                     $training->end_date?->format('Y-m-d'),
@@ -209,6 +233,8 @@ class ListGlobalTrainings extends ListRecords
                 'training.modules.program',
                 'training.methodologies',
                 'training.organizer',
+                'training.county',
+                'training.partner',
                 'objectiveResults.objective',
                 'objectiveResults.grade',
                 'outcome'
@@ -225,6 +251,8 @@ class ListGlobalTrainings extends ListRecords
                 'Training ID',
                 'Training Title',
                 'Training Status',
+                'Training Lead Type',
+                'Training Lead Organization',
                 'Training Start Date',
                 'Training End Date',
                 'Training Location',
@@ -292,10 +320,20 @@ class ListGlobalTrainings extends ListRecords
                     return "{$module->program->name} - {$module->name}";
                 })->implode('; ');
 
+                // Get lead organization based on lead type
+                $leadOrganization = match ($training->lead_type) {
+                    'national' => 'Ministry of Health',
+                    'county' => $training->county?->name ?? 'Not specified',
+                    'partner' => $training->partner?->name ?? 'Not specified',
+                    default => 'Not specified',
+                };
+
                 $row = [
                     $training->identifier,
                     $training->title,
                     ucfirst($training->status),
+                    ucfirst($training->lead_type),
+                    $leadOrganization,
                     $training->start_date?->format('Y-m-d'),
                     $training->end_date?->format('Y-m-d'),
                     $training->location,
@@ -358,6 +396,9 @@ class ListGlobalTrainings extends ListRecords
 
         return match ($tab) {
             'all' => $query->count(),
+            'national' => $query->where('lead_type', 'national')->count(),
+            'county' => $query->where('lead_type', 'county')->count(),
+            'partner' => $query->where('lead_type', 'partner')->count(),
             'ongoing' => $query->where('status', 'ongoing')->count(),
             'registration_open' => $query->where('status', 'registration_open')->count(),
             'upcoming' => $query->where('start_date', '>', now())->count(),

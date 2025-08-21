@@ -19,10 +19,13 @@ class Training extends Model {
         'title',
         'description',
         'type', // 'global_training' or 'facility_mentorship'
+        'lead_type', // 'national', 'county', 'partner'
         'status',
         'identifier',
         'program_id', // Keep for backward compatibility
         'facility_id', // nullable for global trainings
+        'lead_county_id', // for county-led trainings
+        'lead_partner_id', // for partner-led trainings
         'organizer_id',
         'mentor_id',
         'location',
@@ -61,6 +64,18 @@ class Training extends Model {
         return $this->belongsTo(Facility::class);
     }
 
+    public function county(): BelongsTo {
+        return $this->belongsTo(County::class, 'lead_county_id');
+    }
+
+    public function partner(): BelongsTo {
+        return $this->belongsTo(Partner::class, 'lead_partner_id');
+    }
+
+    public function division(): BelongsTo {
+        return $this->belongsTo(Division::class, 'lead_division_id');
+    }
+
     public function organizer(): BelongsTo {
         return $this->belongsTo(User::class, 'organizer_id');
     }
@@ -93,9 +108,22 @@ class Training extends Model {
         return $this->belongsToMany(Facility::class, 'training_target_facilities', 'training_id', 'facility_id');
     }
 
-    // ADD THESE MISSING RELATIONSHIPS
     public function trainingMaterials(): HasMany {
         return $this->hasMany(TrainingMaterial::class);
+    }
+
+    public function assessmentCategories(): BelongsToMany {
+        return $this->belongsToMany(AssessmentCategory::class, 'training_assessment_categories')
+                        ->withPivot([
+                            'weight_percentage',
+                            'pass_threshold',
+                            'is_required',
+                            'order_sequence',
+                            'is_active'
+                        ])
+                        ->withTimestamps()
+                        ->wherePivot('is_active', true)
+                        ->orderByPivot('order_sequence');
     }
 
     // Helper Methods
@@ -105,6 +133,27 @@ class Training extends Model {
 
     public function isFacilityMentorship(): bool {
         return $this->type === 'facility_mentorship';
+    }
+
+    public function isNationalLed(): bool {
+        return $this->lead_type === 'national';
+    }
+
+    public function isCountyLed(): bool {
+        return $this->lead_type === 'county';
+    }
+
+    public function isPartnerLed(): bool {
+        return $this->lead_type === 'partner';
+    }
+
+    public function getLeadOrganizationAttribute(): string {
+        return match ($this->lead_type) {
+            'national' => 'Ministry of Health',
+            'county' => $this->county?->name ?? 'County not specified',
+            'partner' => $this->partner?->name ?? 'Partner not specified',
+            default => 'Not specified',
+        };
     }
 
     public function getCompletionRateAttribute(): float {
@@ -125,7 +174,6 @@ class Training extends Model {
                         ->avg('participant_objective_results.score') ?? 0;
     }
 
-    // ADD MATERIAL COST CALCULATIONS
     public function getTotalMaterialCostAttribute(): float {
         return $this->trainingMaterials()->sum('total_cost') ?? 0;
     }
@@ -150,6 +198,18 @@ class Training extends Model {
 
     public function scopeFacilityMentorships($query) {
         return $query->where('type', 'facility_mentorship');
+    }
+
+    public function scopeNationalLed($query) {
+        return $query->where('lead_type', 'national');
+    }
+
+    public function scopeCountyLed($query) {
+        return $query->where('lead_type', 'county');
+    }
+
+    public function scopePartnerLed($query) {
+        return $query->where('lead_type', 'partner');
     }
 
     public function scopeRegistrationOpen($query) {
@@ -218,7 +278,7 @@ class Training extends Model {
         $this->methodologies()->sync($methodologyIds);
     }
 
-    // MATERIAL MANAGEMENT METHODS
+    // Material management methods
     public function addMaterial(int $inventoryItemId, int $quantity, ?string $notes = null): TrainingMaterial {
         $inventoryItem = InventoryItem::findOrFail($inventoryItemId);
 
@@ -256,7 +316,7 @@ class Training extends Model {
         ]);
     }
 
-    // Attach assessment categories with weights
+    // Assessment category methods
     public function attachAssessmentCategories(array $categories): void {
         $attachData = [];
 
@@ -277,44 +337,30 @@ class Training extends Model {
         $this->assessmentCategories()->sync($attachData);
     }
 
-    // Update category settings for this training
     public function updateCategorySettings(int $categoryId, array $settings): bool {
         return $this->assessmentCategories()->updateExistingPivot($categoryId, $settings);
     }
 
-    // Get category weight for this training
     public function getCategoryWeight(int $categoryId): ?float {
         $category = $this->assessmentCategories()->find($categoryId);
         return $category?->pivot->weight_percentage;
     }
 
-    // Check if all weights sum to 100%
+    public function locations(): BelongsToMany {
+        return $this->belongsToMany(Location::class, 'training_locations', 'training_id', 'location_id');
+    }
+
     public function validateCategoryWeights(): array {
         $totalWeight = $this->assessmentCategories()->sum('training_assessment_categories.weight_percentage');
 
         return [
             'total_weight' => $totalWeight,
-            'is_valid' => abs($totalWeight - 100.0) < 0.1, // Allow small rounding differences
+            'is_valid' => abs($totalWeight - 100.0) < 0.1,
             'difference' => $totalWeight - 100.0,
         ];
     }
 
-
-    public function assessmentCategories(): BelongsToMany {
-        return $this->belongsToMany(AssessmentCategory::class, 'training_assessment_categories')
-                        ->withPivot([
-                            'weight_percentage',
-                            'pass_threshold',
-                            'is_required',
-                            'order_sequence',
-                            'is_active'
-                        ])
-                        ->withTimestamps()
-                        ->wherePivot('is_active', true)
-                        ->orderByPivot('order_sequence');
-    }
-
-// Simple overall score calculation - just pass/fail with weights
+    // Assessment calculation methods
     public function calculateOverallScore(TrainingParticipant $participant): array {
         $categories = $this->assessmentCategories;
         $results = $participant->assessmentResults->keyBy('assessment_category_id');
@@ -347,7 +393,6 @@ class Training extends Model {
 
         $overallScore = $totalWeight > 0 ? round(($achievedWeight / $totalWeight) * 100, 1) : 0;
 
-        // Simple status logic
         if (!$allAssessed) {
             $status = 'INCOMPLETE';
         } elseif (!$requiredPassed) {
@@ -370,7 +415,6 @@ class Training extends Model {
         ];
     }
 
-// Simple assessment summary
     public function getAssessmentSummary(): array {
         $participants = $this->participants()->with('assessmentResults')->get();
         $totalCategories = $this->assessmentCategories()->count();

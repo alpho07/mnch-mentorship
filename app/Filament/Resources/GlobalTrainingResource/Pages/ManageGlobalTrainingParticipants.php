@@ -20,6 +20,9 @@ use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\CheckboxList;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
 use Filament\Notifications\Notification;
@@ -28,22 +31,13 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Storage;
 use League\Csv\Reader;
 use League\Csv\Writer;
-use Illuminate\Http\Response;
 
 class ManageGlobalTrainingParticipants extends Page implements HasTable
 {
     use InteractsWithTable;
 
     protected static string $resource = GlobalTrainingResource::class;
-
     protected static string $view = 'filament.pages.participants-global';
-
-    public function getViewData(): array
-    {
-        return [
-            'record' => $this->record,
-        ];
-    }
 
     public Training $record;
 
@@ -57,59 +51,124 @@ class ManageGlobalTrainingParticipants extends Page implements HasTable
         return "Manage Participants - {$this->record->title}";
     }
 
+    public function getViewData(): array
+    {
+        return ['record' => $this->record];
+    }
+
     protected function getHeaderActions(): array
     {
         return [
-            Actions\Action::make('download_template')
-                ->label('Download Template')
-                ->icon('heroicon-o-document-arrow-down')
-                ->color('info')
-                ->url('/training/1/participants/template')
-                ->openUrlInNewTab(),
-
-            Actions\Action::make('import_participants')
-                ->label('Import Participants')
-                ->icon('heroicon-o-document-arrow-up')
-                ->color('success')
+            Actions\Action::make('add_participants')
+                ->label('Add Participants')
+                ->icon('heroicon-o-users')
+                ->color('primary')
                 ->form([
-                    Forms\Components\Section::make('Import Participants')
-                        ->description('Upload a CSV file with participant details. Download the template first for the correct format.')
+                    Section::make('Select Participants')
+                        ->description('Search and select users to add as participants')
                         ->schema([
-                            FileUpload::make('participants_file')
-                                ->label('CSV File')
-                                ->acceptedFileTypes(['text/csv', '.csv'])
-                                ->required()
-                                ->directory('temp-imports')
-                                ->visibility('private')
-                                ->helperText('Upload a CSV file following the template format. Maximum file size: 2MB'),
+                            TextInput::make('search_users')
+                                ->label('Search Users')
+                                ->placeholder('Search by name, phone, or email...')
+                                ->live(debounce: 300)
+                                ->prefixIcon('heroicon-o-magnifying-glass'),
 
-                            Forms\Components\Placeholder::make('import_info')
+                            CheckboxList::make('selected_users')
+                                ->label('Available Users')
+                                ->options(function (Get $get) {
+                                    $search = $get('search_users');
+                                    $enrolledUserIds = TrainingParticipant::where('training_id', $this->record->id)
+                                        ->pluck('user_id')->toArray();
+
+                                    $query = User::query()
+                                        ->whereNotIn('id', $enrolledUserIds)
+                                        ->where('status', 'active')
+                                        ->with(['facility', 'department', 'cadre']);
+
+                                    if ($search) {
+                                        $query->where(function ($q) use ($search) {
+                                            $q->where('name', 'like', "%{$search}%")
+                                              ->orWhere('first_name', 'like', "%{$search}%")
+                                              ->orWhere('last_name', 'like', "%{$search}%")
+                                              ->orWhere('phone', 'like', "%{$search}%")
+                                              ->orWhere('email', 'like', "%{$search}%");
+                                        });
+                                    }
+
+                                    return $query->limit(100)->get()->mapWithKeys(function ($user) {
+                                        $name = $user->name ?: trim("{$user->first_name} {$user->last_name}");
+                                        $facility = $user->facility?->name ?: 'No facility';
+                                        $phone = $user->phone ?: 'No phone';
+                                        return [$user->id => "{$name} • {$facility} • {$phone}"];
+                                    })->toArray();
+                                })
+                                ->searchable()
+                                ->bulkToggleable()
+                                ->columns(1)
+                                ->gridDirection('row'),
+
+                            Placeholder::make('help_text')
                                 ->content(new HtmlString('
                                     <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                                        <h4 class="font-medium text-blue-900 mb-2">Import Guidelines:</h4>
-                                        <ul class="text-sm text-blue-800 space-y-1">
-                                            <li>• Use the template format (download above)</li>
-                                            <li>• Phone numbers should include country code (+254...)</li>
-                                            <li>• Email addresses are optional but recommended</li>
-                                            <li>• Facilities: Use MFL code for accuracy, or facility name as fallback</li>
-                                            <li>• Department and cadre names must match existing records</li>
-                                            <li>• Existing users will be updated, new users will be created</li>
-                                        </ul>
+                                        <div class="flex items-start">
+                                            <svg class="w-5 h-5 text-blue-400 mt-0.5 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                                            </svg>
+                                            <div>
+                                                <h4 class="text-sm font-medium text-blue-800">How to add participants:</h4>
+                                                <ul class="mt-1 text-sm text-blue-700 list-disc list-inside space-y-1">
+                                                    <li>Search for users using the search box above</li>
+                                                    <li>Select multiple users using checkboxes</li>
+                                                    <li>Users already enrolled in this training are excluded</li>
+                                                    <li>Can\'t find someone? Use "Quick Add New User" button</li>
+                                                </ul>
+                                            </div>
+                                        </div>
                                     </div>
                                 ')),
                         ])
                 ])
                 ->action(function (array $data) {
-                    return $this->importParticipants($data['participants_file']);
-                }),
+                    $selectedUsers = $data['selected_users'] ?? [];
+                    $added = 0;
 
-            Actions\Action::make('add_participant')
-                ->label('Add Participant')
-                ->icon('heroicon-o-plus')
-                ->color('primary')
+                    foreach ($selectedUsers as $userId) {
+                        $exists = TrainingParticipant::where('training_id', $this->record->id)
+                            ->where('user_id', $userId)->exists();
+
+                        if (!$exists) {
+                            TrainingParticipant::create([
+                                'training_id' => $this->record->id,
+                                'user_id' => $userId,
+                                'registration_date' => now(),
+                                'attendance_status' => 'registered',
+                            ]);
+                            $added++;
+                        }
+                    }
+
+                    if ($added > 0) {
+                        Notification::make()
+                            ->title('Participants Added Successfully')
+                            ->body("{$added} participant(s) enrolled in the training.")
+                            ->success()->send();
+                    } else {
+                        Notification::make()
+                            ->title('No New Participants Added')
+                            ->body('Selected users may already be enrolled.')
+                            ->warning()->send();
+                    }
+                })
+                ->modalWidth('5xl')
+                ->slideOver(),
+
+            Actions\Action::make('quick_add_user')
+                ->label('Quick Add New User')
+                ->icon('heroicon-o-user-plus')
+                ->color('success')
                 ->form([
-                    Forms\Components\Section::make('Participant Information')
-                        ->description('Search by phone or add new participant details')
+                    Section::make('Create New User')
+                        ->description('Add a completely new user and enroll them in this training')
                         ->schema([
                             TextInput::make('phone')
                                 ->label('Phone Number')
@@ -117,121 +176,102 @@ class ManageGlobalTrainingParticipants extends Page implements HasTable
                                 ->required()
                                 ->placeholder('+254700000000')
                                 ->live(onBlur: true)
-                                ->afterStateUpdated(function (Set $set, Get $get, $state) {
+                                ->afterStateUpdated(function (Set $set, $state) {
                                     if ($state) {
                                         $user = User::where('phone', $state)->first();
+                                        $set('phone_exists', $user !== null);
                                         if ($user) {
-                                            $set('first_name', $user->first_name ?? $user->name);
-                                            $set('last_name', $user->last_name);
-                                            $set('email', $user->email);
-                                            $set('facility_id', $user->facility_id);
-                                            $set('department_id', $user->department_id);
-                                            $set('cadre_id', $user->cadre_id);
-                                            $set('user_id', $user->id);
-                                            $set('user_found', true);
-                                        } else {
-                                            $set('user_found', false);
-                                            // Clear fields for new user
-                                            $set('first_name', '');
-                                            $set('last_name', '');
-                                            $set('email', '');
-                                            $set('facility_id', null);
-                                            $set('department_id', null);
-                                            $set('cadre_id', null);
-                                            $set('user_id', null);
+                                            $set('existing_user_name', $user->name ?: "{$user->first_name} {$user->last_name}");
                                         }
                                     }
                                 }),
 
-                            Forms\Components\Placeholder::make('user_status')
+                            Placeholder::make('phone_status')
                                 ->content(function (Get $get): HtmlString {
-                                    if ($get('user_found')) {
-                                        return new HtmlString('<div class="text-green-600 font-medium">✓ User found in system</div>');
-                                    } elseif ($get('phone') && !$get('user_found')) {
-                                        return new HtmlString('<div class="text-amber-600 font-medium">⚠ New user - please fill details below</div>');
+                                    if ($get('phone_exists')) {
+                                        return new HtmlString('
+                                            <div class="bg-red-50 border border-red-200 rounded-lg p-3">
+                                                <div class="text-red-800 text-sm">
+                                                    ❌ Phone number already exists for: <strong>' . $get('existing_user_name') . '</strong>
+                                                    <br>Use "Add Participants" to add existing users.
+                                                </div>
+                                            </div>
+                                        ');
+                                    } elseif ($get('phone')) {
+                                        return new HtmlString('
+                                            <div class="bg-green-50 border border-green-200 rounded-lg p-3">
+                                                <div class="text-green-800 text-sm">✅ Phone number available - continue filling details</div>
+                                            </div>
+                                        ');
                                     }
-                                    return new HtmlString('<div class="text-gray-500">Enter phone number to search</div>');
+                                    return new HtmlString('');
                                 }),
 
-                            Grid::make(2)
-                                ->schema([
-                                    TextInput::make('first_name')
-                                        ->label('First Name')
-                                        ->required(),
-                                    TextInput::make('last_name')
-                                        ->label('Last Name')
-                                        ->required(),
-                                ]),
+                            Forms\Components\Hidden::make('phone_exists'),
+                            Forms\Components\Hidden::make('existing_user_name'),
+
+                            Grid::make(2)->schema([
+                                TextInput::make('first_name')
+                                    ->label('First Name')
+                                    ->required()
+                                    ->disabled(fn (Get $get) => $get('phone_exists')),
+                                TextInput::make('last_name')
+                                    ->label('Last Name')
+                                    ->required()
+                                    ->disabled(fn (Get $get) => $get('phone_exists')),
+                            ]),
 
                             TextInput::make('email')
                                 ->label('Email Address')
-                                ->email(),
+                                ->email()
+                                ->disabled(fn (Get $get) => $get('phone_exists')),
 
-                            Grid::make(3)
-                                ->schema([
-                                    Select::make('facility_id')
-                                        ->label('Facility')
-                                        ->options(Facility::all()->pluck('name', 'id'))
-                                        ->searchable()
-                                        ->preload()
-                                        ->required()
-                                        ->createOptionForm([
-                                            TextInput::make('name')
-                                                ->required(),
-                                            TextInput::make('mfl_code')
-                                                ->label('MFL Code'),
-                                        ]),
+                            Grid::make(3)->schema([
+                                Select::make('facility_id')
+                                    ->label('Facility')
+                                    ->options(Facility::pluck('name', 'id'))
+                                    ->searchable()
+                                    ->preload()
+                                    ->required()
+                                    ->disabled(fn (Get $get) => $get('phone_exists')),
 
-                                    Select::make('department_id')
-                                        ->label('Department')
-                                        ->options(Department::all()->pluck('name', 'id'))
-                                        ->searchable()
-                                        ->preload(),
+                                Select::make('department_id')
+                                    ->label('Department')
+                                    ->options(Department::pluck('name', 'id'))
+                                    ->searchable()
+                                    ->preload()
+                                    ->disabled(fn (Get $get) => $get('phone_exists')),
 
-                                    Select::make('cadre_id')
-                                        ->label('Cadre')
-                                        ->options(Cadre::all()->pluck('name', 'id'))
-                                        ->searchable()
-                                        ->preload(),
-                                ]),
-
-                            Forms\Components\Hidden::make('user_id'),
-                            Forms\Components\Hidden::make('user_found'),
+                                Select::make('cadre_id')
+                                    ->label('Cadre')
+                                    ->options(Cadre::pluck('name', 'id'))
+                                    ->searchable()
+                                    ->preload()
+                                    ->disabled(fn (Get $get) => $get('phone_exists')),
+                            ]),
                         ])
                 ])
                 ->action(function (array $data) {
-                    // Create or find user
-                    if (!empty($data['user_id'])) {
-                        $user = User::find($data['user_id']);
-                    } else {
-                        $user = User::create([
-                            'first_name' => $data['first_name'],
-                            'last_name' => $data['last_name'],
-                            'email' => $data['email'] ?? null,
-                            'phone' => $data['phone'],
-                            'facility_id' => $data['facility_id'],
-                            'department_id' => $data['department_id'] ?? null,
-                            'cadre_id' => $data['cadre_id'] ?? null,
-                            'password' => bcrypt('password'), // Default password
-                            'status' => 'active',
-                        ]);
-                    }
-
-                    // Check if already enrolled
-                    $exists = TrainingParticipant::where('training_id', $this->record->id)
-                        ->where('user_id', $user->id)
-                        ->exists();
-
-                    if ($exists) {
+                    if ($data['phone_exists']) {
                         Notification::make()
-                            ->title('Participant Already Enrolled')
-                            ->body("{$user->full_name} is already enrolled in this training.")
-                            ->warning()
-                            ->send();
+                            ->title('User Already Exists')
+                            ->body('This phone number is already registered.')
+                            ->warning()->send();
                         return;
                     }
 
-                    // Create training participant
+                    $user = User::create([
+                        'first_name' => $data['first_name'],
+                        'last_name' => $data['last_name'],
+                        'email' => $data['email'] ?? null,
+                        'phone' => $data['phone'],
+                        'facility_id' => $data['facility_id'],
+                        'department_id' => $data['department_id'] ?? null,
+                        'cadre_id' => $data['cadre_id'] ?? null,
+                        'password' => bcrypt('password123'),
+                        'status' => 'active',
+                    ]);
+
                     TrainingParticipant::create([
                         'training_id' => $this->record->id,
                         'user_id' => $user->id,
@@ -240,10 +280,44 @@ class ManageGlobalTrainingParticipants extends Page implements HasTable
                     ]);
 
                     Notification::make()
-                        ->title('Participant Added')
-                        ->body("{$user->full_name} has been enrolled in the training.")
-                        ->success()
-                        ->send();
+                        ->title('User Created & Enrolled')
+                        ->body("{$user->first_name} {$user->last_name} has been created and enrolled in the training.")
+                        ->success()->send();
+                }),
+
+            Actions\Action::make('import_participants')
+                ->label('Bulk Import')
+                ->icon('heroicon-o-document-arrow-up')
+                ->color('warning')
+                ->form([
+                    Section::make('Import Participants from CSV')
+                        ->description('Upload a CSV file with participant details')
+                        ->schema([
+                            FileUpload::make('csv_file')
+                                ->label('CSV File')
+                                ->acceptedFileTypes(['text/csv', '.csv'])
+                                ->required()
+                                ->directory('temp-imports')
+                                ->visibility('private')
+                                ->helperText('Upload CSV with columns: first_name, last_name, phone, email, facility_name, department_name, cadre_name'),
+
+                            Placeholder::make('import_help')
+                                ->content(new HtmlString('
+                                    <div class="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                                        <h4 class="font-medium text-amber-800 mb-2">CSV Format Requirements:</h4>
+                                        <ul class="text-sm text-amber-700 space-y-1">
+                                            <li>• Required: first_name, last_name, phone</li>
+                                            <li>• Optional: email, facility_name, department_name, cadre_name</li>
+                                            <li>• Phone format: +254700000000</li>
+                                            <li>• Existing users will be updated</li>
+                                            <li>• New users will be created automatically</li>
+                                        </ul>
+                                    </div>
+                                ')),
+                        ])
+                ])
+                ->action(function (array $data) {
+                    $this->processImport($data['csv_file']);
                 }),
 
             Actions\Action::make('back_to_training')
@@ -254,258 +328,70 @@ class ManageGlobalTrainingParticipants extends Page implements HasTable
         ];
     }
 
-    private function downloadTemplate()
-    {
-        $csv = Writer::createFromString('');
-
-        // Add headers
-        $csv->insertOne([
-            'first_name',
-            'last_name',
-            'phone',
-            'email',
-            'facility_name',
-            'facility_mfl_code',
-            'department_name',
-            'cadre_name'
-        ]);
-
-        // Add sample data
-        $csv->insertOne([
-            'John',
-            'Doe',
-            '+254700123456',
-            'john.doe@example.com',
-            'Kenyatta National Hospital',
-            'KNH001',
-            'Nursing',
-            'Registered Nurse'
-        ]);
-
-        $csv->insertOne([
-            'Jane',
-            'Smith',
-            '+254711234567',
-            'jane.smith@example.com',
-            'Moi Teaching Hospital',
-            'MTH002',
-            'Laboratory',
-            'Lab Technician'
-        ]);
-
-        $filename = 'participants_import_template_' . date('Y-m-d') . '.csv';
-        $content = $csv->toString();
-
-        // Store temporarily and redirect to download
-        $tempPath = 'temp/' . $filename;
-        Storage::disk('public')->put($tempPath, $content);
-
-        // Trigger download via JavaScript
-        $this->js("
-            const link = document.createElement('a');
-            link.href = '" . Storage::disk('public')->url($tempPath) . "';
-            link.download = '{$filename}';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-
-            // Clean up after 5 seconds
-            setTimeout(() => {
-                fetch('/cleanup-temp-file', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name=\"csrf-token\"]').content
-                    },
-                    body: JSON.stringify({file: '{$tempPath}'})
-                });
-            }, 5000);
-        ");
-
-        Notification::make()
-            ->title('Template Downloaded')
-            ->body('The participant import template has been downloaded.')
-            ->success()
-            ->send();
-    }
-
-    private function importParticipants($filePath)
-    {
-        try {
-            $fullPath = Storage::disk('local')->path($filePath);
-            $csv = Reader::createFromPath($fullPath, 'r');
-            $csv->setHeaderOffset(0);
-
-            $records = $csv->getRecords();
-            $imported = 0;
-            $skipped = 0;
-            $errors = [];
-
-            foreach ($records as $index => $record) {
-                $rowNumber = $index + 2; // Account for header row
-
-                try {
-                    // Validate required fields
-                    if (empty($record['first_name']) || empty($record['phone'])) {
-                        $errors[] = "Row {$rowNumber}: First name and phone are required";
-                        $skipped++;
-                        continue;
-                    }
-
-                    // Find or create facility (prefer MFL code over name)
-                    $facility = null;
-                    if (!empty($record['facility_mfl_code'])) {
-                        $facility = Facility::where('mfl_code', $record['facility_mfl_code'])->first();
-                        if (!$facility) {
-                            $errors[] = "Row {$rowNumber}: Facility with MFL code '{$record['facility_mfl_code']}' not found";
-                            $skipped++;
-                            continue;
-                        }
-                    } elseif (!empty($record['facility_name'])) {
-                        $facility = Facility::where('name', $record['facility_name'])->first();
-                        if (!$facility) {
-                            $errors[] = "Row {$rowNumber}: Facility '{$record['facility_name']}' not found";
-                            $skipped++;
-                            continue;
-                        }
-                    }
-
-                    // Find department and cadre
-                    $department = !empty($record['department_name'])
-                        ? Department::where('name', $record['department_name'])->first()
-                        : null;
-
-                    $cadre = !empty($record['cadre_name'])
-                        ? Cadre::where('name', $record['cadre_name'])->first()
-                        : null;
-
-                    // Find or create user
-                    $user = User::where('phone', $record['phone'])->first();
-
-                    if ($user) {
-                        // Update existing user
-                        $user->update([
-                            'first_name' => $record['first_name'],
-                            'last_name' => $record['last_name'] ?? '',
-                            'email' => $record['email'] ?? $user->email,
-                            'facility_id' => $facility?->id ?? $user->facility_id,
-                            'department_id' => $department?->id ?? $user->department_id,
-                            'cadre_id' => $cadre?->id ?? $user->cadre_id,
-                        ]);
-                    } else {
-                        // Create new user
-                        $user = User::create([
-                            'first_name' => $record['first_name'],
-                            'last_name' => $record['last_name'] ?? '',
-                            'phone' => $record['phone'],
-                            'email' => $record['email'] ?? null,
-                            'facility_id' => $facility?->id,
-                            'department_id' => $department?->id,
-                            'cadre_id' => $cadre?->id,
-                            'password' => bcrypt('password'),
-                            'status' => 'active',
-                        ]);
-                    }
-
-                    // Check if already enrolled
-                    $exists = TrainingParticipant::where('training_id', $this->record->id)
-                        ->where('user_id', $user->id)
-                        ->exists();
-
-                    if ($exists) {
-                        $errors[] = "Row {$rowNumber}: {$user->full_name} already enrolled";
-                        $skipped++;
-                        continue;
-                    }
-
-                    // Create training participant
-                    TrainingParticipant::create([
-                        'training_id' => $this->record->id,
-                        'user_id' => $user->id,
-                        'registration_date' => now(),
-                        'attendance_status' => 'registered',
-                    ]);
-
-                    $imported++;
-
-                } catch (\Exception $e) {
-                    $errors[] = "Row {$rowNumber}: " . $e->getMessage();
-                    $skipped++;
-                }
-            }
-
-            // Clean up uploaded file
-            Storage::disk('local')->delete($filePath);
-
-            // Show results
-            $message = "Import completed: {$imported} participants added";
-            if ($skipped > 0) {
-                $message .= ", {$skipped} skipped";
-            }
-
-            if (!empty($errors)) {
-                $errorMessage = implode("\n", array_slice($errors, 0, 10));
-                if (count($errors) > 10) {
-                    $errorMessage .= "\n... and " . (count($errors) - 10) . " more errors";
-                }
-
-                Notification::make()
-                    ->title('Import Completed with Issues')
-                    ->body($message . "\n\nErrors:\n" . $errorMessage)
-                    ->warning()
-                    ->persistent()
-                    ->send();
-            } else {
-                Notification::make()
-                    ->title('Import Successful')
-                    ->body($message)
-                    ->success()
-                    ->send();
-            }
-
-        } catch (\Exception $e) {
-            Storage::disk('local')->delete($filePath);
-
-            Notification::make()
-                ->title('Import Failed')
-                ->body('Error processing file: ' . $e->getMessage())
-                ->danger()
-                ->send();
-        }
-    }
-
     public function table(Table $table): Table
     {
         return $table
             ->query(TrainingParticipant::query()->where('training_id', $this->record->id))
             ->columns([
-                Tables\Columns\TextColumn::make('user.name')
+                Tables\Columns\TextColumn::make('user.full_name')
                     ->label('Participant Name')
-                    ->searchable(['name', 'first_name', 'last_name', 'middle_name'])
-                    ->sortable(),
+                    ->formatStateUsing(function ($record): string {
+                        $user = $record->user;
+                        return $user->name ?: trim("{$user->first_name} {$user->last_name}") ?: 'No name';
+                    })
+                    ->searchable(['name', 'first_name', 'last_name'])
+                    ->sortable()
+                    ->weight('medium'),
 
                 Tables\Columns\TextColumn::make('user.phone')
                     ->label('Phone')
-                    ->searchable(),
+                    ->searchable()
+                    ->copyable()
+                    ->placeholder('No phone'),
 
                 Tables\Columns\TextColumn::make('user.facility.name')
                     ->label('Facility')
                     ->searchable()
-                    ->sortable(),
+                    ->limit(30)
+                    ->tooltip(function (Tables\Columns\TextColumn $column): ?string {
+                        return $column->getState();
+                    }),
 
                 Tables\Columns\TextColumn::make('user.department.name')
                     ->label('Department')
-                    ->searchable()
                     ->badge()
-                    ->color('info'),
+                    ->color('info')
+                    ->placeholder('No department'),
 
                 Tables\Columns\TextColumn::make('user.cadre.name')
                     ->label('Cadre')
-                    ->searchable()
                     ->badge()
-                    ->color('success'),
+                    ->color('success')
+                    ->placeholder('No cadre'),
+
+                Tables\Columns\BadgeColumn::make('attendance_status')
+                    ->label('Status')
+                    ->colors([
+                        'secondary' => 'registered',
+                        'warning' => 'attending',
+                        'success' => 'completed',
+                        'danger' => 'dropped',
+                    ]),
+
+                Tables\Columns\TextColumn::make('registration_date')
+                    ->label('Enrolled')
+                    ->date('M j, Y')
+                    ->sortable(),
             ])
             ->filters([
+                Tables\Filters\SelectFilter::make('attendance_status')
+                    ->options([
+                        'registered' => 'Registered',
+                        'attending' => 'Attending',
+                        'completed' => 'Completed',
+                        'dropped' => 'Dropped',
+                    ]),
+
                 Tables\Filters\SelectFilter::make('facility')
                     ->relationship('user.facility', 'name')
                     ->multiple()
@@ -518,14 +404,6 @@ class ManageGlobalTrainingParticipants extends Page implements HasTable
             ])
             ->actions([
                 Tables\Actions\ActionGroup::make([
-                    Tables\Actions\Action::make('view_details')
-                        ->label('View Details')
-                        ->icon('heroicon-o-eye')
-                        ->color('info')
-                        ->modalHeading(fn (TrainingParticipant $record): string => "Participant: {$record->user->full_name}")
-                        ->modalContent(fn (TrainingParticipant $record): \Illuminate\View\View => view('filament.components.participant-details', ['participant' => $record]))
-                        ->modalWidth('lg'),
-
                     Tables\Actions\Action::make('update_status')
                         ->label('Update Status')
                         ->icon('heroicon-o-pencil')
@@ -550,19 +428,15 @@ class ManageGlobalTrainingParticipants extends Page implements HasTable
                         ])
                         ->action(function (TrainingParticipant $record, array $data): void {
                             $record->update($data);
-
                             Notification::make()
                                 ->title('Status Updated')
-                                ->body('Participant status has been updated successfully.')
-                                ->success()
-                                ->send();
+                                ->success()->send();
                         }),
 
                     Tables\Actions\DeleteAction::make()
                         ->label('Remove')
-                        ->requiresConfirmation()
                         ->modalHeading('Remove Participant')
-                        ->modalDescription('Are you sure you want to remove this participant from the training?'),
+                        ->modalDescription('Remove this participant from the training?'),
                 ])
             ])
             ->bulkActions([
@@ -572,15 +446,118 @@ class ManageGlobalTrainingParticipants extends Page implements HasTable
                         ->icon('heroicon-o-check')
                         ->color('success')
                         ->action(function ($records) {
-                            $records->each(fn (TrainingParticipant $record) =>
-                                $record->update(['attendance_status' => 'attending'])
-                            );
+                            $records->each(fn ($record) => $record->update(['attendance_status' => 'attending']));
+                            Notification::make()->title('Status Updated')->success()->send();
                         }),
 
                     Tables\Actions\DeleteBulkAction::make()
                         ->label('Remove Selected'),
                 ]),
             ])
-            ->defaultSort('registration_date', 'desc');
+            ->defaultSort('registration_date', 'desc')
+            ->emptyStateHeading('No Participants Yet')
+            ->emptyStateDescription('Start by adding participants to this training.')
+            ->emptyStateIcon('heroicon-o-users')
+            ->emptyStateActions([
+                Tables\Actions\Action::make('add_first_participant')
+                    ->label('Add First Participant')
+                    ->icon('heroicon-o-plus')
+                    ->button()
+                    ->action(function () {
+                        // Trigger the add participants action
+                        $this->mountAction('add_participants');
+                    }),
+            ]);
+    }
+
+    private function processImport(string $filePath): void
+    {
+        try {
+            $fullPath = Storage::disk('local')->path($filePath);
+            $csv = Reader::createFromPath($fullPath, 'r');
+            $csv->setHeaderOffset(0);
+
+            $imported = 0;
+            $skipped = 0;
+            $errors = [];
+
+            foreach ($csv->getRecords() as $index => $record) {
+                $rowNumber = $index + 2;
+
+                try {
+                    if (empty($record['first_name']) || empty($record['phone'])) {
+                        $errors[] = "Row {$rowNumber}: First name and phone required";
+                        $skipped++;
+                        continue;
+                    }
+
+                    $facility = null;
+                    if (!empty($record['facility_name'])) {
+                        $facility = Facility::where('name', $record['facility_name'])->first();
+                    }
+
+                    $department = null;
+                    if (!empty($record['department_name'])) {
+                        $department = Department::where('name', $record['department_name'])->first();
+                    }
+
+                    $cadre = null;
+                    if (!empty($record['cadre_name'])) {
+                        $cadre = Cadre::where('name', $record['cadre_name'])->first();
+                    }
+
+                    $user = User::updateOrCreate(
+                        ['phone' => $record['phone']],
+                        [
+                            'first_name' => $record['first_name'],
+                            'last_name' => $record['last_name'] ?? '',
+                            'email' => $record['email'] ?? null,
+                            'facility_id' => $facility?->id,
+                            'department_id' => $department?->id,
+                            'cadre_id' => $cadre?->id,
+                            'password' => bcrypt('password123'),
+                            'status' => 'active',
+                        ]
+                    );
+
+                    if (!TrainingParticipant::where('training_id', $this->record->id)
+                        ->where('user_id', $user->id)->exists()) {
+                        
+                        TrainingParticipant::create([
+                            'training_id' => $this->record->id,
+                            'user_id' => $user->id,
+                            'registration_date' => now(),
+                            'attendance_status' => 'registered',
+                        ]);
+                        $imported++;
+                    } else {
+                        $skipped++;
+                    }
+
+                } catch (\Exception $e) {
+                    $errors[] = "Row {$rowNumber}: {$e->getMessage()}";
+                    $skipped++;
+                }
+            }
+
+            Storage::disk('local')->delete($filePath);
+
+            $message = "Import completed: {$imported} participants added";
+            if ($skipped > 0) $message .= ", {$skipped} skipped";
+
+            Notification::make()
+                ->title('Import Complete')
+                ->body($message)
+                ->success()
+                ->send();
+
+        } catch (\Exception $e) {
+            Storage::disk('local')->delete($filePath);
+            Notification::make()
+                ->title('Import Failed')
+                ->body("Error: {$e->getMessage()}")
+                ->danger()
+                ->send();
+        }
     }
 }

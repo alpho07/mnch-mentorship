@@ -18,7 +18,8 @@ class User extends Authenticatable {
         Notifiable,
         HasRoles,
         SoftDeletes;
-       // HasResourceInteractions; // Add the resource interactions trait
+
+    // HasResourceInteractions; // Add the resource interactions trait
 
     protected $fillable = [
         'facility_id',
@@ -36,7 +37,6 @@ class User extends Authenticatable {
         'email_verified_at',
         'county_id', // Add if missing
     ];
-    
     protected $hidden = [
         'password',
         'remember_token',
@@ -50,12 +50,21 @@ class User extends Authenticatable {
     }
 
     // Computed Attributes
-    public function getFullNameAttribute(): string {
-        return trim("{$this->first_name} {$this->middle_name} {$this->last_name}");
-    }
+
 
     public function getFullName1Attribute(): string {
         return $this->full_name;
+    }
+
+    public function getFullNameAttribute(): string {
+        if (!empty($this->name)) {
+            return $this->name;
+        }
+
+        $firstName = $this->first_name ?? '';
+        $lastName = $this->last_name ?? '';
+
+        return trim("{$firstName} {$lastName}") ?: 'No name provided';
     }
 
     // Relationships
@@ -135,28 +144,28 @@ class User extends Authenticatable {
         if ($this->isAboveSite()) {
             return Facility::pluck('id')->toArray();
         }
-        
+
         $facilityIds = [];
-        
+
         // User's own facility
         if ($this->facility_id) {
             $facilityIds[] = $this->facility_id;
         }
-        
+
         // Facilities from direct assignment
         $facilityIds = array_merge(
-            $facilityIds,
-            $this->facilities()->pluck('facilities.id')->toArray()
+                $facilityIds,
+                $this->facilities()->pluck('facilities.id')->toArray()
         );
-        
+
         // Facilities from county assignment
         if ($this->hasRole(['county_admin', 'County Mentor Lead']) && $this->county_id) {
             $facilityIds = array_merge(
-                $facilityIds,
-                Facility::where('county_id', $this->county_id)->pluck('id')->toArray()
+                    $facilityIds,
+                    Facility::where('county_id', $this->county_id)->pluck('id')->toArray()
             );
         }
-        
+
         return array_unique($facilityIds);
     }
 
@@ -179,8 +188,8 @@ class User extends Authenticatable {
 
     public function hasDownloaded(Resource $resource): bool {
         return $this->resourceDownloads()
-            ->where('resource_id', $resource->id)
-            ->exists();
+                        ->where('resource_id', $resource->id)
+                        ->exists();
     }
 
     public function toggleResourceInteraction(Resource $resource, string $type): bool {
@@ -227,13 +236,13 @@ class User extends Authenticatable {
 
     public function assessmentResults(): \Illuminate\Database\Eloquent\Relations\HasManyThrough {
         return $this->hasManyThrough(
-            MenteeAssessmentResult::class,
-            TrainingParticipant::class,
-            'user_id',
-            'participant_id',
-            'id',
-            'id'
-        );
+                        MenteeAssessmentResult::class,
+                        TrainingParticipant::class,
+                        'user_id',
+                        'participant_id',
+                        'id',
+                        'id'
+                );
     }
 
     // Computed Attributes for Mentee Profile
@@ -248,14 +257,14 @@ class User extends Authenticatable {
 
     public function getOverallTrainingScoreAttribute(): ?float {
         return $this->trainingParticipations()
-            ->whereHas('objectiveResults')
-            ->with('objectiveResults')
-            ->get()
-            ->map(function ($participation) {
-                return $participation->objectiveResults->avg('score');
-            })
-            ->filter()
-            ->avg();
+                        ->whereHas('objectiveResults')
+                        ->with('objectiveResults')
+                        ->get()
+                        ->map(function ($participation) {
+                            return $participation->objectiveResults->avg('score');
+                        })
+                        ->filter()
+                        ->avg();
     }
 
     public function getTrainingCompletionRateAttribute(): float {
@@ -346,10 +355,10 @@ class User extends Authenticatable {
 
     public function getMentorshipTrainings() {
         return $this->trainingParticipations()
-            ->whereHas('training', function ($query) {
-                $query->where('type', 'facility_mentorship');
-            })
-            ->with(['training', 'objectiveResults.assessmentCategory']);
+                        ->whereHas('training', function ($query) {
+                            $query->where('type', 'facility_mentorship');
+                        })
+                        ->with(['training', 'objectiveResults.assessmentCategory']);
     }
 
     public function getAttritionRisk(): string {
@@ -379,56 +388,56 @@ class User extends Authenticatable {
     // Scopes for mentee queries
     public function scopeActiveMentees($query) {
         return $query->whereHas('statusLogs', function ($q) {
-            $q->whereIn('new_status', [
-                MenteeStatusLog::STATUS_ACTIVE,
-                MenteeStatusLog::STATUS_STUDY_LEAVE
-            ])->latest('effective_date')->limit(1);
-        })->orWhereDoesntHave('statusLogs');
+                    $q->whereIn('new_status', [
+                        MenteeStatusLog::STATUS_ACTIVE,
+                        MenteeStatusLog::STATUS_STUDY_LEAVE
+                    ])->latest('effective_date')->limit(1);
+                })->orWhereDoesntHave('statusLogs');
     }
 
     public function scopeByCurrentStatus($query, string $status) {
         return $query->whereHas('statusLogs', function ($q) use ($status) {
-            $q->where('new_status', $status)
-                ->latest('effective_date')
-                ->limit(1);
-        });
+                    $q->where('new_status', $status)
+                            ->latest('effective_date')
+                            ->limit(1);
+                });
     }
 
     public function scopeHighPerformers($query) {
         return $query->whereHas('trainingParticipations.objectiveResults', function ($q) {
-            $q->havingRaw('AVG(score) >= 85');
-        });
+                    $q->havingRaw('AVG(score) >= 85');
+                });
     }
 
     public function scopeAtRisk($query) {
         return $query->whereHas('trainingParticipations', function ($q) {
-            $q->where('completion_status', '!=', 'completed')
-                ->orWhereHas('objectiveResults', function ($qq) {
-                    $qq->havingRaw('AVG(score) < 60');
+                    $q->where('completion_status', '!=', 'completed')
+                            ->orWhereHas('objectiveResults', function ($qq) {
+                                $qq->havingRaw('AVG(score) < 60');
+                            });
                 });
-        });
     }
 
     public function getMentorshipAssessmentResults() {
         return $this->hasManyThrough(
-            MenteeAssessmentResult::class,
-            TrainingParticipant::class,
-            'user_id',
-            'participant_id',
-            'id',
-            'id'
-        )->whereHas('participant.training', function ($query) {
-            $query->where('type', 'facility_mentorship');
-        });
+                        MenteeAssessmentResult::class,
+                        TrainingParticipant::class,
+                        'user_id',
+                        'participant_id',
+                        'id',
+                        'id'
+                )->whereHas('participant.training', function ($query) {
+                    $query->where('type', 'facility_mentorship');
+                });
     }
 
     public function getMentorshipPerformance(): array {
         $participations = $this->trainingParticipations()
-            ->whereHas('training', function ($query) {
-                $query->where('type', 'facility_mentorship');
-            })
-            ->with(['training', 'assessmentResults'])
-            ->get();
+                ->whereHas('training', function ($query) {
+                    $query->where('type', 'facility_mentorship');
+                })
+                ->with(['training', 'assessmentResults'])
+                ->get();
 
         $totalTrainings = $participations->count();
         $completedTrainings = 0;
