@@ -10,6 +10,10 @@ use App\Models\User;
 use App\Models\InventoryItem;
 use App\Models\AssessmentCategory;
 use App\Models\Module;
+use App\Models\Division;
+use App\Models\County;
+use App\Models\Partner;
+use App\Models\Location;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -60,10 +64,12 @@ class MentorshipTrainingResource extends Resource
     public static function form(Form $form): Form
     {
         return $form->schema([
+            // Hidden fields
             Forms\Components\Hidden::make('type')->default('facility_mentorship'),
+            Forms\Components\Hidden::make('mentor_id')->default(auth()->id()),
 
-            Section::make('Basic Information')
-                ->description('Start by selecting the facility and defining your mentorship program')
+            Section::make('Training Information')
+                ->description('Basic details about the mentorship program')
                 ->schema([
                     Grid::make(2)->schema([
                         Select::make('facility_id')
@@ -93,6 +99,7 @@ class MentorshipTrainingResource extends Resource
                             ),
 
                         TextInput::make('title')
+                            ->label('Mentorship Title')
                             ->required()
                             ->maxLength(255)
                             ->placeholder('e.g., Newborn Care Mentorship Program')
@@ -112,20 +119,22 @@ class MentorshipTrainingResource extends Resource
                             ->maxLength(50)
                             ->placeholder('MT-ABC123')
                             ->disabled(fn($record) => filled($record?->identifier))
-                            ->dehydrated(true),
+                            ->dehydrated(true)
+                            ->helperText('Auto-generated unique identifier'),
 
                         Select::make('status')
+                            ->label('Training Status')
                             ->options([
-                                'draft' => 'Draft',
+                                'new' => 'New',
                                 'ongoing' => 'Ongoing',
-                                'completed' => 'Completed',
-                                'cancelled' => 'Cancelled',
+                                'repeat' => 'Repeat',
                             ])
                             ->required()
-                            ->default('draft'),
+                            ->default('new'),
                     ]),
 
                     Textarea::make('description')
+                        ->label('Mentorship Description')
                         ->rows(3)
                         ->placeholder('Describe the mentorship objectives and approach')
                         ->columnSpanFull(),
@@ -133,12 +142,140 @@ class MentorshipTrainingResource extends Resource
                     Forms\Components\Hidden::make('facility_assessment_status'),
                 ]),
 
-            Section::make('Mentorship Content')
-                ->description('Select programs, modules, and training methodologies')
-                ->collapsible()
+            Section::make('Training Leadership')
+                ->description('Select who will coordinate this mentorship')
+                ->schema([
+                    Grid::make(2)->schema([
+                        Select::make('lead_type')
+                            ->label('Training Coordinator Type')
+                            ->options([
+                                'national' => 'National',
+                                'county' => 'County',
+                                'partner' => 'Partner Led',
+                            ])
+                            ->required()
+                            ->live()
+                            ->afterStateUpdated(function (Set $set, $state) {
+                                if ($state === 'national') {
+                                    $set('lead_county_id', null);
+                                    $set('lead_partner_id', null);
+                                } elseif ($state === 'county') {
+                                    $set('lead_division_id', null);
+                                    $set('lead_partner_id', null);
+                                } elseif ($state === 'partner') {
+                                    $set('lead_division_id', null);
+                                    $set('lead_county_id', null);
+                                }
+                            }),
+
+                        Select::make('lead_division_id')
+                            ->label('Division')
+                            ->relationship('division', 'name')
+                            ->searchable()
+                            ->preload()
+                            ->visible(fn (Get $get): bool => $get('lead_type') === 'national')
+                            ->required(fn (Get $get): bool => $get('lead_type') === 'national'),
+                    ]),
+
+                    Grid::make(1)->schema([
+                        Select::make('lead_county_id')
+                            ->label('County')
+                            ->relationship('county', 'name')
+                            ->searchable()
+                            ->preload()
+                            ->visible(fn (Get $get): bool => $get('lead_type') === 'county')
+                            ->required(fn (Get $get): bool => $get('lead_type') === 'county'),
+
+                        Select::make('lead_partner_id')
+                            ->label('Partner Organization')
+                            ->relationship('partner', 'name')
+                            ->searchable()
+                            ->preload()
+                            ->visible(fn (Get $get): bool => $get('lead_type') === 'partner')
+                            ->required(fn (Get $get): bool => $get('lead_type') === 'partner'),
+                    ]),
+                ]),
+
+            Section::make('Schedule & Logistics')
+                ->description('Training dates, location, and capacity')
+                ->schema([
+                    Grid::make(3)->schema([
+                        DatePicker::make('start_date')
+                            ->label('Start Date')
+                            ->required()
+                            ->native(false)
+                            ->minDate(now())
+                            ->displayFormat('M j, Y'),
+
+                        DatePicker::make('end_date')
+                            ->label('End Date')
+                            ->required()
+                            ->native(false)
+                            ->after('start_date')
+                            ->displayFormat('M j, Y'),
+
+                        TextInput::make('max_participants')
+                            ->label('Maximum Mentees')
+                            ->numeric()
+                            ->minValue(1)
+                            ->maxValue(50)
+                            ->default(15)
+                            ->suffix('mentees')
+                            ->helperText('Recommended: 10-20 mentees'),
+                    ]),
+
+                    Select::make('locations')
+                        ->label('Training Locations')
+                        ->multiple()
+                        ->relationship('locations', 'name')
+                        ->searchable()
+                        ->preload()
+                        ->createOptionForm([
+                            TextInput::make('name')
+                                ->required()
+                                ->maxLength(255)
+                                ->label('Location Name'),
+                            Select::make('type')
+                                ->options([
+                                    'training_center' => 'Training Center',
+                                    'hospital' => 'Hospital',
+                                    'conference_hall' => 'Conference Hall',
+                                    'hotel' => 'Hotel',
+                                    'university' => 'University',
+                                    'other' => 'Other',
+                                ])
+                                ->default('training_center'),
+                            Textarea::make('address')
+                                ->rows(2)
+                                ->label('Address'),
+                        ])
+                        ->createOptionUsing(function (array $data) {
+                            return Location::create($data)->id;
+                        })
+                        ->live()
+                        ->afterStateUpdated(function (Set $set, $state) {
+                            if ($state) {
+                                $locations = Location::whereIn('id', $state)->get();
+                                $locationNames = $locations->pluck('name')->implode(', ');
+                                $set('location', $locationNames);
+                            }
+                        })
+                        ->helperText('Select or create training locations')
+                        ->columnSpanFull(),
+
+                    TextInput::make('location')
+                        ->label('Combined Locations (Auto-filled)')
+                        ->disabled()
+                        ->dehydrated(true)
+                        ->placeholder('Will be auto-filled when you select locations above')
+                        ->columnSpanFull(),
+                ]),
+
+            Section::make('Content & Programs')
+                ->description('Select the programs, modules, and methodologies for this mentorship')
                 ->schema([
                     Select::make('programs')
-                        ->label('Programs')
+                        ->label('Training Programs')
                         ->multiple()
                         ->relationship('programs', 'name')
                         ->preload()
@@ -147,10 +284,11 @@ class MentorshipTrainingResource extends Resource
                         ->afterStateUpdated(function (Set $set, $state) {
                             $set('modules', []);
                         })
-                        ->helperText('Select relevant training programs'),
+                        ->helperText('Select the main programs this mentorship will cover')
+                        ->columnSpanFull(),
 
                     Select::make('modules')
-                        ->label('Modules')
+                        ->label('Training Modules')
                         ->multiple()
                         ->options(function (Get $get) {
                             $programIds = $get('programs');
@@ -169,7 +307,8 @@ class MentorshipTrainingResource extends Resource
                                 ->toArray();
                         })
                         ->searchable()
-                        ->helperText('Modules are grouped by their parent program'),
+                        ->helperText('Specific modules within the selected programs')
+                        ->columnSpanFull(),
 
                     Select::make('methodologies')
                         ->label('Training Methodologies')
@@ -177,82 +316,15 @@ class MentorshipTrainingResource extends Resource
                         ->relationship('methodologies', 'name')
                         ->preload()
                         ->searchable()
-                        ->helperText('Select the training methods that will be used'),
-
-                    Textarea::make('learning_outcomes')
-                        ->label('Expected Learning Outcomes')
-                        ->rows(3)
-                        ->placeholder('What should mentees achieve?'),
-
-                    Textarea::make('prerequisites')
-                        ->rows(2)
-                        ->placeholder('Required knowledge or experience'),
-
-                    Forms\Components\TagsInput::make('training_approaches')
-                        ->suggestions([
-                            'One-on-One Mentoring',
-                            'Clinical Supervision',
-                            'Practical Demonstrations',
-                            'Case Discussions',
-                            'Peer Learning',
-                            'Skills Practice',
-                            'Bedside Teaching',
-                        ])
-                        ->placeholder('Add training approaches...'),
+                        ->helperText('Select the training methods that will be used')
+                        ->columnSpanFull(),
                 ]),
-
-            Section::make('Schedule & Team')->schema([
-                Grid::make(3)->schema([
-                    DatePicker::make('start_date')
-                        ->required()
-                        ->native(false)
-                        ->minDate(now())
-                        ->live()
-                        ->afterStateUpdated(function (Set $set, $state) {
-                            if ($state) {
-                                $set('end_date', now()->parse($state)->addWeek()->format('Y-m-d'));
-                            }
-                        }),
-
-                    DatePicker::make('end_date')
-                        ->required()
-                        ->native(false)
-                        ->minDate(fn (Get $get) => $get('start_date') ?: now()),
-
-                    TextInput::make('max_participants')
-                        ->numeric()
-                        ->minValue(1)
-                        ->maxValue(50)
-                        ->default(15)
-                        ->helperText('Recommended: 10-20 participants'),
-                ]),
-
-                Grid::make(2)->schema([
-                    Select::make('mentor_id')
-                        ->label('Lead Mentor')
-                        ->relationship('mentor', 'first_name')
-                        ->getOptionLabelFromRecordUsing(fn(User $record): string => 
-                            "{$record->first_name} {$record->last_name} - {$record->cadre?->name}"
-                        )
-                        ->searchable(['first_name', 'last_name'])
-                        ->preload(),
-
-                    Select::make('organizer_id')
-                        ->label('Training Coordinator')
-                        ->relationship('organizer', 'first_name')
-                        ->getOptionLabelFromRecordUsing(fn(User $record): string => 
-                            "{$record->first_name} {$record->last_name} - {$record->department?->name}"
-                        )
-                        ->searchable(['first_name', 'last_name'])
-                        ->preload(),
-                ]),
-            ]),
 
             Section::make('Assessment Framework')
                 ->description('Configure how mentees will be evaluated')
                 ->icon('heroicon-o-clipboard-document-check')
+                ->collapsible()
                 ->schema([
-                    
                     CheckboxList::make('selected_assessment_categories')
                         ->label('Select Assessment Categories')
                         ->options(function () {
@@ -535,11 +607,15 @@ class MentorshipTrainingResource extends Resource
                 ]),
 
             Section::make('Additional Information')
+                ->description('Any additional notes or information about the mentorship')
                 ->collapsible()
+                ->collapsed()
                 ->schema([
                     Textarea::make('notes')
+                        ->label('Notes')
                         ->rows(3)
-                        ->placeholder('Additional notes or instructions'),
+                        ->placeholder('Add any additional information, special instructions, or notes about this mentorship')
+                        ->columnSpanFull(),
                 ]),
         ]);
     }
@@ -547,6 +623,7 @@ class MentorshipTrainingResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->query(static::getEloquentQuery()->with(['locations', 'programs', 'county', 'division', 'partner', 'mentor', 'facility']))
             ->columns([
                 TextColumn::make('identifier')
                     ->label('ID')
@@ -562,6 +639,31 @@ class MentorshipTrainingResource extends Resource
                         $record->facility?->name ?? ''
                     ),
 
+                BadgeColumn::make('lead_type')
+                    ->label('Coordinator Type')
+                    ->colors([
+                        'primary' => 'national',
+                        'success' => 'county',
+                        'warning' => 'partner',
+                    ])
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'national' => 'National',
+                        'county' => 'County',
+                        'partner' => 'Partner Led',
+                        default => ucfirst($state),
+                    }),
+
+                TextColumn::make('lead_organization')
+                    ->label('Coordinator')
+                    ->getStateUsing(function (Training $record): string {
+                        return match ($record->lead_type) {
+                            'national' => $record->division?->name ?? 'Ministry of Health',
+                            'county' => $record->county?->name ?? 'Not specified',
+                            'partner' => $record->partner?->name ?? 'Not specified',
+                            default => 'Not specified',
+                        };
+                    }),
+
                 TextColumn::make('facility.name')
                     ->label('Facility')
                     ->searchable()
@@ -575,14 +677,17 @@ class MentorshipTrainingResource extends Resource
                     ->limit(30)
                     ->color('success'),
 
-                TextColumn::make('mentor_name')
-                    ->label('Lead Mentor')
-                    ->getStateUsing(fn(Training $record): string =>
-                        $record->mentor ? "{$record->mentor->first_name} {$record->mentor->last_name}" : 'Not assigned'
-                    )
-                    ->description(fn(Training $record): string => 
-                        $record->mentor?->cadre?->name ?? ''
-                    ),
+                TextColumn::make('locations.name')
+                    ->label('Locations')
+                    ->badge()
+                    ->separator(', ')
+                    ->limit(50)
+                    ->formatStateUsing(function (Training $record): string {
+                        if ($record->locations && $record->locations->isNotEmpty()) {
+                            return $record->locations->pluck('name')->implode(', ');
+                        }
+                        return $record->location ?: 'No location specified';
+                    }),
 
                 TextColumn::make('start_date')
                     ->date('M j, Y')
@@ -593,9 +698,9 @@ class MentorshipTrainingResource extends Resource
 
                 BadgeColumn::make('status')
                     ->colors([
-                        'secondary' => 'draft',
+                        'secondary' => 'new',
                         'success' => 'ongoing',
-                        'primary' => 'completed',
+                        'primary' => 'Repeat',
                         'danger' => 'cancelled',
                     ]),
 
@@ -612,12 +717,20 @@ class MentorshipTrainingResource extends Resource
                     ->color('warning'),
             ])
             ->filters([
+                SelectFilter::make('lead_type')
+                    ->label('Coordinator Type')
+                    ->options([
+                        'national' => 'National',
+                        'county' => 'County',
+                        'partner' => 'Partner Led',
+                    ])
+                    ->multiple(),
+
                 SelectFilter::make('status')
                     ->options([
-                        'draft' => 'Draft',
+                        'new' => 'New',
                         'ongoing' => 'Ongoing',
-                        'completed' => 'Completed',
-                        'cancelled' => 'Cancelled',
+                        'repeat' => 'Repeat',
                     ])
                     ->multiple(),
 
@@ -626,11 +739,18 @@ class MentorshipTrainingResource extends Resource
                     ->multiple()
                     ->preload(),
 
-                SelectFilter::make('mentor')
-                    ->relationship('mentor', 'first_name')
-                    ->getOptionLabelFromRecordUsing(fn(User $record): string => 
-                        "{$record->first_name} {$record->last_name}"
-                    )
+                SelectFilter::make('division')
+                    ->relationship('division', 'name')
+                    ->multiple()
+                    ->preload(),
+
+                SelectFilter::make('county')
+                    ->relationship('county', 'name')
+                    ->multiple()
+                    ->preload(),
+
+                SelectFilter::make('partner')
+                    ->relationship('partner', 'name')
                     ->multiple()
                     ->preload(),
             ])
@@ -654,6 +774,40 @@ class MentorshipTrainingResource extends Resource
                         ->url(fn(Training $record): string => 
                             static::getUrl('assessments', ['record' => $record])
                         ),
+                    Action::make('duplicate')
+                        ->label('Duplicate')
+                        ->icon('heroicon-o-document-duplicate')
+                        ->color('gray')
+                        ->action(function (Training $record) {
+                            $newTraining = $record->replicate();
+                            $newTraining->title = $record->title . ' (Copy)';
+                            $newTraining->identifier = 'MT-' . strtoupper(Str::random(6));
+                            $newTraining->status = 'draft';
+                            $newTraining->type = 'facility_mentorship';
+                            $newTraining->mentor_id = auth()->id();
+                            $newTraining->save();
+
+                            // Copy relationships
+                            $newTraining->programs()->attach($record->programs->pluck('id'));
+                            $newTraining->modules()->attach($record->modules->pluck('id'));
+                            $newTraining->methodologies()->attach($record->methodologies->pluck('id'));
+                            $newTraining->locations()->attach($record->locations->pluck('id'));
+
+                            // Copy assessment categories with pivot data
+                            $categoryData = [];
+                            foreach ($record->assessmentCategories as $category) {
+                                $categoryData[$category->id] = [
+                                    'weight_percentage' => $category->pivot->weight_percentage,
+                                    'pass_threshold' => $category->pivot->pass_threshold,
+                                    'is_required' => $category->pivot->is_required,
+                                    'order_sequence' => $category->pivot->order_sequence,
+                                    'is_active' => $category->pivot->is_active,
+                                ];
+                            }
+                            $newTraining->assessmentCategories()->sync($categoryData);
+
+                            return redirect()->to(static::getUrl('edit', ['record' => $newTraining]));
+                        }),
                     Tables\Actions\DeleteAction::make()
                         ->requiresConfirmation(),
                 ])
@@ -667,18 +821,35 @@ class MentorshipTrainingResource extends Resource
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make()
                         ->requiresConfirmation(),
+                    Tables\Actions\BulkAction::make('mark_completed')
+                        ->label('Mark as Completed')
+                        ->icon('heroicon-o-check-circle')
+                        ->color('success')
+                        ->action(function ($records) {
+                            $records->each(fn(Training $record) => $record->update(['status' => 'completed']));
+                        })
+                        ->requiresConfirmation(),
                 ]),
             ])
             ->defaultSort('start_date', 'desc')
+            ->poll('30s')
+            ->striped()
             ->emptyStateHeading('No Mentorship Programs Found')
             ->emptyStateDescription('Create your first facility-based mentorship training program.')
-            ->emptyStateIcon('heroicon-o-academic-cap');
+            ->emptyStateIcon('heroicon-o-academic-cap')
+            ->emptyStateActions([
+                Tables\Actions\CreateAction::make()
+                    ->label('Create Mentorship Program')
+                    ->icon('heroicon-o-plus'),
+            ]);
     }
 
     protected static function mutateFormDataBeforeCreate(array $data): array
     {
         $data['type'] = 'facility_mentorship';
+        $data['mentor_id'] = auth()->id();
         
+        // Check facility assessment
         if (isset($data['facility_id'])) {
             $assessment = FacilityAssessment::where('facility_id', $data['facility_id'])
                 ->where('status', 'approved')
@@ -691,11 +862,25 @@ class MentorshipTrainingResource extends Resource
             }
         }
         
+        // Validate assessment weights
         if (isset($data['assessment_category_settings']) && !empty($data['assessment_category_settings'])) {
             $totalWeight = collect($data['assessment_category_settings'])->sum('weight_percentage');
             if (abs($totalWeight - 100.0) >= 0.1) {
                 throw new \Exception("Assessment category weights must total 100%. Current total: {$totalWeight}%");
             }
+        }
+        
+        // Handle location tags
+        if (!empty($data['location_tags'])) {
+            $locationIds = [];
+            foreach ($data['location_tags'] as $locationName) {
+                $location = Location::firstOrCreate(
+                    ['name' => $locationName],
+                    ['type' => 'other']
+                );
+                $locationIds[] = $location->id;
+            }
+            $data['locations'] = array_unique(array_merge($data['locations'] ?? [], $locationIds));
         }
         
         return $data;
@@ -704,6 +889,25 @@ class MentorshipTrainingResource extends Resource
     protected static function mutateFormDataBeforeSave(array $data): array
     {
         $data['type'] = 'facility_mentorship';
+        
+        // Only set mentor_id if it's not already set (preserve existing mentor on edit)
+        if (empty($data['mentor_id'])) {
+            $data['mentor_id'] = auth()->id();
+        }
+        
+        // Handle location tags
+        if (!empty($data['location_tags'])) {
+            $locationIds = [];
+            foreach ($data['location_tags'] as $locationName) {
+                $location = Location::firstOrCreate(
+                    ['name' => $locationName],
+                    ['type' => 'other']
+                );
+                $locationIds[] = $location->id;
+            }
+            $data['locations'] = array_unique(array_merge($data['locations'] ?? [], $locationIds));
+        }
+        
         return $data;
     }
 
@@ -722,7 +926,7 @@ class MentorshipTrainingResource extends Resource
     public static function getNavigationBadge(): ?string
     {
         $count = static::getModel()::where('type', 'facility_mentorship')
-            ->where('status', 'ongoing')
+           // ->where('status', 'ongoing')
             ->count();
 
         return $count > 0 ? (string) $count : null;
@@ -733,6 +937,11 @@ class MentorshipTrainingResource extends Resource
         return 'warning';
     }
 
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['title', 'identifier', 'description', 'location'];
+    }
+
     public static function getGlobalSearchResultTitle(Model $record): string
     {
         return $record->title;
@@ -741,6 +950,7 @@ class MentorshipTrainingResource extends Resource
     public static function getGlobalSearchResultDetails(Model $record): array
     {
         return [
+            'ID' => $record->identifier,
             'Facility' => $record->facility?->name,
             'Status' => ucfirst($record->status),
             'Start Date' => $record->start_date?->format('M j, Y'),

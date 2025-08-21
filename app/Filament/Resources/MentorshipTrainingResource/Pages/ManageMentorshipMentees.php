@@ -8,7 +8,6 @@ use App\Models\TrainingParticipant;
 use App\Models\User;
 use App\Models\Department;
 use App\Models\Cadre;
-use App\Models\MenteeStatusLog;
 use Filament\Forms;
 use Filament\Resources\Pages\Page;
 use Filament\Tables;
@@ -21,11 +20,15 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\CheckboxList;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
 use Filament\Notifications\Notification;
 use Illuminate\Support\HtmlString;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Storage;
 use League\Csv\Reader;
 
 class ManageMentorshipMentees extends Page implements HasTable
@@ -39,8 +42,9 @@ class ManageMentorshipMentees extends Page implements HasTable
 
     public function mount(int|string $record): void
     {
-      
-        $this->record = Training::where('type', 'facility_mentorship')->findOrFail($this->record->id);
+        $this->record = Training::where('type', 'facility_mentorship')
+            ->with(['facility', 'participants.user'])
+            ->findOrFail($this->record->id);
     }
 
     public function getTitle(): string
@@ -56,35 +60,270 @@ class ManageMentorshipMentees extends Page implements HasTable
     protected function getHeaderActions(): array
     {
         return [
-            // Download CSV Template
-            Actions\Action::make('download_template')
-                ->label('Download Template')
-                ->icon('heroicon-o-document-arrow-down')
-                ->color('info')
-                ->action(fn() => $this->downloadMenteeTemplate()),
-
-            // Import Mentees from CSV
-            Actions\Action::make('import_mentees')
-                ->label('Import Mentees')
-                ->icon('heroicon-o-document-arrow-up')
-                ->color('success')
-                ->form($this->getImportForm())
-                ->action(fn(array $data) => $this->importMentees($data['mentees_file'])),
-
-            // Add Individual Mentee
-            Actions\Action::make('add_mentee')
-                ->label('Add Mentee')
-                ->icon('heroicon-o-plus')
+            Actions\Action::make('add_mentees')
+                ->label('Add Mentees')
+                ->icon('heroicon-o-users')
                 ->color('primary')
-                ->form($this->getAddMenteeForm())
-                ->action(fn(array $data) => $this->addMentee($data)),
+                ->form([
+                    Section::make('Select Mentees from Facility')
+                        ->description("Search and select users from {$this->record->facility->name} to add as mentees")
+                        ->schema([
+                            TextInput::make('search_users')
+                                ->label('Search Users')
+                                ->placeholder('Search by name, phone, or email...')
+                                ->live(debounce: 300)
+                                ->prefixIcon('heroicon-o-magnifying-glass'),
 
-            // Back to Mentorship
+                            CheckboxList::make('selected_users')
+                                ->label('Available Users from Facility')
+                                ->options(function (Get $get) {
+                                    $search = $get('search_users');
+                                    $enrolledUserIds = TrainingParticipant::where('training_id', $this->record->id)
+                                        ->pluck('user_id')->toArray();
+
+                                    $query = User::query()
+                                        ->where('facility_id', $this->record->facility_id) // Only from this facility
+                                        ->whereNotIn('id', $enrolledUserIds)
+                                        ->where('status', 'active')
+                                        ->with(['facility', 'department', 'cadre']);
+
+                                    if ($search) {
+                                        $query->where(function ($q) use ($search) {
+                                            $q->where('name', 'like', "%{$search}%")
+                                              ->orWhere('first_name', 'like', "%{$search}%")
+                                              ->orWhere('last_name', 'like', "%{$search}%")
+                                              ->orWhere('phone', 'like', "%{$search}%")
+                                              ->orWhere('email', 'like', "%{$search}%");
+                                        });
+                                    }
+
+                                    return $query->limit(100)->get()->mapWithKeys(function ($user) {
+                                        $name = $user->name ?: trim("{$user->first_name} {$user->last_name}");
+                                        $department = $user->department?->name ?: 'No department';
+                                        $cadre = $user->cadre?->name ?: 'No cadre';
+                                        $phone = $user->phone ?: 'No phone';
+                                        return [$user->id => "{$name} • {$department} • {$cadre} • {$phone}"];
+                                    })->toArray();
+                                })
+                                ->searchable()
+                                ->bulkToggleable()
+                                ->columns(1)
+                                ->gridDirection('row'),
+
+                            Placeholder::make('help_text')
+                                ->content(new HtmlString('
+                                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                        <div class="flex items-start">
+                                            <svg class="w-5 h-5 text-blue-400 mt-0.5 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                                            </svg>
+                                            <div>
+                                                <h4 class="text-sm font-medium text-blue-800">Adding Mentees:</h4>
+                                                <ul class="mt-1 text-sm text-blue-700 list-disc list-inside space-y-1">
+                                                    <li>Only users from <strong>' . $this->record->facility->name . '</strong> can be added</li>
+                                                    <li>Search for users using the search box above</li>
+                                                    <li>Select multiple users using checkboxes</li>
+                                                    <li>Already enrolled mentees are excluded</li>
+                                                    <li>Can\'t find someone? Use "Quick Add New User" button</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ')),
+                        ])
+                ])
+                ->action(function (array $data) {
+                    $selectedUsers = $data['selected_users'] ?? [];
+                    $added = 0;
+
+                    foreach ($selectedUsers as $userId) {
+                        $exists = TrainingParticipant::where('training_id', $this->record->id)
+                            ->where('user_id', $userId)->exists();
+
+                        if (!$exists) {
+                            TrainingParticipant::create([
+                                'training_id' => $this->record->id,
+                                'user_id' => $userId,
+                                'registration_date' => now(),
+                                'attendance_status' => 'registered',
+                            ]);
+                            $added++;
+                        }
+                    }
+
+                    if ($added > 0) {
+                        Notification::make()
+                            ->title('Mentees Added Successfully')
+                            ->body("{$added} mentee(s) enrolled in the mentorship program.")
+                            ->success()->send();
+                    } else {
+                        Notification::make()
+                            ->title('No New Mentees Added')
+                            ->body('Selected users may already be enrolled.')
+                            ->warning()->send();
+                    }
+                })
+                ->modalWidth('5xl')
+                ->slideOver(),
+
+            Actions\Action::make('quick_add_user')
+                ->label('Quick Add New User')
+                ->icon('heroicon-o-user-plus')
+                ->color('success')
+                ->form([
+                    Section::make('Create New User at Facility')
+                        ->description("Add a new user to {$this->record->facility->name} and enroll them in this mentorship")
+                        ->schema([
+                            TextInput::make('phone')
+                                ->label('Phone Number')
+                                ->tel()
+                                ->required()
+                                ->placeholder('+254700000000')
+                                ->live(onBlur: true)
+                                ->afterStateUpdated(function (Set $set, $state) {
+                                    if ($state) {
+                                        $user = User::where('phone', $state)->first();
+                                        $set('phone_exists', $user !== null);
+                                        if ($user) {
+                                            $set('existing_user_name', $user->name ?: "{$user->first_name} {$user->last_name}");
+                                        }
+                                    }
+                                }),
+
+                            Placeholder::make('phone_status')
+                                ->content(function (Get $get): HtmlString {
+                                    if ($get('phone_exists')) {
+                                        return new HtmlString('
+                                            <div class="bg-red-50 border border-red-200 rounded-lg p-3">
+                                                <div class="text-red-800 text-sm">
+                                                    ❌ Phone number already exists for: <strong>' . $get('existing_user_name') . '</strong>
+                                                    <br>Use "Add Mentees" to add existing users.
+                                                </div>
+                                            </div>
+                                        ');
+                                    } elseif ($get('phone')) {
+                                        return new HtmlString('
+                                            <div class="bg-green-50 border border-green-200 rounded-lg p-3">
+                                                <div class="text-green-800 text-sm">✅ Phone number available - continue filling details</div>
+                                            </div>
+                                        ');
+                                    }
+                                    return new HtmlString('');
+                                }),
+
+                            Forms\Components\Hidden::make('phone_exists'),
+                            Forms\Components\Hidden::make('existing_user_name'),
+
+                            Grid::make(2)->schema([
+                                TextInput::make('first_name')
+                                    ->label('First Name')
+                                    ->required()
+                                    ->disabled(fn (Get $get) => $get('phone_exists')),
+                                TextInput::make('last_name')
+                                    ->label('Last Name')
+                                    ->required()
+                                    ->disabled(fn (Get $get) => $get('phone_exists')),
+                            ]),
+
+                            TextInput::make('email')
+                                ->label('Email Address')
+                                ->email()
+                                ->disabled(fn (Get $get) => $get('phone_exists')),
+
+                            Grid::make(2)->schema([
+                                Select::make('department_id')
+                                    ->label('Department')
+                                    ->options(Department::pluck('name', 'id'))
+                                    ->searchable()
+                                    ->preload()
+                                    ->required()
+                                    ->disabled(fn (Get $get) => $get('phone_exists')),
+
+                                Select::make('cadre_id')
+                                    ->label('Cadre')
+                                    ->options(Cadre::pluck('name', 'id'))
+                                    ->searchable()
+                                    ->preload()
+                                    ->required()
+                                    ->disabled(fn (Get $get) => $get('phone_exists')),
+                            ]),
+                        ])
+                ])
+                ->action(function (array $data) {
+                    if ($data['phone_exists']) {
+                        Notification::make()
+                            ->title('User Already Exists')
+                            ->body('This phone number is already registered.')
+                            ->warning()->send();
+                        return;
+                    }
+
+                    $user = User::create([
+                        'first_name' => $data['first_name'],
+                        'last_name' => $data['last_name'],
+                        'email' => $data['email'] ?? null,
+                        'phone' => $data['phone'],
+                        'facility_id' => $this->record->facility_id, // Auto-assign to training facility
+                        'department_id' => $data['department_id'],
+                        'cadre_id' => $data['cadre_id'],
+                        'password' => bcrypt('password123'),
+                        'status' => 'active',
+                    ]);
+
+                    TrainingParticipant::create([
+                        'training_id' => $this->record->id,
+                        'user_id' => $user->id,
+                        'registration_date' => now(),
+                        'attendance_status' => 'registered',
+                    ]);
+
+                    Notification::make()
+                        ->title('User Created & Enrolled')
+                        ->body("{$user->first_name} {$user->last_name} has been created and enrolled in the mentorship.")
+                        ->success()->send();
+                }),
+
+            Actions\Action::make('import_mentees')
+                ->label('Bulk Import')
+                ->icon('heroicon-o-document-arrow-up')
+                ->color('warning')
+                ->form([
+                    Section::make('Import Mentees from CSV')
+                        ->description("Upload a CSV file with mentee details from {$this->record->facility->name}")
+                        ->schema([
+                            FileUpload::make('csv_file')
+                                ->label('CSV File')
+                                ->acceptedFileTypes(['text/csv', '.csv'])
+                                ->required()
+                                ->directory('temp-imports')
+                                ->visibility('private')
+                                ->helperText('Upload CSV with columns: first_name, last_name, phone, email, department_name, cadre_name'),
+
+                            Placeholder::make('import_help')
+                                ->content(new HtmlString('
+                                    <div class="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                                        <h4 class="font-medium text-amber-800 mb-2">CSV Format Requirements:</h4>
+                                        <ul class="text-sm text-amber-700 space-y-1">
+                                            <li>• Required: first_name, last_name, phone</li>
+                                            <li>• Optional: email, department_name, cadre_name</li>
+                                            <li>• Phone format: +254700000000</li>
+                                            <li>• All users will be assigned to <strong>' . $this->record->facility->name . '</strong></li>
+                                            <li>• Existing users will be updated</li>
+                                            <li>• New users will be created automatically</li>
+                                        </ul>
+                                    </div>
+                                ')),
+                        ])
+                ])
+                ->action(function (array $data) {
+                    $this->processImport($data['csv_file']);
+                }),
+
             Actions\Action::make('back_to_mentorship')
                 ->label('Back to Mentorship')
                 ->icon('heroicon-o-arrow-left')
                 ->color('gray')
-                ->url(fn() => MentorshipTrainingResource::getUrl('view', ['record' => $this->record])),
+                ->url(fn () => MentorshipTrainingResource::getUrl('view', ['record' => $this->record])),
         ];
     }
 
@@ -95,31 +334,31 @@ class ManageMentorshipMentees extends Page implements HasTable
             ->columns([
                 Tables\Columns\TextColumn::make('user.full_name')
                     ->label('Mentee Name')
-                    ->searchable(['first_name', 'last_name'])
-                    ->sortable(),
+                    ->formatStateUsing(function ($record): string {
+                        $user = $record->user;
+                        return $user->name ?: trim("{$user->first_name} {$user->last_name}") ?: 'No name';
+                    })
+                    ->searchable(['name', 'first_name', 'last_name'])
+                    ->sortable()
+                    ->weight('medium'),
 
                 Tables\Columns\TextColumn::make('user.phone')
                     ->label('Phone')
-                    ->searchable(),
+                    ->searchable()
+                    ->copyable()
+                    ->placeholder('No phone'),
 
                 Tables\Columns\TextColumn::make('user.department.name')
                     ->label('Department')
-                    ->searchable()
                     ->badge()
-                    ->color('info'),
+                    ->color('info')
+                    ->placeholder('No department'),
 
                 Tables\Columns\TextColumn::make('user.cadre.name')
                     ->label('Cadre')
-                    ->searchable()
                     ->badge()
-                    ->color('success'),
-
-                Tables\Columns\BadgeColumn::make('user.current_status')
-                    ->label('Status')
-                    ->getStateUsing(fn(TrainingParticipant $record): string => 
-                        $record->user->current_status ?? 'active'
-                    )
-                    ->colors($this->getStatusColors()),
+                    ->color('success')
+                    ->placeholder('No cadre'),
 
                 Tables\Columns\TextColumn::make('assessment_progress')
                     ->label('Assessment Progress')
@@ -141,12 +380,29 @@ class ManageMentorshipMentees extends Page implements HasTable
                         $this->getScoreColor($record)
                     ),
 
+                Tables\Columns\BadgeColumn::make('attendance_status')
+                    ->label('Status')
+                    ->colors([
+                        'secondary' => 'registered',
+                        'warning' => 'attending',
+                        'success' => 'completed',
+                        'danger' => 'dropped',
+                    ]),
+
                 Tables\Columns\TextColumn::make('registration_date')
                     ->label('Enrolled')
-                    ->dateTime('M j, Y')
+                    ->date('M j, Y')
                     ->sortable(),
             ])
             ->filters([
+                Tables\Filters\SelectFilter::make('attendance_status')
+                    ->options([
+                        'registered' => 'Registered',
+                        'attending' => 'Attending',
+                        'completed' => 'Completed',
+                        'dropped' => 'Dropped',
+                    ]),
+
                 Tables\Filters\SelectFilter::make('department')
                     ->relationship('user.department', 'name')
                     ->multiple()
@@ -156,37 +412,42 @@ class ManageMentorshipMentees extends Page implements HasTable
                     ->relationship('user.cadre', 'name')
                     ->multiple()
                     ->preload(),
-
-                Tables\Filters\SelectFilter::make('status')
-                    ->options(MenteeStatusLog::getStatusOptions())
-                    ->query(fn(Builder $query, array $data) => 
-                        $this->filterByStatus($query, $data)
-                    ),
             ])
             ->actions([
                 Tables\Actions\ActionGroup::make([
-                    Tables\Actions\Action::make('view_profile')
-                        ->label('View Profile')
-                        ->icon('heroicon-o-user')
-                        ->color('info')
-                        ->url(fn(TrainingParticipant $record): string => 
-                            route('filament.admin.resources.mentee-profiles.view', ['record' => $record->user_id])
-                        ),
-
                     Tables\Actions\Action::make('update_status')
                         ->label('Update Status')
                         ->icon('heroicon-o-pencil')
                         ->color('warning')
-                        ->form($this->getUpdateStatusForm())
-                        ->action(fn(TrainingParticipant $record, array $data) => 
-                            $this->updateMenteeStatus($record, $data)
-                        ),
+                        ->form([
+                            Select::make('attendance_status')
+                                ->options([
+                                    'registered' => 'Registered',
+                                    'attending' => 'Attending',
+                                    'completed' => 'Completed',
+                                    'dropped' => 'Dropped',
+                                ])
+                                ->required(),
+
+                            Forms\Components\DatePicker::make('completion_date')
+                                ->label('Completion Date')
+                                ->visible(fn (Get $get) => $get('attendance_status') === 'completed'),
+                        ])
+                        ->fillForm(fn (TrainingParticipant $record): array => [
+                            'attendance_status' => $record->attendance_status,
+                            'completion_date' => $record->completion_date,
+                        ])
+                        ->action(function (TrainingParticipant $record, array $data): void {
+                            $record->update($data);
+                            Notification::make()
+                                ->title('Status Updated')
+                                ->success()->send();
+                        }),
 
                     Tables\Actions\DeleteAction::make()
-                        ->label('Remove from Program')
-                        ->requiresConfirmation()
+                        ->label('Remove')
                         ->modalHeading('Remove Mentee')
-                        ->modalDescription('Are you sure you want to remove this mentee from the mentorship program?'),
+                        ->modalDescription('Remove this mentee from the mentorship program?'),
                 ])
             ])
             ->bulkActions([
@@ -195,418 +456,123 @@ class ManageMentorshipMentees extends Page implements HasTable
                         ->label('Mark as Attending')
                         ->icon('heroicon-o-check')
                         ->color('success')
-                        ->action(fn($records) => $this->markAsAttending($records)),
+                        ->action(function ($records) {
+                            $records->each(fn ($record) => $record->update(['attendance_status' => 'attending']));
+                            Notification::make()->title('Status Updated')->success()->send();
+                        }),
 
                     Tables\Actions\DeleteBulkAction::make()
                         ->label('Remove Selected'),
                 ]),
             ])
             ->defaultSort('registration_date', 'desc')
-            ->emptyStateHeading('No Mentees Found')
-            ->emptyStateDescription('Add mentees to this mentorship program to begin training.')
+            ->emptyStateHeading('No Mentees Yet')
+            ->emptyStateDescription('Start by adding mentees from your facility to this mentorship program.')
+            ->emptyStateIcon('heroicon-o-users')
             ->emptyStateActions([
-                Tables\Actions\CreateAction::make()
+                Tables\Actions\Action::make('add_first_mentee')
                     ->label('Add First Mentee')
-                    ->icon('heroicon-o-plus'),
+                    ->icon('heroicon-o-plus')
+                    ->button()
+                    ->action(function () {
+                        // Trigger the add mentees action
+                        $this->mountAction('add_mentees');
+                    }),
             ]);
     }
 
-    // Form Definitions
-    private function getImportForm(): array
-    {
-        return [
-            Forms\Components\Section::make('Import Mentees')
-                ->description('Upload a CSV file with mentee details from your facility')
-                ->schema([
-                    FileUpload::make('mentees_file')
-                        ->label('CSV File')
-                        ->acceptedFileTypes(['text/csv', '.csv'])
-                        ->required()
-                        ->directory('temp-imports')
-                        ->visibility('private'),
-
-                    Forms\Components\Placeholder::make('import_guidelines')
-                        ->content(new HtmlString($this->getImportGuidelines())),
-                ])
-        ];
-    }
-
-    private function getAddMenteeForm(): array
-    {
-        return [
-            Forms\Components\Section::make('Mentee Information')
-                ->description('Search by phone or add new mentee from your facility')
-                ->schema([
-                    TextInput::make('phone')
-                        ->label('Phone Number')
-                        ->tel()
-                        ->required()
-                        ->placeholder('+254700000000')
-                        ->live(onBlur: true)
-                        ->afterStateUpdated(function (Set $set, Get $get, $state) {
-                            $this->handlePhoneLookup($set, $state);
-                        }),
-
-                    Forms\Components\Placeholder::make('user_status')
-                        ->content(function (Get $get): HtmlString {
-                            return new HtmlString($this->getUserStatusMessage($get));
-                        }),
-
-                    Grid::make(2)
-                        ->schema([
-                            TextInput::make('first_name')
-                                ->label('First Name')
-                                ->required(),
-                            TextInput::make('last_name')
-                                ->label('Last Name')
-                                ->required(),
-                        ]),
-
-                    TextInput::make('email')
-                        ->label('Email Address')
-                        ->email(),
-
-                    Grid::make(2)
-                        ->schema([
-                            Select::make('department_id')
-                                ->label('Department')
-                                ->options(Department::all()->pluck('name', 'id'))
-                                ->searchable()
-                                ->preload()
-                                ->required(),
-
-                            Select::make('cadre_id')
-                                ->label('Cadre')
-                                ->options(Cadre::all()->pluck('name', 'id'))
-                                ->searchable()
-                                ->preload()
-                                ->required(),
-                        ]),
-
-                    Forms\Components\Hidden::make('user_id'),
-                    Forms\Components\Hidden::make('user_found'),
-                ])
-        ];
-    }
-
-    private function getUpdateStatusForm(): array
-    {
-        return [
-            Select::make('new_status')
-                ->label('New Status')
-                ->options(MenteeStatusLog::getStatusOptions())
-                ->required(),
-
-            Forms\Components\DatePicker::make('effective_date')
-                ->label('Effective Date')
-                ->default(now())
-                ->required(),
-
-            TextInput::make('reason')
-                ->label('Reason for Change')
-                ->required(),
-
-            Textarea::make('notes')
-                ->label('Additional Notes')
-                ->rows(3),
-        ];
-    }
-
-    // Action Methods
-    private function addMentee(array $data): void
-    {
-        // Create or find user
-        if (!empty($data['user_id'])) {
-            $user = User::find($data['user_id']);
-            $user->update(['facility_id' => $this->record->facility_id]);
-        } else {
-            $user = User::create([
-                'first_name' => $data['first_name'],
-                'last_name' => $data['last_name'],
-                'email' => $data['email'] ?? null,
-                'phone' => $data['phone'],
-                'facility_id' => $this->record->facility_id,
-                'department_id' => $data['department_id'],
-                'cadre_id' => $data['cadre_id'],
-                'password' => bcrypt('password'),
-                'status' => 'active',
-            ]);
-        }
-
-        // Check if already enrolled
-        $exists = TrainingParticipant::where('training_id', $this->record->id)
-            ->where('user_id', $user->id)
-            ->exists();
-
-        if ($exists) {
-            Notification::make()
-                ->title('Mentee Already Enrolled')
-                ->body("{$user->full_name} is already enrolled in this mentorship program.")
-                ->warning()
-                ->send();
-            return;
-        }
-
-        // Create training participant
-        TrainingParticipant::create([
-            'training_id' => $this->record->id,
-            'user_id' => $user->id,
-            'registration_date' => now(),
-            'attendance_status' => 'registered',
-        ]);
-
-        Notification::make()
-            ->title('Mentee Added')
-            ->body("{$user->full_name} has been enrolled in the mentorship program.")
-            ->success()
-            ->send();
-    }
-
-    private function updateMenteeStatus(TrainingParticipant $participant, array $data): void
-    {
-        $participant->user->updateStatus(
-            $data['new_status'],
-            $data['reason'],
-            $data['notes'] ?? null,
-            $data['effective_date']
-        );
-
-        Notification::make()
-            ->title('Status Updated')
-            ->body("Status updated for {$participant->user->full_name}")
-            ->success()
-            ->send();
-    }
-
-    private function markAsAttending($records): void
-    {
-        $records->each(fn(TrainingParticipant $record) =>
-            $record->update(['attendance_status' => 'attending'])
-        );
-
-        Notification::make()
-            ->title('Status Updated')
-            ->body('Selected mentees marked as attending.')
-            ->success()
-            ->send();
-    }
-
-    private function importMentees($filePath): void
+    private function processImport(string $filePath): void
     {
         try {
-            $fullPath = storage_path('app/' . $filePath);
+            $fullPath = Storage::disk('local')->path($filePath);
             $csv = Reader::createFromPath($fullPath, 'r');
             $csv->setHeaderOffset(0);
 
-            $records = $csv->getRecords();
             $imported = 0;
             $skipped = 0;
             $errors = [];
 
-            foreach ($records as $index => $record) {
+            foreach ($csv->getRecords() as $index => $record) {
                 $rowNumber = $index + 2;
 
                 try {
                     if (empty($record['first_name']) || empty($record['phone'])) {
-                        $errors[] = "Row {$rowNumber}: First name and phone are required";
+                        $errors[] = "Row {$rowNumber}: First name and phone required";
                         $skipped++;
                         continue;
                     }
 
-                    // Find department and cadre
-                    $department = !empty($record['department_name'])
-                        ? Department::where('name', $record['department_name'])->first()
-                        : null;
+                    $department = null;
+                    if (!empty($record['department_name'])) {
+                        $department = Department::where('name', $record['department_name'])->first();
+                    }
 
-                    $cadre = !empty($record['cadre_name'])
-                        ? Cadre::where('name', $record['cadre_name'])->first()
-                        : null;
+                    $cadre = null;
+                    if (!empty($record['cadre_name'])) {
+                        $cadre = Cadre::where('name', $record['cadre_name'])->first();
+                    }
 
-                    // Find or create user
-                    $user = User::where('phone', $record['phone'])->first();
-
-                    if ($user) {
-                        $user->update([
+                    $user = User::updateOrCreate(
+                        ['phone' => $record['phone']],
+                        [
                             'first_name' => $record['first_name'],
                             'last_name' => $record['last_name'] ?? '',
-                            'email' => $record['email'] ?? $user->email,
-                            'facility_id' => $this->record->facility_id,
-                            'department_id' => $department?->id ?? $user->department_id,
-                            'cadre_id' => $cadre?->id ?? $user->cadre_id,
-                        ]);
-                    } else {
-                        $user = User::create([
-                            'first_name' => $record['first_name'],
-                            'last_name' => $record['last_name'] ?? '',
-                            'phone' => $record['phone'],
                             'email' => $record['email'] ?? null,
-                            'facility_id' => $this->record->facility_id,
+                            'facility_id' => $this->record->facility_id, // Always assign to training facility
                             'department_id' => $department?->id,
                             'cadre_id' => $cadre?->id,
-                            'password' => bcrypt('password'),
+                            'password' => bcrypt('password123'),
                             'status' => 'active',
+                        ]
+                    );
+
+                    if (!TrainingParticipant::where('training_id', $this->record->id)
+                        ->where('user_id', $user->id)->exists()) {
+                        
+                        TrainingParticipant::create([
+                            'training_id' => $this->record->id,
+                            'user_id' => $user->id,
+                            'registration_date' => now(),
+                            'attendance_status' => 'registered',
                         ]);
-                    }
-
-                    // Check if already enrolled
-                    $exists = TrainingParticipant::where('training_id', $this->record->id)
-                        ->where('user_id', $user->id)
-                        ->exists();
-
-                    if ($exists) {
-                        $errors[] = "Row {$rowNumber}: {$user->full_name} already enrolled";
+                        $imported++;
+                    } else {
                         $skipped++;
-                        continue;
                     }
-
-                    // Create training participant
-                    TrainingParticipant::create([
-                        'training_id' => $this->record->id,
-                        'user_id' => $user->id,
-                        'registration_date' => now(),
-                        'attendance_status' => 'registered',
-                    ]);
-
-                    $imported++;
 
                 } catch (\Exception $e) {
-                    $errors[] = "Row {$rowNumber}: " . $e->getMessage();
+                    $errors[] = "Row {$rowNumber}: {$e->getMessage()}";
                     $skipped++;
                 }
             }
 
-            // Clean up file
-            unlink($fullPath);
+            Storage::disk('local')->delete($filePath);
 
-            // Show results
-            $message = "Import completed: {$imported} participants added";
-            if ($skipped > 0) {
-                $message .= ", {$skipped} skipped";
-            }
-
-            if (!empty($errors)) {
-                $errorMessage = implode("\n", array_slice($errors, 0, 10));
-                if (count($errors) > 10) {
-                    $errorMessage .= "\n... and " . (count($errors) - 10) . " more errors";
-                }
-
-                Notification::make()
-                    ->title('Import Completed with Issues')
-                    ->body($message . "\n\nErrors:\n" . $errorMessage)
-                    ->warning()
-                    ->persistent()
-                    ->send();
-            } else {
-                Notification::make()
-                    ->title('Import Successful')
-                    ->body($message)
-                    ->success()
-                    ->send();
-            }
-
-        } catch (\Exception $e) {
-            if (file_exists($fullPath)) {
-                unlink($fullPath);
-            }
+            $message = "Import completed: {$imported} mentees added";
+            if ($skipped > 0) $message .= ", {$skipped} skipped";
 
             Notification::make()
+                ->title('Import Complete')
+                ->body($message)
+                ->success()
+                ->send();
+
+        } catch (\Exception $e) {
+            Storage::disk('local')->delete($filePath);
+            Notification::make()
                 ->title('Import Failed')
-                ->body('Error processing file: ' . $e->getMessage())
+                ->body("Error: {$e->getMessage()}")
                 ->danger()
                 ->send();
         }
     }
 
-    private function downloadMenteeTemplate()
-    {
-        $filename = 'mentee_import_template_' . date('Y-m-d') . '.csv';
-        
-        $headers = [
-            'first_name',
-            'last_name', 
-            'phone',
-            'email',
-            'department_name',
-            'cadre_name'
-        ];
-        
-        return response()->streamDownload(function () use ($headers) {
-            $file = fopen('php://output', 'w');
-            fputcsv($file, $headers);
-            
-            // Add sample data
-            fputcsv($file, [
-                'John',
-                'Doe',
-                '+254700123456', 
-                'john.doe@example.com',
-                'Nursing',
-                'Registered Nurse'
-            ]);
-            
-            fclose($file);
-        }, $filename, [
-            'Content-Type' => 'text/csv',
-        ]);
-    }
-
     // Helper Methods
-    private function handlePhoneLookup(Set $set, $state): void
-    {
-        if ($state) {
-            $user = User::where('phone', $state)->first();
-            if ($user) {
-                $set('first_name', $user->first_name);
-                $set('last_name', $user->last_name);
-                $set('email', $user->email);
-                $set('department_id', $user->department_id);
-                $set('cadre_id', $user->cadre_id);
-                $set('user_id', $user->id);
-                $set('user_found', true);
-            } else {
-                $set('user_found', false);
-                $set('first_name', '');
-                $set('last_name', '');
-                $set('email', '');
-                $set('department_id', null);
-                $set('cadre_id', null);
-                $set('user_id', null);
-            }
-        }
-    }
-
-    private function getUserStatusMessage(Get $get): string
-    {
-        if ($get('user_found')) {
-            return '<div class="text-green-600 font-medium">✓ User found in system</div>';
-        } elseif ($get('phone') && !$get('user_found')) {
-            return '<div class="text-amber-600 font-medium">⚠ New user - please fill details below</div>';
-        }
-        return '<div class="text-gray-500">Enter phone number to search</div>';
-    }
-
-    private function getImportGuidelines(): string
-    {
-        return '
-            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <h4 class="font-medium text-blue-900 mb-2">Import Guidelines:</h4>
-                <ul class="text-sm text-blue-800 space-y-1">
-                    <li>• Only mentees from <strong>' . $this->record->facility->name . '</strong> can be added</li>
-                    <li>• Phone numbers should include country code (+254...)</li>
-                    <li>• Department and cadre names must match existing records</li>
-                    <li>• Existing users will be updated, new users will be created</li>
-                </ul>
-            </div>
-        ';
-    }
-
     private function getAssessmentProgress(TrainingParticipant $record): string
     {
         $totalCategories = $this->record->assessmentCategories()->count();
-        $completedCategories = $record->user->assessmentResults()
-            ->whereHas('assessmentCategory', function ($query) {
-                $query->where('training_id', $this->record->id);
-            })
+        $completedCategories = $record->assessmentResults()
+            ->whereIn('assessment_category_id', $this->record->assessmentCategories->pluck('id'))
             ->distinct('assessment_category_id')
             ->count();
         
@@ -616,36 +582,20 @@ class ManageMentorshipMentees extends Page implements HasTable
 
     private function getOverallScore(TrainingParticipant $record): string
     {
-        $scores = $record->user->assessmentResults()
-            ->whereHas('assessmentCategory', function ($query) {
-                $query->where('training_id', $this->record->id);
-            })
-            ->pluck('score');
+        $calculation = $this->record->calculateOverallScore($record);
         
-        if ($scores->isEmpty()) return 'Not assessed';
+        if (!$calculation['all_assessed']) {
+            return 'Not assessed';
+        }
         
-        $average = $scores->avg();
-        return number_format($average, 1) . '%';
-    }
-
-    private function getStatusColors(): array
-    {
-        return [
-            'success' => 'active',
-            'info' => 'study_leave',
-            'warning' => 'transferred',
-            'secondary' => fn($state) => in_array($state, ['resigned', 'retired']),
-            'danger' => fn($state) => in_array($state, ['defected', 'deceased', 'suspended']),
-        ];
+        return $calculation['score'] . '%';
     }
 
     private function getProgressColor(TrainingParticipant $record): string
     {
         $totalCategories = $this->record->assessmentCategories()->count();
-        $completedCategories = $record->user->assessmentResults()
-            ->whereHas('assessmentCategory', function ($query) {
-                $query->where('training_id', $this->record->id);
-            })
+        $completedCategories = $record->assessmentResults()
+            ->whereIn('assessment_category_id', $this->record->assessmentCategories->pluck('id'))
             ->distinct('assessment_category_id')
             ->count();
         
@@ -659,29 +609,13 @@ class ManageMentorshipMentees extends Page implements HasTable
 
     private function getScoreColor(TrainingParticipant $record): string
     {
-        $scores = $record->user->assessmentResults()
-            ->whereHas('assessmentCategory', function ($query) {
-                $query->where('training_id', $this->record->id);
-            })
-            ->pluck('score');
+        $calculation = $this->record->calculateOverallScore($record);
         
-        if ($scores->isEmpty()) return 'gray';
+        if (!$calculation['all_assessed']) return 'gray';
         
-        $average = $scores->avg();
-        if ($average >= 80) return 'success';
-        if ($average >= 70) return 'warning';
+        $score = $calculation['score'];
+        if ($score >= 80) return 'success';
+        if ($score >= 70) return 'warning';
         return 'danger';
-    }
-
-    private function filterByStatus(Builder $query, array $data): Builder
-    {
-        if ($data['value']) {
-            return $query->whereHas('user.statusLogs', function ($q) use ($data) {
-                $q->where('new_status', $data['value'])
-                  ->latest('effective_date')
-                  ->limit(1);
-            });
-        }
-        return $query;
     }
 }
