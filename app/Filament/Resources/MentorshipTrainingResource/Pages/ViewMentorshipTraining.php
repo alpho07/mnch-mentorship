@@ -207,20 +207,6 @@ class ViewMentorshipTraining extends ViewRecord
                             ->visible(fn ($state) => !empty($state)),
                     ]),
 
-                Section::make('Learning Outcomes & Prerequisites')
-                    ->schema([
-                        TextEntry::make('learning_outcomes')
-                            ->label('Expected Learning Outcomes')
-                            ->prose()
-                            ->columnSpanFull()
-                            ->visible(fn ($state) => !empty($state)),
-
-                        TextEntry::make('prerequisites')
-                            ->prose()
-                            ->columnSpanFull()
-                            ->visible(fn ($state) => !empty($state)),
-                    ])
-                    ->collapsible(),
 
                 Section::make('Assessment Framework')
                     ->schema([

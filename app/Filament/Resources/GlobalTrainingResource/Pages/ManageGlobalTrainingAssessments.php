@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Filament\Resources\MentorshipTrainingResource\Pages;
+namespace App\Filament\Resources\GlobalTrainingResource\Pages;
 
-use App\Filament\Resources\MentorshipTrainingResource;
+use App\Filament\Resources\GlobalTrainingResource;
 use App\Models\Training;
 use App\Models\TrainingParticipant;
 use App\Models\MenteeAssessmentResult;
@@ -22,11 +22,11 @@ use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Tables\Columns\TextColumn;
 
-class ManageMentorshipAssessments extends Page implements HasTable {
+class ManageGlobalTrainingAssessments extends Page implements HasTable {
 
     use InteractsWithTable;
 
-    protected static string $resource = MentorshipTrainingResource::class;
+    protected static string $resource = GlobalTrainingResource::class;
     protected static string $view = 'filament.pages.simple-assessment-matrix';
     public Training $record;
 
@@ -63,7 +63,7 @@ class ManageMentorshipAssessments extends Page implements HasTable {
                     Actions\Action::make('back')
                     ->label('Back to Training')
                     ->icon('heroicon-o-arrow-left')
-                    ->url(fn() => MentorshipTrainingResource::getUrl('view', ['record' => $this->record])),
+                    ->url(fn() => GlobalTrainingResource::getUrl('view', ['record' => $this->record])),
         ];
     }
 
@@ -73,14 +73,14 @@ class ManageMentorshipAssessments extends Page implements HasTable {
                                 TrainingParticipant::query()
                                 ->where('training_id', $this->record->id)
                                 ->with([
-                                    'user:id,first_name,last_name,department_id,cadre_id',
+                                    'user:id,name,first_name,last_name,department_id,cadre_id',
                                     'user.department:id,name',
                                     'user.cadre:id,name',
                                     'assessmentResults'
                                 ])
                         )
                         ->columns([
-                            TextColumn::make('user.full_name')
+                            TextColumn::make('user.name')
                             ->label('Mentee Name')
                             ->searchable(['first_name', 'last_name'])
                             ->weight('bold'),

@@ -40,6 +40,8 @@ class Training extends Model {
         'prerequisites',
         'training_approaches', // Array of approaches
         'notes',
+        'assess_participants', // Boolean - whether to assess participants
+        'provide_materials', // Boolean - whether to provide materials
     ];
     protected $casts = [
         'start_date' => 'date',
@@ -49,6 +51,8 @@ class Training extends Model {
         'learning_outcomes' => 'array',
         'prerequisites' => 'array',
         'training_approaches' => 'array',
+        'assess_participants' => 'boolean',
+        'provide_materials' => 'boolean',
     ];
 
     // Relationships
@@ -457,4 +461,89 @@ class Training extends Model {
             'average_score' => $assessedParticipants > 0 ? round($totalScore / $assessedParticipants, 1) : 0,
         ];
     }
+    
+    public function hasAssessments(): bool
+{
+    return $this->assess_participants === true || $this->assessmentCategories()->exists();
+}
+
+/**
+ * Check if this training has materials planning enabled
+ */
+public function hasMaterials(): bool
+{
+    return $this->provide_materials === true || $this->trainingMaterials()->exists();
+}
+
+/**
+ * Get assessment status for the training
+ */
+public function getAssessmentStatusAttribute(): string
+{
+    if (!$this->hasAssessments()) {
+        return 'Not Configured';
+    }
+    
+    if ($this->assessmentCategories()->count() === 0) {
+        return 'No Categories';
+    }
+    
+    $totalWeight = $this->assessmentCategories->sum('pivot.weight_percentage');
+    if (abs($totalWeight - 100) >= 0.1) {
+        return 'Invalid Weights';
+    }
+    
+    return 'Configured';
+}
+
+/**
+ * Get materials status for the training
+ */
+public function getMaterialsStatusAttribute(): string
+{
+    if (!$this->hasMaterials()) {
+        return 'Not Planned';
+    }
+    
+    if ($this->trainingMaterials()->count() === 0) {
+        return 'No Materials';
+    }
+    
+    return 'Materials Planned';
+}
+
+/**
+ * Scope to filter trainings with assessments
+ */
+public function scopeWithAssessments($query)
+{
+    return $query->where('assess_participants', true)
+                 ->orWhereHas('assessmentCategories');
+}
+
+/**
+ * Scope to filter trainings with materials
+ */
+public function scopeWithMaterials($query)
+{
+    return $query->where('provide_materials', true)
+                 ->orWhereHas('trainingMaterials');
+}
+
+/**
+ * Get training features summary
+ */
+public function getFeaturesSummaryAttribute(): array
+{
+    return [
+        'has_programs' => $this->programs()->exists(),
+        'has_modules' => $this->modules()->exists(),
+        'has_methodologies' => $this->methodologies()->exists(),
+        'has_assessments' => $this->hasAssessments(),
+        'has_materials' => $this->hasMaterials(),
+        'has_participants' => $this->participants()->exists(),
+        'assessment_status' => $this->assessment_status,
+        'materials_status' => $this->materials_status,
+    ];
+}
 }
