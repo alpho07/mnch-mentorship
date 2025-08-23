@@ -19,10 +19,7 @@ class ViewGlobalTraining extends ViewRecord {
 
     protected static string $resource = GlobalTrainingResource::class;
 
-
     public function mount(int|string $record): void {
-       
-     
         $this->record = Training::where('type', 'global_training')
                 ->with([
                     'mentor:id,first_name,last_name,cadre_id,facility_id',
@@ -42,7 +39,7 @@ class ViewGlobalTraining extends ViewRecord {
                     'trainingMaterials:id,training_id,inventory_item_id,quantity_planned,quantity_used,total_cost,usage_notes',
                     'trainingMaterials.inventoryItem:id,name'
                 ])
-                ->findOrFail($record); 
+                ->findOrFail($record);
     }
 
     protected function getHeaderActions(): array {
@@ -58,32 +55,16 @@ class ViewGlobalTraining extends ViewRecord {
                     ->label('Assessment Matrix')
                     ->icon('heroicon-o-clipboard-document-check')
                     ->color('primary')
-                    ->url(fn() => static::getResource()::getUrl('assessments', ['record' => $this->record])),
-            //->visible(fn() => $this->record->assessmentCategories()->exists()),
-            /* Actions\Action::make('smart_insights')
-              ->label('Smart Insights')
-              ->icon('heroicon-o-sparkles')
-              ->color('info')
-              ->modalHeading('Training Insights & Recommendations')
-              ->modalContent(fn() => view('filament.components.training-insights', [
-              'training' => $this->record,
-              'insights' => $this->getSmartInsights()
-              ]))
-              ->modalWidth('5xl'),
-              Actions\Action::make('export_participants')
-              ->label('Export Participants')
-              ->icon('heroicon-o-arrow-down-tray')
-              ->color('info')
-              ->action(function () {
-              return $this->exportTrainingParticipants();
-              }),
-              /*Actions\Action::make('export_summary')
-              ->label('Export Summary')
-              ->icon('heroicon-o-arrow-down-tray')
-              ->color('gray')
-              ->action(function () {
-              return $this->exportTrainingSummary();
-              }), */
+                    ->url(fn() => static::getResource()::getUrl('assessments', ['record' => $this->record]))
+                    ->visible(fn() => $this->record->assess_participants === true),
+                    Actions\Action::make('export_participants')
+                    ->label('Export Participants')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->color('info')
+                    ->action(function () {
+                        return $this->exportTrainingParticipants();
+                    })
+                    ->visible(fn() => $this->record->participants()->exists()),
                     Actions\DeleteAction::make()
                     ->requiresConfirmation(),
         ];
@@ -113,9 +94,9 @@ class ViewGlobalTraining extends ViewRecord {
                                     TextEntry::make('status')
                                     ->badge()
                                     ->color(fn(string $state): string => match ($state) {
-                                                'draft' => 'gray',
-                                                'registration_open' => 'warning',
+                                                'new' => 'gray',
                                                 'ongoing' => 'success',
+                                                'repeat' => 'warning',
                                                 'completed' => 'primary',
                                                 'cancelled' => 'danger',
                                                 default => 'gray',
@@ -132,6 +113,21 @@ class ViewGlobalTraining extends ViewRecord {
                                     TextEntry::make('max_participants')
                                     ->label('Max Participants')
                                     ->icon('heroicon-o-users'),
+                                ]),
+                                Grid::make(2)
+                                ->schema([
+                                    TextEntry::make('assess_participants')
+                                    ->label('Assessment Enabled')
+                                    ->formatStateUsing(fn($state) => $state ? 'Yes' : 'No')
+                                    ->badge()
+                                    ->color(fn($state) => $state ? 'success' : 'gray')
+                                    ->icon(fn($state) => $state ? 'heroicon-o-check-circle' : 'heroicon-o-x-circle'),
+                                    TextEntry::make('provide_materials')
+                                    ->label('Materials Planned')
+                                    ->formatStateUsing(fn($state) => $state ? 'Yes' : 'No')
+                                    ->badge()
+                                    ->color(fn($state) => $state ? 'success' : 'gray')
+                                    ->icon(fn($state) => $state ? 'heroicon-o-check-circle' : 'heroicon-o-x-circle'),
                                 ]),
                             ]),
                             Section::make('Training Leadership')
@@ -221,9 +217,9 @@ class ViewGlobalTraining extends ViewRecord {
                                                     return "{$location->name}{$address}";
                                                 })->toArray();
                                     }
-                                    return $record->location ? [$record->location] : ['No location specified'];
+                                    return ['No location specified'];
                                 })
-                                ->visible(fn($record) => $record->locations->isNotEmpty() || $record->location),
+                                ->visible(fn($record) => $record->locations->isNotEmpty()),
                             ]),
                             Section::make('Content & Programs')
                             ->schema([
@@ -270,7 +266,7 @@ class ViewGlobalTraining extends ViewRecord {
                             ])
                             ->collapsible()
                             ->visible(fn($record) => !empty($record->learning_outcomes) || !empty($record->prerequisites)),
-                            // NEW: Assessment Framework Section
+                            // Assessment Framework Section (only visible if assess_participants is true)
                             Section::make('Assessment Framework')
                             ->schema([
                                 RepeatableEntry::make('assessmentCategories')
@@ -331,22 +327,27 @@ class ViewGlobalTraining extends ViewRecord {
                                     TextEntry::make('assessment_completion')
                                     ->label('Assessment Progress')
                                     ->getStateUsing(function ($record) {
+                                        if ($record->assessmentCategories->isEmpty()) {
+                                            return 'No assessments configured';
+                                        }
                                         $summary = $record->getAssessmentSummary();
                                         return $summary['completion_rate'] . '% Complete';
                                     })
                                     ->badge()
                                     ->color(function ($record) {
+                                        if ($record->assessmentCategories->isEmpty()) {
+                                            return 'gray';
+                                        }
                                         $summary = $record->getAssessmentSummary();
                                         $rate = $summary['completion_rate'];
                                         return $rate >= 80 ? 'success' : ($rate >= 60 ? 'warning' : 'danger');
-                                    })
-                                    ->visible(fn() => $this->record->assessmentCategories->isNotEmpty()),
+                                    }),
                                 ])
                                 ->visible(fn() => $this->record->assessmentCategories->isNotEmpty()),
                             ])
                             ->collapsible()
-                            ->visible(fn() => $this->record->assessmentCategories->isNotEmpty()),
-                            // NEW: Training Materials Section
+                            ->visible(fn() => $this->record->assess_participants === true),
+                            // Training Materials Section (only visible if provide_materials is true)
                             Section::make('Training Materials & Resources')
                             ->schema([
                                 RepeatableEntry::make('trainingMaterials')
@@ -430,7 +431,7 @@ class ViewGlobalTraining extends ViewRecord {
                                 ->visible(fn() => $this->record->trainingMaterials->isNotEmpty()),
                             ])
                             ->collapsible()
-                            ->visible(fn() => $this->record->trainingMaterials->isNotEmpty()),
+                            ->visible(fn() => $this->record->provide_materials === true),
                             Section::make('Participant Statistics')
                             ->schema([
                                 Grid::make(4)
@@ -476,104 +477,6 @@ class ViewGlobalTraining extends ViewRecord {
                             ->collapsible()
                             ->collapsed(),
         ]);
-    }
-
-    private function getSmartInsights(): array {
-        $insights = [];
-
-        $totalParticipants = $this->record->participants()->count();
-        $totalCategories = $this->record->assessmentCategories()->count();
-        $totalMaterials = $this->record->trainingMaterials()->count();
-
-        // Participant insights
-        if ($totalParticipants == 0) {
-            $insights[] = [
-                'type' => 'info',
-                'title' => 'No Participants Enrolled',
-                'message' => 'Add participants to begin the training program.',
-                'action' => 'Use the "Manage Participants" button to add participants'
-            ];
-        }
-
-        // Assessment insights
-        if ($totalCategories == 0) {
-            $insights[] = [
-                'type' => 'info',
-                'title' => 'No Assessment Categories',
-                'message' => 'Consider configuring assessment categories if participants will be evaluated.',
-                'action' => 'Edit the training to add assessment categories'
-            ];
-        } else {
-            // Check weight validation
-            $totalWeight = $this->record->assessmentCategories->sum('pivot.weight_percentage');
-            if (abs($totalWeight - 100) >= 0.1) {
-                $insights[] = [
-                    'type' => 'warning',
-                    'title' => 'Invalid Assessment Weights',
-                    'message' => "Assessment category weights total {$totalWeight}% instead of 100%.",
-                    'action' => 'Edit training to adjust category weights'
-                ];
-            }
-
-            // Assessment progress insight
-            if ($totalParticipants > 0) {
-                $summary = $this->record->getAssessmentSummary();
-                if ($summary['completion_rate'] < 50) {
-                    $insights[] = [
-                        'type' => 'warning',
-                        'title' => 'Low Assessment Progress',
-                        'message' => "Only {$summary['completion_rate']}% of assessments completed.",
-                        'action' => 'Use Assessment Matrix to evaluate more participants'
-                    ];
-                }
-            }
-        }
-
-        // Training content insights
-        if ($this->record->programs->isEmpty()) {
-            $insights[] = [
-                'type' => 'warning',
-                'title' => 'No Programs Selected',
-                'message' => 'Link this training to programs for better structure.',
-                'action' => 'Edit training to add programs and modules'
-            ];
-        }
-
-        // Materials insights
-        if ($totalMaterials > 0) {
-            $materials = $this->record->trainingMaterials;
-            $totalPlanned = $materials->sum('quantity_planned');
-            $totalUsed = $materials->sum('quantity_used');
-            $utilization = $totalPlanned > 0 ? ($totalUsed / $totalPlanned) * 100 : 0;
-
-            if ($utilization < 50) {
-                $insights[] = [
-                    'type' => 'warning',
-                    'title' => 'Low Material Utilization',
-                    'message' => "Only {$utilization}% of planned materials have been used.",
-                    'action' => 'Review material usage and update quantities'
-                ];
-            } elseif ($utilization > 120) {
-                $insights[] = [
-                    'type' => 'warning',
-                    'title' => 'Material Overuse',
-                    'message' => "Material usage is {$utilization}% of planned quantities.",
-                    'action' => 'Review and adjust material planning for future trainings'
-                ];
-            }
-        }
-
-        // Location insights
-        if ($this->record->locations->isEmpty() && empty($this->record->location)) {
-            $insights[] = [
-                'type' => 'info',
-                'title' => 'No Location Specified',
-                'message' => 'Add training location information for better coordination.',
-                'action' => 'Edit training to add location details'
-            ];
-        }
-
-        return $insights;
     }
 
     private function getMaterialStatus($material): string {
@@ -690,129 +593,6 @@ class ViewGlobalTraining extends ViewRecord {
                         ];
 
                         fputcsv($file, $row);
-                    }
-
-                    fclose($file);
-                }, $filename, [
-                    'Content-Type' => 'text/csv',
-                    'Content-Disposition' => 'attachment; filename="' . $filename . '"',
-        ]);
-    }
-
-    private function exportTrainingSummary() {
-        $filename = "global_training_summary_{$this->record->identifier}_" . now()->format('Y-m-d_H-i-s') . '.csv';
-
-        return response()->streamDownload(function () {
-                    $file = fopen('php://output', 'w');
-
-                    // Training Overview
-                    fputcsv($file, ['MOH TRAINING SUMMARY']);
-                    fputcsv($file, ['Generated on: ' . now()->format('Y-m-d H:i:s')]);
-                    fputcsv($file, ['']);
-
-                    // Basic Information
-                    fputcsv($file, ['BASIC INFORMATION']);
-                    fputcsv($file, ['Training Title', $this->record->title]);
-                    fputcsv($file, ['Training ID', $this->record->identifier]);
-                    fputcsv($file, ['Training Type', 'MOH Training']);
-                    fputcsv($file, ['Status', ucfirst($this->record->status)]);
-                    fputcsv($file, ['Lead Type', ucfirst($this->record->lead_type)]);
-                    fputcsv($file, ['Lead Organization', $this->record->lead_organization]);
-                    fputcsv($file, ['Start Date', $this->record->start_date?->format('Y-m-d')]);
-                    fputcsv($file, ['End Date', $this->record->end_date?->format('Y-m-d')]);
-                    fputcsv($file, ['Created By', $this->record->mentor ? "{$this->record->mentor->first_name} {$this->record->mentor->last_name}" : 'Not assigned']);
-                    fputcsv($file, ['Location(s)', $this->record->locations->pluck('name')->implode(', ') ?: $this->record->location ?: 'Not specified']);
-                    fputcsv($file, ['']);
-
-                    // Training Content Summary
-                    if ($this->record->programs->isNotEmpty()) {
-                        fputcsv($file, ['TRAINING PROGRAMS']);
-                        fputcsv($file, ['Program Name', 'Description']);
-                        foreach ($this->record->programs as $program) {
-                            fputcsv($file, [$program->name, $program->description ?? 'N/A']);
-                        }
-                        fputcsv($file, ['']);
-                    }
-
-                    if ($this->record->modules->isNotEmpty()) {
-                        fputcsv($file, ['TRAINING MODULES']);
-                        fputcsv($file, ['Module Name', 'Program', 'Description']);
-                        foreach ($this->record->modules as $module) {
-                            fputcsv($file, [
-                                $module->name,
-                                $module->program->name ?? 'N/A',
-                                $module->description ?? 'N/A'
-                            ]);
-                        }
-                        fputcsv($file, ['']);
-                    }
-
-                    if ($this->record->methodologies->isNotEmpty()) {
-                        fputcsv($file, ['TRAINING METHODOLOGIES']);
-                        fputcsv($file, ['Methodology', 'Description']);
-                        foreach ($this->record->methodologies as $methodology) {
-                            fputcsv($file, [
-                                $methodology->name,
-                                $methodology->description ?? 'N/A'
-                            ]);
-                        }
-                        fputcsv($file, ['']);
-                    }
-
-                    // Participant Statistics
-                    fputcsv($file, ['PARTICIPANT STATISTICS']);
-                    fputcsv($file, ['Total Participants', $this->record->participants()->count()]);
-                    fputcsv($file, ['Completion Rate (%)', $this->record->completion_rate]);
-                    fputcsv($file, ['Average Score (%)', number_format($this->record->average_score, 1)]);
-                    fputcsv($file, ['Facilities Represented', $this->record->participants()->with('user.facility')->get()->pluck('user.facility.name')->filter()->unique()->count()]);
-                    fputcsv($file, ['']);
-
-                    // Assessment Categories (if any)
-                    if ($this->record->assessmentCategories->isNotEmpty()) {
-                        fputcsv($file, ['ASSESSMENT CATEGORIES']);
-                        fputcsv($file, ['Category', 'Weight (%)', 'Pass Threshold (%)', 'Method', 'Required']);
-                        foreach ($this->record->assessmentCategories as $category) {
-                            fputcsv($file, [
-                                $category->name,
-                                $category->pivot->weight_percentage,
-                                $category->pivot->pass_threshold,
-                                $category->assessment_method,
-                                $category->pivot->is_required ? 'Yes' : 'No'
-                            ]);
-                        }
-
-                        // Assessment Summary
-                        $summary = $this->record->getAssessmentSummary();
-                        fputcsv($file, ['']);
-                        fputcsv($file, ['ASSESSMENT SUMMARY']);
-                        fputcsv($file, ['Total Participants', $summary['total_mentees']]);
-                        fputcsv($file, ['Passed Participants', $summary['passed_mentees']]);
-                        fputcsv($file, ['Failed Participants', $summary['failed_mentees']]);
-                        fputcsv($file, ['Incomplete Assessments', $summary['incomplete_mentees']]);
-                        fputcsv($file, ['Assessment Completion Rate (%)', $summary['completion_rate']]);
-                        fputcsv($file, ['Pass Rate (%)', $summary['pass_rate']]);
-                        fputcsv($file, ['Average Assessment Score (%)', $summary['average_score']]);
-                        fputcsv($file, ['']);
-                    }
-
-                    // Materials Summary (if any)
-                    if ($this->record->trainingMaterials->isNotEmpty()) {
-                        fputcsv($file, ['MATERIALS SUMMARY']);
-                        fputcsv($file, ['Material', 'Planned Qty', 'Used Qty', 'Cost (KES)', 'Utilization (%)']);
-                        foreach ($this->record->trainingMaterials as $material) {
-                            $utilization = $material->quantity_planned > 0 ? round(($material->quantity_used / $material->quantity_planned) * 100, 1) : 0;
-                            fputcsv($file, [
-                                $material->inventoryItem->name,
-                                $material->quantity_planned,
-                                $material->quantity_used ?? 0,
-                                number_format($material->total_cost, 2),
-                                $utilization
-                            ]);
-                        }
-                        fputcsv($file, ['']);
-                        fputcsv($file, ['MATERIAL COSTS SUMMARY']);
-                        fputcsv($file, ['Total Planned Cost', 'KES ' . number_format($this->record->trainingMaterials->sum('total_cost'), 2)]);
-                        fputcsv($file, ['Total Items', $this->record->trainingMaterials->count()]);
                     }
 
                     fclose($file);

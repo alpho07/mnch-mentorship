@@ -218,52 +218,13 @@ class GlobalTrainingResource extends Resource {
                                 ->createOptionUsing(function (array $data) {
                                     return \App\Models\Location::create($data)->id;
                                 })
-                                ->live()
-                                ->afterStateUpdated(function (Set $set, $state) {
-                                    if ($state) {
-                                        $locations = \App\Models\Location::whereIn('id', $state)->get();
-                                        $locationNames = $locations->pluck('name')->implode(', ');
-                                        $set('location', $locationNames);
-                                    }
-                                })
                                 ->placeholder('Select or create training locations')
                                 ->helperText('Select multiple existing locations or create new ones. Hold Ctrl/Cmd to select multiple.')
                                 ->columnSpanFull(),
-                                Forms\Components\TagsInput::make('location_tags')
-                                ->label('Or Add Locations as Tags')
+                                Forms\Components\TagsInput::make('additional_locations')
+                                ->label('Additional Locations (Quick Add)')
                                 ->placeholder('Type location names and press Enter')
-                                ->helperText('Alternative way to add locations. These will be created automatically if they don\'t exist.')
-                                ->live()
-                                ->afterStateUpdated(function (Set $set, Get $get, $state) {
-                                    if ($state) {
-                                        // Create locations that don't exist and get their IDs
-                                        $locationIds = [];
-                                        $existingLocationIds = $get('locations') ?? [];
-
-                                        foreach ($state as $locationName) {
-                                            $location = \App\Models\Location::firstOrCreate(
-                                                    ['name' => $locationName],
-                                                    ['type' => 'other']
-                                            );
-                                            $locationIds[] = $location->id;
-                                        }
-
-                                        // Merge with existing selected locations
-                                        $allLocationIds = array_unique(array_merge($existingLocationIds, $locationIds));
-                                        $set('locations', $allLocationIds);
-
-                                        // Update the location text field
-                                        $allLocations = \App\Models\Location::whereIn('id', $allLocationIds)->get();
-                                        $set('location', $allLocations->pluck('name')->implode(', '));
-                                    }
-                                })
-                                ->columnSpanFull(),
-                                Forms\Components\TextInput::make('location')
-                                ->label('Combined Locations (Auto-filled)')
-                                ->disabled()
-                                ->dehydrated(true)
-                                ->placeholder('Will be auto-filled when you select locations above')
-                                ->helperText('This field combines all selected locations for display purposes')
+                                ->helperText('Quick way to add new locations. These will be created automatically.')
                                 ->columnSpanFull(),
                             ]),
                             Forms\Components\Section::make('Content & Programs')
@@ -313,7 +274,7 @@ class GlobalTrainingResource extends Resource {
                                 ->helperText('Select the training methods that will be used')
                                 ->columnSpanFull(),
                             ]),
-                            // NEW: Optional Assessment Framework
+                            // Training Options Section
                             Section::make('Training Options')
                             ->description('Configure optional features for this training')
                             ->schema([
@@ -330,7 +291,7 @@ class GlobalTrainingResource extends Resource {
                                     ->default(false),
                                 ]),
                             ]),
-                            // NEW: Assessment Framework (Conditional)
+                            // Assessment Framework (Conditional)
                             Section::make('Assessment Framework')
                             ->description('Configure how participants will be evaluated')
                             ->icon('heroicon-o-clipboard-document-check')
@@ -361,7 +322,7 @@ class GlobalTrainingResource extends Resource {
                                 ->bulkToggleable()
                                 ->live()
                                 ->afterStateUpdated(function (Set $set, Get $get, $state) {
-                                    if (is_array($state)) {
+                                    if (is_array($state) && !empty($state)) {
                                         $currentSettings = $get('assessment_category_settings') ?: [];
                                         $newSettings = [];
 
@@ -389,6 +350,10 @@ class GlobalTrainingResource extends Resource {
                                         $set('assessment_category_settings', $newSettings);
                                         $totalWeight = collect($newSettings)->sum('weight_percentage');
                                         $set('total_weight_check', $totalWeight);
+                                    } else {
+                                        // Clear settings if no categories selected
+                                        $set('assessment_category_settings', []);
+                                        $set('total_weight_check', 0);
                                     }
                                 }),
                                 Placeholder::make('weight_validation')
@@ -461,7 +426,7 @@ class GlobalTrainingResource extends Resource {
                                     Forms\Components\Hidden::make('order_sequence'),
                                 ])
                                 ->itemLabel(function (array $state): ?string {
-                                    if (!isset($state['assessment_category_id']))
+                                    if (!isset($state['assessment_category_id']) || empty($state['assessment_category_id']))
                                         return 'New Category Setting';
 
                                     $category = AssessmentCategory::find($state['assessment_category_id']);
@@ -474,7 +439,8 @@ class GlobalTrainingResource extends Resource {
                                 ->deletable(false)
                                 ->reorderable(false)
                                 ->collapsed()
-                                ->columnSpanFull(),
+                                ->columnSpanFull()
+                                ->visible(fn(Get $get) => !empty($get('assessment_category_settings'))),
                                 Actions::make([
                                     Actions\Action::make('load_standard_assessment')
                                     ->label('Load Standard Assessment')
@@ -544,7 +510,7 @@ class GlobalTrainingResource extends Resource {
                                     }),
                                 ])->fullWidth(),
                             ]),
-                            // NEW: Training Materials (Conditional)
+                            // Training Materials (Conditional)
                             Section::make('Training Materials')
                             ->description('Plan and track materials for this training')
                             ->icon('heroicon-o-cube')
@@ -625,7 +591,7 @@ class GlobalTrainingResource extends Resource {
         $data['type'] = 'global_training';
         $data['mentor_id'] = auth()->id();
 
-        // Validate assessment weights if assessments are enabled
+        // Only validate assessment weights if assessments are enabled
         if (($data['assess_participants'] ?? false) && isset($data['assessment_category_settings']) && !empty($data['assessment_category_settings'])) {
             $totalWeight = collect($data['assessment_category_settings'])->sum('weight_percentage');
             if (abs($totalWeight - 100.0) >= 0.1) {
@@ -633,30 +599,40 @@ class GlobalTrainingResource extends Resource {
             }
         }
 
-        // Handle location tags
-        if (!empty($data['location_tags'])) {
+        // Handle additional locations from tags input
+        if (!empty($data['additional_locations'])) {
             $locationIds = [];
-            foreach ($data['location_tags'] as $locationName) {
+            foreach ($data['additional_locations'] as $locationName) {
                 $location = \App\Models\Location::firstOrCreate(
                         ['name' => $locationName],
                         ['type' => 'other']
                 );
                 $locationIds[] = $location->id;
             }
-            $data['locations'] = array_unique(array_merge($data['locations'] ?? [], $locationIds));
+
+            // Merge with existing selected locations
+            $existingLocationIds = $data['locations'] ?? [];
+            $data['locations'] = array_unique(array_merge($existingLocationIds, $locationIds));
         }
+
+        // Clean up data - remove fields that shouldn't be saved to database
+        unset($data['additional_locations']);
+        unset($data['selected_assessment_categories']);
+        unset($data['assessment_category_settings']);
+        unset($data['total_weight_check']);
 
         return $data;
     }
 
     protected static function mutateFormDataBeforeSave(array $data): array {
         $data['type'] = 'global_training';
+
         // Only set mentor_id if it's not already set (preserve existing mentor on edit)
         if (empty($data['mentor_id'])) {
             $data['mentor_id'] = auth()->id();
         }
 
-        // Validate assessment weights if assessments are enabled
+        // Only validate assessment weights if assessments are enabled
         if (($data['assess_participants'] ?? false) && isset($data['assessment_category_settings']) && !empty($data['assessment_category_settings'])) {
             $totalWeight = collect($data['assessment_category_settings'])->sum('weight_percentage');
             if (abs($totalWeight - 100.0) >= 0.1) {
@@ -664,61 +640,45 @@ class GlobalTrainingResource extends Resource {
             }
         }
 
-        // Handle location tags
-        if (!empty($data['location_tags'])) {
+        // Handle additional locations from tags input
+        if (!empty($data['additional_locations'])) {
             $locationIds = [];
-            foreach ($data['location_tags'] as $locationName) {
+            foreach ($data['additional_locations'] as $locationName) {
                 $location = \App\Models\Location::firstOrCreate(
                         ['name' => $locationName],
                         ['type' => 'other']
                 );
                 $locationIds[] = $location->id;
             }
-            $data['locations'] = array_unique(array_merge($data['locations'] ?? [], $locationIds));
+
+            // Merge with existing selected locations
+            $existingLocationIds = $data['locations'] ?? [];
+            $data['locations'] = array_unique(array_merge($existingLocationIds, $locationIds));
         }
+
+        // Clean up data - remove fields that shouldn't be saved to database
+        unset($data['additional_locations']);
+        unset($data['selected_assessment_categories']);
+        unset($data['assessment_category_settings']);
+        unset($data['total_weight_check']);
 
         return $data;
     }
 
-    protected function afterCreate(): void {
-        // Handle assessment category settings after create
-        if ($this->data['assess_participants'] ?? false) {
-            $this->handleAssessmentCategories();
-        }
-    }
-
-    protected function afterSave(): void {
-        // Handle assessment category settings after save
-        if ($this->data['assess_participants'] ?? false) {
-            $this->handleAssessmentCategories();
-        }
-    }
-
-    private function handleAssessmentCategories(): void {
-        $settings = $this->data['assessment_category_settings'] ?? [];
-
-        if (!empty($settings)) {
-            $attachData = [];
-
-            foreach ($settings as $setting) {
-                if (isset($setting['assessment_category_id'])) {
-                    $attachData[$setting['assessment_category_id']] = [
-                        'weight_percentage' => $setting['weight_percentage'] ?? 25.0,
-                        'pass_threshold' => $setting['pass_threshold'] ?? 70.0,
-                        'is_required' => $setting['is_required'] ?? true,
-                        'order_sequence' => $setting['order_sequence'] ?? 1,
-                        'is_active' => $setting['is_active'] ?? true,
-                    ];
-                }
-            }
-
-            $this->record->assessmentCategories()->sync($attachData);
-        }
-    }
-
     public static function table(Table $table): Table {
         return $table
-                        ->query(static::getEloquentQuery()->with(['locations', 'programs', 'county', 'division', 'partner', 'mentor', 'assessmentCategories', 'trainingMaterials']))
+                        ->query(
+                                static::getEloquentQuery()->with([
+                                    'locations',
+                                    'programs',
+                                    'county',
+                                    'division',
+                                    'partner',
+                                    'mentor',
+                                    'assessmentCategories',
+                                    'trainingMaterials'
+                                ])
+                        )
                         ->columns([
                             TextColumn::make('identifier')
                             ->label('ID')
@@ -729,10 +689,11 @@ class GlobalTrainingResource extends Resource {
                             ->searchable()
                             ->sortable()
                             ->wrap()
-                            ->description(
-                                    fn(Training $record): string =>
-                                    $record->description ? Str::limit($record->description, 60) : ''
-                            ),
+                            ->description(function ($record): string {
+                                if (!$record instanceof Training)
+                                    return '';
+                                return $record->description ? Str::limit($record->description, 60) : '';
+                            }),
                             BadgeColumn::make('lead_type')
                             ->label('Lead Type')
                             ->colors([
@@ -740,15 +701,18 @@ class GlobalTrainingResource extends Resource {
                                 'success' => 'county',
                                 'warning' => 'partner',
                             ])
-                            ->formatStateUsing(fn(string $state): string => match ($state) {
+                            ->formatStateUsing(fn(?string $state): string => match ($state) {
                                         'national' => 'National',
                                         'county' => 'County',
                                         'partner' => 'Partner Led',
-                                        default => ucfirst($state),
+                                        default => ucfirst($state ?? ''),
                                     }),
                             TextColumn::make('lead_organization')
                             ->label('Lead Organization')
-                            ->getStateUsing(function (Training $record): string {
+                            ->getStateUsing(function ($record): string {
+                                if (!$record instanceof Training)
+                                    return 'Not specified';
+
                                 return match ($record->lead_type) {
                                     'national' => $record->division?->name ?? 'Ministry of Health',
                                     'county' => $record->county?->name ?? 'Not specified',
@@ -766,35 +730,31 @@ class GlobalTrainingResource extends Resource {
                             TextColumn::make('mentor.full_name')
                             ->label('Created By')
                             ->searchable(['first_name', 'last_name'])
-                            ->description(
-                                    fn(Training $record): string =>
-                                    $record->mentor?->facility?->name ?? ''
-                            ),
+                            ->description(function ($record): string {
+                                if (!$record instanceof Training)
+                                    return '';
+                                return $record->mentor?->facility?->name ?? '';
+                            }),
                             TextColumn::make('locations.name')
                             ->label('Locations')
                             ->badge()
                             ->separator(', ')
                             ->limit(50)
-                            ->tooltip(function (Training $record): ?string {
-                                if ($record->locations && $record->locations->isNotEmpty()) {
-                                    return $record->locations->pluck('name')->implode(', ');
-                                }
-                                return $record->location ?: 'No location specified';
+                            ->tooltip(function ($record): ?string {
+                                if (!$record instanceof Training)
+                                    return 'No location specified';
+
+                                return $record->locations && $record->locations->isNotEmpty() ? $record->locations->pluck('name')->implode(', ') : 'No location specified';
                             })
-                            ->placeholder(fn(Training $record): string => $record->location ?: 'No location specified')
-                            ->formatStateUsing(function (Training $record): string {
-                                if ($record->locations && $record->locations->isNotEmpty()) {
-                                    return $record->locations->pluck('name')->implode(', ');
-                                }
-                                return $record->location ?: 'No location specified';
-                            }),
+                            ->placeholder('No location specified'),
                             TextColumn::make('start_date')
                             ->date('M j, Y')
                             ->sortable()
-                            ->description(
-                                    fn(Training $record): string =>
-                                    $record->end_date ? 'to ' . $record->end_date->format('M j, Y') : ''
-                            ),
+                            ->description(function ($record): string {
+                                if (!$record instanceof Training)
+                                    return '';
+                                return $record->end_date ? 'to ' . $record->end_date->format('M j, Y') : '';
+                            }),
                             BadgeColumn::make('status')
                             ->colors([
                                 'secondary' => 'new',
@@ -816,20 +776,67 @@ class GlobalTrainingResource extends Resource {
                             ->sortable()
                             ->badge()
                             ->color('success'),
-                            // NEW: Assessment indicators
-                            TextColumn::make('assessment_categories_count')
-                            ->label('Categories')
-                            ->counts('assessmentCategories')
+                            // Assessment status column
+                            TextColumn::make('assessment_status')
+                            ->label('Assessment')
+                            ->getStateUsing(function ($record): string {
+                                if (!$record instanceof Training)
+                                    return 'Unknown';
+                                if (!$record->assess_participants)
+                                    return 'Disabled';
+
+                                $categoriesCount = $record->assessmentCategories()->count();
+                                if ($categoriesCount === 0)
+                                    return 'No Categories';
+
+                                $totalWeight = $record->assessmentCategories->sum('pivot.weight_percentage');
+                                if (abs($totalWeight - 100) >= 0.1)
+                                    return 'Invalid Weights';
+
+                                return "{$categoriesCount} Categories";
+                            })
                             ->badge()
-                            ->color('warning')
-                            ->tooltip('Assessment categories configured'),
-                            // NEW: Materials indicator
-                            TextColumn::make('training_materials_count')
+                            ->color(function ($record): string {
+                                if (!$record instanceof Training)
+                                    return 'gray';
+                                if (!$record->assess_participants)
+                                    return 'gray';
+
+                                $categoriesCount = $record->assessmentCategories()->count();
+                                if ($categoriesCount === 0)
+                                    return 'warning';
+
+                                $totalWeight = $record->assessmentCategories->sum('pivot.weight_percentage');
+                                if (abs($totalWeight - 100) >= 0.1)
+                                    return 'danger';
+
+                                return 'success';
+                            }),
+                            // Materials status column
+                            TextColumn::make('materials_status')
                             ->label('Materials')
-                            ->counts('trainingMaterials')
+                            ->getStateUsing(function ($record): string {
+                                if (!$record instanceof Training)
+                                    return 'Unknown';
+                                if (!$record->provide_materials)
+                                    return 'Disabled';
+
+                                $materialsCount = $record->trainingMaterials()->count();
+                                if ($materialsCount === 0)
+                                    return 'No Materials';
+
+                                return "{$materialsCount} Items";
+                            })
                             ->badge()
-                            ->color('info')
-                            ->tooltip('Training materials planned'),
+                            ->color(function ($record): string {
+                                if (!$record instanceof Training)
+                                    return 'gray';
+                                if (!$record->provide_materials)
+                                    return 'gray';
+
+                                $materialsCount = $record->trainingMaterials()->count();
+                                return $materialsCount > 0 ? 'success' : 'warning';
+                            }),
                         ])
                         ->filters([
                             SelectFilter::make('lead_type')
@@ -870,15 +877,15 @@ class GlobalTrainingResource extends Resource {
                             ->getOptionLabelFromRecordUsing(fn(User $record): string => $record->full_name)
                             ->multiple()
                             ->preload(),
-                            // NEW: Assessment filter
+                            // Assessment filter
                             Filter::make('has_assessments')
                             ->label('Has Assessments')
-                            ->query(fn(Builder $query): Builder => $query->has('assessmentCategories'))
+                            ->query(fn(Builder $query): Builder => $query->where('assess_participants', true))
                             ->toggle(),
-                            // NEW: Materials filter
+                            // Materials filter
                             Filter::make('has_materials')
                             ->label('Has Materials')
-                            ->query(fn(Builder $query): Builder => $query->has('trainingMaterials'))
+                            ->query(fn(Builder $query): Builder => $query->where('provide_materials', true))
                             ->toggle(),
                             Filter::make('date_range')
                             ->form([
@@ -919,40 +926,55 @@ class GlobalTrainingResource extends Resource {
                                 ->label('Participants')
                                 ->icon('heroicon-o-users')
                                 ->color('success')
-                                ->url(
-                                        fn(Training $record): string =>
-                                        static::getUrl('participants', ['record' => $record])
-                                ),
+                                ->url(function ($record): string {
+                                    if (!$record instanceof Training)
+                                        return '#';
+                                    return static::getUrl('participants', ['record' => $record]);
+                                }),
                                 Action::make('manage_assessments')
                                 ->label('Assessments')
                                 ->icon('heroicon-o-clipboard-document-check')
                                 ->color('primary')
-                                ->url(
-                                        fn(Training $record): string =>
-                                        static::getUrl('assessments', ['record' => $record])
-                                )
-                                ->visible(fn(Training $record): bool => $record->assessmentCategories()->exists()),
+                                ->url(function ($record): string {
+                                    if (!$record instanceof Training)
+                                        return '#';
+                                    return static::getUrl('assessments', ['record' => $record]);
+                                })
+                                ->visible(function ($record): bool {
+                                    return $record instanceof Training && $record->assess_participants === true;
+                                }),
                                 Action::make('duplicate')
                                 ->label('Duplicate')
                                 ->icon('heroicon-o-document-duplicate')
                                 ->color('gray')
-                                ->action(function (Training $record) {
+                                ->action(function ($record) {
+                                    if (!$record instanceof Training)
+                                        return;
+
                                     $newTraining = $record->replicate();
                                     $newTraining->title = $record->title . ' (Copy)';
                                     $newTraining->identifier = 'GT-' . strtoupper(Str::random(6));
                                     $newTraining->status = 'new';
                                     $newTraining->type = 'global_training';
-                                    $newTraining->mentor_id = auth()->id(); // Set current user as mentor
+                                    $newTraining->mentor_id = auth()->id();
                                     $newTraining->save();
 
-                                    // Copy relationships
-                                    $newTraining->programs()->attach($record->programs->pluck('id'));
-                                    $newTraining->modules()->attach($record->modules->pluck('id'));
-                                    $newTraining->methodologies()->attach($record->methodologies->pluck('id'));
-                                    $newTraining->locations()->attach($record->locations->pluck('id'));
+                                    // Copy relationships safely
+                                    if ($record->programs && $record->programs->isNotEmpty()) {
+                                        $newTraining->programs()->attach($record->programs->pluck('id'));
+                                    }
+                                    if ($record->modules && $record->modules->isNotEmpty()) {
+                                        $newTraining->modules()->attach($record->modules->pluck('id'));
+                                    }
+                                    if ($record->methodologies && $record->methodologies->isNotEmpty()) {
+                                        $newTraining->methodologies()->attach($record->methodologies->pluck('id'));
+                                    }
+                                    if ($record->locations && $record->locations->isNotEmpty()) {
+                                        $newTraining->locations()->attach($record->locations->pluck('id'));
+                                    }
 
-                                    // Copy assessment categories with pivot data
-                                    if ($record->assessmentCategories()->exists()) {
+                                    // Copy assessment categories if assessments are enabled
+                                    if ($record->assess_participants && $record->assessmentCategories && $record->assessmentCategories->isNotEmpty()) {
                                         $categoryData = [];
                                         foreach ($record->assessmentCategories as $category) {
                                             $categoryData[$category->id] = [
@@ -986,7 +1008,11 @@ class GlobalTrainingResource extends Resource {
                                 ->icon('heroicon-o-check-circle')
                                 ->color('success')
                                 ->action(function ($records) {
-                                    $records->each(fn(Training $record) => $record->update(['status' => 'completed']));
+                                    $records->each(function ($record) {
+                                        if ($record instanceof Training) {
+                                            $record->update(['status' => 'completed']);
+                                        }
+                                    });
                                 })
                                 ->requiresConfirmation(),
                             ]),
@@ -1034,7 +1060,7 @@ class GlobalTrainingResource extends Resource {
     }
 
     public static function getGloballySearchableAttributes(): array {
-        return ['title', 'identifier', 'description', 'location'];
+        return ['title', 'identifier', 'description'];
     }
 
     public static function getGlobalSearchResultTitle(Model $record): string {
@@ -1045,7 +1071,7 @@ class GlobalTrainingResource extends Resource {
         return [
             'ID' => $record->identifier,
             'Status' => ucfirst($record->status),
-            'Location' => $record->location,
+            'Locations' => $record->locations->pluck('name')->implode(', ') ?: 'Not specified',
             'Start Date' => $record->start_date?->format('M j, Y'),
         ];
     }

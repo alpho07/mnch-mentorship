@@ -28,7 +28,7 @@ class Training extends Model {
         'lead_partner_id', // for partner-led trainings
         'organizer_id',
         'mentor_id',
-        'location',
+        //'location',
         'start_date',
         'end_date',
         'registration_deadline',
