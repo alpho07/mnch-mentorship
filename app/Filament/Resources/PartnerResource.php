@@ -31,7 +31,7 @@ class PartnerResource extends Resource
 
     protected static ?string $navigationLabel = 'Partners';
 
-    protected static ?string $navigationGroup = 'System Management';
+    protected static ?string $navigationGroup = 'Settings';
 
     protected static ?int $navigationSort = 3;
 

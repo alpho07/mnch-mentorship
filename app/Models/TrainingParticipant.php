@@ -26,6 +26,7 @@ class TrainingParticipant extends Model {
         'registration_date' => 'datetime',
         'completion_date' => 'datetime',
         'certificate_issued' => 'boolean',
+        'score' => 'decimal'
     ];
 
     // Relationships
@@ -72,12 +73,22 @@ class TrainingParticipant extends Model {
     }
 
     public function getOverallScoreAttribute(): ?float {
-        $results = $this->objectiveResults;
+        // Load only the score column to keep memory light
+        $results = $this->objectiveResults()->select('score')->get();
         if ($results->isEmpty()) {
             return null;
         }
 
-        return $results->avg('score');
+        // Use raw value to bypass Eloquent decimal cast; coerce only numerics
+        $avg = $results->avg(function ($row) {
+            $raw = $row->getRawOriginal('score');
+            if ($raw === '' || $raw === null) {
+                return null;
+            }
+            return is_numeric($raw) ? (float) $raw : null;
+        });
+
+        return $avg !== null ? round($avg, 2) : null;
     }
 
     public function getOverallGradeAttribute(): string {
@@ -98,38 +109,30 @@ class TrainingParticipant extends Model {
         return 'Needs Improvement';
     }
 
-   
-
     public function assessmentResults(): HasMany {
         return $this->hasMany(MenteeAssessmentResult::class, 'participant_id');
     }
-    
-    
-  
+
     // ========================================
     // ASSESSMENT COMPUTED ATTRIBUTES
     // ========================================
-
     // Get overall assessment status for this participant
-    public function getOverallAssessmentStatusAttribute(): string
-    {
+    public function getOverallAssessmentStatusAttribute(): string {
         $calculation = $this->training->calculateOverallScore($this);
         return $calculation['status'];
     }
 
     // Get overall assessment score for this participant
-    public function getOverallAssessmentScoreAttribute(): float
-    {
+    public function getOverallAssessmentScoreAttribute(): float {
         $calculation = $this->training->calculateOverallScore($this);
         return $calculation['score'];
     }
 
     // Get assessment progress (how many categories assessed)
-    public function getAssessmentProgressAttribute(): array
-    {
+    public function getAssessmentProgressAttribute(): array {
         $totalCategories = $this->training->assessmentCategories()->count();
         $assessedCategories = $this->assessmentResults()->count();
-        
+
         return [
             'assessed' => $assessedCategories,
             'total' => $totalCategories,
@@ -138,96 +141,89 @@ class TrainingParticipant extends Model {
     }
 
     // Check if participant has been assessed for a specific category
-    public function hasAssessmentFor(int $categoryId): bool
-    {
+    public function hasAssessmentFor(int $categoryId): bool {
         return $this->assessmentResults()
-            ->where('assessment_category_id', $categoryId)
-            ->exists();
+                        ->where('assessment_category_id', $categoryId)
+                        ->exists();
     }
 
     // Get assessment result for a specific category
-    public function getAssessmentResult(int $categoryId): ?MenteeAssessmentResult
-    {
+    public function getAssessmentResult(int $categoryId): ?MenteeAssessmentResult {
         return $this->assessmentResults()
-            ->where('assessment_category_id', $categoryId)
-            ->first();
+                        ->where('assessment_category_id', $categoryId)
+                        ->first();
     }
 
     // Get the result (pass/fail) for a specific category
-    public function getCategoryResult(int $categoryId): ?string
-    {
+    public function getCategoryResult(int $categoryId): ?string {
         return $this->getAssessmentResult($categoryId)?->result;
     }
 
     // Check if participant passed a specific category
-    public function passedCategory(int $categoryId): bool
-    {
+    public function passedCategory(int $categoryId): bool {
         return $this->getCategoryResult($categoryId) === 'pass';
     }
 
     // ========================================
     // ASSESSMENT METHODS
     // ========================================
-
     // Update assessment result for a category
     public function updateAssessmentResult(
-        int $categoryId,
-        string $result,
-        ?float $score = null,
-        ?string $feedback = null,
-        ?string $mentorNotes = null,
-        ?int $assessedBy = null
+            int $categoryId,
+            string $result,
+            ?float $score = null,
+            ?string $feedback = null,
+            ?string $mentorNotes = null,
+            ?int $assessedBy = null
     ): MenteeAssessmentResult {
         // Get category weight from training
         $categoryWeight = $this->training->getCategoryWeight($categoryId) ?? 25.00;
-        
+
         // Convert pass/fail to score if not provided
         if ($score === null) {
             $score = $result === 'pass' ? 100.00 : 0.00;
         }
-        
+
         return $this->assessmentResults()->updateOrCreate(
-            ['assessment_category_id' => $categoryId],
-            [
-                'result' => $result,
-                'score' => $score,
-                'category_weight' => $categoryWeight,
-                'feedback' => $feedback,
-                'mentor_notes' => $mentorNotes,
-                'assessed_by' => $assessedBy ?? auth()->id(),
-                'assessment_date' => now(),
-                'attempts' => 1,
-            ]
-        );
+                        ['assessment_category_id' => $categoryId],
+                        [
+                            'result' => $result,
+                            'score' => $score,
+                            'category_weight' => $categoryWeight,
+                            'feedback' => $feedback,
+                            'mentor_notes' => $mentorNotes,
+                            'assessed_by' => $assessedBy ?? auth()->id(),
+                            'assessment_date' => now(),
+                            'attempts' => 1,
+                        ]
+                );
     }
 
     // Bulk update assessment results
-    public function updateMultipleAssessments(array $assessments): array
-    {
+    public function updateMultipleAssessments(array $assessments): array {
         $results = [];
-        
+
         foreach ($assessments as $categoryId => $data) {
             $results[$categoryId] = $this->updateAssessmentResult(
-                $categoryId,
-                $data['result'],
-                $data['score'] ?? null,
-                $data['feedback'] ?? null,
-                $data['mentor_notes'] ?? null,
-                $data['assessed_by'] ?? null
+                    $categoryId,
+                    $data['result'],
+                    $data['score'] ?? null,
+                    $data['feedback'] ?? null,
+                    $data['mentor_notes'] ?? null,
+                    $data['assessed_by'] ?? null
             );
         }
-        
+
         // Update participant completion status if all assessments done
         $this->updateCompletionStatus();
-        
+
         return $results;
     }
 
     // Update participant completion status based on assessments
-    public function updateCompletionStatus(): void
-    {
+    public function updateCompletionStatus(): void {
         $calculation = $this->training->calculateOverallScore($this);
-        
+
         if ($calculation['all_assessed']) {
             $this->update([
                 'completion_status' => 'completed',

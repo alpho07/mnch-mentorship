@@ -14,7 +14,7 @@ class GradeResource extends Resource
 {
     protected static ?string $model = Grade::class;
     protected static ?string $navigationIcon = 'heroicon-o-academic-cap';
-    protected static ?string $navigationGroup = 'Organization Units';
+    protected static ?string $navigationGroup = 'Settings';
 
     public static function form(Form $form): Form
     {

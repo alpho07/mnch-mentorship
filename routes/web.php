@@ -22,6 +22,12 @@ use App\Http\Controllers\Analytics\TrainingExplorerController;
 
 
 
+// Alternative: If you want to handle it within Filament's context
+Route::middleware(['auth', 'web'])->group(function () {
+    Route::get('/training-export/download/{export_id}', [\App\Http\Controllers\TrainingExportController::class, 'download'])
+        ->name('training-export.download');
+});
+
 // Training participant template download
 Route::get('/{training}/participants/template', function ($trainingId) {
     $csv = Writer::createFromString('');

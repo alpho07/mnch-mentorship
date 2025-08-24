@@ -17,7 +17,7 @@ class AccessGroupResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-user-group';
 
-    protected static ?string $navigationGroup = 'Access Control';
+    protected static ?string $navigationGroup = 'Settings';
 
     protected static ?int $navigationSort = 1;
 

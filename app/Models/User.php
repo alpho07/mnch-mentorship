@@ -49,6 +49,10 @@ class User extends Authenticatable {
         ];
     }
 
+    public function placementLogs() {
+        return $this->hasMany(\App\Models\MenteePlacementLog::class, 'user_id');
+    }
+
     // Computed Attributes
 
 
