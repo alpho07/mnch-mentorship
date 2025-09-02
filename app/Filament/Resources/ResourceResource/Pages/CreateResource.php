@@ -4,6 +4,7 @@ namespace App\Filament\Resources\ResourceResource\Pages;
 
 use App\Filament\Resources\ResourceResource;
 use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Database\Eloquent\Model;
 
 class CreateResource extends CreateRecord
 {
@@ -19,15 +20,21 @@ class CreateResource extends CreateRecord
         return 'Resource created successfully';
     }
 
-    protected function afterCreate(): void
+    protected function handleRecordCreation(array $data): Model
     {
-        // Handle any post-creation tasks
-        $record = $this->getRecord();
-        
-        // Log activity
+        $record = static::getModel()::create($data);
+
+        // Log the creation with custom properties
         activity()
             ->performedOn($record)
             ->causedBy(auth()->user())
-            ->log('Resource created');
+            ->withProperties([
+                'category' => $record->category?->name,
+                'type' => $record->resourceType?->name,
+                'visibility' => $record->visibility,
+            ])
+            ->log("Created resource: {$record->title}");
+
+        return $record;
     }
 }

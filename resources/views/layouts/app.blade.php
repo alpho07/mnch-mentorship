@@ -120,28 +120,18 @@
                                 <div class="px-4 py-2 border-b border-t border-gray-100 mt-2">
                                     <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Interactive Analytics</h3>
                                 </div>
-                                <a href="{{ url('training.heatmap.moh') }}" 
+                                <a href="{{ url('analytics/heatmap') }}" 
                                        class="flex items-center px-4 py-3 text-sm hover:bg-blue-50 hover:text-blue-700 transition-colors">
                                     <i class="fas fa-map w-5 text-blue-500 mr-3"></i>
                                     <div>
                                         <div class="font-medium flex items-center">
-                                                🗺️ MOH Coverage Map
+                                                🗺️ Trainings & Mentorships
                                             <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">New</span>
                                         </div>
                                         <div class="text-xs text-gray-500">County-level drill-down with participant insights</div>
                                     </div>
                                 </a>
-                                <a href="{{ url('training.heatmap.mentorship') }}" 
-                                       class="flex items-center px-4 py-3 text-sm hover:bg-purple-50 hover:text-purple-700 transition-colors">
-                                    <i class="fas fa-map-marked-alt w-5 text-purple-500 mr-3"></i>
-                                    <div>
-                                        <div class="font-medium flex items-center">
-                                                🗺️ Mentorship Coverage Map
-                                            <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">New</span>
-                                        </div>
-                                        <div class="text-xs text-gray-500">Facility mentorship participation analysis</div>
-                                    </div>
-                                </a>
+                          
 
                                     <!-- Overview Section -->
                                 <!--div class="border-t border-gray-100 mt-2">

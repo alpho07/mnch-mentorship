@@ -9,7 +9,6 @@ use App\Http\Controllers\Frontend\CommentController;
 use App\Http\Controllers\Frontend\InteractionController;
 use App\Http\Controllers\TrainingHeatmapController;
 use App\Http\Controllers\TrainingPagesController;
-
 use App\Http\Controllers\Analytics\KenyaHeatmapController;
 use App\Http\Controllers\Analytics\TrainingExplorerController;
 
@@ -20,12 +19,24 @@ use App\Http\Controllers\Analytics\TrainingExplorerController;
  */
 
 
-
+Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () {
+    // Resource file operations
+    Route::get('resource-files/{file}/download', [App\Http\Controllers\Admin\ResourceFileController::class, 'download'])
+        ->name('resource-files.download');
+    Route::get('resource-files/{file}/preview', [App\Http\Controllers\Admin\ResourceFileController::class, 'preview'])
+        ->name('resource-files.preview');
+    
+    // Resource operations (for primary file or single resource)
+    Route::get('resources/{resource}/download', [App\Http\Controllers\Admin\ResourceController::class, 'download'])
+        ->name('resources.download');
+    Route::get('resources/{resource}/preview', [App\Http\Controllers\Admin\ResourceController::class, 'preview'])
+        ->name('resources.preview');
+});
 
 // Alternative: If you want to handle it within Filament's context
 Route::middleware(['auth', 'web'])->group(function () {
     Route::get('/training-export/download/{export_id}', [\App\Http\Controllers\TrainingExportController::class, 'download'])
-        ->name('training-export.download');
+            ->name('training-export.download');
 });
 
 // Training participant template download
@@ -245,7 +256,7 @@ Route::middleware(['auth', 'throttle:admin'])->prefix('admin')->name('admin.')->
 // ===== REDIRECTS & FALLBACKS =====
 Route::redirect('/admin', '/admin/login')->name('admin');
 Route::redirect('/resource/{slug}', '/resources/{slug}', 301);
-Route::redirect('/category/{slug}', '/resources/category/{slug}', 301); 
+Route::redirect('/category/{slug}', '/resources/category/{slug}', 301);
 
 Route::middleware(['web'])->prefix('analytics')->name('analytics.')->group(function () {
     // Heatmap (controller-based replacement for the widget usage)
@@ -262,14 +273,9 @@ Route::middleware(['web'])->prefix('analytics')->name('analytics.')->group(funct
     Route::get('/{county}/trainings/{training}/facilities', [TrainingExplorerController::class, 'apiTrainingFacilities'])->name('training.facilities');
     Route::get('/trainings/{training}/facilities/{facility}/participants', [TrainingExplorerController::class, 'apiFacilityParticipants'])->name('facility.participants');
     Route::get('/participants/{user}', [TrainingExplorerController::class, 'apiParticipantProfile'])->name('participant.profile');
-    
-       Route::get('/participants/{user}', [TrainingExplorerController::class, 'apiParticipantProfile'])->name('participant.profile');
+
+    Route::get('/participants/{user}', [TrainingExplorerController::class, 'apiParticipantProfile'])->name('participant.profile');
     Route::get('/participants/{user}/attrition-logs', [TrainingExplorerController::class, 'apiAttritionLogs'])->name('participant.attrition.logs');
     Route::post('/participants/{user}/attrition-logs', [TrainingExplorerController::class, 'storeAttritionLog'])->name('participant.attrition.store');
-}); 
- 
-
-
-
-
+});
 

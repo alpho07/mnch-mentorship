@@ -6,33 +6,38 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
-class Tag extends Model
-{
+class Tag extends Model {
+
     use HasFactory;
 
-    protected $fillable = ['name', 'slug', 'color'];
+    protected $fillable = [
+        'name',
+        'slug',
+        'color',
+    ];
 
-    public function resources(): BelongsToMany
-    {
+    // Relationships
+    public function resources(): BelongsToMany {
         return $this->belongsToMany(Resource::class, 'resource_tags');
     }
 
     // Query Scopes
-    public function scopeByName($query, string $name)
-    {
+    public function scopeByName($query, string $name) {
         return $query->where('name', 'like', "%{$name}%");
     }
 
-    public function scopePopular($query, int $limit = 10)
-    {
+    public function scopePopular($query, int $minCount = 1) {
         return $query->withCount('resources')
-                    ->orderByDesc('resources_count')
-                    ->limit($limit);
+                        ->having('resources_count', '>=', $minCount);
     }
 
     // Computed Attributes
-    public function getResourceCountAttribute(): int
-    {
+    public function getResourceCountAttribute(): int {
         return $this->resources()->count();
+    }
+
+    // Route Key
+    public function getRouteKeyName() {
+        return 'slug';
     }
 }
