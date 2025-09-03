@@ -23,8 +23,8 @@ class TrainingHeatmapController extends Controller
             'widget' => $widget,
             'widgetId' => 'moh-heatmap-' . uniqid(),
             'type' => 'moh',
-            'title' => 'MOH Global Training Coverage',
-            'description' => 'Interactive dashboard showing global training participation across all 47 counties'
+            'title' => 'MOH Training Coverage',
+            'description' => 'Interactive dashboard showing MOH training participation across all 47 counties'
         ]);
     }
 

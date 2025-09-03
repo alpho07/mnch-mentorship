@@ -10,11 +10,11 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
             <div class="text-center">
                 <h1 class="text-4xl md:text-6xl font-bold mb-6">
-                    Discover Knowledge,<br>
-                    <span class="text-primary-200">Share Resources</span>
+                   Strengthening Skills,<br>
+                    <span class="text-primary-200">Saving Lives</span>
                 </h1>
                 <p class="text-xl md:text-2xl text-primary-100 mb-8 max-w-3xl mx-auto">
-                    Access thousands of educational resources, tools, and materials curated for learners and professionals.
+                    Access a multitude of materials for Short, professional, and resonates with health and learning.
                 </p>
                 <!-- Hero Search -->
                 <div class="max-w-2xl mx-auto mb-8">

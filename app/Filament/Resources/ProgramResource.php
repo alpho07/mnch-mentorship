@@ -51,10 +51,10 @@ class ProgramResource extends Resource
                     ->searchable()
                     ->weight('bold'),
                 
-                Tables\Columns\TextColumn::make('description')
-                    ->label('Description')
-                    ->limit(60)
-                    ->wrap(),
+//                Tables\Columns\TextColumn::make('description')
+//                    ->label('Description')
+//                    ->limit(60)
+//                    ->wrap(),
                 
                 Tables\Columns\TextColumn::make('module_count')
                     ->label('Modules')

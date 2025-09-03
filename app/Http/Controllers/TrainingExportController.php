@@ -136,7 +136,7 @@ class TrainingExportController extends Controller
                 $csv .= "\n\n";
             }
             $csv .= "TRAINING: {$training->title}\n";
-            $csv .= "TYPE: " . ($training->type === 'global_training' ? 'MOH Global Training' : 'Facility Mentorship') . "\n";
+            $csv .= "TYPE: " . ($training->type === 'global_training' ? 'MOH Training' : 'Facility Mentorship') . "\n";
             $csv .= "DATES: " . ($training->start_date ? $training->start_date->format('M j, Y') : 'TBD') . 
                    " to " . ($training->end_date ? $training->end_date->format('M j, Y') : 'TBD') . "\n\n";
 
@@ -180,7 +180,7 @@ class TrainingExportController extends Controller
             $headers = [
                 'Training Title', 'Training ID', 'Type', 'Programs',
                 'Start Date', 'End Date', 'Registration Date',
-                'Attendance Status', 'Completion Status'
+                
             ];
             $csv .= $this->arrayToCsv($headers);
 
@@ -218,7 +218,7 @@ class TrainingExportController extends Controller
 
             $csv .= $this->arrayToCsv([
                 $training->title,
-                $training->type === 'global_training' ? 'MOH Global' : 'Facility Mentorship',
+                $training->type === 'global_training' ? 'MOH Training' : 'Facility Mentorship',
                 $training->start_date?->format('Y-m-d') ?? '',
                 $training->end_date?->format('Y-m-d') ?? '',
                 $totalParticipants,
@@ -265,14 +265,14 @@ class TrainingExportController extends Controller
 
         if (in_array('name', $participantFields)) $headers[] = 'Full Name';
         if (in_array('phone', $participantFields)) $headers[] = 'Phone Number';
-        if (in_array('email', $participantFields)) $headers[] = 'Email';
+        //if (in_array('email', $participantFields)) $headers[] = 'Email';
         if (in_array('facility_name', $participantFields)) $headers[] = 'Facility';
         if (in_array('county', $participantFields)) $headers[] = 'County';
         if (in_array('department', $participantFields)) $headers[] = 'Department';
         if (in_array('cadre', $participantFields)) $headers[] = 'Cadre';
-        if (in_array('registration_date', $participantFields)) $headers[] = 'Registration Date';
-        if (in_array('attendance_status', $participantFields)) $headers[] = 'Attendance Status';
-        if (in_array('completion_status', $participantFields)) $headers[] = 'Completion Status';
+        //if (in_array('registration_date', $participantFields)) $headers[] = 'Registration Date';
+        //if (in_array('attendance_status', $participantFields)) $headers[] = 'Attendance Status';
+        //if (in_array('completion_status', $participantFields)) $headers[] = 'Completion Status';
 
         return $headers;
     }
@@ -285,14 +285,14 @@ class TrainingExportController extends Controller
 
         if (in_array('name', $participantFields)) $row[] = $user->full_name;
         if (in_array('phone', $participantFields)) $row[] = $user->phone ?? '';
-        if (in_array('email', $participantFields)) $row[] = $user->email ?? '';
+        //if (in_array('email', $participantFields)) $row[] = $user->email ?? '';
         if (in_array('facility_name', $participantFields)) $row[] = $user->facility?->name ?? '';
         if (in_array('county', $participantFields)) $row[] = $user->facility?->subcounty?->county?->name ?? '';
         if (in_array('department', $participantFields)) $row[] = $user->department?->name ?? '';
         if (in_array('cadre', $participantFields)) $row[] = $user->cadre?->name ?? '';
-        if (in_array('registration_date', $participantFields)) $row[] = $participant->registration_date?->format('Y-m-d') ?? '';
-        if (in_array('attendance_status', $participantFields)) $row[] = ucfirst($participant->attendance_status);
-        if (in_array('completion_status', $participantFields)) $row[] = ucfirst($participant->completion_status);
+        //if (in_array('registration_date', $participantFields)) $row[] = $participant->registration_date?->format('Y-m-d') ?? '';
+        //if (in_array('attendance_status', $participantFields)) $row[] = ucfirst($participant->attendance_status);
+        //if (in_array('completion_status', $participantFields)) $row[] = ucfirst($participant->completion_status);
 
         return $row;
     }
@@ -309,8 +309,8 @@ class TrainingExportController extends Controller
             $training->start_date?->format('Y-m-d') ?? '',
             $training->end_date?->format('Y-m-d') ?? '',
             $participation->registration_date?->format('Y-m-d') ?? '',
-            ucfirst($participation->attendance_status),
-            ucfirst($participation->completion_status),
+            //ucfirst($participation->attendance_status),
+            //ucfirst($participation->completion_status),
         ];
     }
 

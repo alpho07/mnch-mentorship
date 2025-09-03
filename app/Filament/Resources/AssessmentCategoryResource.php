@@ -26,7 +26,7 @@ class AssessmentCategoryResource extends Resource
 
     protected static ?string $navigationLabel = 'Assessment Settings';
 
-    protected static ?string $navigationGroup = 'Configuration';
+    protected static ?string $navigationGroup = 'Settings';
 
     protected static ?int $navigationSort = 5;
 
@@ -48,6 +48,8 @@ class AssessmentCategoryResource extends Resource
                                     ->label('Assessment Method')
                                     ->options([
                                         'Written Test' => 'Written Test',
+                                        'Multiple Choice Assessment' => 'Multiple Choice Assessment',
+                                        'Multiple Choice Question' => 'Multiple Choice Question', 
                                         'Practical Demonstration' => 'Practical Demonstration',
                                         'Oral Examination' => 'Oral Examination',
                                         'Case Study' => 'Case Study',

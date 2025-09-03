@@ -17,6 +17,11 @@ class TopicResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-book-open';
     protected static ?string $navigationGroup = 'Curriculum';
     protected static ?int $navigationSort = 3;
+    
+       public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
 
     public static function form(Form $form): Form
     {

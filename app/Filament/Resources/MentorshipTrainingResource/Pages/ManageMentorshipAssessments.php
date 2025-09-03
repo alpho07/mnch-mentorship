@@ -31,7 +31,7 @@ class ManageMentorshipAssessments extends Page implements HasTable {
     public Training $record;
 
     public function mount(int|string $record): void {
-        $this->record = Training::where('type', 'global_training')
+        $this->record = Training::where('type', 'facility_mentorship')
                 ->with(['assessmentCategories', 'participants.user', 'participants.assessmentResults'])
                 ->findOrFail($this->record->id);
     }

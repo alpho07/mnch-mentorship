@@ -185,11 +185,11 @@ class PartnerResource extends Resource
                         ->label('View Trainings')
                         ->icon('heroicon-o-academic-cap')
                         ->color('success')
-                        ->url(fn (Partner $record): string => 
-                            route('filament.admin.resources.global-trainings.index', [
-                                'tableFilters[partner][values][0]' => $record->id
-                            ])
-                        )
+//                        ->url(fn (Partner $record): string => 
+//                            route('filament.admin.resources.global-trainings.index', [
+//                                'tableFilters[partner][values][0]' => $record->id
+//                            ])
+//                        )
                         ->visible(fn (Partner $record): bool => $record->training_count > 0),
                     Tables\Actions\DeleteAction::make(),
                     Tables\Actions\ForceDeleteAction::make(),
