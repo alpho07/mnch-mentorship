@@ -61,7 +61,7 @@ class ManageMentorshipAssessments extends Page implements HasTable {
                     ])
                     ->action(fn(array $data) => $this->bulkAssessCategory($data)),
                     Actions\Action::make('back')
-                    ->label('Back to Training')
+                    ->label('Back to Mentorships')
                     ->icon('heroicon-o-arrow-left')
                     ->url(fn() => MentorshipTrainingResource::getUrl('view', ['record' => $this->record])),
         ];
@@ -73,21 +73,24 @@ class ManageMentorshipAssessments extends Page implements HasTable {
                                 TrainingParticipant::query()
                                 ->where('training_id', $this->record->id)
                                 ->with([
-                                    'user:id,first_name,last_name,department_id,cadre_id',
+                                    'user:id,name,first_name,last_name,department_id,cadre_id',
                                     'user.department:id,name',
                                     'user.cadre:id,name',
                                     'assessmentResults'
                                 ])
                         )
                         ->columns([
-                            TextColumn::make('user.full_name')
+                            Tables\Columns\TextColumn::make('user')
                             ->label('Mentee Name')
-                            ->searchable(['first_name', 'last_name'])
-                            ->weight('bold'),
+                            ->getStateUsing(fn($record) => $record->user->name)
+                            ->searchable(['name', 'first_name', 'last_name'])
+                            ->sortable(false) // Disable sorting since it's not a real database column
+                            ->weight('medium'),
+                            
                             TextColumn::make('user.department.name')
                             ->label('Department')
                             ->badge()
-                            ->color('info'),
+                            ->color('info'), 
                             // Dynamic columns for each category - simple pass/fail
                             ...collect($this->record->assessmentCategories)->map(function ($category) {
                                 return TextColumn::make("category_{$category->id}")

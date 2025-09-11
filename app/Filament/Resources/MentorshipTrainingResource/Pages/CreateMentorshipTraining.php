@@ -29,7 +29,7 @@ class CreateMentorshipTraining extends CreateRecord
                 ->first();
                 
             if (!$assessment) {
-                throw new \Exception('Facility assessment must be completed and approved before creating mentorship training.');
+                throw new \Exception('Facility assessment must be completed and approved before creating mentorship.');
             }
         }
         
@@ -81,8 +81,8 @@ class CreateMentorshipTraining extends CreateRecord
         
         return Notification::make()
             ->success()
-            ->title('Mentorship Program Created')
-            ->body("Training created with {$categoriesCount} assessment categories and {$programsCount} programs. You can now add mentees and begin assessments.")
+            ->title('Mentorship Created')
+            ->body("Mentorship created with {$categoriesCount} assessment categories and {$programsCount} programs. You can now add mentees and begin assessments.")
             ->actions([
                 \Filament\Notifications\Actions\Action::make('add_mentees')
                     ->button()

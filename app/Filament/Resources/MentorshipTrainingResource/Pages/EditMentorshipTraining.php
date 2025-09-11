@@ -65,7 +65,7 @@ class EditMentorshipTraining extends EditRecord
                         }
 
                         Notification::make()
-                            ->title('Training Duplicated')
+                            ->title('Mentorship Duplicated')
                             ->body('Copy created with all content and assessment categories.')
                             ->success()
                             ->send();
@@ -193,7 +193,7 @@ class EditMentorshipTraining extends EditRecord
         
         return Notification::make()
             ->success()
-            ->title('Training Updated')
+            ->title('Mentorship Updated')
             ->body("Updated with {$categoriesCount} categories, {$programsCount} programs (Total: {$totalWeight}%)")
             ->actions([
                 \Filament\Notifications\Actions\Action::make('view_training')

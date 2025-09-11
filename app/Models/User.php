@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -61,14 +62,33 @@ class User extends Authenticatable {
     }
 
     public function getFullNameAttribute(): string {
-        if (!empty($this->name)) {
-            return $this->name;
+        $firstName = trim($this->first_name ?? '');
+        $lastName = trim($this->last_name ?? '');
+        $name = trim($this->name ?? '');
+
+        // Priority 1: If BOTH first_name AND last_name exist, use them
+        if ($firstName !== '' && $lastName !== '') {
+            return trim("{$firstName} {$lastName}");
         }
 
-        $firstName = $this->first_name ?? '';
-        $lastName = $this->last_name ?? '';
+        // Priority 2: If only first_name exists, combine with last_name (even if null)
+        if ($firstName !== '') {
+            $fullName = trim("{$firstName} {$lastName}");
+            return $fullName !== '' ? $fullName : $firstName;
+        }
 
-        return trim("{$firstName} {$lastName}") ?: 'No name provided';
+        // Priority 3: Fall back to name field
+        if ($name !== '') {
+            return $name;
+        }
+
+        // Priority 4: Use last_name if it's the only thing available
+        if ($lastName !== '') {
+            return $lastName;
+        }
+
+        // Fallback: No name available
+        return 'No name provided';
     }
 
     // Relationships
@@ -422,19 +442,6 @@ class User extends Authenticatable {
                 });
     }
 
-    public function getMentorshipAssessmentResults() {
-        return $this->hasManyThrough(
-                        MenteeAssessmentResult::class,
-                        TrainingParticipant::class,
-                        'user_id',
-                        'participant_id',
-                        'id',
-                        'id'
-                )->whereHas('participant.training', function ($query) {
-                    $query->where('type', 'facility_mentorship');
-                });
-    }
-
     public function getMentorshipPerformance(): array {
         $participations = $this->trainingParticipations()
                 ->whereHas('training', function ($query) {
@@ -475,5 +482,70 @@ class User extends Authenticatable {
             'pass_rate' => $assessedTrainings > 0 ? round(($passedTrainings / $assessedTrainings) * 100, 1) : 0,
             'average_score' => $assessedTrainings > 0 ? round($totalScore / $assessedTrainings, 1) : 0,
         ];
+    }
+
+    public function trainingParticipants(): HasMany {
+        return $this->hasMany(TrainingParticipant::class);
+    }
+
+    // Status Logs for Training Participants
+    public function trainingStatusLogs(): HasManyThrough {
+        return $this->hasManyThrough(
+                        ParticipantStatusLog::class,
+                        TrainingParticipant::class,
+                        'user_id',
+                        'training_participant_id',
+                        'id',
+                        'id'
+                )->orderBy('month_number')->orderBy('created_at', 'desc');
+    }
+
+// Status Logs for Mentorship Participants  
+    public function mentorshipStatusLogs(): HasManyThrough {
+        return $this->hasManyThrough(
+                                ParticipantStatusLog::class,
+                                TrainingParticipant::class,
+                                'user_id',
+                                'mentorship_participant_id',
+                                'id',
+                                'id'
+                        )->whereNotNull('mentorship_participant_id')
+                        ->orderBy('month_number')->orderBy('created_at', 'desc');
+    }
+
+// All Assessment Results for this user
+    public function allAssessmentResults(): HasManyThrough {
+        return $this->hasManyThrough(
+                        MenteeAssessmentResult::class,
+                        TrainingParticipant::class,
+                        'user_id',
+                        'participant_id',
+                        'id',
+                        'id'
+                )->with('assessmentCategory');
+    }
+
+// Mentorship-specific Assessment Results
+    public function getMentorshipAssessmentResults(): HasManyThrough {
+        return $this->hasManyThrough(
+                        MenteeAssessmentResult::class,
+                        TrainingParticipant::class,
+                        'user_id',
+                        'participant_id',
+                        'id',
+                        'id'
+                )->whereHas('participant.training', function ($query) {
+                    $query->where('type', 'facility_mentorship');
+                })->with('assessmentCategory');
+    }
+
+// All Status Logs (Training + Mentorship) - fixed accessor
+    public function getAllStatusLogsAttribute() {
+        $trainingLogs = $this->trainingStatusLogs()->get();
+        $mentorshipLogs = $this->mentorshipStatusLogs()->get();
+
+        return $trainingLogs->concat($mentorshipLogs)
+                        ->sortByDesc('created_at')
+                        ->values();
     }
 }

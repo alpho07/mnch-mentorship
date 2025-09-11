@@ -22,15 +22,15 @@ use App\Http\Controllers\Analytics\TrainingExplorerController;
 Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () {
     // Resource file operations
     Route::get('resource-files/{file}/download', [App\Http\Controllers\Admin\ResourceFileController::class, 'download'])
-        ->name('resource-files.download');
+            ->name('resource-files.download');
     Route::get('resource-files/{file}/preview', [App\Http\Controllers\Admin\ResourceFileController::class, 'preview'])
-        ->name('resource-files.preview');
-    
+            ->name('resource-files.preview');
+
     // Resource operations (for primary file or single resource)
     Route::get('resources/{resource}/download', [App\Http\Controllers\Admin\ResourceController::class, 'download'])
-        ->name('resources.download');
+            ->name('resources.download');
     Route::get('resources/{resource}/preview', [App\Http\Controllers\Admin\ResourceController::class, 'preview'])
-        ->name('resources.preview');
+            ->name('resources.preview');
 });
 
 // Alternative: If you want to handle it within Filament's context
@@ -277,5 +277,12 @@ Route::middleware(['web'])->prefix('analytics')->name('analytics.')->group(funct
     Route::get('/participants/{user}', [TrainingExplorerController::class, 'apiParticipantProfile'])->name('participant.profile');
     Route::get('/participants/{user}/attrition-logs', [TrainingExplorerController::class, 'apiAttritionLogs'])->name('participant.attrition.logs');
     Route::post('/participants/{user}/attrition-logs', [TrainingExplorerController::class, 'storeAttritionLog'])->name('participant.attrition.store');
+
+    Route::get('/county/{countyId}/summary', [KenyaHeatmapController::class, 'countySummary']);
+
+    Route::get('/county/{countyId}/trainings', [TrainingExplorerController::class, 'trainingsByCounty']);
+    Route::get('/training/{trainingId}/facilities', [TrainingExplorerController::class, 'facilitiesByTraining']);
+    Route::get('/facility/{facilityId}/participants', [TrainingExplorerController::class, 'participantsByFacility']);
+    Route::get('/participant/{participantId}/profile', [TrainingExplorerController::class, 'participantProfile']);
 });
 

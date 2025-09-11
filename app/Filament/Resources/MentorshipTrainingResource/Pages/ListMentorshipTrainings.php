@@ -13,11 +13,12 @@ use Illuminate\Database\Eloquent\Builder;
 class ListMentorshipTrainings extends ListRecords {
 
     protected static string $resource = MentorshipTrainingResource::class;
+    //static protected string|null $breadcrumb = 'Mentorship';
 
     protected function getHeaderActions(): array {
         return [
                     Actions\CreateAction::make()
-                    ->label('New Mentorship Program')
+                    ->label('New Mentorship')
                     ->icon('heroicon-o-plus')
                     ->color('primary')
                     ->before(function () {
@@ -39,12 +40,12 @@ class ListMentorshipTrainings extends ListRecords {
     }
 
     public function getTitle(): string {
-        return 'Mentorship Training Programs';
+        return 'Mentorships';
     }
 
     public function getSubheading(): ?string {
         $stats = $this->getQuickStats();
-        return "Facility-based mentorship programs • {$stats['total']} total • {$stats['ongoing']} active • {$stats['mentees']} mentees";
+        return "Facility-based mentorships • {$stats['total']} total • {$stats['ongoing']} active • {$stats['mentees']} mentees";
     }
 
     // REMOVE the getHeaderWidgets method entirely or fix it like this:
@@ -57,7 +58,7 @@ class ListMentorshipTrainings extends ListRecords {
 
     public function getTabs(): array {
         return [
-            'all' => Tab::make('All Programs')
+            'all' => Tab::make('All Mentorships')
                     ->badge($this->getTabCount('all'))
                     ->badgeColor('gray'),
             'ongoing' => Tab::make('Ongoing')

@@ -232,4 +232,12 @@ class TrainingParticipant extends Model {
             ]);
         }
     }
+
+    public function statusLogs(): HasMany {
+        return $this->hasMany(ParticipantStatusLog::class, 'training_participant_id');
+    }
+
+    public function mentorshipStatusLogs(): HasMany {
+        return $this->hasMany(ParticipantStatusLog::class, 'mentorship_participant_id');
+    }
 }

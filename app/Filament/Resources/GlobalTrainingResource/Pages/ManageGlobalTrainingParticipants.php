@@ -101,7 +101,11 @@ class ManageGlobalTrainingParticipants extends Page implements HasTable
                                         $phone = $user->phone ?: 'No phone';
                                         return [$user->id => "{$name} • {$facility} • {$phone}"];
                                     })->toArray();
-                                })
+                                })->default(function () {
+                                // Auto-select already enrolled users
+                                return TrainingParticipant::where('training_id', $this->record->id)
+                                                ->pluck('user_id')->toArray();
+                            })
                                 ->searchable()
                                 ->bulkToggleable()
                                 ->columns(1)
