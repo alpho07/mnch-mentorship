@@ -32,6 +32,11 @@ class ParticipantProfilePage extends Page implements Tables\Contracts\HasTable, 
     protected static string $view = 'filament.pages.participant-profile-page';
     
     public $user = null;
+    
+      public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
 
     /*
     |--------------------------------------------------------------------------

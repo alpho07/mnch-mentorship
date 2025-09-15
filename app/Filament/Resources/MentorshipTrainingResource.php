@@ -148,7 +148,7 @@ class MentorshipTrainingResource extends Resource
                 ->schema([
                     Grid::make(2)->schema([
                         Select::make('lead_type')
-                            ->label('Mentorship Coordinator Type')
+                            ->label('Mentorship Coordinator')
                             ->options([
                                 'national' => 'National',
                                 'county' => 'County',

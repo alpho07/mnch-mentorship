@@ -31,12 +31,12 @@ class ListTrainingExports extends ListRecords
 
     public function getTitle(): string
     {
-        return 'Training Data Exports';
+        return 'Trainings | Mentorships Data Exports';
     }
 
     public function getSubheading(): ?string
     {
-        return 'Export comprehensive training participant data with customizable fields and filters';
+        return 'Export comprehensive training participant/mentee data with customizable fields and filters';
     }
 
     // Override the table query to show export statistics instead
@@ -77,8 +77,8 @@ class ListTrainingExports extends ListRecords
         return [
             [
                 'key' => 'training_participants',
-                'title' => 'Training Participants Export',
-                'description' => 'Export detailed participant lists from selected trainings. Each training becomes a separate worksheet with participant details, assessments, and status information.',
+                'title' => 'Participants | Mentee Export',
+                'description' => 'Export detailed participant/mentee lists from selected trainings. Each training/mentorship becomes a separate worksheet with participant or mentee details, assessments, and status information.',
                 'icon' => 'heroicon-o-users',
                 'color' => 'success',
                 'use_cases' => [
@@ -90,21 +90,21 @@ class ListTrainingExports extends ListRecords
             ],
             [
                 'key' => 'participant_trainings',
-                'title' => 'Participant Training History',
-                'description' => 'Export complete training history for selected participants. Shows all trainings each person has attended across the entire system.',
+                'title' => 'Participant | Mentee  History',
+                'description' => 'Export complete trainingmentorship history for selected participants/mentee. Shows all trainings/mentorsips each person has attended across the entire system.',
                 'icon' => 'heroicon-o-academic-cap',
                 'color' => 'info',
                 'use_cases' => [
                     'Individual performance tracking',
                     'Career development planning',
                     'Competency progression analysis',
-                    'Training needs assessment'
+                    'Training/Mentorship needs assessment'
                 ]
             ],
             [
                 'key' => 'training_summary',
-                'title' => 'Training Summary Report',
-                'description' => 'Export high-level overview and statistics of selected trainings. Perfect for management reports and program evaluation.',
+                'title' => 'Training/Mentorship Summary Report',
+                'description' => 'Export high-level overview and statistics of selected trainings/mentorship. Perfect for management reports and program evaluation.',
                 'icon' => 'heroicon-o-chart-bar',
                 'color' => 'warning',
                 'use_cases' => [

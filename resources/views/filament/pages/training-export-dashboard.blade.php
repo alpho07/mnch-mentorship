@@ -6,30 +6,19 @@
             <x-filament::section>
                 <div class="text-center">
                     <div class="text-3xl font-bold text-primary-600">{{ number_format($stats['total_trainings']) }}</div>
-                    <div class="text-sm text-gray-600">Total Trainings</div>
+                    <div class="text-sm text-gray-600">Total Trainings/Mentorships</div>
                 </div>
             </x-filament::section>
 
             <x-filament::section>
                 <div class="text-center">
                     <div class="text-3xl font-bold text-success-600">{{ number_format($stats['total_participants']) }}</div>
-                    <div class="text-sm text-gray-600">Total Participants</div>
+                    <div class="text-sm text-gray-600">Total Participants/Mentees</div>
                 </div>
             </x-filament::section>
 
-            <x-filament::section>
-                <div class="text-center">
-                    <div class="text-3xl font-bold text-warning-600">{{ number_format($stats['ongoing_trainings']) }}</div>
-                    <div class="text-sm text-gray-600">Ongoing Trainings</div>
-                </div>
-            </x-filament::section>
-
-            <x-filament::section>
-                <div class="text-center">
-                    <div class="text-3xl font-bold text-info-600">{{ number_format($stats['completed_participants']) }}</div>
-                    <div class="text-sm text-gray-600">Completed Participants</div>
-                </div>
-            </x-filament::section>
+          
+          
         </div>
 
         {{-- Main Content --}}

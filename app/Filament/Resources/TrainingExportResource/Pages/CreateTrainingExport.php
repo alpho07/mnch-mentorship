@@ -78,7 +78,7 @@ class CreateTrainingExport extends CreateRecord {
         }
 
         if ($data['export_type'] === 'participant_trainings' && empty($data['selected_participants'])) {
-            throw new \Exception('Please select at least one participant');
+            throw new \Exception('Please select at least one participant/mentee');
         }
     }
 

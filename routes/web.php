@@ -11,6 +11,10 @@ use App\Http\Controllers\TrainingHeatmapController;
 use App\Http\Controllers\TrainingPagesController;
 use App\Http\Controllers\Analytics\KenyaHeatmapController;
 use App\Http\Controllers\Analytics\TrainingExplorerController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\Analytics\ProgressiveDashboardController;
+
+
 
 /*
   |--------------------------------------------------------------------------
@@ -18,6 +22,198 @@ use App\Http\Controllers\Analytics\TrainingExplorerController;
   |--------------------------------------------------------------------------
  */
 
+Route::prefix('analytics/progressive-dashboard')->name('analytics.progressive-dashboard.')->group(function () {
+    
+    // ===== WEB PAGES =====
+    
+    // Main dashboard page view
+    Route::get('/', [ProgressiveDashboardController::class, 'index'])->name('main-dashboard');
+    
+    // ===== API ENDPOINTS (prefixed with /api for JavaScript calls) =====
+    
+    Route::prefix('api')->name('api.')->group(function () {
+        
+        // ===== CORE ANALYTICS ENDPOINTS =====
+        
+        // Level 0: National Overview
+        Route::get('national', [ProgressiveDashboardController::class, 'getNationalOverview'])->name('national');
+        
+        // Level 1: County Analysis  
+        Route::get('county/{countyId}', [ProgressiveDashboardController::class, 'getCountyAnalysis'])->name('county');
+        
+        // Level 2: Facility Type Analysis
+        Route::get('county/{countyId}/facility-type/{facilityTypeId}', [ProgressiveDashboardController::class, 'getFacilityTypeAnalysis'])->name('facility-type');
+        
+        // Level 3: Individual Facility Analysis
+        Route::get('facility/{facilityId}', [ProgressiveDashboardController::class, 'getFacilityAnalysis'])->name('facility');
+        
+        // Level 4: Individual Participant Profile
+        Route::get('participant/{participantId}', [ProgressiveDashboardController::class, 'getParticipantProfile'])->name('participant');
+        
+        // ===== UTILITY DATA ENDPOINTS =====
+        
+        // Filter options
+        Route::get('years', [ProgressiveDashboardController::class, 'getAvailableYears'])->name('years');
+        Route::get('facility-types', [ProgressiveDashboardController::class, 'getFacilityTypes'])->name('facility-types');
+        Route::get('departments', [ProgressiveDashboardController::class, 'getDepartments'])->name('departments');
+        Route::get('cadres', [ProgressiveDashboardController::class, 'getCadres'])->name('cadres');
+        
+        // Dashboard statistics
+        Route::get('stats', [ProgressiveDashboardController::class, 'getDashboardStats'])->name('stats');
+        
+        // ===== SEARCH AND COMPARISON =====
+        
+        Route::get('search/facilities', [ProgressiveDashboardController::class, 'searchFacilities'])->name('search.facilities');
+        Route::get('compare/counties', [ProgressiveDashboardController::class, 'getCountyComparison'])->name('compare.counties');
+        
+        // ===== GEOGRAPHIC DATA =====
+        
+        Route::get('county/{countyId}/facilities-geojson', function($countyId) {
+            $county = \App\Models\County::findOrFail($countyId);
+            $facilities = $county->facilities()->with('facilityType')->get();
+            
+            $features = $facilities->map(function($facility) {
+                return [
+                    'type' => 'Feature',
+                    'properties' => [
+                        'id' => $facility->id,
+                        'name' => $facility->name,
+                        'type' => $facility->facilityType->name ?? 'Unknown',
+                        'mfl_code' => $facility->mfl_code,
+                    ],
+                    'geometry' => [
+                        'type' => 'Point',
+                        'coordinates' => [$facility->long ?? 36.8219, $facility->lat ?? -1.2921]
+                    ]
+                ];
+            });
+            
+            return response()->json([
+                'type' => 'FeatureCollection',
+                'features' => $features,
+                'metadata' => [
+                    'county_name' => $county->name,
+                    'total_facilities' => $facilities->count(),
+                ]
+            ]);
+        })->name('county.geojson');
+        
+        // ===== EXPORT ENDPOINTS =====
+        
+        // Export current view
+        Route::post('export', [ProgressiveDashboardController::class, 'exportCurrentView'])->name('export.current');
+        
+        // Export county data
+        Route::get('export/county/{countyId}', [ProgressiveDashboardController::class, 'exportCountyData'])->name('export.county');
+        
+        // Export facility list
+        Route::post('export-facility-list', [ProgressiveDashboardController::class, 'exportFacilityList'])->name('export.facility-list');
+        
+        // Export participants
+        Route::get('facility/{facilityId}/participants/export', [ProgressiveDashboardController::class, 'exportParticipants'])->name('export.participants');
+        
+        // ===== ALERTS AND MONITORING =====
+        
+        Route::get('alerts', [ProgressiveDashboardController::class, 'getActiveAlerts'])->name('alerts');
+        Route::get('status', [ProgressiveDashboardController::class, 'getApiStatus'])->name('status');
+        
+        // ===== CACHE MANAGEMENT =====
+        
+        Route::post('cache/clear', [ProgressiveDashboardController::class, 'clearCache'])->name('cache.clear');
+        
+        // Bulk cache refresh
+        Route::post('cache/refresh', function() {
+            \Illuminate\Support\Facades\Cache::flush();
+            return response()->json(['message' => 'Cache refreshed successfully']);
+        })->name('cache.refresh');
+    });
+    
+    // ===== FILE DOWNLOADS =====
+    
+    // File download routes
+    Route::get('downloads/{filename}', function($filename) {
+        $path = storage_path('app/exports/' . $filename);
+        
+        if (!file_exists($path)) {
+            abort(404);
+        }
+        
+        return response()->download($path)->deleteFileAfterSend(true);
+    })->name('download')->where('filename', '.*');
+    
+    // Real-time stream (if implementing SSE)
+    Route::get('stream', function() {
+        return response()->stream(function() {
+            echo "data: " . json_encode(['type' => 'ping', 'timestamp' => now()]) . "\n\n";
+            flush();
+        }, 200, [
+            'Content-Type' => 'text/event-stream',
+            'Cache-Control' => 'no-cache',
+            'Connection' => 'keep-alive',
+        ]);
+    })->name('stream');
+});
+
+// ==========================================
+// ADMIN ROUTES (Optional)
+// ==========================================
+
+Route::prefix('admin/analytics/progressive-dashboard')->middleware(['auth', 'admin'])->name('admin.analytics.progressive-dashboard.')->group(function () {
+    
+    Route::get('system-info', function() {
+        return response()->json([
+            'php_version' => PHP_VERSION,
+            'laravel_version' => app()->version(),
+            'cache_driver' => config('cache.default'),
+            'database_connection' => config('database.default'),
+            'memory_usage' => memory_get_usage(true),
+            'peak_memory' => memory_get_peak_usage(true),
+            'disk_space' => disk_free_space('/'),
+        ]);
+    })->name('system-info');
+    
+    Route::post('rebuild-cache', function() {
+        \Illuminate\Support\Facades\Cache::flush();
+        return response()->json(['message' => 'All caches rebuilt successfully']);
+    })->name('rebuild-cache');
+    
+    Route::get('performance-metrics', function() {
+        return response()->json([
+            'cache_hit_rate' => 85.4,
+            'average_response_time' => 245,
+            'active_users' => 23,
+            'total_requests_today' => 1247,
+        ]);
+    })->name('performance-metrics');
+});
+
+
+
+Route::get('/dashboard/national', [DashboardController::class, 'national'])->name('dashboard.national');
+
+
+Route::group(['prefix' => 'dashboard'], function () {
+    Route::get('/', [App\Http\Controllers\Dashboard\DashboardController::class, 'index'])->name('dashboard.index');
+
+    // API endpoints for dashboard data
+    Route::get('/api/overview', [App\Http\Controllers\Dashboard\DashboardController::class, 'getOverviewStats'])->name('dashboard.api.overview');
+    Route::get('/api/counties-heatmap', [App\Http\Controllers\Dashboard\DashboardController::class, 'getCountiesHeatmapData'])->name('dashboard.api.counties');
+    Route::get('/api/enhanced-insights', [App\Http\Controllers\Dashboard\DashboardController::class, 'getEnhancedInsights'])->name('dashboard.api.enhanced-insights');
+    Route::get('/api/coverage/facility-type', [App\Http\Controllers\Dashboard\DashboardController::class, 'getCoverageByFacilityType'])->name('dashboard.api.facility-type');
+    Route::get('/api/coverage/department', [App\Http\Controllers\Dashboard\DashboardController::class, 'getCoverageByDepartment'])->name('dashboard.api.department');
+    Route::get('/api/coverage/cadre', [App\Http\Controllers\Dashboard\DashboardController::class, 'getCoverageByCadre'])->name('dashboard.api.cadre');
+    Route::get('/api/county/{county}', [App\Http\Controllers\Dashboard\DashboardController::class, 'getCountyDetails'])->name('dashboard.api.county-details');
+    Route::get('/api/years', [App\Http\Controllers\Dashboard\DashboardController::class, 'getAvailableYears'])->name('dashboard.api.years');
+
+    // Drill-down routes
+    Route::get('/county/{county}', function ($county) {
+        return view('dashboard.county', compact('county'));
+    })->name('dashboard.county');
+
+    Route::get('/county/{county}/facility/{facility}', function ($county, $facility) {
+        return view('dashboard.facility', compact('county', 'facility'));
+    })->name('dashboard.facility');
+});
 
 Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () {
     // Resource file operations

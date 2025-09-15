@@ -40,7 +40,7 @@ class TrainingExportResource extends Resource {
             Tabs::make('Export Configuration')
             ->tabs([
                 // Tab 1: Export Type & Trainings
-                Tabs\Tab::make('1. Select Trainings')
+                Tabs\Tab::make('1. Select Trainings/Mentorships')
                 ->icon('heroicon-o-academic-cap')
                 ->schema([
                     Section::make('Export Type')
@@ -49,8 +49,8 @@ class TrainingExportResource extends Resource {
                         Select::make('export_type')
                         ->label('What do you want to export?')
                         ->options([
-                            'training_participants' => 'Participants - Export participants from selected trainings/mentorships',
-                            'participant_trainings' => 'Participant History - Export all trainings/mentorships for selected participants',
+                            'training_participants' => 'Participants/Mentee - Export participants/mentees from selected trainings/mentorships',
+                            'participant_trainings' => 'Participant/mentee History - Export all trainings/mentorships for selected participants/mentees',
                             'training_summary' => 'Summary Report - Overview of selected trainings/mentorships',
                         ])
                         ->required()
@@ -147,12 +147,12 @@ class TrainingExportResource extends Resource {
                     ]),
                     
                     // Participant Selection
-                    Section::make('Select Participants')
-                    ->description('Choose which participants to get training/mentorship history for')
+                    Section::make('Select Participants/Mentees')
+                    ->description('Choose which participants/mentees to get training/mentorship history for')
                     ->visible(fn(Get $get) => $get('export_type') === 'participant_trainings')
                     ->schema([
                         CheckboxList::make('selected_participants')
-                        ->label('Available Participants')
+                        ->label('Available Participants/mentees')
                         ->options(function () {
                             return User::whereHas('trainingParticipations')
                                             ->with(['facility', 'department', 'cadre', 'trainingParticipations'])
@@ -172,7 +172,7 @@ class TrainingExportResource extends Resource {
                         ->columns(1)
                         ->gridDirection('row')
                         ->required(fn(Get $get) => $get('export_type') === 'participant_trainings')
-                        ->helperText('Select participants to get their complete training/mentorship history.'),
+                        ->helperText('Select participants/mentees to get their complete training/mentorship history.'),
                     ]),
                 ]),
                 
@@ -249,13 +249,13 @@ class TrainingExportResource extends Resource {
                 Tabs\Tab::make('3. Data Fields')
                 ->icon('heroicon-o-table-cells')
                 ->schema([
-                    Section::make('Participant Information')
-                    ->description('All participant fields are included in the specified order')
+                    Section::make('Participant/Mentee Information')
+                    ->description('All participant/mentees fields are included in the specified order')
                     ->schema([
                         Placeholder::make('participant_fields_info')
                         ->content(new HtmlString('
                             <div class="bg-green-50 border border-green-200 rounded-lg p-4">
-                                <h4 class="text-sm font-medium text-green-800 mb-2">Standard Participant Fields (Fixed Order):</h4>
+                                <h4 class="text-sm font-medium text-green-800 mb-2">Standard Participant/Mentee Fields (Fixed Order):</h4>
                                 <div class="text-sm text-green-700">
                                     <strong>1.</strong> Attendant\'s Name →
                                     <strong>2.</strong> County →
