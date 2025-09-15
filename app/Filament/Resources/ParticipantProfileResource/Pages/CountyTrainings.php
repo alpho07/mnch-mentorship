@@ -30,7 +30,7 @@ class CountyTrainings extends Page implements HasTable {
     }
 
     public function getTitle(): string {
-        return "Global Trainings - {$this->county->name} County";
+        return "MOH Trainings - {$this->county->name} County";
     }
 
     protected function getHeaderActions(): array {
@@ -65,27 +65,15 @@ class CountyTrainings extends Page implements HasTable {
                             ->searchable()
                             ->copyable(),
                             TextColumn::make('start_date')
-                            ->label('Start Date')
-                            ->date('M j, Y')
+                            ->label('Year')
+                            ->date('Y')
                             ->sortable(),
-                            TextColumn::make('end_date')
+                            /*TextColumn::make('end_date')
                             ->label('End Date')
                             ->date('M j, Y')
-                            ->sortable(),
-                            TextColumn::make('participants_from_county')
-                            ->label('Participants from County')
-                            ->getStateUsing(function ($record) {
-                                return $record->participants()
-                                                ->whereHas('user.facility.subcounty', function ($query) {
-                                                    $query->where('county_id', $this->county->id);
-                                                })
-                                                ->count();
-                            })
-                            ->alignCenter()
-                            ->badge()
-                            ->color('primary'),
-                            TextColumn::make('facilities_count')
-                            ->label('Facilities Represented')
+                            ->sortable(),*/
+                              TextColumn::make('facilities_count')
+                            ->label('No. of Facilities')
                             ->getStateUsing(function ($record) {
                                 return $record->participants()
                                                 ->whereHas('user.facility.subcounty', function ($query) {
@@ -98,7 +86,20 @@ class CountyTrainings extends Page implements HasTable {
                             ->alignCenter()
                             ->badge()
                             ->color('info'),
-                            TextColumn::make('completion_rate')
+                            TextColumn::make('participants_from_county')
+                            ->label('No of Participants')
+                            ->getStateUsing(function ($record) {
+                                return $record->participants()
+                                                ->whereHas('user.facility.subcounty', function ($query) {
+                                                    $query->where('county_id', $this->county->id);
+                                                })
+                                                ->count();
+                            })
+                            ->alignCenter()
+                            ->badge()
+                            ->color('primary'),
+                          
+                            /*TextColumn::make('completion_rate')
                             ->label('Completion Rate')
                             ->getStateUsing(function ($record) {
                                 $total = $record->participants()
@@ -134,7 +135,7 @@ class CountyTrainings extends Page implements HasTable {
                                 'success' => 'ongoing',
                                 'primary' => 'completed',
                                 'danger' => 'cancelled',
-                            ]),
+                            ]),*/
                         ])
                         ->actions([
                             Action::make('view_facilities')

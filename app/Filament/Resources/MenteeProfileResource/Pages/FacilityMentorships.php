@@ -35,7 +35,7 @@ class FacilityMentorships extends Page implements HasTable
 
     public function getTitle(): string
     {
-        return "Mentorship Programs - {$this->facility->name}";
+        return "Mentorship - {$this->facility->name}";
     }
 
     public function getSubheading(): ?string
@@ -71,16 +71,16 @@ class FacilityMentorships extends Page implements HasTable
                     ->wrap(),
 
                 TextColumn::make('identifier')
-                    ->label('Program ID')
+                    ->label('Mentorship ID')
                     ->searchable()
                     ->copyable(),
 
                 TextColumn::make('start_date')
-                    ->label('Start Date')
-                    ->date('M j, Y')
+                    ->label('year')
+                    ->date('Y')
                     ->sortable(),
 
-                TextColumn::make('end_date')
+                /*TextColumn::make('end_date')
                     ->label('End Date')
                     ->date('M j, Y')
                     ->sortable(),
@@ -114,7 +114,7 @@ class FacilityMentorships extends Page implements HasTable
                         'success' => 'ongoing',
                         'primary' => 'completed',
                         'danger' => 'cancelled',
-                    ]),
+                    ]),*/
             ])
             ->actions([
                 Action::make('view_mentees')

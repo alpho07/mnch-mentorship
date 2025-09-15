@@ -33,7 +33,7 @@ class CountyFacilities extends Page implements HasTable
 
     public function getTitle(): string
     {
-        return "Facilities with Mentorship Programs - {$this->county->name} County";
+        return "Facilities with Mentorships - {$this->county->name} County";
     }
 
     protected function getHeaderActions(): array
@@ -63,6 +63,11 @@ class CountyFacilities extends Page implements HasTable
                     }])
             )
             ->columns([
+                
+                TextColumn::make('subcounty.name')
+                    ->label('Subcounty')
+                    ->searchable(),
+                
                 TextColumn::make('name')
                     ->label('Facility Name')
                     ->searchable()
@@ -81,11 +86,9 @@ class CountyFacilities extends Page implements HasTable
                     ->badge()
                     ->color('info'),
 
-                TextColumn::make('subcounty.name')
-                    ->label('Subcounty')
-                    ->searchable(),
+                
 
-                TextColumn::make('mentorship_programs_count')
+                /*TextColumn::make('mentorship_programs_count')
                     ->label('Mentorship Programs')
                     ->getStateUsing(function ($record) {
                         return $record->trainings()
@@ -94,7 +97,7 @@ class CountyFacilities extends Page implements HasTable
                     })
                     ->alignCenter()
                     ->badge()
-                    ->color('primary'),
+                    ->color('primary'),*/
 
                 TextColumn::make('total_mentees_count')
                     ->label('Total Mentees')
@@ -108,7 +111,7 @@ class CountyFacilities extends Page implements HasTable
                     ->badge()
                     ->color('success'),
 
-                TextColumn::make('active_programs_count')
+                /*TextColumn::make('active_programs_count')
                     ->label('Active Programs')
                     ->getStateUsing(function ($record) {
                         return $record->trainings()
@@ -142,7 +145,7 @@ class CountyFacilities extends Page implements HasTable
                         if ($rate >= 80) return 'success';
                         if ($rate >= 60) return 'warning';
                         return 'danger';
-                    }),
+                    }),*/
             ])
             ->actions([
                 Action::make('view_mentorships')

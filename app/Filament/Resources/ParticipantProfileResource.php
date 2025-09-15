@@ -38,7 +38,7 @@ class ParticipantProfileResource extends Resource {
                             ->weight('bold')
                             ->description(fn($record) => "{$record->subcounties()->count()} subcounties"),
                             TextColumn::make('global_trainings_count')
-                            ->label('Global Trainings')
+                            ->label('No.of Trainings')
                             ->getStateUsing(function ($record) {
                                 return Training::where('type', 'global_training')
                                                 ->whereHas('participants.user.facility.subcounty', function ($query) use ($record) {
@@ -51,7 +51,7 @@ class ParticipantProfileResource extends Resource {
                             ->badge()
                             ->color('primary'),
                             TextColumn::make('total_participants')
-                            ->label('Total Participants')
+                            ->label('No. of Participants')
                             ->getStateUsing(function ($record) {
                                 return TrainingParticipant::whereHas('user.facility.subcounty', function ($query) use ($record) {
                                             $query->where('county_id', $record->id);
@@ -62,7 +62,7 @@ class ParticipantProfileResource extends Resource {
                             ->alignCenter()
                             ->badge()
                             ->color('success'),
-                            TextColumn::make('completion_rate')
+                            /*TextColumn::make('completion_rate')
                             ->label('Completion Rate')
                             ->getStateUsing(function ($record) {
                                 $total = TrainingParticipant::whereHas('user.facility.subcounty', function ($query) use ($record) {
@@ -88,7 +88,7 @@ class ParticipantProfileResource extends Resource {
                                 if ($rate >= 60)
                                     return 'warning';
                                 return 'danger';
-                            }),
+                            }),*/
                         ])
                         ->actions([
                             Action::make('view_trainings')

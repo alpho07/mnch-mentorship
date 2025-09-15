@@ -141,7 +141,7 @@ class ParticipantDetail extends Page implements HasInfolists, HasTable {
                                     ->color('success'),
                                 ]),
                             ]),
-                            Section::make('Training Information')
+                            /*Section::make('Training Information')
                             ->schema([
                                 InfoGrid::make(4)
                                 ->schema([
@@ -165,7 +165,7 @@ class ParticipantDetail extends Page implements HasInfolists, HasTable {
                                     ->date('M j, Y')
                                     ->placeholder('Not completed'),
                                 ]),
-                            ]),
+                            ]),*/
                             Section::make('Assessment Results')
                             ->schema([
                                 TextEntry::make('assessment_summary')
@@ -207,24 +207,24 @@ class ParticipantDetail extends Page implements HasInfolists, HasTable {
                             ->label('Type')
                             ->badge()
                             ->formatStateUsing(fn($state) =>
-                                    $state === 'global_training' ? 'Global Training' : 'Facility Mentorship'
+                                    $state === 'global_training' ? 'MOH Training' : 'Facility Mentorship'
                             )
                             ->colors([
                                 'primary' => 'global_training',
                                 'success' => 'facility_mentorship'
                             ]),
                             TextColumn::make('registration_date')
-                            ->label('Date')
-                            ->date('M j, Y')
+                            ->label('Year')
+                            ->date('Y')
                             ->sortable(),
-                            TextColumn::make('completion_status')
+                            /*TextColumn::make('completion_status')
                             ->label('Status')
                             ->badge()
                             ->colors([
                                 'warning' => 'in_progress',
                                 'success' => 'completed',
                                 'danger' => 'dropped'
-                            ]),
+                            ]),*/
                             TextColumn::make('assessment_score')
                             ->label('Score')
                             ->getStateUsing(function ($record) {

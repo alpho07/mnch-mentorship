@@ -80,7 +80,7 @@ class MentorshipMentees extends Page implements HasTable {
                             ->label('Cadre')
                             ->badge()
                             ->color('success'),
-                            BadgeColumn::make('attendance_status')
+                            /*BadgeColumn::make('attendance_status')
                             ->colors([
                                 'secondary' => 'registered',
                                 'warning' => 'attending',
@@ -98,7 +98,7 @@ class MentorshipMentees extends Page implements HasTable {
                             TextColumn::make('registration_date')
                             ->label('Enrolled')
                             ->date('M j, Y')
-                            ->sortable(),
+                            ->sortable(),*/
                         ])
                         ->actions([
                             Action::make('view_profile')

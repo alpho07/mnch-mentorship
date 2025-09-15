@@ -155,7 +155,7 @@ class MenteeDetail extends Page implements HasInfolists, HasTable
                             ]),
                     ]),
 
-                Section::make('Mentorship Information')
+                /*Section::make('Mentorship Information')
                     ->schema([
                         InfoGrid::make(4)
                             ->schema([
@@ -182,7 +182,7 @@ class MenteeDetail extends Page implements HasInfolists, HasTable
                                     ->date('M j, Y')
                                     ->placeholder('Not completed'),
                             ]),
-                    ]),
+                    ]),*/
 
                 Section::make('Assessment Results')
                     ->schema([

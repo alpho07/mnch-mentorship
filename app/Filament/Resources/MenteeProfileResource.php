@@ -21,6 +21,11 @@ class MenteeProfileResource extends Resource {
     protected static ?string $navigationGroup = 'Training Management';
     protected static ?int $navigationSort =7;
     protected static ?string $slug = 'mentee-profiles';
+    
+     public function getTitle(): string
+    {
+        return 'Mentorship Counties';
+    }
 
     public static function table(Table $table): Table {
         return $table
@@ -32,13 +37,13 @@ class MenteeProfileResource extends Resource {
                         )
                         ->columns([
                             TextColumn::make('name')
-                            ->label('County')
+                            ->label('Mentorship Counties')
                             ->searchable()
                             ->sortable()
                             ->weight('bold')
                             ->description(fn($record) => "{$record->subcounties()->count()} subcounties"),
                             TextColumn::make('mentorship_count')
-                            ->label('Mentorship Programs')
+                            ->label('No. of Mentorships')
                             ->getStateUsing(function ($record) {
                                 return Training::where('type', 'facility_mentorship')
                                                 ->whereHas('facility.subcounty', function ($query) use ($record) {
@@ -74,7 +79,7 @@ class MenteeProfileResource extends Resource {
                             ->alignCenter()
                             ->badge()
                             ->color('success'),
-                            TextColumn::make('completion_rate')
+                            /*TextColumn::make('completion_rate')
                             ->label('Completion Rate')
                             ->getStateUsing(function ($record) {
                                 $total = TrainingParticipant::whereHas('training', function ($query) use ($record) {
@@ -102,7 +107,7 @@ class MenteeProfileResource extends Resource {
                                 if ($rate >= 60)
                                     return 'warning';
                                 return 'danger';
-                            }),
+                            }),*/
                         ])
                         ->actions([
                             Action::make('view_facilities')
@@ -112,7 +117,7 @@ class MenteeProfileResource extends Resource {
                             ->url(fn($record) => static::getUrl('county-facilities', ['county' => $record->id])),
                         ])
                         ->defaultSort('name')
-                        ->emptyStateHeading('No Counties with Mentorship Programs')
+                        ->emptyStateHeading('No Counties with Mentorships')
                         ->emptyStateDescription('Counties will appear here once they have facilities running mentorship programs.');
     }
 

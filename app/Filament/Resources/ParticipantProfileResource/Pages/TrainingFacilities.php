@@ -67,6 +67,10 @@ class TrainingFacilities extends Page implements HasTable
                     ->with(['subcounty', 'facilityType'])
             )
             ->columns([
+                 TextColumn::make('subcounty.name')
+                    ->label('Subcounty')
+                    ->searchable(),
+                
                 TextColumn::make('name')
                     ->label('Facility Name')
                     ->searchable()
@@ -78,12 +82,10 @@ class TrainingFacilities extends Page implements HasTable
                     ->badge()
                     ->color('info'),
 
-                TextColumn::make('subcounty.name')
-                    ->label('Subcounty')
-                    ->searchable(),
+               
 
                 TextColumn::make('participants_count')
-                    ->label('Participants')
+                    ->label('No. of Participants')
                     ->getStateUsing(function ($record) {
                         return TrainingParticipant::where('training_id', $this->training->id)
                             ->whereHas('user', function ($query) use ($record) {
@@ -95,7 +97,7 @@ class TrainingFacilities extends Page implements HasTable
                     ->badge()
                     ->color('primary'),
 
-                TextColumn::make('completion_rate')
+                /*TextColumn::make('completion_rate')
                     ->label('Completion Rate')
                     ->getStateUsing(function ($record) {
                         $total = TrainingParticipant::where('training_id', $this->training->id)
@@ -120,7 +122,7 @@ class TrainingFacilities extends Page implements HasTable
                         if ($rate >= 80) return 'success';
                         if ($rate >= 60) return 'warning';
                         return 'danger';
-                    }),
+                    }),*/
             ])
             ->actions([
                 Action::make('view_participants')
