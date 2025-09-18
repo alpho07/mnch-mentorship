@@ -120,7 +120,7 @@
                                 <div class="px-4 py-2 border-b border-t border-gray-100 mt-2">
                                     <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Interactive Analytics</h3>
                                 </div>
-                                <a href="{{ route('analytics.progressive-dashboard.main-dashboard') }}" 
+                                <a href="{{ url('analytics/dashboard') }}" 
                                        class="flex items-center px-4 py-3 text-sm hover:bg-blue-50 hover:text-blue-700 transition-colors">
                                     <i class="fas fa-map w-5 text-blue-500 mr-3"></i>
                                     <div>

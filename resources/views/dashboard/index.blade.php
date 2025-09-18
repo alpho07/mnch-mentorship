@@ -4,7 +4,7 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Healthcare Training Dashboard</title>
+        <title>Healthcare Training & Mentorship Dashboard</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>      
@@ -78,17 +78,17 @@
         <div class="max-w-7xl mx-auto px-6 py-4">
             <div class="flex items-center justify-between">
                 <div>
-                    <h1 class="text-3xl font-bold text-gray-800">Healthcare Training Dashboard</h1>
+                    <h1 class="text-3xl font-bold text-gray-800">Healthcare Trainings & Mentorships Dashboard</h1>
                     <p class="text-gray-600 mt-1">Coverage insights and analytics for Kenya's healthcare workforce development</p>
                     </div>
 
                     <!-- Training Type Toggle -->
                     <div class="bg-gray-100 p-1 rounded-lg">
                         <button id="global-training-btn" class="px-6 py-2 rounded-md text-sm font-medium transition-colors bg-blue-600 text-white">
-                            Global Training
+                            MOH Trainings
                         </button>
                         <button id="mentorship-btn" class="px-6 py-2 rounded-md text-sm font-medium transition-colors text-gray-700 hover:text-gray-900">
-                            Facility Mentorship
+                            Facility Mentorships
                         </button>
                     </div>
                 </div>

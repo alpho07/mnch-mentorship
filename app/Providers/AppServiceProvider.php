@@ -29,6 +29,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        
+          if ($this->app->environment('production') || $this->app->environment('local')) {
+           // URL::forceScheme('https'); 
+       }    
+        
     \App\Models\MonthlyReport::observe(\App\Observers\MonthlyReportObserver::class);
 
 
