@@ -1,6 +1,6 @@
 @extends('layouts.dashboard')
 
-@section('title', $program->title . ' - Program Analytics')
+@section('title', $program->title . ' - County Program Analytics')
 
 @section('content')
 <div class="container-fluid px-4">
@@ -9,7 +9,7 @@
         <div class="d-flex justify-content-between align-items-start">
             <div>
                 <h1 class="h2 mb-1">{{ $program->title }}</h1>
-                <p class="mb-2">{{ $county->name }} County | {{ $mode === 'training' ? 'Training Program' : 'Mentorship Program' }}</p>
+                <p class="mb-2">Training Program Analytics | {{ $county->name }} County</p>
                 <div class="d-flex gap-3 flex-wrap">
                     @if($program->identifier)
                     <span class="badge bg-white text-dark">ID: {{ $program->identifier }}</span>
@@ -17,8 +17,11 @@
                     @if($program->start_date)
                     <span class="badge bg-white text-dark">Year: {{ \Carbon\Carbon::parse($program->start_date)->format('Y') }}</span>
                     @endif
+                    <span class="badge bg-white text-dark">Training Program</span>
                 </div>
             </div>
+            
+         
         </div>
     </div>
 
@@ -27,40 +30,42 @@
         <div class="stats-card">
             <div class="icon"><i class="fas fa-hospital"></i></div>
             <h3>{{ number_format($facilities->count() ?? 0) }}</h3>
-            <p>Facilitie(s)</p>
+            <p>Participating Facilities</p>
         </div>
         <div class="stats-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
             <div class="icon"><i class="fas fa-users"></i></div>
             <h3>{{ number_format($programStats['totalParticipants'] ?? 0) }}</h3>
-            <p>Total {{ $mode === 'training' ? 'Participants' : 'Mentees' }}</p>
+            <p>Total Participants</p>
         </div>
-        <!--div class="stats-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
-            <div class="icon"><i class="fas fa-check-circle"></i></div>
-            <h3>{{ number_format($programStats['completedParticipants'] ?? 0) }}</h3>
-            <p>Completed</p>
+        <div class="stats-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+            <div class="icon"><i class="fas fa-calendar"></i></div>
+            <h3>{{ $program->start_date ? \Carbon\Carbon::parse($program->start_date)->format('M j, Y') : 'N/A' }}</h3>
+            <p>Start Date</p>
         </div>
         <div class="stats-card" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
-            <div class="icon"><i class="fas fa-chart-line"></i></div>
-            <h3>{{ $programStats['completionPercentage'] ?? 0 }}%</h3>
-            <p>Completion Rate</p>
-        </div-->
+            <div class="icon"><i class="fas fa-check-circle"></i></div>
+            @php
+                $completionRate = ($facilities->sum('participants_count') > 0) ? 
+                    round(($facilities->where('completion_status', 'completed')->sum('participants_count') / $facilities->sum('participants_count')) * 100, 1) : 0;
+            @endphp
+            <h3>{{ $program->status ? ucfirst($program->status) : 'Active' }}</h3>
+            <p>Program Status</p>
+        </div>
     </div>
 
-  
-
-    <!-- Facilities List -->
+    <!-- Participating Facilities -->
     <div class="row">
         <div class="col-12">
             <div class="card">
                 <div class="card-header">
                     <h5>Participating Facilities</h5>
-                    <small class="text-muted">Click on a facility to view detailed participant information</small>
+                    <small class="text-muted">Facilities in {{ $county->name }} County participating in {{ $program->title }}</small>
                 </div>
                 <div class="card-body">
-                    @if($facilities->count() > 0)
+                    @if($facilities && $facilities->count() > 0)
                         <div class="row g-3">
                             @foreach($facilities as $facility)
-                            <div class="col-lg-4 col-md-6">
+                            <div class="col-lg-6 col-md-12">
                                 <div class="facility-card card h-100" data-facility-id="{{ $facility->id }}">
                                     <div class="card-body">
                                         <div class="d-flex justify-content-between align-items-start mb-3">
@@ -78,17 +83,19 @@
                                         </div>
                                         @endif
                                         
-<!--                                        <div class="row g-2 mb-3">
+                                        <div class="row g-2 mb-3">
                                             <div class="col-6">
-                                                <small class="text-muted d-block">{{ $mode === 'training' ? 'Participants' : 'Mentees' }}</small>
+                                                <small class="text-muted d-block">Participants</small>
                                                 <span class="fw-semibold fs-5 text-primary">{{ number_format($facility->participants_count ?? 0) }}</span>
                                             </div>
-                                          
-                                        </div>-->
-                                      
+                                            <div class="col-6">
+                                                <small class="text-muted d-block">Status</small>
+                                                <span class="badge bg-success">Active</span>
+                                            </div>
+                                        </div>
                                         
                                         <div class="d-flex justify-content-between align-items-center">
-                                            <small class="text-muted">Click to view details</small>
+                                            <small class="text-muted">View participants</small>
                                             <i class="fas fa-arrow-right text-primary"></i>
                                         </div>
                                     </div>
@@ -100,13 +107,71 @@
                         <div class="empty-state">
                             <div class="icon"><i class="fas fa-hospital"></i></div>
                             <h6>No Participating Facilities</h6>
-                            <p>No facilities are participating in this {{ $mode }} program.</p>
+                            <p>No facilities in {{ $county->name }} County are participating in {{ $program->title }}.</p>
                         </div>
                     @endif
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Program Details -->
+    @if($program->description || $program->learning_outcomes || $program->target_audience)
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Program Details</h5>
+                </div>
+                <div class="card-body">
+                    @if($program->description)
+                    <div class="mb-3">
+                        <h6 class="fw-bold">Description</h6>
+                        <p class="text-muted">{{ $program->description }}</p>
+                    </div>
+                    @endif
+
+                    @if($program->target_audience)
+                    <div class="mb-3">
+                        <h6 class="fw-bold">Target Audience</h6>
+                        <p class="text-muted">{{ $program->target_audience }}</p>
+                    </div>
+                    @endif
+
+                    @if($program->learning_outcomes && is_array($program->learning_outcomes))
+                    <div class="mb-3">
+                        <h6 class="fw-bold">Learning Outcomes</h6>
+                        <ul>
+                            @foreach($program->learning_outcomes as $outcome)
+                                <li>{{ $outcome }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                    @endif
+
+                    <div class="row g-3">
+                        @if($program->start_date && $program->end_date)
+                        <div class="col-md-6">
+                            <h6 class="fw-bold">Duration</h6>
+                            <p class="text-muted">
+                                {{ \Carbon\Carbon::parse($program->start_date)->format('M j, Y') }} - 
+                                {{ \Carbon\Carbon::parse($program->end_date)->format('M j, Y') }}
+                            </p>
+                        </div>
+                        @endif
+
+                        @if($program->max_participants)
+                        <div class="col-md-6">
+                            <h6 class="fw-bold">Maximum Participants</h6>
+                            <p class="text-muted">{{ number_format($program->max_participants) }}</p>
+                        </div>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
 </div>
 @endsection
 
@@ -144,13 +209,6 @@
     transform: translate(20px, -20px);
 }
 
-.alert {
-    border: none;
-    border-radius: 12px;
-    padding: 1.25rem 1.5rem;
-    margin-bottom: 1.5rem;
-}
-
 @media (max-width: 768px) {
     .facility-card .card-body {
         padding: 1rem;
@@ -159,6 +217,18 @@
 @endsection
 
 @section('page-scripts')
+// Year filter
+document.getElementById('yearFilter').addEventListener('change', function() {
+    const url = new URL(window.location);
+    if (this.value) {
+        url.searchParams.set('year', this.value);
+    } else {
+        url.searchParams.delete('year');
+    }
+    url.searchParams.set('mode', 'training');
+    window.location.href = url.toString();
+});
+
 // Facility cards click
 document.querySelectorAll('.facility-card').forEach(card => {
     card.addEventListener('click', function() {
@@ -171,7 +241,7 @@ document.querySelectorAll('.facility-card').forEach(card => {
 
 function navigateToFacility(facilityId) {
     const params = new URLSearchParams({
-        mode: '{{ $mode ?? "training" }}'
+        mode: 'training'
     });
     
     const currentYear = '{{ $selectedYear ?? "" }}';
@@ -179,6 +249,7 @@ function navigateToFacility(facilityId) {
         params.set('year', currentYear);
     }
     
+    // Navigate to facility participants for the selected training
     window.location.href = `/analytics/dashboard/county/{{ $county->id }}/program/{{ $program->id }}/facility/${facilityId}?${params.toString()}`;
 }
 @endsection

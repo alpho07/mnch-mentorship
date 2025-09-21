@@ -9,7 +9,11 @@
         <div class="d-flex justify-content-between align-items-center">
             <div>
                 <h1 class="h2 mb-1">{{ $county->name }} County Analytics</h1>
-                <p class="mb-0">Detailed insights and coverage analysis</p>
+                @if(isset($selectedTraining) && $selectedTraining && $programs->count() > 0)
+                    <p class="mb-0">Facilities participating in: <strong>{{ $programs->first()->title }}</strong></p>
+                @else
+                    <p class="mb-0">Training facilities and coverage analysis</p>
+                @endif
             </div>
             
             <div class="d-flex gap-3 align-items-center flex-wrap">
@@ -17,19 +21,18 @@
                     {{ $mode === 'training' ? 'Training Mode' : 'Mentorship Mode' }}
                 </span>
                 
-                <select id="yearFilter" class="form-select" style="width: auto;">
+                <select id="yearFilter" class="form-select" style="width: auto; display:none;">
                     <option value="" {{ empty($selectedYear) ? 'selected' : '' }}>All Years</option>
                     @foreach($availableYears ?? [] as $year)
                         <option value="{{ $year }}" {{ ($selectedYear ?? '') == $year ? 'selected' : '' }}>{{ $year }}</option>
                     @endforeach
                 </select>
                 
-                <div class="btn-group" role="group">
-                    <button type="button" class="btn {{ $mode === 'training' ? 'btn-primary' : 'btn-outline-primary' }}" 
-                            onclick="switchMode('training')">Training</button>
-                    <button type="button" class="btn {{ $mode === 'mentorship' ? 'btn-primary' : 'btn-outline-primary' }}" 
-                            onclick="switchMode('mentorship')">Mentorship</button>
-                </div>
+                @if(isset($selectedTraining) && $selectedTraining)
+                <button type="button" class="btn btn-outline-secondary"  style="width: auto; display:none;" onclick="clearTrainingFilter()">
+                    <i class="fas fa-times me-1"></i>Clear Filter
+                </button>
+                @endif
             </div>
         </div>
     </div>
@@ -43,8 +46,8 @@
         </div>
         <div class="stats-card">
             <div class="icon"><i class="fas fa-hospital"></i></div>
-            <h3>{{ number_format($county->facilities->count() ?? 0) }}</h3>
-            <p>Total Facilities</p>
+            <h3>{{ number_format(isset($facilities) ? $facilities->count() : $county->facilities->count()) }}</h3>
+            <p>{{ isset($selectedTraining) && $selectedTraining ? 'Participating' : 'Total' }} Facilities</p>
         </div>
         <div class="stats-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
             <div class="icon"><i class="fas fa-chart-bar"></i></div>
@@ -53,14 +56,66 @@
         </div>
         <div class="stats-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
             <div class="icon"><i class="fas fa-users"></i></div>
-            <h3>{{ number_format(($programs->sum('county_participants') ?: $programs->sum('mentees_count')) ?? 0) }}</h3>
+            <h3>{{ number_format(isset($facilities) ? $facilities->sum('participants_count') : ($programs->sum('county_participants') ?: $programs->sum('mentees_count'))) }}</h3>
             <p>Total {{ $mode === 'training' ? 'Participants' : 'Mentees' }}</p>
         </div>
-       
     </div>
 
     <div class="row">
-        <!-- Programs -->
+        @if(isset($facilities) && $facilities->count() > 0)
+        <!-- Facilities List (when training program is selected) -->
+        <div class="col-lg-8 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Participating Facilities</h5>
+                    <small class="text-muted">Facilities participating in {{ $programs->first()->title ?? 'selected training program' }}</small>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        @foreach($facilities as $facility)
+                        <div class="col-lg-6 col-md-12">
+                            <div class="facility-card card h-100" data-facility-id="{{ $facility->id }}">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start mb-3">
+                                        <div>
+                                            <h6 class="card-title mb-1">{{ $facility->name }}</h6>
+                                            <small class="text-muted">{{ $facility->subcounty->name ?? 'N/A' }}</small>
+                                        </div>
+                                        <span class="badge bg-info">{{ $facility->facilityType->name ?? 'N/A' }}</span>
+                                    </div>
+                                    
+                                    @if($facility->mfl_code)
+                                    <div class="mb-2">
+                                        <small class="text-muted d-block">MFL Code</small>
+                                        <span class="fw-semibold">{{ $facility->mfl_code }}</span>
+                                    </div>
+                                    @endif
+                                    
+                                    <div class="row g-2 mb-3">
+                                        <div class="col-6">
+                                            <small class="text-muted d-block">Participants</small>
+                                            <span class="fw-semibold fs-5 text-primary">{{ number_format($facility->participants_count ?? 0) }}</span>
+                                        </div>
+                                        <div class="col-6">
+                                            <small class="text-muted d-block">Status</small>
+                                            <span class="badge bg-success">Active</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <small class="text-muted">View participants</small>
+                                        <i class="fas fa-arrow-right text-primary"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+        </div>
+        @else
+        <!-- Programs List (when no specific training is selected) -->
         <div class="col-lg-8 mb-4">
             <div class="card">
                 <div class="card-header">
@@ -122,6 +177,7 @@
                 </div>
             </div>
         </div>
+        @endif
 
         <!-- Coverage -->
         <div class="col-lg-4 mb-4">
@@ -213,7 +269,7 @@
 @endsection
 
 @section('custom-styles')
-.program-card {
+.program-card, .facility-card {
     transition: all 0.3s ease;
     cursor: pointer;
     border: 1px solid #e5e7eb;
@@ -223,18 +279,18 @@
     height: 100%;
 }
 
-.program-card:hover {
+.program-card:hover, .facility-card:hover {
     transform: translateY(-4px);
     box-shadow: 0 12px 28px rgba(0,0,0,0.15);
     border-color: #3b82f6;
 }
 
-.program-card .card-body {
+.program-card .card-body, .facility-card .card-body {
     padding: 1.5rem;
     position: relative;
 }
 
-.program-card .card-body::before {
+.program-card .card-body::before, .facility-card .card-body::before {
     content: '';
     position: absolute;
     top: 0;
@@ -275,7 +331,66 @@
 @endsection
 
 @section('page-scripts')
-// Program cards click
+// Year filter
+document.getElementById('yearFilter').addEventListener('change', function() {
+    const url = new URL(window.location);
+    if (this.value) {
+        url.searchParams.set('year', this.value);
+    } else {
+        url.searchParams.delete('year');
+    }
+    url.searchParams.set('mode', '{{ $mode ?? "training" }}');
+    
+    // Maintain training filter if it exists
+    const selectedTraining = '{{ $selectedTraining ?? "" }}';
+    if (selectedTraining) {
+        url.searchParams.set('training_id', selectedTraining);
+    }
+    
+    window.location.href = url.toString();
+});
+
+// Clear training filter
+function clearTrainingFilter() {
+    const url = new URL(window.location);
+    url.searchParams.delete('training_id');
+    url.searchParams.set('mode', '{{ $mode ?? "training" }}');
+    
+    const currentYear = '{{ $selectedYear ?? "" }}';
+    if (currentYear) {
+        url.searchParams.set('year', currentYear);
+    }
+    
+    window.location.href = url.toString();
+}
+
+@if(isset($facilities) && $facilities->count() > 0)
+// Facility cards click (when training is selected)
+document.querySelectorAll('.facility-card').forEach(card => {
+    card.addEventListener('click', function() {
+        const facilityId = this.dataset.facilityId;
+        if (facilityId) {
+            navigateToFacility(facilityId);
+        }
+    });
+});
+
+function navigateToFacility(facilityId) {
+    const params = new URLSearchParams({
+        mode: '{{ $mode ?? "training" }}'
+    });
+    
+    const currentYear = '{{ $selectedYear ?? "" }}';
+    if (currentYear) {
+        params.set('year', currentYear);
+    }
+    
+    // Navigate to facility participants for the selected training
+    const selectedTraining = '{{ $selectedTraining ?? "" }}';
+    window.location.href = `/analytics/dashboard/county/{{ $county->id }}/program/${selectedTraining}/facility/${facilityId}?${params.toString()}`;
+}
+@else
+// Program cards click (when no training is selected)
 document.querySelectorAll('.program-card').forEach(card => {
     card.addEventListener('click', function() {
         const programId = this.dataset.programId;
@@ -297,4 +412,5 @@ function navigateToProgram(programId) {
     
     window.location.href = `/analytics/dashboard/county/{{ $county->id }}/program/${programId}?${params.toString()}`;
 }
+@endif
 @endsection

@@ -13,6 +13,7 @@ use App\Livewire\SimpleChartWidget;
 use Filament\Support\Facades\FilamentAsset;
 use Filament\Support\Assets\Css;
 use Filament\Support\Assets\Js;
+use Illuminate\Support\Facades\URL;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -31,7 +32,7 @@ class AppServiceProvider extends ServiceProvider
     {
         
           if ($this->app->environment('production') || $this->app->environment('local')) {
-           // URL::forceScheme('https'); 
+            URL::forceScheme('https'); 
        }    
         
     \App\Models\MonthlyReport::observe(\App\Observers\MonthlyReportObserver::class);

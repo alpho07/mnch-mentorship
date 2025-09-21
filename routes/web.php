@@ -24,22 +24,40 @@ use App\Http\Controllers\AnalyticsDashboardController;
 Route::prefix('analytics/dashboard')->name('analytics.dashboard.')->group(function () {
     // Main dashboard
     Route::get('/', [AnalyticsDashboardController::class, 'index'])->name('index');
-    
+
     // GeoJSON endpoint for map data (REQUIRED for map to work)
     Route::get('/geojson', [AnalyticsDashboardController::class, 'geojson'])->name('heatmap.geojson');
-    
+    Route::get('/training-data', [AnalyticsDashboardController::class, 'getTrainingData'])->name('training-data');
+
     // County level
     Route::get('/county/{county}', [AnalyticsDashboardController::class, 'county'])->name('county');
-    
+
+    // ADD THESE NEW ROUTES FOR MENTORSHIP FLOW:
+    // County -> Mentorships API (for sidebar)
+    Route::get('/county/{county}/mentorships', [AnalyticsDashboardController::class, 'countyMentorships'])->name('county-mentorships');
+
+    // Facility -> Mentorships List (for mentorships)
+    Route::get('/county/{county}/facility/{facility}/mentorships', [AnalyticsDashboardController::class, 'facilityMentorships'])->name('facility-mentorships');
+
     // Program level (Training or Mentorship)
     Route::get('/county/{county}/program/{program}', [AnalyticsDashboardController::class, 'program'])->name('program');
-    
+
+    Route::get('/county/{county}/facilities', [AnalyticsDashboardController::class, 'countyFacilities'])
+            ->name('analytics.dashboard.county.facilities');
+
+    Route::get('/county/{county}/facility/{facility}/programs', [AnalyticsDashboardController::class, 'facilityPrograms'])
+            ->name('analytics.dashboard.facility.programs');
+
+// Add this route for mentorship participants (without facility level)
+    Route::get('/county/{county}/program/{program}/participant/{participant}',
+                    [AnalyticsDashboardController::class, 'mentorshipParticipant'])
+            ->name('analytics.dashboard.mentorship.participant');
     // Facility level
     Route::get('/county/{county}/program/{program}/facility/{facility}', [AnalyticsDashboardController::class, 'facility'])->name('facility');
-    
+
     // Participant/Mentee profile
     Route::get('/county/{county}/program/{program}/facility/{facility}/participant/{participant}', [AnalyticsDashboardController::class, 'participant'])->name('participant');
-    
+
     // AJAX endpoints for dynamic data
     Route::post('/ajax/county-data', [AnalyticsDashboardController::class, 'getCountyData'])->name('ajax.county-data');
     Route::post('/ajax/coverage-charts', [AnalyticsDashboardController::class, 'getCoverageCharts'])->name('ajax.coverage-charts');

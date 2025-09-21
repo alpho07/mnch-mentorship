@@ -1,6 +1,6 @@
 @extends('layouts.dashboard')
 
-@section('title', $facility->name . ' - Facility Analytics')
+@section('title', $program->title . ' Mentees - Analytics')
 
 @section('content')
 <div class="container-fluid px-4">
@@ -8,36 +8,56 @@
     <div class="page-header">
         <div class="d-flex justify-content-between align-items-start">
             <div>
-                <h1 class="h2 mb-1">{{ $facility->name }}</h1>
-                <p class="mb-2">{{ $program->title }} | {{ $county->name }} County</p>
+                <h1 class="h2 mb-1">{{ $program->title }}</h1>
+                <p class="mb-2">Mentorship Participants | {{ $county->name }} County</p>
                 <div class="d-flex gap-3 flex-wrap">
-                    @if($facility->mfl_code)
-                    <span class="badge bg-white text-dark">MFL: {{ $facility->mfl_code }}</span>
+                    @if($program->identifier)
+                    <span class="badge bg-white text-dark">ID: {{ $program->identifier }}</span>
                     @endif
-                    <span class="badge bg-white text-dark">{{ $facility->facilityType->name ?? 'N/A' }}</span>
-                    <span class="badge bg-white text-dark">{{ $facility->subcounty->name ?? 'N/A' }}</span>
+                    @if($program->start_date)
+                    <span class="badge bg-white text-dark">Year: {{ \Carbon\Carbon::parse($program->start_date)->format('Y') }}</span>
+                    @endif
+                    <span class="badge bg-white text-dark">Mentorship Program</span>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Facility Statistics -->
+    <!-- Program Statistics -->
     <div class="stats-grid">
         <div class="stats-card">
             <div class="icon"><i class="fas fa-users"></i></div>
-            <h3>{{ number_format($participants->count()) }}</h3>
-            <p>Total {{ $mode === 'training' ? 'Participants' : 'Mentees' }}</p>
+            <h3>{{ number_format($participants->count() ?? 0) }}</h3>
+            <p>Total Mentees</p>
         </div>
-        
+        <div class="stats-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+            <div class="icon"><i class="fas fa-check-circle"></i></div>
+            <h3>{{ number_format($participants->where('completion_status', 'completed')->count() ?? 0) }}</h3>
+            <p>Completed</p>
+        </div>
+        <div class="stats-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+            <div class="icon"><i class="fas fa-clock"></i></div>
+            <h3>{{ number_format($participants->where('completion_status', 'in_progress')->count() ?? 0) }}</h3>
+            <p>In Progress</p>
+        </div>
+        <div class="stats-card" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+            <div class="icon"><i class="fas fa-chart-line"></i></div>
+            @php
+                $completionRate = $participants->count() > 0 ? 
+                    round($participants->where('completion_status', 'completed')->count() / $participants->count() * 100, 1) : 0;
+            @endphp
+            <h3>{{ $completionRate }}%</h3>
+            <p>Completion Rate</p>
+        </div>
     </div>
 
+    <!-- Participants List -->
     <div class="row">
-        <!-- Participants List -->
-        <div class="col-lg-8 mb-4">
+        <div class="col-12">
             <div class="card">
                 <div class="card-header">
-                    <h5>{{ $mode === 'training' ? 'Participants' : 'Mentees' }}</h5>
-                    <small class="text-muted">Click on a participant to view detailed profile</small>
+                    <h5>Mentees</h5>
+                    <small class="text-muted">Click on a mentee to view detailed profile and assessment results</small>
                 </div>
                 <div class="card-body">
                     @if($participants->count() > 0)
@@ -61,16 +81,21 @@
                                             </div>
                                             <div class="text-end">
                                                 @php
-                                                    $statusColor = match($participant?->completion_status ?? 'in_progress') {
+                                                    $statusColor = match($participant->completion_status ?? 'in_progress') {
                                                         'completed' => 'bg-success text-white',
                                                         'dropped' => 'bg-danger text-white',
                                                         default => 'bg-warning text-dark'
                                                     };
                                                 @endphp
                                                 <span class="status-badge {{ $statusColor }}">
-                                                    {{ ucfirst(str_replace('_', ' ', @$participant?->completion_status ?? 'Active')) }}
+                                                    {{ ucfirst(str_replace('_', ' ', $participant->completion_status ?? 'Active')) }}
                                                 </span>
                                             </div>
+                                        </div>
+                                        
+                                        <div class="mb-2">
+                                            <small class="text-muted d-block">Facility</small>
+                                            <span class="fw-semibold">{{ $participant->user->facility->name ?? 'N/A' }}</span>
                                         </div>
                                         
                                         @if($participant->assessmentResults && $participant->assessmentResults->count() > 0)
@@ -96,7 +121,7 @@
                                                 <i class="fas fa-phone me-1"></i>
                                                 {{ $participant->user->phone ?? 'N/A' }}
                                             </small>
-                                            <i class="fas fa-arrow-right text-primary"></i>
+                                            <i class="fas fa-arrow-right text-success"></i>
                                         </div>
                                     </div>
                                 </div>
@@ -106,61 +131,9 @@
                     @else
                         <div class="empty-state">
                             <div class="icon"><i class="fas fa-users"></i></div>
-                            <h6>No Participants Found</h6>
-                            <p>No {{ $mode === 'training' ? 'participants' : 'mentees' }} are enrolled from this facility.</p>
+                            <h6>No Mentees Found</h6>
+                            <p>No mentees are enrolled in this mentorship program.</p>
                         </div>
-                    @endif
-                </div>
-            </div>
-        </div>
-
-        <!-- Analytics Sidebar -->
-        <div class="col-lg-4 mb-4" style="display:none;">
-            <div class="card">
-                <div class="card-header">
-                    <h5>Analytics Overview</h5>
-                    <small class="text-muted">Breakdown by categories</small>
-                </div>
-                <div class="card-body">
-                    <!-- Department Stats -->
-                    @if(isset($facilityStats['departmentStats']) && $facilityStats['departmentStats']->count() > 0)
-                    <div class="mb-4">
-                        <h6 class="mb-3">By Department</h6>
-                        @foreach($facilityStats['departmentStats'] as $deptName => $stats)
-                        <div class="analytics-card">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <span class="fw-semibold">{{ $deptName }}</span>
-                                <span class="badge bg-primary">{{ $stats['count'] }}</span>
-                            </div>
-                           
-                        </div>
-                        @endforeach 
-                    </div>
-                    @endif
-
-                    <!-- Cadre Stats -->
-                    @if(isset($facilityStats['cadreStats']) && $facilityStats['cadreStats']->count() > 0)
-                    <div>
-                        <h6 class="mb-3">By Cadre</h6>
-                        @foreach($facilityStats['cadreStats'] as $cadreName => $stats)
-                        <div class="analytics-card">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <span class="fw-semibold">{{ $cadreName }}</span>
-                                <span class="badge bg-success">{{ $stats['count'] }}</span>
-                            </div>
-                           
-                        </div>
-                        @endforeach
-                    </div>
-                    @endif
-
-                    @if((!isset($facilityStats['departmentStats']) || $facilityStats['departmentStats']->count() === 0) && 
-                        (!isset($facilityStats['cadreStats']) || $facilityStats['cadreStats']->count() === 0))
-                    <div class="empty-state">
-                        <div class="icon"><i class="fas fa-chart-bar"></i></div>
-                        <h6>No Analytics Data</h6>
-                        <p>Analytics breakdown will appear here when participants are enrolled.</p>
-                    </div>
                     @endif
                 </div>
             </div>
@@ -183,7 +156,7 @@
 .participant-card:hover {
     transform: translateY(-2px);
     box-shadow: 0 8px 20px rgba(0,0,0,0.1);
-    border-color: #3b82f6;
+    border-color: #10b981;
 }
 
 .participant-card .card-body {
@@ -194,7 +167,7 @@
     width: 50px;
     height: 50px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -237,19 +210,10 @@
     background-color: #f59e0b;
 }
 
-.analytics-card {
-    background: white;
-    border-radius: 12px;
-    padding: 1rem;
-    border: 1px solid #e5e7eb;
-    margin-bottom: 1rem;
-    transition: all 0.2s ease;
-}
-
-.analytics-card:hover {
-    border-color: #3b82f6;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+@media (max-width: 768px) {
+    .participant-card .card-body {
+        padding: 1rem;
+    }
 }
 @endsection
 
@@ -266,7 +230,7 @@ document.querySelectorAll('.participant-card').forEach(card => {
 
 function navigateToParticipant(participantId) {
     const params = new URLSearchParams({
-        mode: '{{ $mode ?? "training" }}'
+        mode: 'mentorship'
     });
     
     const currentYear = '{{ $selectedYear ?? "" }}';
@@ -274,6 +238,7 @@ function navigateToParticipant(participantId) {
         params.set('year', currentYear);
     }
     
-    window.location.href = `/analytics/dashboard/county/{{ $county->id }}/program/{{ $program->id }}/facility/{{ $facility->id }}/participant/${participantId}?${params.toString()}`;
+    // For mentorships, we go directly to participant without facility level
+    window.location.href = `/analytics/dashboard/county/{{ $county->id }}/program/{{ $program->id }}/participant/${participantId}?${params.toString()}`;
 }
 @endsection
