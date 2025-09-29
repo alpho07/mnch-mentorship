@@ -17,7 +17,7 @@ class MenteeProfileResource extends Resource {
 
     protected static ?string $model = County::class;
     protected static ?string $navigationIcon = 'heroicon-o-academic-cap';
-    protected static ?string $navigationLabel = 'Mentee Profiles';
+    protected static ?string $navigationLabel = 'Mentor Profiles';
     protected static ?string $navigationGroup = 'Training Management';
     protected static ?int $navigationSort =7;
     protected static ?string $slug = 'mentee-profiles';
@@ -32,7 +32,7 @@ class MenteeProfileResource extends Resource {
                         ->query(
                                 County::query()
                                 ->whereHas('facilities.trainings', function ($query) {
-                                    $query->where('type', 'facility_mentorship');
+                                    $query->where('type', 'facility_mentorship1');
                                 })
                         )
                         ->columns([

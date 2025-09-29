@@ -872,10 +872,11 @@
                         <button type="button" class="mode-btn {{ $mode === 'mentorship' ? 'active' : '' }}" data-mode="mentorship">
                         Mentorships
                         </button>
-                        <a href="{{url('/admin')}}" class="mode-btn" data-mode="admin">
+                        
+                    </div>
+                    <a href="{{url('/admin')}}" class="btn btn-outline-info" style="z-index: 1000 !important;" >
                         Admin
                         </a>
-                    </div>
                 </div>
             </div>
         </div>

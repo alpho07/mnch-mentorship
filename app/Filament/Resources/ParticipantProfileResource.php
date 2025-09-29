@@ -17,7 +17,7 @@ class ParticipantProfileResource extends Resource {
 
     protected static ?string $model = County::class;
     protected static ?string $navigationIcon = 'heroicon-o-user-group';
-    protected static ?string $navigationLabel = 'Participant Profiles';
+    protected static ?string $navigationLabel = 'Participant/Mentee Profiles';
     protected static ?string $navigationGroup = 'Training Management';
     protected static ?int $navigationSort = 6;
     protected static ?string $slug = 'participant-profiles';

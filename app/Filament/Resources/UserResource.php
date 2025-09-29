@@ -103,7 +103,7 @@ class UserResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('name')->label('Display Name')->sortable()->searchable(),
+                Tables\Columns\TextColumn::make('name')->label('Display Name')->sortable()->searchable(['first_name','middle_name','last_name','id_number','phone','email']),
                 Tables\Columns\TextColumn::make('email')->label('Email'),
                 Tables\Columns\TextColumn::make('phone')->label('Phone'),
                 Tables\Columns\TextColumn::make('cadre.name')->label('Cadre'),
