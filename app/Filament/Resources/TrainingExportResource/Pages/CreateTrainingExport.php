@@ -23,6 +23,12 @@ class CreateTrainingExport extends CreateRecord {
 
     protected function getFormActions(): array {
         return [
+                    Actions\Action::make('preview')
+                    ->label('Preview Data')
+                    ->icon('heroicon-o-eye')
+                    ->color('info')
+                    ->size('lg')
+                    ->action('showPreview'),
                     Actions\Action::make('export')
                     ->label('Generate & Download Export')
                     ->icon('heroicon-o-arrow-down-tray')
@@ -34,6 +40,23 @@ class CreateTrainingExport extends CreateRecord {
                     ->color('gray')
                     ->url(fn(): string => static::getResource()::getUrl('index')),
         ];
+    }
+
+    public function showPreview() {
+        try {
+            $data = $this->form->getState();
+            $this->validateFormData($data);
+
+            session(['export_preview_data' => $data]);
+
+            return redirect()->route('filament.admin.resources.training-exports.preview');
+        } catch (\Exception $e) {
+            Notification::make()
+                    ->title('Preview Failed')
+                    ->body($e->getMessage())
+                    ->danger()
+                    ->send();
+        }
     }
 
     protected function generateExport() {
@@ -195,8 +218,7 @@ class CreateTrainingExport extends CreateRecord {
         return ['name' => 'Summary', 'data' => $summary];
     }
 
-    protected function createParticipantSheet(Training $training, array $data): array
-    {
+    protected function createParticipantSheet(Training $training, array $data): array {
         $isTraining = $training->type === 'global_training';
         $activityType = $isTraining ? 'TRAINING' : 'MENTORSHIP';
 
@@ -366,8 +388,7 @@ class CreateTrainingExport extends CreateRecord {
         return $headers;
     }
 
-  protected function buildParticipantRow($participant, Training $training, array $data): array
-    {
+    protected function buildParticipantRow($participant, Training $training, array $data): array {
         $user = $participant->user;
 
         $row = [
@@ -417,8 +438,7 @@ class CreateTrainingExport extends CreateRecord {
         return $results;
     }
 
-      protected function calculateOverallResult($participant, Training $training): string
-    {
+    protected function calculateOverallResult($participant, Training $training): string {
         // First check if this training actually uses assessments
         if (!$this->trainingHasActualAssessments($training)) {
             // For trainings without assessments, base on completion status only
@@ -433,7 +453,7 @@ class CreateTrainingExport extends CreateRecord {
         // For trainings with assessments, use assessment calculation
         if (method_exists($training, 'calculateOverallScore')) {
             $calculation = $training->calculateOverallScore($participant);
-            
+
             if (!$calculation['all_assessed']) {
                 return 'ASSESSMENT INCOMPLETE';
             }
@@ -447,8 +467,8 @@ class CreateTrainingExport extends CreateRecord {
 
         // Fallback for trainings with assessment categories but no calculation method
         $hasAnyAssessmentResults = $participant->assessmentResults()
-            ->whereIn('assessment_category_id', $training->assessmentCategories->pluck('id'))
-            ->exists();
+                ->whereIn('assessment_category_id', $training->assessmentCategories->pluck('id'))
+                ->exists();
 
         if (!$hasAnyAssessmentResults) {
             return 'NOT ASSESSED';
@@ -457,8 +477,8 @@ class CreateTrainingExport extends CreateRecord {
         // Check if all categories are assessed
         $totalCategories = $training->assessmentCategories->count();
         $assessedCategories = $participant->assessmentResults()
-            ->whereIn('assessment_category_id', $training->assessmentCategories->pluck('id'))
-            ->count();
+                ->whereIn('assessment_category_id', $training->assessmentCategories->pluck('id'))
+                ->count();
 
         if ($assessedCategories < $totalCategories) {
             return 'ASSESSMENT INCOMPLETE';
@@ -466,13 +486,12 @@ class CreateTrainingExport extends CreateRecord {
 
         // Check if all assessments passed
         $passedCategories = $participant->assessmentResults()
-            ->whereIn('assessment_category_id', $training->assessmentCategories->pluck('id'))
-            ->where('result', 'pass')
-            ->count();
+                ->whereIn('assessment_category_id', $training->assessmentCategories->pluck('id'))
+                ->where('result', 'pass')
+                ->count();
 
         return $passedCategories === $totalCategories ? 'PASS' : 'FAIL';
     }
-
 
     protected function getIncompleteText(string $incompleteDisplay): string {
         return match ($incompleteDisplay) {
@@ -783,17 +802,17 @@ class CreateTrainingExport extends CreateRecord {
                 };
     }
 
-  protected function createParticipantsCsv(array $data): string
-    {
+    protected function createParticipantsCsv(array $data): string {
         $csv = '';
         $trainings = $this->loadTrainingsWithRelations($data['selected_trainings']);
 
         foreach ($trainings as $index => $training) {
-            if ($index > 0) $csv .= "\n\n";
+            if ($index > 0)
+                $csv .= "\n\n";
 
             $isTraining = $training->type === 'global_training';
             $activityType = $isTraining ? 'TRAINING' : 'MENTORSHIP';
-            
+
             $csv .= strtoupper("{$activityType}: {$training->title}") . "\n";
             $csv .= strtoupper("Type: " . ($isTraining ? 'MOH Training' : 'Facility Mentorship')) . "\n";
             $csv .= strtoupper("Programs: " . $training->programs->pluck('name')->implode(', ')) . "\n";

@@ -401,6 +401,7 @@ class TrainingExportResource extends Resource {
         return [
             'index' => Pages\ListTrainingExports::route('/'),
             'create' => Pages\CreateTrainingExport::route('/create'),
+            'preview'=> Pages\PreviewTrainingExport::route('/preview')
         ];
     }
 
