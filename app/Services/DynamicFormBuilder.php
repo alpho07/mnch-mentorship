@@ -72,13 +72,13 @@ class DynamicFormBuilder {
 
         // Apply conditional logic if exists (check both new and old field names)
         $conditions = $question->conditional_logic ?? $question->display_conditions;
-        
+
         if ($field && $conditions) {
             // Decode if it's a JSON string
             if (is_string($conditions)) {
                 $conditions = json_decode($conditions, true);
             }
-            
+
             if (is_array($conditions)) {
                 $field = static::applyConditionalLogic($field, $conditions);
             }
@@ -244,19 +244,24 @@ class DynamicFormBuilder {
         $field = Forms\Components\TextInput::make($fieldName)
                 ->label($question->question_text)
                 ->numeric()
+                ->integer()
                 ->required($question->is_required)
-                ->default($response?->response_value);
+                ->default($response?->response_value)
+                ->minValue(0);  // Always require positive numbers
 
         if ($question->help_text) {
             $field->helperText($question->help_text);
         }
 
         if ($question->validation_rules) {
-            if (isset($question->validation_rules['min'])) {
-                $field->minValue($question->validation_rules['min']);
+            $rules = is_string($question->validation_rules) ? json_decode($question->validation_rules, true) : $question->validation_rules;
+
+            if (isset($rules['min'])) {
+                $field->minValue($rules['min']);
             }
-            if (isset($question->validation_rules['max'])) {
-                $field->maxValue($question->validation_rules['max']);
+            if (isset($rules['max'])) {
+                $field->maxValue($rules['max'])
+                        ->helperText("Maximum value: {$rules['max']}");
             }
         }
 
@@ -267,13 +272,23 @@ class DynamicFormBuilder {
      * Build select field
      */
     protected static function buildSelectField(AssessmentQuestion $question, string $fieldName, ?AssessmentQuestionResponse $response) {
+        // Decode options if they're JSON string
+        $options = $question->options;
+        if (is_string($options)) {
+            $options = json_decode($options, true) ?? [];
+        }
+
+        // Create options array (value => label)
+        $optionsArray = is_array($options) ? array_combine($options, $options) : [];
+
         return Forms\Components\Select::make($fieldName)
                         ->label($question->question_text)
-                        ->options(array_combine($question->options ?? [], $question->options ?? []))
+                        ->options($optionsArray)
                         ->required($question->is_required)
                         ->searchable()
                         ->default($response?->response_value)
-                        ->helperText($question->help_text);
+                        ->helperText($question->help_text)
+                        ->live();
     }
 
     /**
@@ -485,7 +500,7 @@ class DynamicFormBuilder {
             }
 
             $dependentQuestion = AssessmentQuestion::where('question_code', $dependentQuestionCode)->first();
-            
+
             if (!$dependentQuestion) {
                 return $field;
             }
@@ -493,8 +508,8 @@ class DynamicFormBuilder {
             $dependentFieldName = "question_response_{$dependentQuestion->id}";
 
             return $field->visible(function (Forms\Get $get) use ($dependentFieldName, $requiredValue) {
-                return $get($dependentFieldName) === $requiredValue;
-            });
+                        return $get($dependentFieldName) === $requiredValue;
+                    });
         }
 
         // Handle old format: display_conditions with question_code, operator, value
@@ -508,7 +523,7 @@ class DynamicFormBuilder {
             }
 
             $dependentQuestion = AssessmentQuestion::where('question_code', $dependentQuestionCode)->first();
-            
+
             if (!$dependentQuestion) {
                 return $field;
             }
@@ -516,14 +531,14 @@ class DynamicFormBuilder {
             $dependentFieldName = "question_response_{$dependentQuestion->id}";
 
             return $field->visible(function (Forms\Get $get) use ($dependentFieldName, $requiredValue, $operator) {
-                $currentValue = $get($dependentFieldName);
-                
-                return match($operator) {
-                    'equals' => $currentValue === $requiredValue,
-                    'not_equals' => $currentValue !== $requiredValue,
-                    default => $currentValue === $requiredValue,
-                };
-            });
+                        $currentValue = $get($dependentFieldName);
+
+                        return match ($operator) {
+                            'equals' => $currentValue === $requiredValue,
+                            'not_equals' => $currentValue !== $requiredValue,
+                            default => $currentValue === $requiredValue,
+                        };
+                    });
         }
 
         return $field;

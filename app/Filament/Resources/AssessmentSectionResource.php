@@ -22,6 +22,16 @@ class AssessmentSectionResource extends Resource
     protected static ?int $navigationSort = 2;
 
     protected static ?string $navigationLabel = 'Sections';
+    
+    public static function shouldRegisterNavigation(): bool
+    {
+        return !auth()->user()->hasRole('Assessor');
+    }
+
+    public static function canAccess(): bool
+    {
+        return !auth()->user()->hasRole('Assessor');
+    }
 
     public static function form(Form $form): Form
     {

@@ -16,6 +16,16 @@ class MethodologyResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-light-bulb';
     protected static ?string $navigationGroup = 'Curriculum';
       protected static ?int $navigationSort = 4;
+      
+      public static function shouldRegisterNavigation(): bool
+    {
+        return !auth()->user()->hasRole('Assessor');
+    }
+
+    public static function canAccess(): bool
+    {
+        return !auth()->user()->hasRole('Assessor');
+    }
 
     public static function form(Form $form): Form
     {

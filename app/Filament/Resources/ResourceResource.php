@@ -23,6 +23,16 @@ class ResourceResource extends FilamentResource {
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
     protected static ?string $navigationGroup = 'Content Management';
     protected static ?int $navigationSort = 1;
+    
+    public static function shouldRegisterNavigation(): bool
+    {
+        return !auth()->user()->hasRole('Assessor');
+    }
+
+    public static function canAccess(): bool
+    {
+        return !auth()->user()->hasRole('Assessor');
+    }
 
     public static function form(Form $form): Form {
         return $form->schema([

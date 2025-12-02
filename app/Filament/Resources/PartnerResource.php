@@ -36,6 +36,16 @@ class PartnerResource extends Resource
     protected static ?int $navigationSort = 3;
 
     protected static ?string $recordTitleAttribute = 'name';
+    
+    public static function shouldRegisterNavigation(): bool
+    {
+        return !auth()->user()->hasRole('Assessor');
+    }
+
+    public static function canAccess(): bool
+    {
+        return !auth()->user()->hasRole('Assessor');
+    }
 
     public static function form(Form $form): Form
     {

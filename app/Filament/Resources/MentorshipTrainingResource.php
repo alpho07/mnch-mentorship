@@ -54,6 +54,16 @@ class MentorshipTrainingResource extends Resource
     protected static ?string $slug = 'mentorships';
     protected static ?string $recordTitleAttribute = 'title';
     static protected string|null $breadcrumb = 'Mentorships';
+    
+    public static function shouldRegisterNavigation(): bool
+    {
+        return !auth()->user()->hasRole('Assessor');
+    }
+
+    public static function canAccess(): bool
+    {
+        return !auth()->user()->hasRole('Assessor');
+    }
 
     public static function getEloquentQuery(): Builder
     {

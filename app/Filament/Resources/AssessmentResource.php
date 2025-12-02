@@ -44,6 +44,11 @@ class AssessmentResource extends Resource {
                             ->icon('heroicon-o-arrow-right-circle')
                             ->url(fn($record) => static::getUrl('dashboard', ['record' => $record]))
                             ->color('primary'),
+                            Tables\Actions\Action::make('view_summary')
+                            ->label('View Summary')
+                            ->icon('heroicon-o-eye')
+                            ->color('info')
+                            ->url(fn($record) => AssessmentResource::getUrl('summary', ['record' => $record])),
                         ])
                         ->bulkActions([]);
     }
@@ -64,6 +69,7 @@ class AssessmentResource extends Resource {
             'edit-health-products' => Pages\EditHealthProducts::route('/{record}/health-products'),
             'edit-information-systems' => Pages\EditInformationSystems::route('/{record}/information-systems'),
             'edit-quality-of-care' => Pages\EditQualityOfCare::route('/{record}/quality-of-care'),
+            'summary' => Pages\ViewAssessmentSummary::route('/{record}/summary'),
         ];
     }
 }

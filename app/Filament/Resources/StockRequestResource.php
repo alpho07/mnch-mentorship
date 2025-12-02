@@ -20,6 +20,17 @@ class StockRequestResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-list';
     protected static ?string $navigationGroup = 'Inventory Management';
     protected static ?int $navigationSort = 4;
+    
+    
+    public static function shouldRegisterNavigation(): bool
+    {
+        return !auth()->user()->hasRole('Assessor');
+    }
+
+    public static function canAccess(): bool
+    {
+        return !auth()->user()->hasRole('Assessor');
+    }
 
     // Add notification badge to show pending approvals
     public static function getNavigationBadge(): ?string

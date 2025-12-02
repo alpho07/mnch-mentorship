@@ -22,6 +22,17 @@ class MenteeProfileResource extends Resource {
     protected static ?int $navigationSort =7;
     protected static ?string $slug = 'mentee-profiles';
     
+    
+    public static function shouldRegisterNavigation(): bool
+    {
+        return !auth()->user()->hasRole('Assessor');
+    }
+
+    public static function canAccess(): bool
+    {
+        return !auth()->user()->hasRole('Assessor');
+    }
+    
      public function getTitle(): string
     {
         return 'Mentorship Counties';

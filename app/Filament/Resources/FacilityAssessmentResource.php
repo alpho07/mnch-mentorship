@@ -43,6 +43,16 @@ class FacilityAssessmentResource extends Resource
     protected static ?string $slug = 'facility-assessments';
 
     protected static ?string $recordTitleAttribute = 'facility.name';
+    
+    public static function shouldRegisterNavigation(): bool
+    {
+        return !auth()->user()->hasRole('Assessor');
+    }
+
+    public static function canAccess(): bool
+    {
+        return !auth()->user()->hasRole('Assessor');
+    }
 
     public static function form(Form $form): Form  
     {

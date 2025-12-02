@@ -50,6 +50,16 @@ class GlobalTrainingResource extends Resource {
     protected static ?int $navigationSort = 1;
     protected static ?string $slug = 'moh-trainings';
     protected static ?string $recordTitleAttribute = 'title';
+    
+    public static function shouldRegisterNavigation(): bool
+    {
+        return !auth()->user()->hasRole('Assessor');
+    }
+
+    public static function canAccess(): bool
+    {
+        return !auth()->user()->hasRole('Assessor');
+    }
 
     // Filter to only show global trainings
     public static function getEloquentQuery(): Builder {

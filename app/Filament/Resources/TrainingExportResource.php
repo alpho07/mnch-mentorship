@@ -35,225 +35,226 @@ class TrainingExportResource extends Resource {
     protected static ?int $navigationSort = 5;
     protected static ?string $slug = 'training-exports';
 
+    public static function shouldRegisterNavigation(): bool {
+        return !auth()->user()->hasRole('Assessor');
+    }
+
+    public static function canAccess(): bool {
+        return !auth()->user()->hasRole('Assessor');
+    }
+
     public static function form(Form $form): Form {
         return $form->schema([
-            Tabs::make('Export Configuration')
-            ->tabs([
-                // Tab 1: Export Type & Trainings
-                Tabs\Tab::make('1. Select Trainings/Mentorships')
-                ->icon('heroicon-o-academic-cap')
-                ->schema([
-                    Section::make('Export Type')
-                    ->description('Choose what type of data you want to export')
-                    ->schema([
-                        Select::make('export_type')
-                        ->label('What do you want to export?')
-                        ->options([
-                            'training_participants' => 'Participants/Mentee - Export participants/mentees from selected trainings/mentorships',
-                            'participant_trainings' => 'Participant/mentee History - Export all trainings/mentorships for selected participants/mentees',
-                            'training_summary' => 'Summary Report - Overview of selected trainings/mentorships',
-                        ])
-                        ->required()
-                        ->live()
-                        ->afterStateUpdated(function (Set $set, $state) {
-                            $set('selected_trainings', []);
-                            $set('selected_participants', []);
-                        })
-                        ->helperText('Select the type of export you need'),
-                    ]),
-                    
-                    // Training Selection
-                    Section::make('Select Trainings/Mentorships')
-                    ->description('Choose which trainings/mentorships to include in your export')
-                    ->visible(fn(Get $get) => in_array($get('export_type'), ['training_participants', 'training_summary']))
-                    ->schema([
-                        Grid::make(1)->schema([
-                            Select::make('training_type_filter')
-                            ->label('Type')
-                            ->options([
-                                'all' => 'All Types',
-                                'global_training' => 'MOH Trainings',
-                                'facility_mentorship' => 'Facility Mentorships',
-                            ])
-                            ->default('all')
-                            ->live(),
-                        ]),
-                        
-                        CheckboxList::make('selected_trainings')
-                        ->label('Available Trainings/Mentorships')
-                        ->options(function (Get $get) {
-                            $query = Training::with(['facility', 'county', 'partner', 'participants', 'assessmentCategories']);
+                            Tabs::make('Export Configuration')
+                            ->tabs([
+                                // Tab 1: Export Type & Trainings
+                                Tabs\Tab::make('1. Select Trainings/Mentorships')
+                                ->icon('heroicon-o-academic-cap')
+                                ->schema([
+                                    Section::make('Export Type')
+                                    ->description('Choose what type of data you want to export')
+                                    ->schema([
+                                        Select::make('export_type')
+                                        ->label('What do you want to export?')
+                                        ->options([
+                                            'training_participants' => 'Participants/Mentee - Export participants/mentees from selected trainings/mentorships',
+                                            'participant_trainings' => 'Participant/mentee History - Export all trainings/mentorships for selected participants/mentees',
+                                            'training_summary' => 'Summary Report - Overview of selected trainings/mentorships',
+                                        ])
+                                        ->required()
+                                        ->live()
+                                        ->afterStateUpdated(function (Set $set, $state) {
+                                            $set('selected_trainings', []);
+                                            $set('selected_participants', []);
+                                        })
+                                        ->helperText('Select the type of export you need'),
+                                    ]),
+                                    // Training Selection
+                                    Section::make('Select Trainings/Mentorships')
+                                    ->description('Choose which trainings/mentorships to include in your export')
+                                    ->visible(fn(Get $get) => in_array($get('export_type'), ['training_participants', 'training_summary']))
+                                    ->schema([
+                                        Grid::make(1)->schema([
+                                            Select::make('training_type_filter')
+                                            ->label('Type')
+                                            ->options([
+                                                'all' => 'All Types',
+                                                'global_training' => 'MOH Trainings',
+                                                'facility_mentorship' => 'Facility Mentorships',
+                                            ])
+                                            ->default('all')
+                                            ->live(),
+                                        ]),
+                                        CheckboxList::make('selected_trainings')
+                                        ->label('Available Trainings/Mentorships')
+                                        ->options(function (Get $get) {
+                                            $query = Training::with(['facility', 'county', 'partner', 'participants', 'assessmentCategories']);
 
-                            if ($get('training_type_filter') !== 'all') {
-                                $query->where('type', $get('training_type_filter'));
-                            }
+                                            if ($get('training_type_filter') !== 'all') {
+                                                $query->where('type', $get('training_type_filter'));
+                                            }
 
-                            return $query->get()->mapWithKeys(function ($training) {
-                                $type = $training->type === 'global_training' ? 'MOH Training' : 'Facility Mentorship';
-                                $location = $training->facility?->name ?? $training->county?->name ?? $training->partner?->name ?? 'Various';
-                                $participants = $training->participants()->count();
-                                $assessmentCategories = $training->assessmentCategories()->count();
-                                $dates = $training->start_date ? $training->start_date->format('M Y') : 'TBD';
+                                            return $query->get()->mapWithKeys(function ($training) {
+                                                        $type = $training->type === 'global_training' ? 'MOH Training' : 'Facility Mentorship';
+                                                        $location = $training->facility?->name ?? $training->county?->name ?? $training->partner?->name ?? 'Various';
+                                                        $participants = $training->participants()->count();
+                                                        $assessmentCategories = $training->assessmentCategories()->count();
+                                                        $dates = $training->start_date ? $training->start_date->format('M Y') : 'TBD';
 
-                                return [
-                                    $training->id => "{$training->title} [{$type}] • {$location} • {$participants} participants • {$assessmentCategories} assessment categories • {$dates}"
-                                ];
-                            });
-                        })
-                        ->searchable()
-                        ->bulkToggleable()
-                        ->columns(1)
-                        ->gridDirection('row')
-                        ->required(fn(Get $get) => in_array($get('export_type'), ['training_participants', 'training_summary']))
-                        ->helperText('Select one or more trainings/mentorships. Each will be a separate worksheet.'),
-                        
-                        Placeholder::make('assessment_categories_preview')
-                        ->content(function (Get $get): HtmlString {
-                            $selectedTrainings = $get('selected_trainings') ?? [];
-                            if (empty($selectedTrainings)) {
-                                return new HtmlString('<div class="text-gray-500">Select trainings to see assessment categories</div>');
-                            }
+                                                        return [
+                                                            $training->id => "{$training->title} [{$type}] • {$location} • {$participants} participants • {$assessmentCategories} assessment categories • {$dates}"
+                                                        ];
+                                                    });
+                                        })
+                                        ->searchable()
+                                        ->bulkToggleable()
+                                        ->columns(1)
+                                        ->gridDirection('row')
+                                        ->required(fn(Get $get) => in_array($get('export_type'), ['training_participants', 'training_summary']))
+                                        ->helperText('Select one or more trainings/mentorships. Each will be a separate worksheet.'),
+                                        Placeholder::make('assessment_categories_preview')
+                                        ->content(function (Get $get): HtmlString {
+                                            $selectedTrainings = $get('selected_trainings') ?? [];
+                                            if (empty($selectedTrainings)) {
+                                                return new HtmlString('<div class="text-gray-500">Select trainings to see assessment categories</div>');
+                                            }
 
-                            $trainings = Training::whereIn('id', $selectedTrainings)
-                                ->with('assessmentCategories')
-                                ->get();
+                                            $trainings = Training::whereIn('id', $selectedTrainings)
+                                                    ->with('assessmentCategories')
+                                                    ->get();
 
-                            $preview = '<div class="bg-blue-50 border border-blue-200 rounded-lg p-4">';
-                            $preview .= '<h4 class="text-sm font-medium text-blue-800 mb-2">Assessment Categories Found:</h4>';
-                            
-                            foreach ($trainings as $training) {
-                                $categories = $training->assessmentCategories;
-                                $type = $training->type === 'global_training' ? 'Training' : 'Mentorship';
-                                
-                                if ($categories->count() > 0) {
-                                    $preview .= "<div class='mb-2'>";
-                                    $preview .= "<strong>{$training->title} [{$type}]:</strong><br>";
-                                    foreach ($categories as $category) {
-                                        $weight = $category->pivot->weight_percentage ?? 0;
-                                        $preview .= "<span class='text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded mr-1 mb-1 inline-block'>";
-                                        $preview .= "{$category->name} ({$weight}%)";
-                                        $preview .= "</span>";
-                                    }
-                                    $preview .= "</div>";
-                                } else {
-                                    $preview .= "<div class='text-orange-600 text-sm'>⚠️ {$training->title} [{$type}]: No assessment categories configured</div>";
-                                }
-                            }
-                            
-                            $preview .= '</div>';
-                            return new HtmlString($preview);
-                        })
-                        ->columnSpanFull(),
-                    ]),
-                    
-                    // Participant Selection
-                    Section::make('Select Participants/Mentees')
-                    ->description('Choose which participants/mentees to get training/mentorship history for')
-                    ->visible(fn(Get $get) => $get('export_type') === 'participant_trainings')
-                    ->schema([
-                        CheckboxList::make('selected_participants')
-                        ->label('Available Participants/mentees')
-                        ->options(function () {
-                            return User::whereHas('trainingParticipations')
-                                            ->with(['facility', 'department', 'cadre', 'trainingParticipations'])
-                                            ->get()
-                                            ->mapWithKeys(function ($user) {
-                                                $name = $user->full_name;
-                                                $facility = $user->facility?->name ?? 'No facility';
-                                                $trainings = $user->trainingParticipations()->count();
+                                            $preview = '<div class="bg-blue-50 border border-blue-200 rounded-lg p-4">';
+                                            $preview .= '<h4 class="text-sm font-medium text-blue-800 mb-2">Assessment Categories Found:</h4>';
 
-                                                return [
-                                                    $user->id => "{$name} • {$facility} • {$trainings} activities"
-                                                ];
-                                            });
-                        })
-                        ->searchable()
-                        ->bulkToggleable()
-                        ->columns(1)
-                        ->gridDirection('row')
-                        ->required(fn(Get $get) => $get('export_type') === 'participant_trainings')
-                        ->helperText('Select participants/mentees to get their complete training/mentorship history.'),
-                    ]),
-                ]),
-                
-                // Tab 2: Filters & Criteria
-                Tabs\Tab::make('2. Filters & Criteria')
-                ->icon('heroicon-o-funnel')
-                ->schema([
-                    Section::make('Geographic Filters')
-                    ->description('Filter by location (only for MOH Trainings)')
-                    ->visible(function (Get $get) {
-                        $selectedTrainings = $get('selected_trainings') ?? [];
-                        if (empty($selectedTrainings)) return false;
-                        
-                        $trainings = Training::whereIn('id', $selectedTrainings)->get();
-                        return $trainings->where('type', 'global_training')->isNotEmpty();
-                    })
-                    ->schema([
-                        Grid::make(2)->schema([
-                            Select::make('filter_counties')
-                            ->label('Counties')
-                            ->multiple()
-                            ->options(County::pluck('name', 'id'))
-                            ->searchable()
-                            ->preload()
-                            ->helperText('Leave empty to include all counties'),
-                            Select::make('filter_facilities')
-                            ->label('Facilities')
-                            ->multiple()
-                            ->options(Facility::pluck('name', 'id'))
-                            ->searchable()
-                            ->preload()
-                            ->helperText('Leave empty to include all facilities'),
-                        ]),
-                    ]),
-                    
-                    Section::make('Participant Filters')
-                    ->description('Filter participants by their characteristics')
-                    ->schema([
-                        Grid::make(2)->schema([
-                            Select::make('filter_departments')
-                            ->label('Departments')
-                            ->multiple()
-                            ->options(Department::pluck('name', 'id'))
-                            ->searchable()
-                            ->preload(),
-                            Select::make('filter_cadres')
-                            ->label('Cadres')
-                            ->multiple()
-                            ->options(Cadre::pluck('name', 'id'))
-                            ->searchable()
-                            ->preload(),
-                        ]),
-                    ]),
-                    
-                    Section::make('Date Filters')
-                    ->description('Filter by year')
-                    ->schema([
-                        Select::make('filter_years')
-                        ->label('Years')
-                        ->multiple()
-                        ->options(function () {
-                            $currentYear = Carbon::now()->year;
-                            $years = [];
-                            for ($year = $currentYear; $year >= 2020; $year--) {
-                                $years[$year] = $year;
-                            }
-                            return $years;
-                        })
-                        ->helperText('Leave empty to include all years'),
-                    ]),
-                ]),
-                
-                // Tab 3: Data Fields
-                Tabs\Tab::make('3. Data Fields')
-                ->icon('heroicon-o-table-cells')
-                ->schema([
-                    Section::make('Participant/Mentee Information')
-                    ->description('All participant/mentees fields are included in the specified order')
-                    ->schema([
-                        Placeholder::make('participant_fields_info')
-                        ->content(new HtmlString('
+                                            foreach ($trainings as $training) {
+                                                $categories = $training->assessmentCategories;
+                                                $type = $training->type === 'global_training' ? 'Training' : 'Mentorship';
+
+                                                if ($categories->count() > 0) {
+                                                    $preview .= "<div class='mb-2'>";
+                                                    $preview .= "<strong>{$training->title} [{$type}]:</strong><br>";
+                                                    foreach ($categories as $category) {
+                                                        $weight = $category->pivot->weight_percentage ?? 0;
+                                                        $preview .= "<span class='text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded mr-1 mb-1 inline-block'>";
+                                                        $preview .= "{$category->name} ({$weight}%)";
+                                                        $preview .= "</span>";
+                                                    }
+                                                    $preview .= "</div>";
+                                                } else {
+                                                    $preview .= "<div class='text-orange-600 text-sm'>⚠️ {$training->title} [{$type}]: No assessment categories configured</div>";
+                                                }
+                                            }
+
+                                            $preview .= '</div>';
+                                            return new HtmlString($preview);
+                                        })
+                                        ->columnSpanFull(),
+                                    ]),
+                                    // Participant Selection
+                                    Section::make('Select Participants/Mentees')
+                                    ->description('Choose which participants/mentees to get training/mentorship history for')
+                                    ->visible(fn(Get $get) => $get('export_type') === 'participant_trainings')
+                                    ->schema([
+                                        CheckboxList::make('selected_participants')
+                                        ->label('Available Participants/mentees')
+                                        ->options(function () {
+                                            return User::whereHas('trainingParticipations')
+                                                            ->with(['facility', 'department', 'cadre', 'trainingParticipations'])
+                                                            ->get()
+                                                            ->mapWithKeys(function ($user) {
+                                                                $name = $user->full_name;
+                                                                $facility = $user->facility?->name ?? 'No facility';
+                                                                $trainings = $user->trainingParticipations()->count();
+
+                                                                return [
+                                                                    $user->id => "{$name} • {$facility} • {$trainings} activities"
+                                                                ];
+                                                            });
+                                        })
+                                        ->searchable()
+                                        ->bulkToggleable()
+                                        ->columns(1)
+                                        ->gridDirection('row')
+                                        ->required(fn(Get $get) => $get('export_type') === 'participant_trainings')
+                                        ->helperText('Select participants/mentees to get their complete training/mentorship history.'),
+                                    ]),
+                                ]),
+                                // Tab 2: Filters & Criteria
+                                Tabs\Tab::make('2. Filters & Criteria')
+                                ->icon('heroicon-o-funnel')
+                                ->schema([
+                                    Section::make('Geographic Filters')
+                                    ->description('Filter by location (only for MOH Trainings)')
+                                    ->visible(function (Get $get) {
+                                        $selectedTrainings = $get('selected_trainings') ?? [];
+                                        if (empty($selectedTrainings))
+                                            return false;
+
+                                        $trainings = Training::whereIn('id', $selectedTrainings)->get();
+                                        return $trainings->where('type', 'global_training')->isNotEmpty();
+                                    })
+                                    ->schema([
+                                        Grid::make(2)->schema([
+                                            Select::make('filter_counties')
+                                            ->label('Counties')
+                                            ->multiple()
+                                            ->options(County::pluck('name', 'id'))
+                                            ->searchable()
+                                            ->preload()
+                                            ->helperText('Leave empty to include all counties'),
+                                            Select::make('filter_facilities')
+                                            ->label('Facilities')
+                                            ->multiple()
+                                            ->options(Facility::pluck('name', 'id'))
+                                            ->searchable()
+                                            ->preload()
+                                            ->helperText('Leave empty to include all facilities'),
+                                        ]),
+                                    ]),
+                                    Section::make('Participant Filters')
+                                    ->description('Filter participants by their characteristics')
+                                    ->schema([
+                                        Grid::make(2)->schema([
+                                            Select::make('filter_departments')
+                                            ->label('Departments')
+                                            ->multiple()
+                                            ->options(Department::pluck('name', 'id'))
+                                            ->searchable()
+                                            ->preload(),
+                                            Select::make('filter_cadres')
+                                            ->label('Cadres')
+                                            ->multiple()
+                                            ->options(Cadre::pluck('name', 'id'))
+                                            ->searchable()
+                                            ->preload(),
+                                        ]),
+                                    ]),
+                                    Section::make('Date Filters')
+                                    ->description('Filter by year')
+                                    ->schema([
+                                        Select::make('filter_years')
+                                        ->label('Years')
+                                        ->multiple()
+                                        ->options(function () {
+                                            $currentYear = Carbon::now()->year;
+                                            $years = [];
+                                            for ($year = $currentYear; $year >= 2020; $year--) {
+                                                $years[$year] = $year;
+                                            }
+                                            return $years;
+                                        })
+                                        ->helperText('Leave empty to include all years'),
+                                    ]),
+                                ]),
+                                // Tab 3: Data Fields
+                                Tabs\Tab::make('3. Data Fields')
+                                ->icon('heroicon-o-table-cells')
+                                ->schema([
+                                    Section::make('Participant/Mentee Information')
+                                    ->description('All participant/mentees fields are included in the specified order')
+                                    ->schema([
+                                        Placeholder::make('participant_fields_info')
+                                        ->content(new HtmlString('
                             <div class="bg-green-50 border border-green-200 rounded-lg p-4">
                                 <h4 class="text-sm font-medium text-green-800 mb-2">Standard Participant/Mentee Fields (Fixed Order):</h4>
                                 <div class="text-sm text-green-700">
@@ -272,136 +273,125 @@ class TrainingExportResource extends Resource {
                                 </div>
                             </div>
                         ')),
-                    ]),
-                    
-                    Section::make('Assessment Information')
-                    ->description('Select assessment details to include')
-                    ->schema([
-                        Toggle::make('include_assessments')
-                        ->label('Include Assessment Results')
-                        ->default(true)
-                        ->live()
-                        ->helperText('Include individual category results and overall pass/fail'),
-                        
-                        Toggle::make('include_individual_categories')
-                        ->label('Include Individual Category Results')
-                        ->default(true)
-                        ->visible(fn(Get $get) => $get('include_assessments'))
-                        ->live()
-                        ->helperText('Add columns for each assessment category (Pass/Fail)'),
-                        
-                        Select::make('category_column_format')
-                        ->label('Category Column Format')
-                        ->options([
-                            'result_only' => 'Result Only (PASS/FAIL)',
-                            'result_with_weight' => 'Result + Weight (PASS - 25%)',
-                        ])
-                        ->default('result_with_weight')
-                        ->visible(fn(Get $get) => $get('include_assessments') && $get('include_individual_categories'))
-                        ->helperText('How to display individual category results'),
-                        
-                        Select::make('incomplete_display')
-                        ->label('Display Incomplete Assessments As')
-                        ->options([
-                            'blank' => 'Blank Cell',
-                            'not_assessed' => 'NOT ASSESSED',
-                            'pending' => 'PENDING',
-                            'dash' => '—',
-                        ])
-                        ->default('not_assessed')
-                        ->visible(fn(Get $get) => $get('include_assessments')),
-                    ]),
-                ]),
-                
-                // Tab 4: Export Options
-                Tabs\Tab::make('4. Export Options')
-                ->icon('heroicon-o-cog-6-tooth')
-                ->schema([
-                    Section::make('File Format & Structure')
-                    ->schema([
-                        Grid::make(2)->schema([
-                            Select::make('file_format')
-                            ->label('File Format')
-                            ->options([
-                                'xlsx' => 'Excel (.xlsx) - Recommended',
-                                'csv' => 'CSV (.csv) - Single file',
-                            ])
-                            ->default('xlsx')
-                            ->required(),
-                            Select::make('worksheet_structure')
-                            ->label('Worksheet Structure')
-                            ->options([
-                                'per_training' => 'One worksheet per training/mentorship',
-                                'combined' => 'All data in one worksheet',
-                            ])
-                            ->default('per_training')
-                            ->visible(fn(Get $get) => $get('file_format') === 'xlsx'),
-                        ]),
-                    ]),
-                    
-                    Section::make('Additional Sheets')
-                    ->visible(fn(Get $get) => $get('include_assessments'))
-                    ->schema([
-                        Toggle::make('include_summary_sheet')
-                        ->label('Include Summary Dashboard')
-                        ->default(true)
-                        ->helperText('Add a summary worksheet with statistics and counts'),
-                        
-                        Toggle::make('create_assessment_summary')
-                        ->label('Create Assessment Summary Sheet')
-                        ->default(false)
-                        ->helperText('Create a separate worksheet with assessment statistics'),
-                        
-                        Toggle::make('include_category_definitions')
-                        ->label('Include Category Definitions Sheet')
-                        ->default(false)
-                        ->helperText('Add a sheet explaining each assessment category'),
-                    ]),
-                    
-                    Section::make('Formatting Options')
-                    ->schema([
-                        Toggle::make('color_code_results')
-                        ->label('Color Code Assessment Results')
-                        ->default(true)
-                        ->visible(fn(Get $get) => $get('include_assessments'))
-                        ->helperText('Green for PASS, Red for FAIL, Orange for incomplete'),
-                        
-                        Toggle::make('format_for_printing')
-                        ->label('Format for Printing')
-                        ->default(true)
-                        ->helperText('Optimize layout and formatting for printing'),
-                        
-                        Toggle::make('freeze_header_columns')
-                        ->label('Freeze Header Columns')
-                        ->default(true)
-                        ->helperText('Keep participant info visible when scrolling'),
-                    ]),
-                ]),
-            ]),
+                                    ]),
+                                    Section::make('Assessment Information')
+                                    ->description('Select assessment details to include')
+                                    ->schema([
+                                        Toggle::make('include_assessments')
+                                        ->label('Include Assessment Results')
+                                        ->default(true)
+                                        ->live()
+                                        ->helperText('Include individual category results and overall pass/fail'),
+                                        Toggle::make('include_individual_categories')
+                                        ->label('Include Individual Category Results')
+                                        ->default(true)
+                                        ->visible(fn(Get $get) => $get('include_assessments'))
+                                        ->live()
+                                        ->helperText('Add columns for each assessment category (Pass/Fail)'),
+                                        Select::make('category_column_format')
+                                        ->label('Category Column Format')
+                                        ->options([
+                                            'result_only' => 'Result Only (PASS/FAIL)',
+                                            'result_with_weight' => 'Result + Weight (PASS - 25%)',
+                                        ])
+                                        ->default('result_with_weight')
+                                        ->visible(fn(Get $get) => $get('include_assessments') && $get('include_individual_categories'))
+                                        ->helperText('How to display individual category results'),
+                                        Select::make('incomplete_display')
+                                        ->label('Display Incomplete Assessments As')
+                                        ->options([
+                                            'blank' => 'Blank Cell',
+                                            'not_assessed' => 'NOT ASSESSED',
+                                            'pending' => 'PENDING',
+                                            'dash' => '—',
+                                        ])
+                                        ->default('not_assessed')
+                                        ->visible(fn(Get $get) => $get('include_assessments')),
+                                    ]),
+                                ]),
+                                // Tab 4: Export Options
+                                Tabs\Tab::make('4. Export Options')
+                                ->icon('heroicon-o-cog-6-tooth')
+                                ->schema([
+                                    Section::make('File Format & Structure')
+                                    ->schema([
+                                        Grid::make(2)->schema([
+                                            Select::make('file_format')
+                                            ->label('File Format')
+                                            ->options([
+                                                'xlsx' => 'Excel (.xlsx) - Recommended',
+                                                'csv' => 'CSV (.csv) - Single file',
+                                            ])
+                                            ->default('xlsx')
+                                            ->required(),
+                                            Select::make('worksheet_structure')
+                                            ->label('Worksheet Structure')
+                                            ->options([
+                                                'per_training' => 'One worksheet per training/mentorship',
+                                                'combined' => 'All data in one worksheet',
+                                            ])
+                                            ->default('per_training')
+                                            ->visible(fn(Get $get) => $get('file_format') === 'xlsx'),
+                                        ]),
+                                    ]),
+                                    Section::make('Additional Sheets')
+                                    ->visible(fn(Get $get) => $get('include_assessments'))
+                                    ->schema([
+                                        Toggle::make('include_summary_sheet')
+                                        ->label('Include Summary Dashboard')
+                                        ->default(true)
+                                        ->helperText('Add a summary worksheet with statistics and counts'),
+                                        Toggle::make('create_assessment_summary')
+                                        ->label('Create Assessment Summary Sheet')
+                                        ->default(false)
+                                        ->helperText('Create a separate worksheet with assessment statistics'),
+                                        Toggle::make('include_category_definitions')
+                                        ->label('Include Category Definitions Sheet')
+                                        ->default(false)
+                                        ->helperText('Add a sheet explaining each assessment category'),
+                                    ]),
+                                    Section::make('Formatting Options')
+                                    ->schema([
+                                        Toggle::make('color_code_results')
+                                        ->label('Color Code Assessment Results')
+                                        ->default(true)
+                                        ->visible(fn(Get $get) => $get('include_assessments'))
+                                        ->helperText('Green for PASS, Red for FAIL, Orange for incomplete'),
+                                        Toggle::make('format_for_printing')
+                                        ->label('Format for Printing')
+                                        ->default(true)
+                                        ->helperText('Optimize layout and formatting for printing'),
+                                        Toggle::make('freeze_header_columns')
+                                        ->label('Freeze Header Columns')
+                                        ->default(true)
+                                        ->helperText('Keep participant info visible when scrolling'),
+                                    ]),
+                                ]),
+                            ]),
         ]);
     }
 
     public static function table(Table $table): Table {
         return $table
-            ->query(Training::query()->whereNull('id'))
-            ->columns([])
-            ->emptyStateHeading('Training Export Center')
-            ->emptyStateDescription('Use the "Configure New Export" button to create custom training data exports with flexible filters and field selection.')
-            ->emptyStateIcon('heroicon-o-document-arrow-down')
-            ->emptyStateActions([
-                Tables\Actions\CreateAction::make()
-                ->label('Configure New Export')
-                ->icon('heroicon-o-plus')
-                ->color('primary'),
-            ])
-            ->paginated(false);
+                        ->query(Training::query()->whereNull('id'))
+                        ->columns([])
+                        ->emptyStateHeading('Training Export Center')
+                        ->emptyStateDescription('Use the "Configure New Export" button to create custom training data exports with flexible filters and field selection.')
+                        ->emptyStateIcon('heroicon-o-document-arrow-down')
+                        ->emptyStateActions([
+                            Tables\Actions\CreateAction::make()
+                            ->label('Configure New Export')
+                            ->icon('heroicon-o-plus')
+                            ->color('primary'),
+                        ])
+                        ->paginated(false);
     }
 
     public static function getPages(): array {
         return [
             'index' => Pages\ListTrainingExports::route('/'),
             'create' => Pages\CreateTrainingExport::route('/create'),
-            'preview'=> Pages\PreviewTrainingExport::route('/preview')
+            'preview' => Pages\PreviewTrainingExport::route('/preview')
         ];
     }
 

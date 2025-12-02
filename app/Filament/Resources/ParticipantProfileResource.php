@@ -21,6 +21,17 @@ class ParticipantProfileResource extends Resource {
     protected static ?string $navigationGroup = 'Training Management';
     protected static ?int $navigationSort = 6;
     protected static ?string $slug = 'participant-profiles';
+    
+    
+    public static function shouldRegisterNavigation(): bool
+    {
+        return !auth()->user()->hasRole('Assessor');
+    }
+
+    public static function canAccess(): bool
+    {
+        return !auth()->user()->hasRole('Assessor');
+    }
 
     public static function table(Table $table): Table {
         return $table

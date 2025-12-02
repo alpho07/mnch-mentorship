@@ -23,6 +23,16 @@ class AssessmentTypeResource extends Resource
     protected static ?int $navigationSort = 1;
 
     protected static ?string $navigationLabel = 'Assessment Types';
+    
+    public static function shouldRegisterNavigation(): bool
+    {
+        return !auth()->user()->hasRole('Assessor');
+    }
+
+    public static function canAccess(): bool
+    {
+        return !auth()->user()->hasRole('Assessor');
+    }
 
     public static function form(Form $form): Form
     {

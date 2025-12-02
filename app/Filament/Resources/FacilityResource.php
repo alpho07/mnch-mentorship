@@ -30,6 +30,17 @@ class FacilityResource extends Resource {
     protected static ?string $navigationGroup = 'System Administration';
     protected static ?int $navigationSort = 1;
     protected static ?string $recordTitleAttribute = 'name';
+    
+    
+    public static function shouldRegisterNavigation(): bool
+    {
+        return !auth()->user()->hasRole('Assessor');
+    }
+
+    public static function canAccess(): bool
+    {
+        return !auth()->user()->hasRole('Assessor');
+    }
 
     public static function form(Form $form): Form {
         return $form

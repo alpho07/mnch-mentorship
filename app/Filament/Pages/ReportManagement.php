@@ -26,6 +26,17 @@ class ReportManagement extends Page implements HasForms
 
     public ?array $assignTemplateData = [];
     public ?array $generateReportsData = [];
+    
+        public static function shouldRegisterNavigation(): bool
+    {
+        return !auth()->user()->hasRole('Assessor');
+    }
+
+    public static function canAccess(): bool
+    {
+        return !auth()->user()->hasRole('Assessor');
+    } 
+
 
     public function mount(): void
     {
