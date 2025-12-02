@@ -381,6 +381,11 @@ class DynamicFormBuilder {
                         ->numeric()
                         ->default($metadata['kmc_beds'] ?? 0)
                         ->visible(fn(Forms\Get $get) => $get($fieldName) === 'Yes'),
+                        Forms\Components\TextInput::make("{$fieldName}_incubators")
+                        ->label('Incubators')
+                        ->numeric()
+                        ->default($metadata['incubators'] ?? 0)
+                        ->visible(fn(Forms\Get $get) => $get($fieldName) === 'Yes'),
             ]);
         } else {
             $fields[] = Forms\Components\Grid::make(2)->schema([
@@ -451,6 +456,7 @@ class DynamicFormBuilder {
                             'nicu_beds' => (int) ($data["{$fieldName}_nicu_beds"] ?? 0),
                             'general_cots' => (int) ($data["{$fieldName}_general_cots"] ?? 0),
                             'kmc_beds' => (int) ($data["{$fieldName}_kmc_beds"] ?? 0),
+                            'incubators' => (int) ($data["{$fieldName}_incubators"] ?? 0),
                         ];
                     } else {
                         $metadata = [
