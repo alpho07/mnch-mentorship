@@ -10,10 +10,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Collection;
 
-class Training extends Model {
-
-    use HasFactory,
-        SoftDeletes;
+class Training extends Model
+{
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
         'title',
@@ -22,13 +21,15 @@ class Training extends Model {
         'lead_type', // 'national', 'county', 'partner'
         'status',
         'identifier',
-        'program_id', // Keep for backward compatibility
-        'facility_id', // nullable for global trainings
+        'program_id',
+        'facility_id',
+        'county_id', // Added for mentorships
         'lead_county_id', // for county-led trainings
         'lead_partner_id', // for partner-led trainings
+        'lead_division_id', // for national-led trainings
+        'approved_training_area_id', // for training areas
         'organizer_id',
         'mentor_id',
-        //'location',
         'start_date',
         'end_date',
         'registration_deadline',
@@ -38,11 +39,14 @@ class Training extends Model {
         'materials_needed',
         'learning_outcomes',
         'prerequisites',
-        'training_approaches', // Array of approaches
+        'training_approaches',
         'notes',
-        'assess_participants', // Boolean - whether to assess participants
-        'provide_materials', // Boolean - whether to provide materials
+        'assess_participants',
+        'provide_materials',
+        'location_type', // 'hospital', 'hotel', 'online'
+        'online_link', // for online trainings
     ];
+
     protected $casts = [
         'start_date' => 'date',
         'end_date' => 'date',
@@ -55,279 +59,688 @@ class Training extends Model {
         'provide_materials' => 'boolean',
     ];
 
-    // Relationships
-    public function program(): BelongsTo {
+    // ============================================
+    // BASIC RELATIONSHIPS
+    // ============================================
+
+    /**
+     * Training belongs to an approved training area
+     */
+    public function approvedTrainingArea(): BelongsTo
+    {
+        return $this->belongsTo(ApprovedTrainingArea::class, 'approved_training_area_id');
+    }
+
+    /**
+     * Training belongs to a program
+     */
+    public function program(): BelongsTo
+    {
         return $this->belongsTo(Program::class);
     }
 
-    public function programs(): BelongsToMany {
+    /**
+     * Training can have multiple programs (many-to-many)
+     */
+    public function programs(): BelongsToMany
+    {
         return $this->belongsToMany(Program::class, 'training_programs', 'training_id', 'program_id');
     }
 
-    public function facility(): BelongsTo {
+    /**
+     * Training belongs to a facility
+     */
+    public function facility(): BelongsTo
+    {
         return $this->belongsTo(Facility::class);
     }
 
-    public function county(): BelongsTo {
+    /**
+     * Training belongs to a county (for mentorships)
+     */
+    public function county(): BelongsTo
+    {
+        return $this->belongsTo(County::class);
+    }
+
+    /**
+     * Lead county for county-led trainings
+     */
+    public function leadCounty(): BelongsTo
+    {
         return $this->belongsTo(County::class, 'lead_county_id');
     }
 
-    public function partner(): BelongsTo {
+    /**
+     * Lead partner for partner-led trainings
+     */
+    public function partner(): BelongsTo
+    {
         return $this->belongsTo(Partner::class, 'lead_partner_id');
     }
 
-    public function division(): BelongsTo {
+    /**
+     * Division for national-led trainings
+     */
+    public function division(): BelongsTo
+    {
         return $this->belongsTo(Division::class, 'lead_division_id');
     }
 
-    public function organizer(): BelongsTo {
+    /**
+     * Training organizer
+     */
+    public function organizer(): BelongsTo
+    {
         return $this->belongsTo(User::class, 'organizer_id');
     }
 
-    public function mentor(): BelongsTo {
+    /**
+     * Training mentor (lead mentor for mentorships)
+     */
+    public function mentor(): BelongsTo
+    {
         return $this->belongsTo(User::class, 'mentor_id');
     }
 
-    public function participants(): HasMany {
+    // ============================================
+    // MENTORSHIP CLASS SYSTEM RELATIONSHIPS
+    // ============================================
+
+    /**
+     * Training has many mentorship classes (cohorts)
+     */
+    public function mentorshipClasses(): HasMany
+    {
+        return $this->hasMany(MentorshipClass::class, 'training_id');
+    }
+
+    /**
+     * Training has many co-mentors
+     */
+    public function coMentors(): HasMany
+    {
+        return $this->hasMany(MentorshipCoMentor::class, 'training_id');
+    }
+
+    /**
+     * Get all class sessions across all classes for this training
+     */
+    public function allSessions()
+    {
+        return ClassSession::whereHas('classModule.mentorshipClass', function ($query) {
+            $query->where('training_id', $this->id);
+        });
+    }
+
+    // ============================================
+    // PARTICIPANTS & ATTENDANCE
+    // ============================================
+
+    /**
+     * Training has many participants (mentees)
+     */
+    public function participants(): HasMany
+    {
         return $this->hasMany(TrainingParticipant::class);
     }
 
-    public function sessions(): HasMany {
+    /**
+     * Training has many sessions (old system, kept for compatibility)
+     */
+    public function sessions(): HasMany
+    {
         return $this->hasMany(TrainingSession::class);
     }
 
-    public function departments(): BelongsToMany {
+    // ============================================
+    // MANY-TO-MANY RELATIONSHIPS
+    // ============================================
+
+    /**
+     * Training targets multiple departments
+     */
+    public function departments(): BelongsToMany
+    {
         return $this->belongsToMany(Department::class, 'training_departments');
     }
 
-    public function modules(): BelongsToMany {
+    /**
+     * Training covers multiple modules
+     */
+    public function modules(): BelongsToMany
+    {
         return $this->belongsToMany(Module::class, 'training_modules');
     }
 
-    public function methodologies(): BelongsToMany {
+    /**
+     * Training uses multiple methodologies
+     */
+    public function methodologies(): BelongsToMany
+    {
         return $this->belongsToMany(Methodology::class, 'training_methodologies');
     }
 
-    public function targetFacilities(): BelongsToMany {
+    /**
+     * Training targets multiple facilities
+     */
+    public function targetFacilities(): BelongsToMany
+    {
         return $this->belongsToMany(Facility::class, 'training_target_facilities', 'training_id', 'facility_id');
     }
 
-    public function trainingMaterials(): HasMany {
+    /**
+     * Training locations
+     */
+    public function locations(): BelongsToMany
+    {
+        return $this->belongsToMany(Location::class, 'training_locations', 'training_id', 'location_id');
+    }
+
+    /**
+     * Training associated counties (many-to-many)
+     */
+    public function counties(): BelongsToMany
+    {
+        return $this->belongsToMany(County::class, 'training_counties', 'training_id', 'county_id');
+    }
+
+    /**
+     * Training associated partners (many-to-many)
+     */
+    public function partners(): BelongsToMany
+    {
+        return $this->belongsToMany(Partner::class, 'training_partners', 'training_id', 'partner_id');
+    }
+
+    /**
+     * Training hospital locations (many-to-many)
+     */
+    public function hospitals(): BelongsToMany
+    {
+        return $this->belongsToMany(Facility::class, 'training_hospitals', 'training_id', 'facility_id');
+    }
+
+    /**
+     * Training hotel locations (one-to-many)
+     */
+    public function hotels(): HasMany
+    {
+        return $this->hasMany(TrainingHotel::class, 'training_id');
+    }
+
+    // ============================================
+    // MATERIALS & ASSESSMENTS
+    // ============================================
+
+    /**
+     * Training has many materials
+     */
+    public function trainingMaterials(): HasMany
+    {
         return $this->hasMany(TrainingMaterial::class);
     }
 
-    public function assessmentCategories(): BelongsToMany {
+    /**
+     * Training has many assessment categories
+     */
+    public function assessmentCategories(): BelongsToMany
+    {
         return $this->belongsToMany(AssessmentCategory::class, 'training_assessment_categories')
-                        ->withPivot([
-                            'weight_percentage',
-                            'pass_threshold',
-                            'is_required',
-                            'order_sequence',
-                            'is_active'
-                        ])
-                        ->withTimestamps()
-                        ->wherePivot('is_active', true)
-                        ->orderByPivot('order_sequence');
+            ->withPivot([
+                'weight_percentage',
+                'pass_threshold',
+                'is_required',
+                'order_sequence',
+                'is_active'
+            ])
+            ->withTimestamps()
+            ->wherePivot('is_active', true)
+            ->orderByPivot('order_sequence');
     }
 
-    // Helper Methods
-    public function isGlobalTraining(): bool {
+    // ============================================
+    // TYPE CHECKER METHODS
+    // ============================================
+
+    /**
+     * Check if training is a global training
+     */
+    public function isGlobalTraining(): bool
+    {
         return $this->type === 'global_training';
     }
 
-    public function isFacilityMentorship(): bool {
+    /**
+     * Check if training is a facility mentorship
+     */
+    public function isFacilityMentorship(): bool
+    {
         return $this->type === 'facility_mentorship';
     }
 
-    public function isNationalLed(): bool {
+    /**
+     * Check if training is nationally led
+     */
+    public function isNationalLed(): bool
+    {
         return $this->lead_type === 'national';
     }
 
-    public function isCountyLed(): bool {
+    /**
+     * Check if training is county led
+     */
+    public function isCountyLed(): bool
+    {
         return $this->lead_type === 'county';
     }
 
-    public function isPartnerLed(): bool {
+    /**
+     * Check if training is partner led
+     */
+    public function isPartnerLed(): bool
+    {
         return $this->lead_type === 'partner';
     }
 
-    public function getLeadOrganizationAttribute(): string {
+    // ============================================
+    // MENTORSHIP-SPECIFIC HELPER METHODS
+    // ============================================
+
+    /**
+     * Check if user is a co-mentor for this training
+     */
+    public function isCoMentor(int $userId): bool
+    {
+        return $this->coMentors()
+            ->where('user_id', $userId)
+            ->where('status', 'accepted')
+            ->exists();
+    }
+
+    /**
+     * Check if user can facilitate sessions (lead mentor or accepted co-mentor)
+     */
+    public function canUserFacilitate(int $userId): bool
+    {
+        return $this->mentor_id === $userId || $this->isCoMentor($userId);
+    }
+
+    /**
+     * Get total number of classes for this training
+     */
+    public function getClassesCountAttribute(): int
+    {
+        return $this->mentorshipClasses()->count();
+    }
+
+    /**
+     * Get total number of modules across all classes
+     */
+    public function getTotalModulesCountAttribute(): int
+    {
+        return ClassModule::whereHas('mentorshipClass', function ($query) {
+            $query->where('training_id', $this->id);
+        })->count();
+    }
+
+    /**
+     * Get total number of completed modules
+     */
+    public function getCompletedModulesCountAttribute(): int
+    {
+        return ClassModule::whereHas('mentorshipClass', function ($query) {
+            $query->where('training_id', $this->id);
+        })->where('status', 'completed')->count();
+    }
+
+    /**
+     * Get total session count across all classes
+     */
+    public function getTotalSessionsCountAttribute(): int
+    {
+        return $this->allSessions()->count();
+    }
+
+    /**
+     * Get completed session count
+     */
+    public function getCompletedSessionsCountAttribute(): int
+    {
+        return $this->allSessions()->where('status', 'completed')->count();
+    }
+
+    /**
+     * Get overall mentorship progress percentage
+     */
+    public function getMentorshipProgressAttribute(): float
+    {
+        $totalSessions = $this->total_sessions_count;
+        
+        if ($totalSessions === 0) {
+            return 0;
+        }
+        
+        $completedSessions = $this->completed_sessions_count;
+        
+        return round(($completedSessions / $totalSessions) * 100, 2);
+    }
+
+    // ============================================
+    // COMPUTED ATTRIBUTES
+    // ============================================
+
+    /**
+     * Get lead organization name
+     */
+    public function getLeadOrganizationAttribute(): string
+    {
         return match ($this->lead_type) {
-            'national' => 'Ministry of Health',
-            'county' => $this->county?->name ?? 'County not specified',
-            'partner' => $this->partner?->name ?? 'Partner not specified',
+            'national' => $this->division?->name ?? 'Ministry of Health',
+            'county' => $this->counties->pluck('name')->implode(', ') ?: 'County not specified',
+            'partner' => $this->partners->pluck('name')->implode(', ') ?: 'Partner not specified',
             default => 'Not specified',
         };
     }
 
-    public function getCompletionRateAttribute(): float {
-        $total = $this->participants()->count();
-        if ($total === 0)
+    /**
+     * Get training status based on dates
+     */
+    public function getTrainingStatusAttribute(): string
+    {
+        if ($this->status) {
+            return $this->status;
+        }
+
+        $now = now();
+        
+        if (!$this->start_date || !$this->end_date) {
+            return 'draft';
+        }
+
+        if ($now->lt($this->start_date)) {
+            return 'upcoming';
+        }
+
+        if ($now->between($this->start_date, $this->end_date)) {
+            return 'ongoing';
+        }
+
+        if ($now->gt($this->end_date)) {
+            return 'completed';
+        }
+
+        return 'draft';
+    }
+
+    /**
+     * Get duration in days
+     */
+    public function getDurationDaysAttribute(): int
+    {
+        if (!$this->start_date || !$this->end_date) {
             return 0;
+        }
+
+        return $this->start_date->diffInDays($this->end_date) + 1;
+    }
+
+    /**
+     * Get remaining capacity
+     */
+    public function getRemainingCapacityAttribute(): string
+    {
+        if (!$this->max_participants) {
+            return 'Unlimited';
+        }
+
+        $enrolled = $this->participants()->count();
+        $remaining = $this->max_participants - $enrolled;
+
+        return $remaining > 0 ? (string)$remaining : '0';
+    }
+
+    /**
+     * Get capacity utilization percentage
+     */
+    public function getCapacityUtilizationAttribute(): float
+    {
+        if (!$this->max_participants) {
+            return 0;
+        }
+
+        $enrolled = $this->participants()->count();
+        return round(($enrolled / $this->max_participants) * 100, 1);
+    }
+
+    /**
+     * Get completion rate of participants
+     */
+    public function getCompletionRateAttribute(): float
+    {
+        $total = $this->participants()->count();
+        
+        if ($total === 0) {
+            return 0;
+        }
 
         $completed = $this->participants()
-                ->where('completion_status', 'completed')
-                ->count();
+            ->where('completion_status', 'completed')
+            ->count();
 
         return round(($completed / $total) * 100, 2);
     }
 
-    public function getAverageScoreAttribute(): float {
+    /**
+     * Get average score of participants
+     */
+    public function getAverageScoreAttribute(): float
+    {
         return $this->participants()
-                        ->join('participant_objective_results', 'training_participants.id', '=', 'participant_objective_results.participant_id')
-                        ->avg('participant_objective_results.score') ?? 0;
+            ->join('participant_objective_results', 'training_participants.id', '=', 'participant_objective_results.participant_id')
+            ->avg('participant_objective_results.score') ?? 0;
     }
 
-    public function getTotalMaterialCostAttribute(): float {
+    /**
+     * Get total planned material cost
+     */
+    public function getTotalMaterialCostAttribute(): float
+    {
         return $this->trainingMaterials()->sum('total_cost') ?? 0;
     }
 
-    public function getActualMaterialCostAttribute(): float {
+    /**
+     * Get actual material cost
+     */
+    public function getActualMaterialCostAttribute(): float
+    {
         return $this->trainingMaterials()
-                        ->selectRaw('SUM(quantity_used * unit_cost) as actual_cost')
-                        ->value('actual_cost') ?? 0;
+            ->selectRaw('SUM(quantity_used * unit_cost) as actual_cost')
+            ->value('actual_cost') ?? 0;
     }
 
-    public function getMaterialUtilizationRateAttribute(): float {
+    /**
+     * Get material utilization rate
+     */
+    public function getMaterialUtilizationRateAttribute(): float
+    {
         $totalPlanned = $this->trainingMaterials()->sum('quantity_planned');
         $totalUsed = $this->trainingMaterials()->sum('quantity_used');
 
         return $totalPlanned > 0 ? round(($totalUsed / $totalPlanned) * 100, 1) : 0;
     }
 
-    // Scopes
-    public function scopeGlobalTrainings($query) {
+    // ============================================
+    // QUERY SCOPES
+    // ============================================
+
+    /**
+     * Scope to filter global trainings
+     */
+    public function scopeGlobalTrainings($query)
+    {
         return $query->where('type', 'global_training');
     }
 
-    public function scopeFacilityMentorships($query) {
+    /**
+     * Scope to filter facility mentorships
+     */
+    public function scopeFacilityMentorships($query)
+    {
         return $query->where('type', 'facility_mentorship');
     }
 
-    public function scopeNationalLed($query) {
+    /**
+     * Scope to filter nationally led trainings
+     */
+    public function scopeNationalLed($query)
+    {
         return $query->where('lead_type', 'national');
     }
 
-    public function scopeCountyLed($query) {
+    /**
+     * Scope to filter county led trainings
+     */
+    public function scopeCountyLed($query)
+    {
         return $query->where('lead_type', 'county');
     }
 
-    public function scopePartnerLed($query) {
+    /**
+     * Scope to filter partner led trainings
+     */
+    public function scopePartnerLed($query)
+    {
         return $query->where('lead_type', 'partner');
     }
 
-    public function scopeRegistrationOpen($query) {
+    /**
+     * Scope for open registration
+     */
+    public function scopeRegistrationOpen($query)
+    {
         return $query->where('status', 'registration_open')
-                        ->where('registration_deadline', '>=', now());
+            ->where('registration_deadline', '>=', now());
     }
 
-    public function scopeOngoing($query) {
+    /**
+     * Scope for ongoing trainings
+     */
+    public function scopeOngoing($query)
+    {
         return $query->where('status', 'ongoing');
     }
 
-    public function scopeUpcoming($query) {
+    /**
+     * Scope for upcoming trainings
+     */
+    public function scopeUpcoming($query)
+    {
         return $query->where('start_date', '>', now());
     }
 
-    public function scopeCompleted($query) {
+    /**
+     * Scope for completed trainings
+     */
+    public function scopeCompleted($query)
+    {
         return $query->where('status', 'completed');
     }
 
-    // Analytics methods (OPTIMIZED)
-    public function getParticipantsByFacility(): Collection {
+    /**
+     * Scope to filter trainings with assessments
+     */
+    public function scopeWithAssessments($query)
+    {
+        return $query->where('assess_participants', true)
+            ->orWhereHas('assessmentCategories');
+    }
+
+    /**
+     * Scope to filter trainings with materials
+     */
+    public function scopeWithMaterials($query)
+    {
+        return $query->where('provide_materials', true)
+            ->orWhereHas('trainingMaterials');
+    }
+
+    // ============================================
+    // ANALYTICS METHODS
+    // ============================================
+
+    /**
+     * Get participants grouped by facility
+     */
+    public function getParticipantsByFacility(): Collection
+    {
         return $this->participants()
-                        ->join('users', 'training_participants.user_id', '=', 'users.id')
-                        ->join('facilities', 'users.facility_id', '=', 'facilities.id')
-                        ->groupBy('facilities.name')
-                        ->selectRaw('facilities.name, COUNT(*) as count')
-                        ->pluck('count', 'name');
+            ->join('users', 'training_participants.user_id', '=', 'users.id')
+            ->join('facilities', 'users.facility_id', '=', 'facilities.id')
+            ->groupBy('facilities.name')
+            ->selectRaw('facilities.name, COUNT(*) as count')
+            ->get();
     }
 
-    public function getParticipantsByCadre(): Collection {
+    /**
+     * Get participants grouped by department
+     */
+    public function getParticipantsByDepartment(): Collection
+    {
         return $this->participants()
-                        ->join('users', 'training_participants.user_id', '=', 'users.id')
-                        ->join('cadres', 'users.cadre_id', '=', 'cadres.id')
-                        ->groupBy('cadres.name')
-                        ->selectRaw('cadres.name, COUNT(*) as count')
-                        ->pluck('count', 'name');
+            ->join('users', 'training_participants.user_id', '=', 'users.id')
+            ->join('departments', 'users.department_id', '=', 'departments.id')
+            ->groupBy('departments.name')
+            ->selectRaw('departments.name, COUNT(*) as count')
+            ->get();
     }
 
-    public function getCompletionStats(): array {
-        $stats = $this->participants()
-                ->selectRaw('
-                COUNT(*) as total,
-                COUNT(CASE WHEN completion_status = "completed" THEN 1 END) as completed,
-                COUNT(CASE WHEN completion_status = "in_progress" THEN 1 END) as in_progress
-            ')
-                ->first();
-
-        return [
-            'total' => $stats->total,
-            'completed' => $stats->completed,
-            'in_progress' => $stats->in_progress,
-            'completion_rate' => $stats->total > 0 ? round(($stats->completed / $stats->total) * 100, 2) : 0,
-        ];
+    /**
+     * Get participants grouped by cadre
+     */
+    public function getParticipantsByCadre(): Collection
+    {
+        return $this->participants()
+            ->join('users', 'training_participants.user_id', '=', 'users.id')
+            ->join('cadres', 'users.cadre_id', '=', 'cadres.id')
+            ->groupBy('cadres.name')
+            ->selectRaw('cadres.name, COUNT(*) as count')
+            ->get();
     }
 
-    // Relationship assignment methods
-    public function assignPrograms(array $programIds): void {
-        $this->programs()->sync($programIds);
-    }
-
-    public function assignModules(array $moduleIds): void {
-        $this->modules()->sync($moduleIds);
-    }
-
-    public function assignMethodologies(array $methodologyIds): void {
-        $this->methodologies()->sync($methodologyIds);
-    }
-
-    // Material management methods
-    public function addMaterial(int $inventoryItemId, int $quantity, ?string $notes = null): TrainingMaterial {
-        $inventoryItem = InventoryItem::findOrFail($inventoryItemId);
-
-        return $this->trainingMaterials()->create([
-                    'inventory_item_id' => $inventoryItemId,
-                    'quantity_planned' => $quantity,
-                    'unit_cost' => $inventoryItem->unit_price,
-                    'total_cost' => $quantity * $inventoryItem->unit_price,
-                    'usage_notes' => $notes,
-        ]);
-    }
-
-    public function updateMaterialUsage(int $materialId, int $quantityUsed, ?int $returnedQuantity = null): bool {
-        $material = $this->trainingMaterials()->find($materialId);
-
-        if (!$material) {
-            return false;
-        }
-
-        return $material->update([
-                    'quantity_used' => $quantityUsed,
-                    'returned_quantity' => $returnedQuantity,
-        ]);
-    }
-
-    public function getMaterialWastage(): Collection {
+    /**
+     * Get material wastage report
+     */
+    public function getMaterialWastage(): Collection
+    {
         return $this->trainingMaterials()
-                        ->with('inventoryItem')
-                        ->get()
-                        ->filter(fn($material) => $material->wastage_quantity > 0)
-                        ->map(fn($material) => [
-                            'material' => $material->inventoryItem->name,
-                            'wastage_quantity' => $material->wastage_quantity,
-                            'wastage_cost' => $material->wastage_quantity * $material->unit_cost,
-        ]);
+            ->with('inventoryItem')
+            ->get()
+            ->filter(fn($material) => $material->wastage_quantity > 0)
+            ->map(fn($material) => [
+                'material' => $material->inventoryItem->name,
+                'wastage_quantity' => $material->wastage_quantity,
+                'wastage_cost' => $material->wastage_quantity * $material->unit_cost,
+            ]);
     }
 
-    // Assessment category methods
-    public function attachAssessmentCategories(array $categories): void {
+    // ============================================
+    // ASSESSMENT METHODS
+    // ============================================
+
+    /**
+     * Attach assessment categories to training
+     */
+    public function attachAssessmentCategories(array $categories): void
+    {
         $attachData = [];
 
         foreach ($categories as $categoryId => $settings) {
             $category = AssessmentCategory::find($categoryId);
-            if (!$category)
+            
+            if (!$category) {
                 continue;
+            }
 
             $attachData[$categoryId] = [
                 'weight_percentage' => $settings['weight_percentage'] ?? $category->default_weight_percentage,
@@ -341,20 +754,28 @@ class Training extends Model {
         $this->assessmentCategories()->sync($attachData);
     }
 
-    public function updateCategorySettings(int $categoryId, array $settings): bool {
+    /**
+     * Update assessment category settings
+     */
+    public function updateCategorySettings(int $categoryId, array $settings): bool
+    {
         return $this->assessmentCategories()->updateExistingPivot($categoryId, $settings);
     }
 
-    public function getCategoryWeight(int $categoryId): ?float {
+    /**
+     * Get category weight
+     */
+    public function getCategoryWeight(int $categoryId): ?float
+    {
         $category = $this->assessmentCategories()->find($categoryId);
         return $category?->pivot->weight_percentage;
     }
 
-    public function locations(): BelongsToMany {
-        return $this->belongsToMany(Location::class, 'training_locations', 'training_id', 'location_id');
-    }
-
-    public function validateCategoryWeights(): array {
+    /**
+     * Validate assessment category weights total to 100%
+     */
+    public function validateCategoryWeights(): array
+    {
         $totalWeight = $this->assessmentCategories()->sum('training_assessment_categories.weight_percentage');
 
         return [
@@ -364,8 +785,11 @@ class Training extends Model {
         ];
     }
 
-    // Assessment calculation methods
-    public function calculateOverallScore(TrainingParticipant $participant): array {
+    /**
+     * Calculate overall score for a participant
+     */
+    public function calculateOverallScore(TrainingParticipant $participant): array
+    {
         $categories = $this->assessmentCategories;
         $results = $participant->assessmentResults->keyBy('assessment_category_id');
 
@@ -390,7 +814,7 @@ class Training extends Model {
 
             if ($result->result === 'pass') {
                 $achievedWeight += $categoryWeight;
-            } else if ($category->pivot->is_required) {
+            } elseif ($category->pivot->is_required) {
                 $requiredPassed = false;
             }
         }
@@ -419,7 +843,11 @@ class Training extends Model {
         ];
     }
 
-    public function getAssessmentSummary(): array {
+    /**
+     * Get assessment summary for all participants
+     */
+    public function getAssessmentSummary(): array
+    {
         $participants = $this->participants()->with('assessmentResults')->get();
         $totalCategories = $this->assessmentCategories()->count();
 
@@ -461,89 +889,81 @@ class Training extends Model {
             'average_score' => $assessedParticipants > 0 ? round($totalScore / $assessedParticipants, 1) : 0,
         ];
     }
-    
+
+    // ============================================
+    // FEATURE CHECKS
+    // ============================================
+
+    /**
+     * Check if training has assessments
+     */
     public function hasAssessments(): bool
-{
-    return $this->assess_participants === true || $this->assessmentCategories()->exists();
-}
-
-/**
- * Check if this training has materials planning enabled
- */
-public function hasMaterials(): bool
-{
-    return $this->provide_materials === true || $this->trainingMaterials()->exists();
-}
-
-/**
- * Get assessment status for the training
- */
-public function getAssessmentStatusAttribute(): string
-{
-    if (!$this->hasAssessments()) {
-        return 'Not Configured';
+    {
+        return $this->assess_participants === true || $this->assessmentCategories()->exists();
     }
-    
-    if ($this->assessmentCategories()->count() === 0) {
-        return 'No Categories';
-    }
-    
-    $totalWeight = $this->assessmentCategories->sum('pivot.weight_percentage');
-    if (abs($totalWeight - 100) >= 0.1) {
-        return 'Invalid Weights';
-    }
-    
-    return 'Configured';
-}
 
-/**
- * Get materials status for the training
- */
-public function getMaterialsStatusAttribute(): string
-{
-    if (!$this->hasMaterials()) {
-        return 'Not Planned';
+    /**
+     * Check if training has materials planning
+     */
+    public function hasMaterials(): bool
+    {
+        return $this->provide_materials === true || $this->trainingMaterials()->exists();
     }
-    
-    if ($this->trainingMaterials()->count() === 0) {
-        return 'No Materials';
+
+    /**
+     * Get assessment status
+     */
+    public function getAssessmentStatusAttribute(): string
+    {
+        if (!$this->hasAssessments()) {
+            return 'Not Configured';
+        }
+
+        if ($this->assessmentCategories()->count() === 0) {
+            return 'No Categories';
+        }
+
+        $totalWeight = $this->assessmentCategories->sum('pivot.weight_percentage');
+        
+        if (abs($totalWeight - 100) >= 0.1) {
+            return 'Invalid Weights';
+        }
+
+        return 'Configured';
     }
-    
-    return 'Materials Planned';
-}
 
-/**
- * Scope to filter trainings with assessments
- */
-public function scopeWithAssessments($query)
-{
-    return $query->where('assess_participants', true)
-                 ->orWhereHas('assessmentCategories');
-}
+    /**
+     * Get materials status
+     */
+    public function getMaterialsStatusAttribute(): string
+    {
+        if (!$this->hasMaterials()) {
+            return 'Not Planned';
+        }
 
-/**
- * Scope to filter trainings with materials
- */
-public function scopeWithMaterials($query)
-{
-    return $query->where('provide_materials', true)
-                 ->orWhereHas('trainingMaterials');
-}
+        if ($this->trainingMaterials()->count() === 0) {
+            return 'No Materials';
+        }
 
-/**
- * Get training features summary
- */
-public function getFeaturesSummaryAttribute(): array
-{
-    return [
-        'has_programs' => $this->programs()->exists(),
-        'has_modules' => $this->modules()->exists(),
-        'has_methodologies' => $this->methodologies()->exists(),
-        'has_assessments' => $this->hasAssessments(),
-        'has_materials' => $this->hasMaterials(),
-        'has_participants' => $this->participants()->exists(),
-        'assessment_status' => $this->assessment_status,
-        'materials_status' => $this->materials_status,
-    ];
-}
+        return 'Materials Planned';
+    }
+
+    /**
+     * Get training features summary
+     */
+    public function getFeaturesSummaryAttribute(): array
+    {
+        return [
+            'has_programs' => $this->programs()->exists(),
+            'has_modules' => $this->modules()->exists(),
+            'has_methodologies' => $this->methodologies()->exists(),
+            'has_assessments' => $this->hasAssessments(),
+            'has_materials' => $this->hasMaterials(),
+            'has_participants' => $this->participants()->exists(),
+            'has_classes' => $this->mentorshipClasses()->exists(),
+            'has_co_mentors' => $this->coMentors()->where('status', 'accepted')->exists(),
+            'assessment_status' => $this->assessment_status,
+            'materials_status' => $this->materials_status,
+        ];
+    }
 }

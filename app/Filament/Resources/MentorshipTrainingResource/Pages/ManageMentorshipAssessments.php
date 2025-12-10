@@ -22,7 +22,7 @@ use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Tables\Columns\TextColumn;
 
-class ManageMentorshipAssessments extends Page implements HasTable {
+class ManageMentorshipAssessments extends Page implements HasTable { 
 
     use InteractsWithTable;
 

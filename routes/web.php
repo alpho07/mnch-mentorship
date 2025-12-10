@@ -15,18 +15,37 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Analytics\ProgressiveDashboardController;
 use App\Http\Controllers\AnalyticsDashboardController;
 use App\Http\Controllers\AssessmentReportController;
+use App\Http\Controllers\MenteeEnrollmentController;
+use App\Http\Controllers\MenteeClassProgressController;
+
 /*
   |--------------------------------------------------------------------------
   | Web Routes - Complete Resource Management System
   |--------------------------------------------------------------------------
  */
 
+
+
+
+// Mentee enrollment routes (public/guest access)
+Route::get('/enroll/{token}', [MenteeEnrollmentController::class, 'enroll'])
+        ->name('mentee.enroll');
+
+Route::post('/enroll/{token}', [MenteeEnrollmentController::class, 'processEnrollmentSubmission'])
+        ->name('mentee.enroll.submit');
+
+// Mentee authenticated routes
+Route::middleware(['auth'])->group(function () {
+    Route::get('/my-class/{class}', [MenteeClassProgressController::class, 'show'])
+            ->name('mentee.class-progress');
+});
+
 Route::middleware(['auth'])->group(function () {
     Route::get('/assessments/{assessment}/report', [AssessmentReportController::class, 'show'])
-        ->name('assessment.report');
-    
+            ->name('assessment.report');
+
     Route::get('/assessments/{assessment}/download', [AssessmentReportController::class, 'download'])
-        ->name('assessment.download');
+            ->name('assessment.download');
 });
 
 Route::prefix('analytics/dashboard')->name('analytics.dashboard.')->group(function () {

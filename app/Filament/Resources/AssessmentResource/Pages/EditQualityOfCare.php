@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\AssessmentResource\Pages;
 
 use App\Filament\Resources\AssessmentResource;
+use App\Filament\Resources\AssessmentResource\Traits\HasSectionNavigation;
 use App\Models\AssessmentSection;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -11,12 +12,12 @@ use Filament\Resources\Pages\EditRecord;
 
 class EditQualityOfCare extends EditRecord {
 
+    use HasSectionNavigation;
+
     protected static string $resource = AssessmentResource::class;
 
     public function mount(int|string $record): void {
         parent::mount($record);
-
-        // Load saved responses into the form
         $this->form->fill($this->loadSavedResponses());
     }
 
@@ -34,9 +35,7 @@ class EditQualityOfCare extends EditRecord {
             }
 
             if ($resp->metadata) {
-                // Handle all metadata fields
                 foreach ($resp->metadata as $key => $value) {
-                    // For proportion fields, we need specific handling
                     if ($key === 'positive_count') {
                         $data["{$fieldName}_positive_count"] = $value;
                     } elseif ($key === 'sample_size') {
@@ -44,7 +43,6 @@ class EditQualityOfCare extends EditRecord {
                     } elseif ($key === 'calculated_proportion') {
                         $data["{$fieldName}_proportion"] = $value;
                     } else {
-                        // Generic metadata (for bed capacity, etc.)
                         $data["{$fieldName}_{$key}"] = $value;
                     }
                 }
@@ -73,26 +71,22 @@ class EditQualityOfCare extends EditRecord {
     protected function mutateFormDataBeforeSave(array $data): array {
         $sectionId = AssessmentSection::where('code', 'quality_of_care')->value('id');
 
-        // Save dynamic responses
         \App\Services\DynamicFormBuilder::saveResponses(
                 $this->record->id,
                 $sectionId,
                 $data
         );
 
-        // Recalculate section score
         \App\Services\DynamicScoringService::recalculateSectionScore(
                 $this->record->id,
                 $sectionId
         );
 
-        // Update progress
         $progress = $this->record->section_progress ?? [];
         $progress['quality_of_care'] = true;
         $this->record->section_progress = $progress;
         $this->record->save();
 
-        // Remove question response fields from data (don't save to assessment table)
         foreach ($data as $key => $value) {
             if (str_starts_with($key, 'question_response_')) {
                 unset($data[$key]);
@@ -102,14 +96,32 @@ class EditQualityOfCare extends EditRecord {
         return $data;
     }
 
-    protected function getRedirectUrl(): string {
-        return AssessmentResource::getUrl('dashboard', ['record' => $this->record->id]);
+    protected function getCurrentSectionKey(): string {
+        return 'quality_of_care';
     }
 
     protected function getSavedNotification(): ?Notification {
+        $nextSection = $this->getNextSection();
+
         return Notification::make()
-                        ->title('Quality of Care section saved')
-                        ->success();
+                        ->title('Quality of Care section saved successfully')
+                        ->body($nextSection ? "All sections complete! Returning to dashboard" : "Returning to dashboard")
+                        ->success()
+                        ->duration(3000);
+    }
+
+    protected function getNextSection(): ?string {
+        $sections = $this->getAllSections();
+        $currentIndex = array_search('quality_of_care', array_keys($sections));
+        $sectionKeys = array_keys($sections);
+
+        for ($i = $currentIndex + 1; $i < count($sectionKeys); $i++) {
+            if (!$sections[$sectionKeys[$i]]['done']) {
+                return $sections[$sectionKeys[$i]]['label'];
+            }
+        }
+
+        return null;
     }
 
     public function getTitle(): string {

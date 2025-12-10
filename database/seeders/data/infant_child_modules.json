@@ -1,0 +1,240 @@
+[
+    {
+        "module": "Module 1: Triage",
+        "sessions": [
+            {
+                "time_minutes": 10,
+                "session": "Session 1: Lecturette",
+                "methodology": "Lecturette",
+                "materials": [
+                    "Lecture Notes",
+                    "Flip Charts",
+                    "Marker Pens",
+                    "Basic Paediatric Protocols"
+                ]
+            },
+            {
+                "time_minutes": 30,
+                "session": "Case Scenarios",
+                "methodology": "Drills",  
+                "materials": [
+                    "Pencils",
+                    "Pens",
+                    "Flip Charts",
+                    "Marker Pens",
+                    "Basic Paediatric Protocols"
+                ]
+            },
+            {
+                "time_minutes": 30,
+                "session": "Practicum",
+                "methodology": "Drills",
+                "materials": [
+                    "Pencils",
+                    "Pens",
+                    "Basic Paediatric Protocols"
+                ]
+            }
+        ]
+    },
+    {
+        "module": "Module 2: Basic Life Support for Infant/Child",
+        "sessions": [
+            {
+                "time_minutes": 15,
+                "session": "Demonstration and Drills",
+                "methodology": "Demonstration",
+                "materials": [
+                    "Mannequin",
+                    "Resuscitation Chart",
+                    "Basic Paediatric Protocols"
+                ]
+            }
+        ]
+    },
+    {
+        "module": "Module 3: Assessment and Management of a Sick Infant/Child with Signs of Life",
+        "sessions": [
+            {
+                "time_minutes": 15,
+                "session": "Lecturette",
+                "methodology": "Lecturette",
+                "materials": [
+                    "Lecture Notes",
+                    "Flip Charts",
+                    "Marker Pens",
+                    "Basic Paediatric Protocols"
+                ]
+            },
+            {
+                "time_minutes": 10,
+                "session": "Demonstration Video",
+                "methodology": "Video Demonstration",
+                "materials": [
+                    "Projector",
+                    "Video Clip",
+                    "Basic Paediatric Protocols"
+                ]
+            }
+        ]
+    },
+    {
+        "module": "Module 4: Management of Dehydration in Infants/Children with Diarrhoea",
+        "sessions": [
+            {
+                "time_minutes": 30,
+                "session": "Lecturette and Case Scenarios",
+                "methodology": "Group Discussion",
+                "materials": [
+                    "Flip Charts",
+                    "Pens",
+                    "Marker Pens",
+                    "Paediatric Protocols"
+                ]
+            }
+        ]
+    },
+    {
+        "module": "Module 5: Pneumonia Management in Infants and Children",
+        "sessions": [
+            {
+                "time_minutes": 20,
+                "session": "Lecturette",
+                "methodology": "Lecturette",
+                "materials": [
+                    "Lecture Notes",
+                    "Charts",
+                    "Markers"
+                ]
+            },
+            {
+                "time_minutes": 40,
+                "session": "Practicum and Role Play",
+                "methodology": "Practicum",
+                "materials": [
+                    "Pulse Oximeter",
+                    "Timer",
+                    "Clinical Equipment"
+                ]
+            }
+        ]
+    },
+    {
+        "module": "Module 6: Management of Severe Anaemia",
+        "sessions": [
+            {
+                "time_minutes": 30,
+                "session": "Lecturette on Anaemia",
+                "methodology": "Lecturette",
+                "materials": [
+                    "Lecture Notes",
+                    "Flip Charts",
+                    "Marker Pens",
+                    "Basic Paediatric Protocols"
+                ]
+            }
+        ]
+    },
+    {
+        "module": "Module 7: Management of Severe Acute Malnutrition (SAM)",
+        "sessions": [
+            {
+                "time_minutes": 30,
+                "session": "Lecturette (SAM 1)",
+                "methodology": "Lecturette",
+                "materials": [
+                    "Lecture Notes",
+                    "Flip Charts",
+                    "Marker Pens",
+                    "Basic Paediatric Protocols"
+                ]
+            },
+            {
+                "time_minutes": 30,
+                "session": "Lecturette (SAM 2)",
+                "methodology": "Lecturette",
+                "materials": [
+                    "Lecture Notes",
+                    "Flip Charts",
+                    "Marker Pens",
+                    "Basic Paediatric Protocols"
+                ]
+            },
+            {
+                "time_minutes": 20,
+                "session": "Group Discussion: Signs, WHZ, Feed Calculation",
+                "methodology": "Group Discussion",
+                "materials": [
+                    "Flip Charts",
+                    "Marker Pens",
+                    "Basic Paediatric Protocols"
+                ]
+            }
+        ]
+    },
+    {
+        "module": "Module 8: Child with Altered Consciousness",
+        "sessions": [
+            {
+                "time_minutes": 20,
+                "session": "Lecturette",
+                "methodology": "Lecturette",
+                "materials": [
+                    "Lecture Notes",
+                    "Flip Charts",
+                    "Marker Pens",
+                    "Basic Paediatric Protocols"
+                ]
+            },
+            {
+                "time_minutes": 30,
+                "session": "Practicum",
+                "methodology": "Case Simulation",
+                "materials": [
+                    "Glucose Monitoring Kit",
+                    "Basic Paediatric Protocols"
+                ]
+            }
+        ]
+    },
+    {
+        "module": "Module 9: Diabetes in Children",
+        "sessions": [
+            {
+                "time_minutes": 30,
+                "session": "Lecturette on Type 1 Diabetes",
+                "methodology": "Lecturette",
+                "materials": [
+                    "Lecture Notes",
+                    "Charts",
+                    "Basic Paediatric Protocols"
+                ]
+            },
+            {
+                "time_minutes": 20,
+                "session": "Case Scenario and Practicum",
+                "methodology": "Practicum",
+                "materials": [
+                    "Sample Logs",
+                    "Glucose Meters"
+                ]
+            }
+        ]
+    },
+    {
+        "module": "Module 10: Documentation and Use of Data",
+        "sessions": [
+            {
+                "time_minutes": 45,
+                "session": "Practicum on Filling Forms",
+                "methodology": "Practicum",
+                "materials": [
+                    "Neonatal Inpatient File",
+                    "Registers",
+                    "Pens",
+                    "MOH Forms"
+                ]
+            }
+        ]
+    }
+]

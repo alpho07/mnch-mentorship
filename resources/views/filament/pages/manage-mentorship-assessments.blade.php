@@ -1,4 +1,4 @@
-<x-filament-panels::page>
+<x-filament-panels::page> 
     <div class="space-y-6">
         <!-- Quick Stats -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">

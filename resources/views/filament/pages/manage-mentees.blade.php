@@ -1,4 +1,4 @@
-<x-filament-panels::page>
+<x-filament-panels::page> 
     <div class="space-y-6">
         {{-- Smart guidance banner --}}
         <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">

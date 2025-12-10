@@ -1,0 +1,545 @@
+[
+    {
+        "module": "Module 1: Infection Prevention and Control (IPC)",
+        "sessions": [
+            {
+                "time_minutes": 15,
+                "session": "Session 1: Lecturette on IPC",
+                "methodology": "Lecture",
+                "materials": [
+                    "Projector",
+                    "Laptop",
+                    "Smartphone"
+                ]
+            },
+            {
+                "time_minutes": 15,
+                "session": "Session 2: IPC Videos on 5 Moments of Hand Hygiene",
+                "methodology": "Video Practicum",
+                "materials": [
+                    "Projector",
+                    "Laptop",
+                    "Smartphone"
+                ]
+            },
+            {
+                "time_minutes": 30,
+                "session": "Session 3: Practicum on Hand Hygiene",
+                "methodology": "Practicum",
+                "materials": [
+                    "Alcohol-Based Hand Rub",
+                    "Running Water",
+                    "Soap",
+                    "Paper Towels"
+                ]
+            }
+        ]
+    },
+    {
+        "module": "Module 2: Infant and Family Centred Developmental Care (IFCDC)",
+        "sessions": [
+            {
+                "time_minutes": 10,
+                "session": "Session 1: Lecturette on IFCDC",
+                "methodology": "Lecture",
+                "materials": [
+                    "Projector",
+                    "Laptop",
+                    "Smartphone"
+                ]
+            },
+            {
+                "time_minutes": 30,
+                "session": "Session 2: Role Play on Effective Communication with Family",
+                "methodology": "Practicum",
+                "materials": [
+                    "Neonatalie",
+                    "Premie Natalie",
+                    "Caps",
+                    "Flannel",
+                    "Chairs",
+                    "Baby Shawl"
+                ]
+            },
+            {
+                "time_minutes": 30,
+                "session": "Session 3: Swaddling and Nesting Practice",
+                "methodology": "Practicum",
+                "materials": [
+                    "Neonatalie",
+                    "Premie Natalie",
+                    "Baby Shawl",
+                    "Linen"
+                ]
+            }
+        ]
+    },
+    {
+        "module": "Module 3: Essential Newborn Care (ENC)",
+        "sessions": [
+            {
+                "time_minutes": 15,
+                "session": "Session 1: Lecturette on ENC",
+                "methodology": "Lecture",
+                "materials": [
+                    "Lecture Notes",
+                    "Flip Charts",
+                    "Marker",
+                    "Pens",
+                    "Projector",
+                    "Laptop"
+                ]
+            },
+            {
+                "time_minutes": 15,
+                "session": "Session 2: ENC Video",
+                "methodology": "Video",
+                "materials": [
+                    "Smartphone",
+                    "Laptop",
+                    "Projector"
+                ]
+            },
+            {
+                "time_minutes": 30,
+                "session": "Session 3: ENC Case Scenarios",
+                "methodology": "Practicum",
+                "materials": [
+                    "Timer",
+                    "Weighing Scale",
+                    "Towels",
+                    "Vit K",
+                    "TEO",
+                    "CHX",
+                    "Pulse Oximeter",
+                    "Baby Cap",
+                    "Thermometer",
+                    "Checklist"
+                ]
+            }
+        ]
+    },
+    {
+        "module": "Module 4: Oxygen Therapy",
+        "sessions": [
+            {
+                "time_minutes": 20,
+                "session": "Session 1: Lecturette on Indications and Safe Use of Oxygen",
+                "methodology": "Lecture/Video",
+                "materials": [
+                    "Lecture Notes",
+                    "Projector",
+                    "Laptop",
+                    "Smartphone"
+                ]
+            },
+            {
+                "time_minutes": 30,
+                "session": "Session 2: Lecturette and Practicum on Use of Pulse Oximetry",
+                "methodology": "Lecturette/Practicum",
+                "materials": [
+                    "Pulse Oximeter",
+                    "Mannequin/Baby"
+                ]
+            },
+            {
+                "time_minutes": 30,
+                "session": "Session 3: Oxygen Delivery Devices, Prescribing and Monitoring",
+                "methodology": "Demonstration",
+                "materials": [
+                    "Oxygen Source",
+                    "Nasal Prongs",
+                    "NRM",
+                    "Oxygen Blender",
+                    "Flow Splitters"
+                ]
+            }
+        ]
+    },
+    {
+        "module": "Module 5: Neonatal Thermoregulation",
+        "sessions": [
+            {
+                "time_minutes": 15,
+                "session": "Session 1: Lecturette on Neonatal Thermoregulation",
+                "methodology": "Lecture",
+                "materials": [
+                    "Lecture Notes",
+                    "Flip Charts",
+                    "Marker",
+                    "Pens",
+                    "Projector",
+                    "Laptop"
+                ]
+            },
+            {
+                "time_minutes": 45,
+                "session": "Session 2: Use of Radiant Warmer",
+                "methodology": "Lecturette/Practicum",
+                "materials": [
+                    "Functional Radiant Warmer"
+                ]
+            },
+            {
+                "time_minutes": 45,
+                "session": "Session 3: Use of Incubator and Settings",
+                "methodology": "Lecturette/Practicum",
+                "materials": [
+                    "Functional Incubator"
+                ]
+            }
+        ]
+    },
+    {
+        "module": "Module 6: Newborn Resuscitation",
+        "sessions": [
+            {
+                "time_minutes": 15,
+                "session": "Session 1: Resuscitation Video Following Algorithm",
+                "methodology": "Video",
+                "materials": [
+                    "Projector",
+                    "TV"
+                ]
+            },
+            {
+                "time_minutes": 60,
+                "session": "Session 2: Skills Teaching and Practicum",
+                "methodology": "Demonstration/Practicum",
+                "materials": [
+                    "Radiant Warmer",
+                    "Suction Machine",
+                    "BVM",
+                    "Masks",
+                    "Neonatalie",
+                    "Air Device",
+                    "Penguin Sucker",
+                    "Oxygen Tubing",
+                    "Pulse Oximeter"
+                ]
+            },
+            {
+                "time_minutes": 60,
+                "session": "Session 3: Case Scenarios on Neonatal Resuscitation",
+                "methodology": "Practicum",
+                "materials": [
+                    "BVM",
+                    "Radiant Warmer",
+                    "Towels",
+                    "Hat",
+                    "Oxygen Source"
+                ]
+            }
+        ]
+    },
+    {
+        "module": "Module 7: Identification of Newborn Danger Signs and Management of Neonatal Sepsis",
+        "sessions": [
+            {
+                "time_minutes": 10,
+                "session": "Session 1: Lecturette on Danger Signs and Neonatal Sepsis",
+                "methodology": "Lecture",
+                "materials": [
+                    "Lecture Notes",
+                    "Flip Charts",
+                    "Marker",
+                    "Pens",
+                    "Projector",
+                    "Laptop"
+                ]
+            },
+            {
+                "time_minutes": 10,
+                "session": "Session 2: Neonatal Danger Signs Video",
+                "methodology": "Video",
+                "materials": [
+                    "Projector"
+                ]
+            },
+            {
+                "time_minutes": 45,
+                "session": "Session 3: Case Scenarios on Danger Signs and Sepsis",
+                "methodology": "Case Scenario",
+                "materials": [
+                    "Basic Paediatric Protocol",
+                    "Comprehensive Newborn Care Protocols"
+                ]
+            },
+            {
+                "time_minutes": 20,
+                "session": "Session 5: Drawing Blood Samples for Culture",
+                "methodology": "Demonstration",
+                "materials": [
+                    "Alcohol Swabs",
+                    "Syringes",
+                    "Blood Culture Bottles",
+                    "Gloves"
+                ]
+            }
+        ]
+    },
+    {
+        "module": "Module 8: Care for the Small and Sick Newborn",
+        "sessions": [
+            {
+                "time_minutes": 10,
+                "session": "Lecturette: Introduction to Care for Small and Sick Newborns",
+                "methodology": "Lecture",
+                "materials": [
+                    "Laptop",
+                    "Projector",
+                    "Smartphone"
+                ]
+            },
+            {
+                "time_minutes": 15,
+                "session": "Session 1: Use of Plastic Wraps",
+                "methodology": "Discussion/Video/Skills",
+                "materials": [
+                    "Plastic Wrap",
+                    "Premie Natalie"
+                ]
+            },
+            {
+                "time_minutes": 60,
+                "session": "Session 2: Ballard Score Lecturette and Video",
+                "methodology": "Lecturette/Video/Bedside Skills",
+                "materials": [
+                    "Smartphone",
+                    "Laptop",
+                    "Ballard Score Chart"
+                ]
+            },
+            {
+                "time_minutes": 60,
+                "session": "Session 3: CPAP Skills Assembly and Monitoring",
+                "methodology": "Lecturette/Practicum",
+                "materials": [
+                    "CPAP Machine",
+                    "Premie Natalie",
+                    "Pulse Oximeter",
+                    "Oxygen Source",
+                    "Comprehensive Monitoring Chart"
+                ]
+            },
+            {
+                "time_minutes": 30,
+                "session": "Session 4: Apnoea of Prematurity",
+                "methodology": "Lecturette/Discussion",
+                "materials": [
+                    "Smartphone",
+                    "Caffeine Citrate"
+                ]
+            },
+            {
+                "time_minutes": 30,
+                "session": "Session 5: Kangaroo Mother Care (KMC)",
+                "methodology": "Lecturette/Video/Practicum",
+                "materials": [
+                    "Smartphone",
+                    "Laptop",
+                    "KMC Wraps",
+                    "Lesos",
+                    "Socks",
+                    "Cap",
+                    "KMC Register"
+                ]
+            }
+        ]
+    },
+    {
+        "module": "Module 9: Neonatal Jaundice",
+        "sessions": [
+            {
+                "time_minutes": 10,
+                "session": "Session 1: Lecturette on Neonatal Jaundice",
+                "methodology": "Lecture",
+                "materials": [
+                    "Slides",
+                    "Projector",
+                    "Newborn Care Protocols"
+                ]
+            },
+            {
+                "time_minutes": 30,
+                "session": "Session 2: Drills on Use of Nomograms",
+                "methodology": "Practicum",
+                "materials": [
+                    "Slides",
+                    "Projector",
+                    "Newborn Care Protocols"
+                ]
+            },
+            {
+                "time_minutes": 30,
+                "session": "Session 3: Phototherapy Skills Training",
+                "methodology": "Practicum",
+                "materials": [
+                    "LED Phototherapy Unit",
+                    "Light Meter",
+                    "Eye Shield",
+                    "Diaper",
+                    "Mannequin/Baby",
+                    "Bilirubin Results"
+                ]
+            }
+        ]
+    },
+    {
+        "module": "Module 10: Neonatal Hypoglycaemia",
+        "sessions": [
+            {
+                "time_minutes": 10,
+                "session": "Session 1: Lecturette on Hypoglycaemia Algorithm",
+                "methodology": "Lecturette",
+                "materials": [
+                    "Lecture Notes",
+                    "Flip Charts",
+                    "Marker Pens",
+                    "Projector",
+                    "Laptop"
+                ]
+            },
+            {
+                "time_minutes": 30,
+                "session": "Session 2: Heel Prick Video",
+                "methodology": "Video/Practicum",
+                "materials": [
+                    "Projector",
+                    "Laptop",
+                    "Glucometer",
+                    "Prickers",
+                    "Alcohol Swabs",
+                    "Gloves",
+                    "Baby Anne Manikin"
+                ]
+            },
+            {
+                "time_minutes": 45,
+                "session": "Session 3: Buccal Glucose Therapy",
+                "methodology": "Demonstration/Practicum",
+                "materials": [
+                    "2cc Syringe",
+                    "Gloves",
+                    "50% Dextrose",
+                    "Sterile Gauze",
+                    "Premie Natalie"
+                ]
+            }
+        ]
+    },
+    {
+        "module": "Module 11: Neonatal Feeds and Fluids",
+        "sessions": [
+            {
+                "time_minutes": 20,
+                "session": "Session 1: Lecturette on Newborn Feeding",
+                "methodology": "Lecture/Video",
+                "materials": [
+                    "Lecture Notes",
+                    "Projector",
+                    "Laptop",
+                    "Smartphone"
+                ]
+            },
+            {
+                "time_minutes": 30,
+                "session": "Session 2: Closed Discussion on Feeding Methods",
+                "methodology": "Practicum",
+                "materials": [
+                    "Comprehensive Newborn Protocols",
+                    "Basic Paediatric Protocols",
+                    "Job Aids"
+                ]
+            },
+            {
+                "time_minutes": 30,
+                "session": "Session 3: Breastfeeding Techniques",
+                "methodology": "Video/Simulation",
+                "materials": [
+                    "Projector",
+                    "TV Sets",
+                    "Pillows",
+                    "Neonatalie",
+                    "Breast Simulators",
+                    "Comfortable Chair"
+                ]
+            },
+            {
+                "time_minutes": 45,
+                "session": "Session 4: Feeds and Fluids Drills",
+                "methodology": "Practicum",
+                "materials": [
+                    "Flipcharts",
+                    "Syringes",
+                    "Syringe Pumps",
+                    "Perfuser Lines",
+                    "Newborn Care Guidelines"
+                ]
+            },
+            {
+                "time_minutes": 45,
+                "session": "Session 5: Milk Expression and Cup Feeding",
+                "methodology": "Video/Practicum",
+                "materials": [
+                    "Milk Containers",
+                    "Breast Simulator",
+                    "Cups",
+                    "Manikin",
+                    "Comfortable Chair"
+                ]
+            },
+            {
+                "time_minutes": 45,
+                "session": "Session 6: OGT/NGT Insertion and Use",
+                "methodology": "Video/Practicum",
+                "materials": [
+                    "NGT (Size 4-8)",
+                    "Syringes",
+                    "Blue Litmus Paper",
+                    "Stethoscope",
+                    "Adhesive Tape",
+                    "Marker Pen",
+                    "Premie Natalie"
+                ]
+            }
+        ]
+    },
+    {
+        "module": "Module 12: Supportive System Topics (Documentation, Referral & Follow-up)",
+        "sessions": [
+            {
+                "time_minutes": 60,
+                "session": "Session 1: Practicum on Documentation Tools",
+                "methodology": "Practicum",
+                "materials": [
+                    "Neonatal Inpatient File",
+                    "Registers",
+                    "Pens",
+                    "MCH Handbook",
+                    "KMC Register"
+                ]
+            },
+            {
+                "time_minutes": 15,
+                "session": "Session 2: Discussion on Referral Indications and Transport",
+                "methodology": "Interactive Discussion",
+                "materials": [
+                    "Flip Charts",
+                    "Markers",
+                    "Case Cards"
+                ]
+            },
+            {
+                "time_minutes": 45,
+                "session": "Session 3: Referral Form Completion and Communication",
+                "methodology": "Practicum",
+                "materials": [
+                    "Sample Referral Forms",
+                    "Pens",
+                    "Example Cases" 
+                ]
+            }
+        ]
+    }
+]

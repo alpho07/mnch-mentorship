@@ -1,7 +1,7 @@
 <x-filament-panels::page>
     <div class="space-y-6">
         <!-- Assessment Overview Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4"> 
             @php
                 $stats = $this->getAssessmentStats();
             @endphp

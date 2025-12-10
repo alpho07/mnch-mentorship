@@ -29,7 +29,7 @@ class CreateMentorshipTraining extends CreateRecord
                 ->first();
                 
             if (!$assessment) {
-                throw new \Exception('Facility assessment must be completed and approved before creating mentorship.');
+                //throw new \Exception('Facility assessment must be completed and approved before creating mentorship.');
             }
         }
         

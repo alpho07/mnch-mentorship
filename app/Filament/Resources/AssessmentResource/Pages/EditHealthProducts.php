@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\AssessmentResource\Pages;
 
 use App\Filament\Resources\AssessmentResource;
+use App\Filament\Resources\AssessmentResource\Traits\HasSectionNavigation;
 use App\Models\AssessmentDepartment;
 use App\Models\AssessmentCommodityResponse;
 use App\Models\Commodity;
@@ -14,12 +15,12 @@ use Filament\Resources\Pages\EditRecord;
 
 class EditHealthProducts extends EditRecord {
 
+    use HasSectionNavigation;
+
     protected static string $resource = AssessmentResource::class;
 
     public function mount(int|string $record): void {
         parent::mount($record);
-
-        // Load saved responses into the form
         $this->form->fill($this->loadSavedResponses());
     }
 
@@ -36,12 +37,10 @@ class EditHealthProducts extends EditRecord {
     }
 
     public function form(Form $form): Form {
-        // Load departments fresh each time form is called
         $departments = AssessmentDepartment::where('is_active', true)
                 ->orderBy('order')
                 ->get();
 
-        // Load categories
         $categories = CommodityCategory::orderBy('order')->get();
 
         return $form->schema([
@@ -59,7 +58,6 @@ class EditHealthProducts extends EditRecord {
 
     private function buildCategorySections($dept, $categories): array {
         return $categories->map(function ($category) use ($dept) {
-                    // Get commodities for this category applicable to this department
                     $commodities = Commodity::where('commodity_category_id', $category->id)
                             ->where('is_active', true)
                             ->whereHas('applicableDepartments', function ($q) use ($dept) {
@@ -125,30 +123,45 @@ class EditHealthProducts extends EditRecord {
                 );
             }
 
-            // Recalculate department score
             app(\App\Services\CommodityScoringService::class)
                     ->recalculateDepartmentScore($this->record->id, $departmentId);
         }
 
-        // Update progress
         $progress = $this->record->section_progress ?? [];
         $progress['health_products'] = true;
         $this->record->section_progress = $progress;
         $this->record->save();
 
-        // Don't save commodities data to assessment table
         unset($data['commodities']);
         return $data;
     }
 
-    protected function getRedirectUrl(): string {
-        return AssessmentResource::getUrl('dashboard', ['record' => $this->record->id]);
+    protected function getCurrentSectionKey(): string {
+        return 'health_products';
     }
 
     protected function getSavedNotification(): ?Notification {
+        $nextSection = $this->getNextSection();
+
         return Notification::make()
-                        ->title('Health Products saved successfully')
-                        ->success();
+                        ->title('Health Products section saved successfully')
+                        ->body($nextSection ? "Moving to: {$nextSection}" : "Returning to dashboard")
+                        ->success()
+                        ->duration(3000);
+    }
+
+    protected function getNextSection(): ?string {
+        $sections = $this->getAllSections();
+        $currentIndex = array_search('health_products', array_keys($sections));
+        $sectionKeys = array_keys($sections);
+
+        for ($i = $currentIndex + 1; $i < count($sectionKeys); $i++) {
+            if (!$sections[$sectionKeys[$i]]['done']) {
+                return $sections[$sectionKeys[$i]]['label'];
+            }
+        }
+
+        return null;
     }
 
     public function getTitle(): string {

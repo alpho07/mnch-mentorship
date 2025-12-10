@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\AssessmentResource\Pages;
 
 use App\Filament\Resources\AssessmentResource;
+use App\Filament\Resources\AssessmentResource\Traits\HasSectionNavigation;
 use App\Models\AssessmentSection;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -10,6 +11,8 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 
 class EditSkillsLab extends EditRecord {
+
+    use HasSectionNavigation;
 
     protected static string $resource = AssessmentResource::class;
 
@@ -93,14 +96,32 @@ class EditSkillsLab extends EditRecord {
         return $data;
     }
 
-    protected function getRedirectUrl(): string {
-        return AssessmentResource::getUrl('dashboard', ['record' => $this->record->id]);
+    protected function getCurrentSectionKey(): string {
+        return 'skills_lab';
     }
 
     protected function getSavedNotification(): ?Notification {
+        $nextSection = $this->getNextSection();
+
         return Notification::make()
-                        ->title('Skills Lab section saved')
-                        ->success();
+                        ->title('Skills Lab section saved successfully')
+                        ->body($nextSection ? "Moving to: {$nextSection}" : "Returning to dashboard")
+                        ->success()
+                        ->duration(3000);
+    }
+
+    protected function getNextSection(): ?string {
+        $sections = $this->getAllSections();
+        $currentIndex = array_search('skills_lab', array_keys($sections));
+        $sectionKeys = array_keys($sections);
+
+        for ($i = $currentIndex + 1; $i < count($sectionKeys); $i++) {
+            if (!$sections[$sectionKeys[$i]]['done']) {
+                return $sections[$sectionKeys[$i]]['label'];
+            }
+        }
+
+        return null;
     }
 
     public function getTitle(): string {

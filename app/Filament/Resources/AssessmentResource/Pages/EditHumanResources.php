@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\AssessmentResource\Pages;
 
 use App\Filament\Resources\AssessmentResource;
+use App\Filament\Resources\AssessmentResource\Traits\HasSectionNavigation;
 use App\Models\MainCadre;
 use App\Models\HumanResourceResponse;
 use Filament\Forms;
@@ -12,12 +13,12 @@ use Filament\Resources\Pages\EditRecord;
 
 class EditHumanResources extends EditRecord {
 
+    use HasSectionNavigation;
+
     protected static string $resource = AssessmentResource::class;
 
     public function mount(int|string $record): void {
         parent::mount($record);
-
-        // Load saved responses into the form
         $this->form->fill($this->loadSavedResponses());
     }
 
@@ -42,17 +43,14 @@ class EditHumanResources extends EditRecord {
     protected function updateTotal(int $cadreId, Forms\Set $set): void {
         $prefix = "hr_{$cadreId}_";
 
-        // Get current form state
         $etat = (int) $this->data["{$prefix}etat_plus"] ?? 0;
         $comprehensive = (int) $this->data["{$prefix}comprehensive_newborn_care"] ?? 0;
         $imnci = (int) $this->data["{$prefix}imnci"] ?? 0;
         $diabetes = (int) $this->data["{$prefix}type_1_diabetes"] ?? 0;
         $essential = (int) $this->data["{$prefix}essential_newborn_care"] ?? 0;
 
-        // Calculate total
         $total = $etat + $comprehensive + $imnci + $diabetes + $essential;
 
-        // Update the total field
         $set("{$prefix}total_in_facility", $total);
     }
 
@@ -151,7 +149,6 @@ class EditHumanResources extends EditRecord {
         foreach ($cadres as $cadre) {
             $prefix = "hr_{$cadre->id}_";
 
-            // Check if any field exists for this cadre
             if (!isset($data["{$prefix}total_in_facility"])) {
                 continue;
             }
@@ -172,13 +169,11 @@ class EditHumanResources extends EditRecord {
             );
         }
 
-        // Update section progress
         $progress = $this->record->section_progress ?? [];
         $progress['human_resources'] = true;
         $this->record->section_progress = $progress;
         $this->record->save();
 
-        // Remove HR fields from data (don't save to assessment table)
         foreach ($data as $key => $value) {
             if (str_starts_with($key, 'hr_')) {
                 unset($data[$key]);
@@ -188,14 +183,32 @@ class EditHumanResources extends EditRecord {
         return $data;
     }
 
-    protected function getRedirectUrl(): string {
-        return AssessmentResource::getUrl('dashboard', ['record' => $this->record->id]);
+    protected function getCurrentSectionKey(): string {
+        return 'human_resources';
     }
 
     protected function getSavedNotification(): ?Notification {
+        $nextSection = $this->getNextSection();
+
         return Notification::make()
-                        ->title('Human Resources section saved')
-                        ->success();
+                        ->title('Human Resources section saved successfully')
+                        ->body($nextSection ? "Moving to: {$nextSection}" : "Returning to dashboard")
+                        ->success()
+                        ->duration(3000);
+    }
+
+    protected function getNextSection(): ?string {
+        $sections = $this->getAllSections();
+        $currentIndex = array_search('human_resources', array_keys($sections));
+        $sectionKeys = array_keys($sections);
+
+        for ($i = $currentIndex + 1; $i < count($sectionKeys); $i++) {
+            if (!$sections[$sectionKeys[$i]]['done']) {
+                return $sections[$sectionKeys[$i]]['label'];
+            }
+        }
+
+        return null;
     }
 
     public function getTitle(): string {

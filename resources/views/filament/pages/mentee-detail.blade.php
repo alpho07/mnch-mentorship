@@ -3,7 +3,7 @@
     <div class="space-y-6">
         {{-- Mentee Info Section --}}
         <div class="bg-white rounded-lg shadow">
-            {{ $this->menteeInfolist }}
+            {{ $this->menteeInfolist }} 
         </div>
 
         {{-- Status Tracking Timeline --}}
