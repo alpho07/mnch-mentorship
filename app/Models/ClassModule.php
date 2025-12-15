@@ -19,11 +19,14 @@ class ClassModule extends Model {
         'started_at',
         'completed_at',
         'notes',
+        'attendance_token',
+        'attendance_link_active',
     ];
     protected $casts = [
         'started_at' => 'datetime',
         'completed_at' => 'datetime',
         'order_sequence' => 'integer',
+        'attendance_link_active' => 'boolean',
     ];
 
     // Relationships

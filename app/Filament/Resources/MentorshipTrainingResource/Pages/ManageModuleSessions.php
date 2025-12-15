@@ -44,8 +44,27 @@ class ManageModuleSessions extends Page implements HasTable {
 
     protected function getHeaderActions(): array {
         return [
+                    Actions\Action::make('manage_mentees')
+                    ->label('Manage Mentees')
+                    ->icon('heroicon-o-users')
+                    ->color('primary')
+                    ->url(fn() => MentorshipTrainingResource::getUrl('module-mentees', [
+                                'training' => $this->training->id,
+                                'class' => $this->class->id,
+                                'module' => $this->module->id,
+                            ])),
+                    Actions\Action::make('view_summary')
+                    ->label('View Summary')
+                    ->icon('heroicon-o-chart-bar-square')
+                    ->color('info')
+                    ->visible(fn() => $this->module->sessions()->count() > 0)
+                    ->url(fn() => MentorshipTrainingResource::getUrl('module-summary', [
+                                'training' => $this->training->id,
+                                'class' => $this->class->id,
+                                'module' => $this->module->id,
+                            ])),
                     Actions\Action::make('add_sessions_from_templates')
-                    ->label('Add Sessions from Templates')
+                    ->label('Add from Templates')
                     ->icon('heroicon-o-plus')
                     ->color('success')
                     ->form([
@@ -132,9 +151,9 @@ class ManageModuleSessions extends Page implements HasTable {
                     ])
                     ->action(fn(array $data) => $this->addSessionsFromTemplates($data)),
                     Actions\Action::make('create_custom_session')
-                    ->label('Create Custom Session')
+                    ->label('Create Custom')
                     ->icon('heroicon-o-pencil-square')
-                    ->color('primary')
+                    ->color('warning')
                     ->form([
                         Forms\Components\TextInput::make('title')
                         ->label('Session Title')
@@ -185,44 +204,48 @@ class ManageModuleSessions extends Page implements HasTable {
                         ->required(),
                     ])
                     ->action(fn(array $data) => $this->createCustomSession($data)),
-                    Actions\Action::make('start_module')
-                    ->label('Start Module')
-                    ->icon('heroicon-o-play')
-                    ->color('primary')
-                    ->visible(fn() => $this->module->status === 'not_started')
-                    ->requiresConfirmation()
-                    ->modalHeading('Start Module')
-                    ->modalDescription('Mark this module as in progress?')
-                    ->action(function () {
-                        $this->module->start();
-                        Notification::make()
-                                ->success()
-                                ->title('Module Started')
-                                ->send();
-                    }),
-                    Actions\Action::make('complete_module')
-                    ->label('Complete Module')
-                    ->icon('heroicon-o-check-circle')
-                    ->color('success')
-                    ->visible(fn() => $this->module->status === 'in_progress')
-                    ->requiresConfirmation()
-                    ->modalHeading('Complete Module')
-                    ->modalDescription('Mark this module as completed? All sessions should be done.')
-                    ->action(function () {
-                        $this->module->complete();
-                        Notification::make()
-                                ->success()
-                                ->title('Module Completed')
-                                ->send();
-                    }),
-                    Actions\Action::make('back')
-                    ->label('Back to Modules')
-                    ->icon('heroicon-o-arrow-left')
-                    ->color('gray')
-                    ->url(function () {
-                        // Navigate back to class modules view
-                        return MentorshipTrainingResource::getUrl('classes', ['record' => $this->training]);
-                    }),
+                    Actions\ActionGroup::make([
+                        Actions\Action::make('start_module')
+                        ->label('Start Module')
+                        ->icon('heroicon-o-play')
+                        ->color('primary')
+                        ->visible(fn() => $this->module->status === 'not_started')
+                        ->requiresConfirmation()
+                        ->modalHeading('Start Module')
+                        ->modalDescription('Mark this module as in progress?')
+                        ->action(function () {
+                            $this->module->start();
+                            Notification::make()
+                                    ->success()
+                                    ->title('Module Started')
+                                    ->send();
+                        }),
+                        Actions\Action::make('complete_module')
+                        ->label('Complete Module')
+                        ->icon('heroicon-o-check-circle')
+                        ->color('success')
+                        ->visible(fn() => $this->module->status === 'in_progress')
+                        ->requiresConfirmation()
+                        ->modalHeading('Complete Module')
+                        ->modalDescription('Mark this module as completed? All sessions should be done.')
+                        ->action(function () {
+                            $this->module->complete();
+                            Notification::make()
+                                    ->success()
+                                    ->title('Module Completed')
+                                    ->send();
+                        }),
+                        Actions\Action::make('back')
+                        ->label('Back to Modules')
+                        ->icon('heroicon-o-arrow-left')
+                        ->url(function () {
+                            return MentorshipTrainingResource::getUrl('classes', ['record' => $this->training]);
+                        }),
+                    ])
+                    ->label('More')
+                    ->icon('heroicon-m-ellipsis-vertical')
+                    ->button()
+                    ->color('gray'),
         ];
     }
 

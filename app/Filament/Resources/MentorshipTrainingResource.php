@@ -250,6 +250,8 @@ class MentorshipTrainingResource extends Resource {
             'co-mentors' => Pages\ManageMentorshipCoMentors::route('/{record}/co-mentors'),
             'class-mentees' => Pages\ManageClassMentees::route('/{training}/classes/{class}/mentees'),
             'module-sessions' => Pages\ManageModuleSessions::route('/{training}/classes/{class}/modules/{module}/sessions'),
+            'module-mentees' => Pages\ManageModuleMentees::route('/{training}/classes/{class}/modules/{module}/mentees'),
+            'module-summary' => Pages\ModuleSummary::route('/{training}/classes/{class}/modules/{module}/summary'),
         ];
     }
 

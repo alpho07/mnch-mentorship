@@ -27,17 +27,26 @@ use App\Http\Controllers\MenteeClassProgressController;
 
 
 
+
+
+// Module attendance routes (public/guest access)
+Route::get('/module/attend/{token}', [ModuleAttendanceController::class, 'attend'])
+    ->name('module.attend');
+
+Route::post('/module/attend/{token}', [ModuleAttendanceController::class, 'processAttendance'])
+    ->name('module.attend.submit');
+
 // Mentee enrollment routes (public/guest access)
 Route::get('/enroll/{token}', [MenteeEnrollmentController::class, 'enroll'])
-        ->name('mentee.enroll');
+    ->name('mentee.enroll');
 
 Route::post('/enroll/{token}', [MenteeEnrollmentController::class, 'processEnrollmentSubmission'])
-        ->name('mentee.enroll.submit');
+    ->name('mentee.enroll.submit');
 
 // Mentee authenticated routes
 Route::middleware(['auth'])->group(function () {
     Route::get('/my-class/{class}', [MenteeClassProgressController::class, 'show'])
-            ->name('mentee.class-progress');
+        ->name('mentee.class-progress');
 });
 
 Route::middleware(['auth'])->group(function () {
