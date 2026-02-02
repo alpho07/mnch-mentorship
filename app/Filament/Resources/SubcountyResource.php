@@ -184,7 +184,7 @@ class SubcountyResource extends Resource
     public static function getRelations(): array
     {
         return [
-            FacilitiesRelationManager::class,
+           // FacilitiesRelationManager::class,
         ];
     }
 

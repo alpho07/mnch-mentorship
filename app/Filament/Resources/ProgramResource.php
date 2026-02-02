@@ -167,7 +167,7 @@ class ProgramResource extends Resource
     public static function getRelations(): array
     {
         return [
-            ModulesRelationManager::class,
+           // ModulesRelationManager::class,
         ];
     }
 

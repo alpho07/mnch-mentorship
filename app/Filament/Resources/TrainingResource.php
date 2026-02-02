@@ -443,8 +443,8 @@ class TrainingResource extends Resource
     public static function getRelations(): array
     {
         return [
-            RelationManagers\ParticipantsRelationManager::class,
-            RelationManagers\ObjectivesRelationManager::class,
+            //RelationManagers\ParticipantsRelationManager::class,
+            //RelationManagers\ObjectivesRelationManager::class,
         ];
     }
 

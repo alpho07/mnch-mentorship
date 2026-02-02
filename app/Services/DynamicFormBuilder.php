@@ -70,15 +70,15 @@ class DynamicFormBuilder {
             default => null,
         };
 
-        // Apply conditional logic if exists (check both new and old field names)
+        // Apply conditional logic if exists
         $conditions = $question->conditional_logic ?? $question->display_conditions;
-
+        
         if ($field && $conditions) {
             // Decode if it's a JSON string
             if (is_string($conditions)) {
                 $conditions = json_decode($conditions, true);
             }
-
+            
             if (is_array($conditions)) {
                 $field = static::applyConditionalLogic($field, $conditions);
             }
@@ -115,56 +115,10 @@ class DynamicFormBuilder {
             $field->helperText($question->help_text);
         }
 
-        // Normalize display_conditions into array
-        $displayConditions = $question->display_conditions;
-
-// If null → no conditions
-        if (!$displayConditions) {
-            $displayConditions = [];
-        }
-
-// If JSON stored as string → decode
-        if (is_string($displayConditions) && str_starts_with(trim($displayConditions), '[')) {
-            $decoded = json_decode($displayConditions, true);
-            if (is_array($decoded)) {
-                $displayConditions = $decoded;
-            }
-        }
-
-// If comma-separated list → convert CSV to array
-        if (is_string($displayConditions)) {
-            $displayConditions = array_map('trim', explode(',', $displayConditions));
-        }
-
-// Guarantee it's an array
-        if (!is_array($displayConditions)) {
-            $displayConditions = [$displayConditions];
-        }
-
-        foreach ($displayConditions as $conditions) {
-            $dependentQuestion = \App\Models\AssessmentQuestion::find($conditions['question_id'] ?? null);
-
-            if ($dependentQuestion) {
-                $field->visible(function (Forms\Get $get) use ($dependentQuestion, $conditions) {
-                    $dependentFieldName = "question_response_{$dependentQuestion->id}";
-                    $actualValue = $get($dependentFieldName);
-                    $expectedValue = $conditions['value'] ?? null;
-                    $operator = $conditions['operator'] ?? 'equals';
-
-                    return static::evaluateCondition($actualValue, $expectedValue, $operator);
-                });
-            }
-        }
         $fields = [$field];
 
-        /**
-         * =========================================================
-         * Explanation field (the section causing your crash)
-         * =========================================================
-         */
+        // Explanation field
         $requiresExplanationOn = $question->requires_explanation_on ?? ['No', 'Partially'];
-
-        // Normalize → ALWAYS an array
         $requiresExplanationOn = static::normalizeExplanationArray($requiresExplanationOn);
 
         $explanationField = Forms\Components\Textarea::make("{$fieldName}_explanation")
@@ -212,19 +166,6 @@ class DynamicFormBuilder {
     }
 
     /**
-     * Evaluate conditions
-     */
-    protected static function evaluateCondition($actualValue, $expectedValue, string $operator): bool {
-        return match ($operator) {
-            'equals' => $actualValue === $expectedValue,
-            'not_equals' => $actualValue !== $expectedValue,
-            'in' => is_array($expectedValue) && in_array($actualValue, $expectedValue),
-            'not_in' => is_array($expectedValue) && !in_array($actualValue, $expectedValue),
-            default => true,
-        };
-    }
-
-    /**
      * Build Text field
      */
     protected static function buildTextField(AssessmentQuestion $question, string $fieldName, ?AssessmentQuestionResponse $response) {
@@ -247,21 +188,23 @@ class DynamicFormBuilder {
                 ->integer()
                 ->required($question->is_required)
                 ->default($response?->response_value)
-                ->minValue(0);  // Always require positive numbers
+                ->minValue(0);
 
         if ($question->help_text) {
             $field->helperText($question->help_text);
         }
 
         if ($question->validation_rules) {
-            $rules = is_string($question->validation_rules) ? json_decode($question->validation_rules, true) : $question->validation_rules;
-
+            $rules = is_string($question->validation_rules) 
+                ? json_decode($question->validation_rules, true) 
+                : $question->validation_rules;
+                
             if (isset($rules['min'])) {
                 $field->minValue($rules['min']);
             }
             if (isset($rules['max'])) {
                 $field->maxValue($rules['max'])
-                        ->helperText("Maximum value: {$rules['max']}");
+                     ->helperText("Maximum value: {$rules['max']}");
             }
         }
 
@@ -272,15 +215,13 @@ class DynamicFormBuilder {
      * Build select field
      */
     protected static function buildSelectField(AssessmentQuestion $question, string $fieldName, ?AssessmentQuestionResponse $response) {
-        // Decode options if they're JSON string
         $options = $question->options;
         if (is_string($options)) {
             $options = json_decode($options, true) ?? [];
         }
-
-        // Create options array (value => label)
+        
         $optionsArray = is_array($options) ? array_combine($options, $options) : [];
-
+        
         return Forms\Components\Select::make($fieldName)
                         ->label($question->question_text)
                         ->options($optionsArray)
@@ -381,11 +322,6 @@ class DynamicFormBuilder {
                         ->numeric()
                         ->default($metadata['kmc_beds'] ?? 0)
                         ->visible(fn(Forms\Get $get) => $get($fieldName) === 'Yes'),
-                        Forms\Components\TextInput::make("{$fieldName}_incubators")
-                        ->label('Incubators')
-                        ->numeric()
-                        ->default($metadata['incubators'] ?? 0)
-                        ->visible(fn(Forms\Get $get) => $get($fieldName) === 'Yes'),
             ]);
         } else {
             $fields[] = Forms\Components\Grid::make(2)->schema([
@@ -416,12 +352,12 @@ class DynamicFormBuilder {
         foreach ($questions as $question) {
             $fieldName = "question_response_{$question->id}";
 
-            // For proportion fields, check for _positive_count instead of main field
+            // For proportion fields
             if ($question->question_type === 'proportion') {
                 if (!array_key_exists("{$fieldName}_positive_count", $data)) {
                     continue;
                 }
-                $responseValue = null; // Will be set in proportion block below
+                $responseValue = null;
             } else {
                 if (!array_key_exists($fieldName, $data)) {
                     continue;
@@ -456,7 +392,6 @@ class DynamicFormBuilder {
                             'nicu_beds' => (int) ($data["{$fieldName}_nicu_beds"] ?? 0),
                             'general_cots' => (int) ($data["{$fieldName}_general_cots"] ?? 0),
                             'kmc_beds' => (int) ($data["{$fieldName}_kmc_beds"] ?? 0),
-                            'incubators' => (int) ($data["{$fieldName}_incubators"] ?? 0),
                         ];
                     } else {
                         $metadata = [
@@ -491,45 +426,82 @@ class DynamicFormBuilder {
     }
 
     /**
-     * Apply conditional logic to show/hide field based on another question's answer
-     * Handles both display_conditions and conditional_logic formats
+     * Apply conditional logic with support for OR and AND operators
+     * CRITICAL: Fields are HIDDEN by default, only shown when conditions explicitly match
      */
     protected static function applyConditionalLogic($field, array $conditionalLogic) {
-        // Handle new format: conditional_logic with show_if
-        if (isset($conditionalLogic['show_if'])) {
-            $showIf = $conditionalLogic['show_if'];
-            $dependentQuestionCode = $showIf['question_code'] ?? null;
-            $requiredValue = $showIf['value'] ?? null;
-
-            if (!$dependentQuestionCode || !$requiredValue) {
-                return $field;
-            }
-
-            $dependentQuestion = AssessmentQuestion::where('question_code', $dependentQuestionCode)->first();
-
-            if (!$dependentQuestion) {
-                return $field;
-            }
-
-            $dependentFieldName = "question_response_{$dependentQuestion->id}";
-
-            return $field->visible(function (Forms\Get $get) use ($dependentFieldName, $requiredValue) {
-                        return $get($dependentFieldName) === $requiredValue;
-                    });
+        // Handle OR operator (show if ANY condition is true)
+        if (isset($conditionalLogic['operator']) && $conditionalLogic['operator'] === 'or') {
+            $orConditions = $conditionalLogic['conditions'] ?? [];
+            
+            return $field->visible(function (Forms\Get $get) use ($orConditions) {
+                // Check each condition - if ANY is true, show the field
+                foreach ($orConditions as $condition) {
+                    $parentCode = $condition['question_code'] ?? null;
+                    $expectedValue = $condition['value'] ?? null;
+                    $operator = $condition['operator'] ?? 'equals';
+                    
+                    if (!$parentCode) continue;
+                    
+                    $parentQuestion = AssessmentQuestion::where('question_code', $parentCode)->first();
+                    if (!$parentQuestion) continue;
+                    
+                    $parentFieldName = "question_response_{$parentQuestion->id}";
+                    $actualValue = $get($parentFieldName);
+                    
+                    // If this condition matches, show the field
+                    if (static::evaluateCondition($actualValue, $expectedValue, $operator)) {
+                        return true;
+                    }
+                }
+                
+                // None matched, hide the field
+                return false;
+            });
         }
 
-        // Handle old format: display_conditions with question_code, operator, value
+        // Handle AND operator (show only if ALL conditions are true)
+        if (isset($conditionalLogic['operator']) && $conditionalLogic['operator'] === 'and') {
+            $andConditions = $conditionalLogic['conditions'] ?? [];
+            
+            return $field->visible(function (Forms\Get $get) use ($andConditions) {
+                // Check ALL conditions - they ALL must be true
+                foreach ($andConditions as $condition) {
+                    $parentCode = $condition['question_code'] ?? null;
+                    $expectedValue = $condition['value'] ?? null;
+                    $operator = $condition['operator'] ?? 'equals';
+                    
+                    if (!$parentCode) return false;
+                    
+                    $parentQuestion = AssessmentQuestion::where('question_code', $parentCode)->first();
+                    if (!$parentQuestion) return false;
+                    
+                    $parentFieldName = "question_response_{$parentQuestion->id}";
+                    $actualValue = $get($parentFieldName);
+                    
+                    // If ANY condition fails, hide the field
+                    if (!static::evaluateCondition($actualValue, $expectedValue, $operator)) {
+                        return false;
+                    }
+                }
+                
+                // All conditions matched, show the field
+                return true;
+            });
+        }
+
+        // Handle single condition (legacy format with question_code at root)
         if (isset($conditionalLogic['question_code'])) {
             $dependentQuestionCode = $conditionalLogic['question_code'];
             $requiredValue = $conditionalLogic['value'] ?? null;
             $operator = $conditionalLogic['operator'] ?? 'equals';
 
-            if (!$dependentQuestionCode || !$requiredValue) {
+            if (!$dependentQuestionCode) {
                 return $field;
             }
 
             $dependentQuestion = AssessmentQuestion::where('question_code', $dependentQuestionCode)->first();
-
+            
             if (!$dependentQuestion) {
                 return $field;
             }
@@ -537,16 +509,61 @@ class DynamicFormBuilder {
             $dependentFieldName = "question_response_{$dependentQuestion->id}";
 
             return $field->visible(function (Forms\Get $get) use ($dependentFieldName, $requiredValue, $operator) {
-                        $currentValue = $get($dependentFieldName);
+                $currentValue = $get($dependentFieldName);
+                
+                // CRITICAL: If no value yet, hide the field
+                if ($currentValue === null || $currentValue === '') {
+                    return false;
+                }
+                
+                return static::evaluateCondition($currentValue, $requiredValue, $operator);
+            });
+        }
 
-                        return match ($operator) {
-                            'equals' => $currentValue === $requiredValue,
-                            'not_equals' => $currentValue !== $requiredValue,
-                            default => $currentValue === $requiredValue,
-                        };
-                    });
+        // Handle legacy show_if format
+        if (isset($conditionalLogic['show_if'])) {
+            $showIf = $conditionalLogic['show_if'];
+            $dependentQuestionCode = $showIf['question_code'] ?? null;
+            $requiredValue = $showIf['value'] ?? null;
+
+            if (!$dependentQuestionCode) {
+                return $field;
+            }
+
+            $dependentQuestion = AssessmentQuestion::where('question_code', $dependentQuestionCode)->first();
+            
+            if (!$dependentQuestion) {
+                return $field;
+            }
+
+            $dependentFieldName = "question_response_{$dependentQuestion->id}";
+
+            return $field->visible(function (Forms\Get $get) use ($dependentFieldName, $requiredValue) {
+                $currentValue = $get($dependentFieldName);
+                
+                if ($currentValue === null || $currentValue === '') {
+                    return false;
+                }
+                
+                return $currentValue === $requiredValue;
+            });
         }
 
         return $field;
+    }
+
+    /**
+     * Evaluate conditions
+     */
+    protected static function evaluateCondition($actualValue, $expectedValue, string $operator): bool {
+        return match ($operator) {
+            'equals' => $actualValue === $expectedValue,
+            'not_equals' => $actualValue !== $expectedValue,
+            'in' => is_array($expectedValue) && in_array($actualValue, $expectedValue),
+            'not_in' => is_array($expectedValue) && !in_array($actualValue, $expectedValue),
+            'greater_than' => is_numeric($actualValue) && is_numeric($expectedValue) && $actualValue > $expectedValue,
+            'less_than' => is_numeric($actualValue) && is_numeric($expectedValue) && $actualValue < $expectedValue,
+            default => false, // CRITICAL: Default to false (hide) for safety
+        };
     }
 }

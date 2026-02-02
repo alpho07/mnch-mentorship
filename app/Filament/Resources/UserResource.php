@@ -21,13 +21,7 @@ class UserResource extends Resource {
     protected static ?string $navigationIcon = 'heroicon-o-users';
     protected static ?string $navigationGroup = 'User Management';
 
-    public static function shouldRegisterNavigation(): bool {
-        return !auth()->user()->hasRole('Assessor');
-    }
 
-    public static function canAccess(): bool {
-        return !auth()->user()->hasRole('Assessor');
-    }
 
     public static function form(Form $form): Form {
         return $form

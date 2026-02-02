@@ -17,6 +17,8 @@ use Illuminate\Support\Facades\URL;
 use Filament\Support\Facades\FilamentView;
 use Filament\View\PanelsRenderHook;
 use Illuminate\Support\Facades\Blade;
+use App\Filament\Widgets\MentorStatsWidget;
+use App\Filament\Widgets\MenteeDashboard;
 
 class AppServiceProvider extends ServiceProvider {
 
@@ -49,10 +51,11 @@ class AppServiceProvider extends ServiceProvider {
         Livewire::component('training-coverage-stats-widget', TrainingCoverageStatsWidget::class);
         Livewire::component('training-charts-widget', TrainingChartsWidget::class);
         Livewire::component('kenya-training-heatmap-widget', KenyaTrainingHeatmapWidget::class);
+        //Livewire::component('mentor-stats-widget', MentorStatsWidget::class);
 //
 //        FilamentView::registerRenderHook(
 //                PanelsRenderHook::BODY_END,
 //                fn(): string => Blade::render('@vite(\'resources/css/filament/admin/theme.css\')'),
 //        );
     }
-} 
+}

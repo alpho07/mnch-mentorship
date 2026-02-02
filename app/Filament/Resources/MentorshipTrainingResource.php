@@ -37,6 +37,12 @@ class MentorshipTrainingResource extends Resource {
     protected static ?string $slug = 'mentorships';
     protected static ?string $recordTitleAttribute = 'title';
     protected static ?string $breadcrumb = 'Mentorships';
+    
+    
+    public static function shouldRegisterNavigation(): bool {
+        // Show for users who are mentees
+         return false;
+    }
 
     public static function getEloquentQuery(): Builder {
         return parent::getEloquentQuery()

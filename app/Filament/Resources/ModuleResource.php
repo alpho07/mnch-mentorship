@@ -191,7 +191,7 @@ class ModuleResource extends Resource
     public static function getRelations(): array
     {
         return [
-            TopicsRelationManager::class,
+           // TopicsRelationManager::class,
         ];
     }
 
