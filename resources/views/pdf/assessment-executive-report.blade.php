@@ -282,10 +282,10 @@
             </tr>
         </thead>
         <tbody>
-            @foreach($sections as $section)
+            @foreach($sectionScores as $section)
                 <tr>
-                    <td>{{ $section['name'] }}</td>
-                    <td style="text-align: center">{{ $section['total_score'] }}/{{ $section['max_score'] }}</td>
+                    <td>{{ $section['section_name'] }}</td>
+                    <td style="text-align: center">{{ $section['score'] }}/{{ $section['max_score'] }}</td>
                     <td style="text-align: center">{{ $section['answered_questions'] }}/{{ $section['total_questions'] }}</td>
                     <td style="text-align: center"><strong>{{ number_format($section['percentage'], 1) }}%</strong></td>
                 </tr>
@@ -535,7 +535,7 @@
         </tr>
     </thead>
     <tbody>
-        @foreach($informationSystems as $response)
+        @foreach($informationSystems['all_responses'] as $response)
             <tr>
                 <td>{{ $response->question->question_text }}</td>
                 <td style="text-align: center">

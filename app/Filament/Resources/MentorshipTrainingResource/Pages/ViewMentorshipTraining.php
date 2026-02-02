@@ -524,4 +524,10 @@ class ViewMentorshipTraining extends ViewRecord {
                     'Content-Disposition' => 'attachment; filename="' . $filename . '"',
         ]);
     }
+    
+       
+    public function getTitle(): string{
+        return 'View Mentorship';
+    }
+
 }

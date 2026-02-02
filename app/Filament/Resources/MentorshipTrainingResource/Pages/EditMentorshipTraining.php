@@ -29,7 +29,7 @@ class EditMentorshipTraining extends EditRecord
                     ->url(fn () => static::getResource()::getUrl('assessments', ['record' => $this->record])),
                 
                 Actions\Action::make('duplicate_training')
-                    ->label('Duplicate Training')
+                    ->label('Duplicate Mentorship')
                     ->icon('heroicon-o-document-duplicate')
                     ->action(function () {
                         $newTraining = $this->record->replicate();
@@ -182,6 +182,10 @@ class EditMentorshipTraining extends EditRecord
     protected function getRedirectUrl(): string
     {
         return $this->getResource()::getUrl('view', ['record' => $this->record]);
+    }
+    
+    public function getTitle(): string{
+        return 'Edit Mentorship';
     }
 
     protected function getSavedNotification(): ?Notification

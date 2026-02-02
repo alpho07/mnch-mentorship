@@ -87,7 +87,7 @@ class MentorshipTrainingResource extends Resource {
                                     ->helperText('Facilities will appear after selecting county'),
                                 ]),
                                 Select::make('program_id')
-                                ->label('Training Program')
+                                ->label('Mentorship Program')
                                 ->relationship('program', 'name')
                                 ->required()
                                 ->searchable()

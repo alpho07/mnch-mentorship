@@ -7,10 +7,13 @@ use App\Services\AssessmentPdfReportService;
 use App\Services\AssessmentExportService;
 use Filament\Actions;
 use Filament\Resources\Pages\ViewRecord;
+use Filament\Infolists;
+use Filament\Infolists\Infolist;
 
 class ViewAssessmentSummary extends ViewRecord {
 
     protected static string $resource = AssessmentResource::class;
+    protected static string $view = 'filament.pages.view-assessment-summary';
 
     protected function getHeaderActions(): array {
         return [
@@ -76,5 +79,13 @@ class ViewAssessmentSummary extends ViewRecord {
 
     public function getTitle(): string {
         return "Assessment Summary - {$this->record->facility->name}";
+    }
+
+    /**
+     * Get the report HTML for web display
+     */
+    public function getReportHtml(): string {
+        $service = app(AssessmentPdfReportService::class);
+        return $service->generateHtmlReport($this->record);
     }
 }

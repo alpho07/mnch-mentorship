@@ -6,27 +6,43 @@ use App\Models\Assessment;
 use App\Models\AssessmentSection;
 use Barryvdh\DomPDF\Facade\Pdf;
 
-class AssessmentPdfReportService {
-
-    public function generateExecutiveReport(Assessment $assessment) {
+class AssessmentPdfReportService
+{
+    /**
+     * Generate PDF report
+     */
+    public function generateExecutiveReport(Assessment $assessment)
+    {
         $data = $this->prepareReportData($assessment);
-
+        
         $pdf = Pdf::loadView('pdf.assessment-executive-report', $data);
-
-        // Set paper size and orientation
+        
         $pdf->setPaper('a4', 'portrait');
-
-        // Set options
+        
         $pdf->setOptions([
             'defaultFont' => 'sans-serif',
             'isHtml5ParserEnabled' => true,
             'isRemoteEnabled' => true,
         ]);
-
+        
         return $pdf;
     }
 
-    protected function prepareReportData(Assessment $assessment) {
+    /**
+     * Generate HTML report for web display
+     */
+    public function generateHtmlReport(Assessment $assessment): string
+    {
+        $data = $this->prepareReportData($assessment);
+        
+        return view('reports.assessment-html-report', $data)->render();
+    }
+
+    /**
+     * Prepare all report data
+     */
+    protected function prepareReportData(Assessment $assessment)
+    {
         // Load all relationships
         $assessment->load([
             'facility.subcounty.county',
@@ -41,15 +57,7 @@ class AssessmentPdfReportService {
         ]);
 
         // Facility Information
-        $facilityInfo = [
-            'name' => $assessment->facility->name,
-            'mfl_code' => $assessment->facility->mfl_code,
-            'level' => $assessment->facility->level,
-            'ownership' => $assessment->facility->ownership,
-            'county' => $assessment->facility->subcounty->county->name,
-            'subcounty' => $assessment->facility->subcounty->name,
-            'contact' => $assessment->facility->phone ?? $assessment->facility->email,
-        ];
+        $facilityInfo = $this->getFacilityInfo($assessment);
 
         // Assessment Details
         $assessmentDetails = [
@@ -62,111 +70,186 @@ class AssessmentPdfReportService {
         ];
 
         // Overall Score
-        $overallScore = [
-            'score' => $assessment->overall_score,
-            'percentage' => $assessment->overall_percentage,
-            'grade' => $assessment->overall_grade,
-            'grade_color' => $this->getGradeColor($assessment->overall_grade),
-        ];
+        $overallScore = $this->getOverallScore($assessment);
 
         // Section Scores
-        $sections = $assessment->sectionScores->map(function ($sectionScore) {
-            return [
-                'name' => $sectionScore->section->name,
-                'total_score' => $sectionScore->total_score,
-                'max_score' => $sectionScore->max_score,
-                'percentage' => $sectionScore->percentage,
-                'total_questions' => $sectionScore->total_questions,
-                'answered_questions' => $sectionScore->answered_questions,
-                'skipped_questions' => $sectionScore->skipped_questions,
-            ];
-        });
+        $sectionScores = $this->getSectionScores($assessment);
 
-        // Infrastructure Details
-        $infrastructure = $this->getInfrastructureDetails($assessment);
-
-        // Skills Lab Details
-        $skillsLab = $this->getSkillsLabDetails($assessment);
-
-        // Human Resources Summary
-        $humanResources = $this->getHumanResourcesSummary($assessment);
-
-        // Health Products Summary
-        $healthProducts = $this->getHealthProductsSummary($assessment);
-
-        // Information Systems
-        $informationSystems = $this->getInformationSystemsDetails($assessment);
-
-        // Quality of Care
-        $qualityOfCare = $this->getQualityOfCareDetails($assessment);
-
-        return compact(
-                'assessment',
-                'facilityInfo',
-                'assessmentDetails',
-                'overallScore',
-                'sections',
-                'infrastructure',
-                'skillsLab',
-                'humanResources',
-                'healthProducts',
-                'informationSystems',
-                'qualityOfCare'
-        );
-    }
-
-    protected function getInfrastructureDetails(Assessment $assessment) {
-        $sectionId = AssessmentSection::where('code', 'infrastructure')->value('id');
-
-        $responses = $assessment->questionResponses()
-                ->whereHas('question', function ($q) use ($sectionId) {
-                    $q->where('assessment_section_id', $sectionId);
-                })
-                ->with('question')
-                ->get();
+        // Section Details (with both old and new names)
+        $infrastructureData = $this->getInfrastructureDetails($assessment);
+        $skillsLabData = $this->getSkillsLabDetails($assessment);
+        $humanResourcesData = $this->getHumanResourcesDetails($assessment);
+        $healthProductsData = $this->getHealthProductsDetails($assessment);
+        $informationSystemsData = $this->getInformationSystemsDetails($assessment);
+        $qualityOfCareData = $this->getQualityOfCareDetails($assessment);
 
         return [
-            'has_nbu' => $responses->where('question.question_code', 'INFRA_NBU')->first()?->response_value === 'Yes',
-            'nbu_beds' => $responses->where('question.question_code', 'INFRA_NBU')->first()?->metadata['nicu_beds'] ?? 0,
-            'nbu_cots' => $responses->where('question.question_code', 'INFRA_NBU')->first()?->metadata['general_cots'] ?? 0,
-            'nbu_kmc' => $responses->where('question.question_code', 'INFRA_NBU')->first()?->metadata['kmc_beds'] ?? 0,
-            'has_paed' => $responses->where('question.question_code', 'INFRA_PAED')->first()?->response_value === 'Yes',
-            'paed_beds' => $responses->where('question.question_code', 'INFRA_PAED')->first()?->metadata['general_beds'] ?? 0,
-            'paed_picu' => $responses->where('question.question_code', 'INFRA_PAED')->first()?->metadata['picu_beds'] ?? 0,
+            'assessment' => $assessment,
+            'facilityInfo' => $facilityInfo,
+            'assessmentDetails' => $assessmentDetails,
+            'overallScore' => $overallScore,
+            'sectionScores' => $sectionScores,
+            
+            // Old names for PDF compatibility
+            'infrastructure' => $infrastructureData,
+            'skillsLab' => $skillsLabData,
+            'humanResources' => $humanResourcesData,
+            'healthProducts' => $healthProductsData,
+            'informationSystems' => $informationSystemsData,
+            'qualityOfCare' => $qualityOfCareData,
+            
+            // New names for HTML view
+            'infrastructureDetails' => $infrastructureData,
+            'skillsLabDetails' => $skillsLabData,
+            'humanResourcesDetails' => $humanResourcesData,
+            'healthProductsDetails' => $healthProductsData,
+            'informationSystemsDetails' => $informationSystemsData,
+            'qualityOfCareDetails' => $qualityOfCareData,
+        ];
+    }
+
+    /**
+     * Get facility information
+     */
+    protected function getFacilityInfo(Assessment $assessment): array
+    {
+        return [
+            'name' => $assessment->facility->name,
+            'mfl_code' => $assessment->facility->mfl_code ?? 'N/A',
+            'level' => $assessment->facility->level ?? 'N/A',
+            'ownership' => $assessment->facility->ownership ?? 'N/A',
+            'county' => $assessment->facility->subcounty->county->name ?? 'N/A',
+            'subcounty' => $assessment->facility->subcounty->name ?? 'N/A',
+            'contact' => $assessment->facility->phone ?? $assessment->facility->email ?? 'N/A',
+        ];
+    }
+
+    /**
+     * Get overall score
+     */
+    protected function getOverallScore(Assessment $assessment): array
+    {
+        return [
+            'score' => $assessment->overall_score ?? 0,
+            'max_score' => $assessment->max_score ?? 100,
+            'percentage' => $assessment->overall_percentage ?? 0,
+            'grade' => $assessment->overall_grade ?? 'N/A',
+            'grade_color' => $this->getGradeColor($assessment->overall_grade ?? 'gray'),
+        ];
+    }
+
+    /**
+     * Get section scores
+     */
+    protected function getSectionScores(Assessment $assessment): array
+    {
+        return $assessment->sectionScores->map(function ($sectionScore) {
+            return [
+                'section_name' => $sectionScore->section->name,
+                'score' => $sectionScore->total_score ?? 0,
+                'max_score' => $sectionScore->max_score ?? 0,
+                'percentage' => $sectionScore->percentage ?? 0,
+                'total_questions' => $sectionScore->total_questions ?? 0,
+                'answered_questions' => $sectionScore->answered_questions ?? 0,
+                'skipped_questions' => $sectionScore->skipped_questions ?? 0,
+            ];
+        })->toArray();
+    }
+
+    /**
+     * Get infrastructure details
+     */
+    protected function getInfrastructureDetails(Assessment $assessment): array
+    {
+        $sectionId = AssessmentSection::where('code', 'infrastructure')->value('id');
+        
+        $responses = $assessment->questionResponses()
+            ->whereHas('question', function ($q) use ($sectionId) {
+                $q->where('assessment_section_id', $sectionId);
+            })
+            ->with('question')
+            ->get();
+
+        // For PDF (detailed structure)
+        $nbuResponse = $responses->where('question.question_code', 'INFRA_NBU')->first();
+        $paedResponse = $responses->where('question.question_code', 'INFRA_PAED')->first();
+        
+        return [
+            // Simple structure for HTML
+            'responses' => $responses->map(function ($response) {
+                return [
+                    'question' => $response->question->question_text,
+                    'response' => $response->response_value ?? 'N/A',
+                    'score' => $response->score ?? 0,
+                ];
+            })->toArray(),
+            
+            // Detailed structure for PDF
+            'has_nbu' => $nbuResponse?->response_value === 'Yes',
+            'nbu_beds' => $nbuResponse?->metadata['nicu_beds'] ?? 0,
+            'nbu_cots' => $nbuResponse?->metadata['general_cots'] ?? 0,
+            'nbu_kmc' => $nbuResponse?->metadata['kmc_beds'] ?? 0,
+            'has_paed' => $paedResponse?->response_value === 'Yes',
+            'paed_beds' => $paedResponse?->metadata['general_beds'] ?? 0,
+            'paed_picu' => $paedResponse?->metadata['picu_beds'] ?? 0,
             'all_responses' => $responses,
         ];
     }
 
-    protected function getSkillsLabDetails(Assessment $assessment) {
+    /**
+     * Get skills lab details
+     */
+    protected function getSkillsLabDetails(Assessment $assessment): array
+    {
         $sectionId = AssessmentSection::where('code', 'skills_lab')->value('id');
-
+        
         $responses = $assessment->questionResponses()
-                ->whereHas('question', function ($q) use ($sectionId) {
-                    $q->where('assessment_section_id', $sectionId);
-                })
-                ->with('question')
-                ->get();
+            ->whereHas('question', function ($q) use ($sectionId) {
+                $q->where('assessment_section_id', $sectionId);
+            })
+            ->with('question')
+            ->get();
 
         $hasSkillsLab = $responses->where('question.question_code', 'SKILLS_MASTER')->first()?->response_value === 'Yes';
 
-        $equipment = $responses->filter(function ($response) use ($hasSkillsLab) {
-                    return $hasSkillsLab && $response->response_value === 'Yes' && $response->question->question_code !== 'SKILLS_MASTER';
-                })->map(function ($response) {
-            return $response->question->question_text;
-        });
-
         return [
+            // Simple structure for HTML
+            'responses' => $responses->map(function ($response) {
+                return [
+                    'question' => $response->question->question_text,
+                    'response' => $response->response_value ?? 'N/A',
+                    'score' => $response->score ?? 0,
+                ];
+            })->toArray(),
+            
+            // Detailed structure for PDF
             'has_skills_lab' => $hasSkillsLab,
-            'equipment_count' => $equipment->count(),
-            'equipment_list' => $equipment->values(),
             'all_responses' => $responses,
         ];
     }
 
-    protected function getHumanResourcesSummary(Assessment $assessment) {
+    /**
+     * Get human resources details
+     */
+    protected function getHumanResourcesDetails(Assessment $assessment): array
+    {
         $responses = $assessment->humanResourceResponses()->with('cadre')->get();
 
-        $summary = [
+        return [
+            // Simple structure for HTML
+            'responses' => $responses->map(function ($response) {
+                return [
+                    'cadre' => $response->cadre->name,
+                    'total_in_facility' => $response->total_in_facility ?? 0,
+                    'etat_plus' => $response->etat_plus ?? 0,
+                    'comprehensive_newborn_care' => $response->comprehensive_newborn_care ?? 0,
+                    'imnci' => $response->imnci ?? 0,
+                    'type_1_diabetes' => $response->type_1_diabetes ?? 0,
+                    'essential_newborn_care' => $response->essential_newborn_care ?? 0,
+                ];
+            })->toArray(),
+            
+            // Detailed structure for PDF
             'total_staff' => $responses->sum('total_in_facility'),
             'total_etat_plus' => $responses->sum('etat_plus'),
             'total_comprehensive_nb' => $responses->sum('comprehensive_newborn_care'),
@@ -176,47 +259,62 @@ class AssessmentPdfReportService {
             'by_cadre' => $responses->map(function ($response) {
                 return [
                     'cadre' => $response->cadre->name,
-                    'total' => $response->total_in_facility,
-                    'etat_plus' => $response->etat_plus,
-                    'comprehensive_nb' => $response->comprehensive_newborn_care,
-                    'imnci' => $response->imnci,
-                    'diabetes' => $response->type_1_diabetes,
-                    'essential_nb' => $response->essential_newborn_care,
+                    'total' => $response->total_in_facility ?? 0,
+                    'etat_plus' => $response->etat_plus ?? 0,
+                    'comprehensive_nb' => $response->comprehensive_newborn_care ?? 0,
+                    'imnci' => $response->imnci ?? 0,
+                    'diabetes' => $response->type_1_diabetes ?? 0,
+                    'essential_nb' => $response->essential_newborn_care ?? 0,
                 ];
-            }),
+            })->toArray(),
         ];
-
-        return $summary;
     }
 
-    protected function getHealthProductsSummary(Assessment $assessment) {
+    /**
+     * Get health products details grouped by department
+     */
+    protected function getHealthProductsDetails(Assessment $assessment): array
+    {
         $commodityResponses = $assessment->commodityResponses()
-                ->with(['commodity.category', 'department'])
-                ->get()
-                ->groupBy('department.name');
+            ->with(['commodity.category', 'department'])
+            ->get()
+            ->groupBy('department.name');
 
-        $departmentScores = $assessment->departmentScores()
-                ->with(['department', 'category'])
-                ->get()
-                ->groupBy('department.name');
-
-        $summary = [];
-
+        $result = [];
+        
         foreach ($commodityResponses as $departmentName => $responses) {
-            $scores = $departmentScores->get($departmentName, collect());
+            // Group by category
+            $byCategory = $responses->groupBy('commodity.category.name');
+
+            $categories = [];
+            foreach ($byCategory as $categoryName => $items) {
+                $available = $items->where('available', true)->count();
+                $total = $items->count();
+                
+                $categories[] = [
+                    'name' => $categoryName,
+                    'available' => $available,
+                    'total' => $total,
+                    'percentage' => $total > 0 ? round(($available / $total) * 100, 1) : 0,
+                    'items' => $items->map(function ($item) {
+                        return [
+                            'name' => $item->commodity->name,
+                            'available' => $item->available,
+                        ];
+                    })->toArray(),
+                ];
+            }
 
             $totalAvailable = $responses->where('available', true)->count();
             $totalApplicable = $responses->count();
-            $percentage = $totalApplicable > 0 ? ($totalAvailable / $totalApplicable) * 100 : 0;
-
-            // Group commodities by category
-            $byCategory = $responses->groupBy('commodity.category.name');
-
-            $summary[$departmentName] = [
+            $percentage = $totalApplicable > 0 ? round(($totalAvailable / $totalApplicable) * 100, 1) : 0;
+            
+            $result[$departmentName] = [
                 'available' => $totalAvailable,
                 'total' => $totalApplicable,
-                'percentage' => round($percentage, 1),
-                'grade' => $this->calculateGrade($percentage),
+                'percentage' => $percentage,
+                'grade' => $this->calculateGrade($percentage), // Add grade
+                'categories' => $categories,
                 'commodities' => $responses->map(function ($response) {
                     return [
                         'name' => $response->commodity->name,
@@ -224,49 +322,62 @@ class AssessmentPdfReportService {
                         'available' => $response->available,
                     ];
                 }),
-                'by_category' => $byCategory->map(function ($items, $categoryName) {
-                    $available = $items->where('available', true)->count();
-                    $total = $items->count();
-                    return [
-                        'name' => $categoryName,
-                        'available' => $available,
-                        'total' => $total,
-                        'percentage' => $total > 0 ? round(($available / $total) * 100, 1) : 0,
-                    ];
-                }),
+                'by_category' => collect($categories)->keyBy('name'),
             ];
         }
 
-        return $summary;
+        return $result;
     }
 
-    protected function getInformationSystemsDetails(Assessment $assessment) {
+    /**
+     * Get information systems details
+     */
+    protected function getInformationSystemsDetails(Assessment $assessment): array
+    {
         $sectionId = AssessmentSection::where('code', 'information_systems')->value('id');
+        
+        $responses = $assessment->questionResponses()
+            ->whereHas('question', function ($q) use ($sectionId) {
+                $q->where('assessment_section_id', $sectionId);
+            })
+            ->with('question')
+            ->get();
 
-        return $assessment->questionResponses()
-                        ->whereHas('question', function ($q) use ($sectionId) {
-                            $q->where('assessment_section_id', $sectionId);
-                        })
-                        ->with('question')
-                        ->get();
+        return [
+            // Simple structure for HTML
+            'responses' => $responses->map(function ($response) {
+                return [
+                    'question' => $response->question->question_text,
+                    'response' => $response->response_value ?? 'N/A',
+                    'score' => $response->score ?? 0,
+                ];
+            })->toArray(),
+            
+            // For PDF (all responses)
+            'all_responses' => $responses,
+        ];
     }
 
-    protected function getQualityOfCareDetails(Assessment $assessment) {
+    /**
+     * Get quality of care details
+     */
+    protected function getQualityOfCareDetails(Assessment $assessment): array
+    {
         $sectionId = AssessmentSection::where('code', 'quality_of_care')->value('id');
-
+        
         $responses = $assessment->questionResponses()
-                ->whereHas('question', function ($q) use ($sectionId) {
-                    $q->where('assessment_section_id', $sectionId);
-                })
-                ->with('question')
-                ->get();
+            ->whereHas('question', function ($q) use ($sectionId) {
+                $q->where('assessment_section_id', $sectionId);
+            })
+            ->with('question')
+            ->get();
 
-        // Separate by question type
-        $yesNoQuestions = $responses->filter(function ($response) {
+        // For PDF - keep as collections
+        $yesNoCollection = $responses->filter(function ($response) {
             return $response->question->question_type === 'yes_no';
         });
 
-        $selectQuestions = $responses->filter(function ($response) {
+        $selectCollection = $responses->filter(function ($response) {
             return $response->question->question_type === 'select';
         });
 
@@ -275,39 +386,82 @@ class AssessmentPdfReportService {
         });
 
         // Group number questions by category
-        $newbornStats = $numberQuestions->filter(function ($response) {
-            $code = $response->question->question_code;
-            return str_contains($code, 'NEWBORN') || str_contains($code, 'PRETERM') ||
-                    str_contains($code, 'ASPHYXIA') || str_contains($code, 'CPAP') ||
-                    str_contains($code, 'APNOEA') || str_contains($code, 'CAFFEINE') ||
-                    str_contains($code, 'HYPOTHERMIA') || str_contains($code, 'O2_SAT') ||
-                    str_contains($code, 'RBS') || str_contains($code, 'HEAD_TO_TOE');
+        $newbornStatsCollection = $numberQuestions->filter(function ($response) {
+            $code = $response->question->question_code ?? '';
+            return str_contains($code, 'NEWBORN') || str_contains($code, 'PRETERM') || 
+                   str_contains($code, 'ASPHYXIA') || str_contains($code, 'CPAP') || 
+                   str_contains($code, 'APNOEA') || str_contains($code, 'CAFFEINE') ||
+                   str_contains($code, 'HYPOTHERMIA') || str_contains($code, 'O2_SAT') ||
+                   str_contains($code, 'RBS') || str_contains($code, 'HEAD_TO_TOE');
         });
 
-        $paedStats = $numberQuestions->filter(function ($response) {
-            $code = $response->question->question_code;
+        $paedStatsCollection = $numberQuestions->filter(function ($response) {
+            $code = $response->question->question_code ?? '';
             return str_contains($code, 'PAED');
         });
 
+        // For HTML - convert to arrays
+        $yesNoArray = $yesNoCollection->map(function ($response) {
+            return [
+                'question' => $response->question->question_text,
+                'response' => $response->response_value ?? 'N/A',
+                'score' => $response->score ?? 0,
+            ];
+        })->values()->toArray();
+
+        $selectArray = $selectCollection->map(function ($response) {
+            return [
+                'question' => $response->question->question_text,
+                'response' => $response->response_value ?? 'N/A',
+                'score' => $response->score ?? 0,
+            ];
+        })->values()->toArray();
+
+        $newbornStatsArray = $newbornStatsCollection->map(function ($response) {
+            return [
+                'question' => $response->question->question_text,
+                'response' => $response->response_value ?? '0',
+            ];
+        })->values()->toArray();
+
+        $paedStatsArray = $paedStatsCollection->map(function ($response) {
+            return [
+                'question' => $response->question->question_text,
+                'response' => $response->response_value ?? '0',
+            ];
+        })->values()->toArray();
+
         return [
-            'yes_no' => $yesNoQuestions,
-            'select' => $selectQuestions,
-            'newborn_stats' => $newbornStats,
-            'paed_stats' => $paedStats,
-            'all_responses' => $responses,
+            // For PDF (collections with ->count())
+            'yes_no' => $yesNoCollection,
+            'select' => $selectCollection,
+            'newborn_stats' => $newbornStatsCollection,
+            'paed_stats' => $paedStatsCollection,
+            
+            // For HTML (arrays)
+            'yes_no_array' => $yesNoArray,
+            'select_array' => $selectArray,
+            'newborn_stats_array' => $newbornStatsArray,
+            'paed_stats_array' => $paedStatsArray,
         ];
     }
 
-    protected function calculateGrade(float $percentage): string {
-        if ($percentage >= 80)
-            return 'green';
-        if ($percentage >= 50)
-            return 'yellow';
+    /**
+     * Calculate grade based on percentage
+     */
+    protected function calculateGrade(float $percentage): string
+    {
+        if ($percentage >= 80) return 'green';
+        if ($percentage >= 50) return 'yellow';
         return 'red';
     }
 
-    protected function getGradeColor(string $grade): string {
-        return match ($grade) {
+    /**
+     * Get color for grade
+     */
+    protected function getGradeColor(string $grade): string
+    {
+        return match($grade) {
             'green' => '#10b981',
             'yellow' => '#f59e0b',
             'red' => '#ef4444',
