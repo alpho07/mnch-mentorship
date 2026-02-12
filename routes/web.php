@@ -17,6 +17,8 @@ use App\Http\Controllers\AnalyticsDashboardController;
 use App\Http\Controllers\AssessmentReportController;
 use App\Http\Controllers\MenteeEnrollmentController;
 use App\Http\Controllers\MenteeClassProgressController;
+use App\Http\Controllers\ModuleAttendanceController;
+use Illuminate\Http\Request;
 
 /*
   |--------------------------------------------------------------------------
@@ -25,28 +27,120 @@ use App\Http\Controllers\MenteeClassProgressController;
  */
 
 
+// Override Livewire upload to bypass signature
+Route::post('/livewire/upload-file', function (Request $request) {
+    \Log::info('Livewire upload received', [
+        'has_files' => $request->hasFile('files'),
+        'file_count' => $request->hasFile('files') ? count($request->file('files')) : 0,
+    ]);
+
+    $disk = config('livewire.temporary_file_upload.disk', 'local');
+    $directory = config('livewire.temporary_file_upload.directory', 'livewire-tmp');
+    
+    $request->validate([
+        'files.*' => ['required', 'file', 'max:102400']
+    ]);
+
+    $files = $request->file('files');
+    if (!is_array($files)) {
+        $files = [$files];
+    }
+    
+    $paths = [];
+
+    foreach ($files as $file) {
+        try {
+            // Generate unique filename
+            $filename = Str::uuid() . '.' . $file->getClientOriginalExtension();
+            
+            \Log::info('Storing file', [
+                'original_name' => $file->getClientOriginalName(),
+                'filename' => $filename,
+                'directory' => $directory,
+                'disk' => $disk,
+            ]);
+            
+            // Store the file
+            $stored = Storage::disk($disk)->putFileAs($directory, $file, $filename);
+            
+            if (!$stored) {
+                throw new \Exception('Failed to store file');
+            }
+            
+            \Log::info('File stored successfully', [
+                'path' => $stored,
+                'exists' => Storage::disk($disk)->exists($stored),
+            ]);
+            
+            // Return just the filename (not the full path)
+            $paths[] = $filename;
+            
+        } catch (\Exception $e) {
+            \Log::error('File upload failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            
+            return response()->json([
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    \Log::info('Upload complete', ['paths' => $paths]);
+
+    // Return in the exact format Livewire expects
+    return response()->json([
+        'paths' => $paths
+    ]);
+    
+})->middleware('web')->name('livewire.upload-file');
+
+
+Route::get('/check-upload-config', function () {
+    return [
+        'upload_max_filesize' => ini_get('upload_max_filesize'),
+        'post_max_size' => ini_get('post_max_size'),
+        'max_file_uploads' => ini_get('max_file_uploads'),
+        'livewire_tmp_exists' => is_dir(storage_path('app/livewire-tmp')),
+        'livewire_tmp_writable' => is_writable(storage_path('app/livewire-tmp')),
+        'thumbnails_exists' => is_dir(storage_path('app/public/thumbnails')),
+        'thumbnails_writable' => is_writable(storage_path('app/public/thumbnails')),
+    ];
+});
+
+Route::get('/test-signature', function () {
+    $url = URL::temporarySignedRoute('test', now()->addMinutes(1));
+    return [
+        'generated_url' => $url,
+        'current_app_url' => config('app.url'),
+        'request_is_secure' => request()->isSecure() ? 'Yes' : 'No',
+        'signature_valid' => request()->hasValidSignature() ? 'Yes' : 'No',
+    ];
+})->name('test');
 
 
 
+// Override Livewire upload to bypass signature
 
 // Module attendance routes (public/guest access)
 Route::get('/module/attend/{token}', [ModuleAttendanceController::class, 'attend'])
-    ->name('module.attend');
+        ->name('module.attend');
 
 Route::post('/module/attend/{token}', [ModuleAttendanceController::class, 'processAttendance'])
-    ->name('module.attend.submit');
+        ->name('module.attend.submit');
 
 // Mentee enrollment routes (public/guest access)
 Route::get('/enroll/{token}', [MenteeEnrollmentController::class, 'enroll'])
-    ->name('mentee.enroll');
+        ->name('mentee.enroll');
 
 Route::post('/enroll/{token}', [MenteeEnrollmentController::class, 'processEnrollmentSubmission'])
-    ->name('mentee.enroll.submit');
+        ->name('mentee.enroll.submit');
 
 // Mentee authenticated routes
 Route::middleware(['auth'])->group(function () {
     Route::get('/my-class/{class}', [MenteeClassProgressController::class, 'show'])
-        ->name('mentee.class-progress');
+            ->name('mentee.class-progress');
 });
 
 Route::middleware(['auth'])->group(function () {
@@ -197,6 +291,17 @@ Route::group(['prefix' => 'dashboard'], function () {
         return view('dashboard.facility', compact('county', 'facility'));
     })->name('dashboard.facility');
 });
+
+Route::prefix('co-mentor')->name('co-mentor.accept')->group(function () {
+    Route::get('/accept/{token}', [\App\Http\Controllers\CoMentorController::class, 'show']);
+    Route::post('/accept/{token}', [\App\Http\Controllers\CoMentorController::class, 'process'])
+            ->middleware('auth')
+            ->name('.process');
+});
+
+Route::get('login-v1', function () {
+    return redirect()->route('filament.admin.auth.login');
+})->name('login');
 
 Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () {
     // Resource file operations

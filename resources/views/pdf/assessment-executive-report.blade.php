@@ -259,17 +259,7 @@
         </div>
     </div>
 
-        <!-- OVERALL SCORE -->
-    <div class="score-card">
-        <div class="score-label">Overall Assessment Score</div>
-        <div class="score-large" style="color: {{ $overallScore['grade_color'] }}">
-            {{ number_format($overallScore['percentage'], 1) }}%
-        </div>
-        <span class="grade-badge" style="background: {{ $overallScore['grade_color'] }}">
-            {{ strtoupper($overallScore['grade']) }}
-        </span>
-    </div>
-
+  
         <!-- SECTION SCORES SUMMARY -->
     <div class="section-title">Section Scores Overview</div>
     <table>
@@ -292,6 +282,18 @@
             @endforeach
         </tbody>
     </table>
+    
+          <!-- OVERALL SCORE -->
+    <div class="score-card">
+        <div class="score-label">Overall Assessment Score</div>
+        <div class="score-large" style="color: {{ $overallScore['grade_color'] }}">
+            {{ number_format($overallScore['percentage'], 1) }}%
+        </div>
+        <span class="grade-badge" style="background: {{ $overallScore['grade_color'] }}">
+            {{ strtoupper($overallScore['grade']) }}
+        </span>
+    </div>
+
 
     <div class="page-break"></div>
 

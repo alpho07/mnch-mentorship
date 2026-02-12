@@ -55,9 +55,9 @@ class ManageMentorshipCoMentors extends Page implements HasTable {
 
                             return User::whereNotIn('id', $existingCoMentorIds)
                                             ->where('status', 'active')
-                                            ->whereHas('roles', function ($query) {
-                                                $query->whereIn('name', ['mentor', 'co-mentor', 'trainer']);
-                                            })
+                                            //->whereHas('roles', function ($query) {
+                                               // $query->whereIn('name', ['mentor', 'co-mentor', 'trainer']);
+                                            //})
                                             ->orderBy('first_name')
                                             ->get()
                                             ->mapWithKeys(fn($user) => [

@@ -33,11 +33,16 @@ class MenteeModuleProgress extends Model {
 
     // Relationships
     public function classParticipant(): BelongsTo {
-        return $this->belongsTo(ClassParticipant::class);
+        return $this->belongsTo(ClassParticipant::class, 'class_participant_id');
     }
 
     public function classModule(): BelongsTo {
-        return $this->belongsTo(ClassModule::class);
+        return $this->belongsTo(ClassModule::class, 'class_module_id');
+    }
+
+    // Assessment results for this progress (through module_assessment_results table)
+    public function assessmentResults(): HasMany {
+        return $this->hasMany(ModuleAssessmentResult::class, 'mentee_progress_id');
     }
 
     public function assessments(): HasMany {

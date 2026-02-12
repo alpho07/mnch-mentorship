@@ -29,16 +29,16 @@ return [
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app'),
-            'throw' => false,
-            'report' => false,
+            'throw' => true,
+            'report' => true,
         ],
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),
             'url' => env('APP_URL') . '/storage',
             'visibility' => 'public',
-            'throw' => false,
-            'report' => false,
+            'throw' => true,
+            'report' => true,
         ],
         // Private disk for secure resource files
         'private' => [
@@ -53,16 +53,16 @@ return [
         'resources' => [
             'driver' => 'local',
             'root' => storage_path('app/resources'),
-            'visibility' => 'private',
-            'throw' => false,
-            'report' => false,
+            'visibility' => 'public',
+            'throw' => true,
+            'report' => true,
         ],
         'thumbnails' => [
             'driver' => 'local',
             'root' => storage_path('app/public/thumbnails'),
             'url' => env('APP_URL') . '/storage/thumbnails',
             'visibility' => 'public',
-            'throw' => false,
+            'throw' => true,
         ],
         
         

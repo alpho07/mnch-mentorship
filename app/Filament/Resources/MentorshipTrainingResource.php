@@ -37,11 +37,10 @@ class MentorshipTrainingResource extends Resource {
     protected static ?string $slug = 'mentorships';
     protected static ?string $recordTitleAttribute = 'title';
     protected static ?string $breadcrumb = 'Mentorships';
-    
-    
+
     public static function shouldRegisterNavigation(): bool {
         // Show for users who are mentees
-         return false;
+        return false;
     }
 
     public static function getEloquentQuery(): Builder {
@@ -192,31 +191,32 @@ class MentorshipTrainingResource extends Resource {
                         ])
                         ->actions([
                             ActionGroup::make([
-                                Tables\Actions\ViewAction::make()
-                                ->color('info'),
-                                Tables\Actions\EditAction::make()
-                                ->color('warning'),
-                                Action::make('manage_classes')
+                                     Action::make('manage_classes')
                                 ->label('Manage Classes')
                                 ->icon('heroicon-o-academic-cap')
                                 ->color('success')
                                 ->url(fn(Training $record): string =>
                                         static::getUrl('classes', ['record' => $record])
                                 ),
-                                Action::make('manage_mentees')
-                                ->label('Manage Mentees')
-                                ->icon('heroicon-o-users')
-                                ->color('primary')
-                                ->url(fn(Training $record): string =>
-                                        static::getUrl('mentees', ['record' => $record])
-                                ),
-                                Action::make('co_mentors')
-                                ->label('Co-Mentors')
-                                ->icon('heroicon-o-user-group')
-                                ->color('info')
-                                ->url(fn(Training $record): string =>
-                                        static::getUrl('co-mentors', ['record' => $record])
-                                ),
+//                                Tables\Actions\ViewAction::make()
+//                                ->color('info'),
+                                Tables\Actions\EditAction::make()
+                                ->color('warning'),
+                           
+//                                Action::make('manage_mentees')
+//                                ->label('Manage Mentees')
+//                                ->icon('heroicon-o-users')
+//                                ->color('primary')
+//                                ->url(fn(Training $record): string =>
+//                                        static::getUrl('mentees', ['record' => $record])
+//                                ),
+//                                Action::make('co_mentors')
+//                                ->label('Co-Mentors')
+//                                ->icon('heroicon-o-user-group')
+//                                ->color('info')
+//                                ->url(fn(Training $record): string =>
+//                                        static::getUrl('co-mentors', ['record' => $record])
+//                                ),
                                 Tables\Actions\DeleteAction::make()
                                 ->requiresConfirmation(),
                             ])
@@ -254,10 +254,12 @@ class MentorshipTrainingResource extends Resource {
             'classes' => Pages\ManageMentorshipClasses::route('/{record}/classes'),
             'mentees' => Pages\ManageMentorshipMentees::route('/{record}/mentees'),
             'co-mentors' => Pages\ManageMentorshipCoMentors::route('/{record}/co-mentors'),
+            'class-modules' => Pages\ManageClassModules::route('/{record}/classes/{class}/modules'),
             'class-mentees' => Pages\ManageClassMentees::route('/{training}/classes/{class}/mentees'),
             'module-sessions' => Pages\ManageModuleSessions::route('/{training}/classes/{class}/modules/{module}/sessions'),
             'module-mentees' => Pages\ManageModuleMentees::route('/{training}/classes/{class}/modules/{module}/mentees'),
             'module-summary' => Pages\ModuleSummary::route('/{training}/classes/{class}/modules/{module}/summary'),
+            'mentee-progress' => Pages\MenteeProgress::route('/{record}/participants/{participant}/progress'),
         ];
     }
 

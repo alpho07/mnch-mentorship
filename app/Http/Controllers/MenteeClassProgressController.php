@@ -14,49 +14,49 @@ class MenteeClassProgressController extends Controller {
      * Show mentee's progress in a class
      */
     public function show(MentorshipClass $class) {
-        $user = Auth::user();
+        $user = auth()->user();
 
         // Get participant record
-        $participant = ClassParticipant::where('mentorship_class_id', $class->id)
+        $participant = $class->participants()
                 ->where('user_id', $user->id)
-                ->with([
-                    'mentorshipClass.training',
-                    'sessionAttendance.classSession',
-                ])
                 ->firstOrFail();
 
-        // Get module progress
+        // Get all module progress for this participant
         $moduleProgress = MenteeModuleProgress::where('class_participant_id', $participant->id)
                 ->with([
                     'classModule.programModule',
-                    'classModule.sessions',
-                    'assessments',
+                    'classModule.moduleAssessments',
+                    'assessmentResults.moduleAssessment'
                 ])
-                ->orderBy('class_module_id')
                 ->get();
 
-        // Separate modules
-        $exemptedModules = $moduleProgress->where('is_exempted', true);
-        $activeModules = $moduleProgress->where('is_exempted', false)->where('status', '!=', 'completed');
-        $completedModules = $moduleProgress->where('is_exempted', false)->where('status', 'completed');
+        // Separate by status
+        $exemptedModules = $moduleProgress->where('status', 'exempted');
+        $completedModules = $moduleProgress->where('status', 'completed');
+        $activeModules = $moduleProgress->whereIn('status', ['not_started', 'in_progress']);
 
         // Calculate statistics
-        $stats = [
-            'total_modules' => $moduleProgress->count(),
-            'exempted_count' => $exemptedModules->count(),
-            'completed_count' => $completedModules->count(),
-            'pending_count' => $activeModules->count(),
-            'attendance_rate' => $participant->attendance_rate,
-            'overall_progress' => $this->calculateOverallProgress($moduleProgress),
-        ];
+        $totalModules = $moduleProgress->count();
+        $completedCount = $completedModules->count();
+        $exemptedCount = $exemptedModules->count();
+        $progressPercentage = $totalModules > 0 ? round((($completedCount + $exemptedCount) / $totalModules) * 100, 2) : 0;
+
+        // Calculate attendance rate (average of all modules)
+        $attendanceRate = $moduleProgress
+                        ->where('attendance_percentage', '!=', null)
+                        ->avg('attendance_percentage') ?? 0;
 
         return view('mentee.class-progress', [
             'class' => $class,
             'participant' => $participant,
             'exemptedModules' => $exemptedModules,
-            'activeModules' => $activeModules,
             'completedModules' => $completedModules,
-            'stats' => $stats,
+            'activeModules' => $activeModules,
+            'totalModules' => $totalModules,
+            'completedCount' => $completedCount,
+            'exemptedCount' => $exemptedCount,
+            'progressPercentage' => $progressPercentage,
+            'attendanceRate' => round($attendanceRate, 2),
         ]);
     }
 

@@ -54,7 +54,7 @@ class MenteeEnrollmentController extends Controller {
                 ->firstOrFail();
 
         // Find user by phone
-        $user = User::where('phone', $request->phone)->first();
+        $user = User::where('email', $request->phone)->first();
 
         if (!$user) {
             // Create new user if doesn't exist

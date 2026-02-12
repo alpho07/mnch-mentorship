@@ -8,21 +8,7 @@
         <p style="color: #6b7280; margin-top: 8px;">Assessment Date: {{ $assessment->assessment_date->format('F d, Y') }}</p>
     </div>
 
-    {{-- Overall Score Summary --}}
-    <div class="overall-score" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 24px; border-radius: 8px; margin-bottom: 24px;">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div>
-                <h3 style="margin: 0; font-size: 16px; opacity: 0.9;">Overall Score</h3>
-                <p style="font-size: 36px; font-weight: bold; margin: 8px 0;">{{ number_format($overallScore['percentage'], 1) }}%</p>
-            </div>
-            <div style="text-align: right;">
-                <span class="badge badge-{{ strtolower($overallScore['grade']) }}" style="font-size: 24px; padding: 8px 20px;">
-                    {{ strtoupper($overallScore['grade']) }}
-                </span>
-                <p style="margin: 8px 0 0 0; font-size: 14px; opacity: 0.9;">{{ $overallScore['score'] }} / {{ $overallScore['max_score'] }} points</p>
-            </div>
-        </div>
-    </div>
+
 
     {{-- Facility Information --}}
     <div class="section" style="margin-bottom: 32px;">
@@ -68,6 +54,22 @@
                     </div>
                 </div>
             @endforeach
+        </div>
+    </div>
+    
+        {{-- Overall Score Summary --}}
+    <div class="overall-score" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 24px; border-radius: 8px; margin-bottom: 24px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <h3 style="margin: 0; font-size: 16px; opacity: 0.9;">Overall Score</h3>
+                <p style="font-size: 36px; font-weight: bold; margin: 8px 0;">{{ number_format($overallScore['percentage'], 1) }}%</p>
+            </div>
+            <div style="text-align: right;">
+                <span class="badge badge-{{ strtolower($overallScore['grade']) }}" style="font-size: 24px; padding: 8px 20px;">
+                    {{ strtoupper($overallScore['grade']) }}
+                </span>
+                <p style="margin: 8px 0 0 0; font-size: 14px; opacity: 0.9;">{{ $overallScore['score'] }} / {{ $overallScore['max_score'] }} points</p>
+            </div>
         </div>
     </div>
 

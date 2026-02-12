@@ -13,6 +13,16 @@ class ModuleAttendanceController extends Controller {
     /**
      * Handle module attendance link access
      */
+    private function hasCompletedModuleBefore($user, $programModuleId): bool {
+        return \Illuminate\Support\Facades\DB::table('class_participants')
+                        ->join('mentee_module_progress', 'class_participants.id', '=', 'mentee_module_progress.class_participant_id')
+                        ->join('class_modules', 'mentee_module_progress.class_module_id', '=', 'class_modules.id')
+                        ->where('class_participants.user_id', $user->id)
+                        ->where('class_modules.program_module_id', $programModuleId)
+                        ->where('mentee_module_progress.status', 'completed')
+                        ->exists();
+    }
+
     public function attend(Request $request, string $token) {
         // Find module by attendance token
         $classModule = ClassModule::where('attendance_token', $token)
@@ -68,40 +78,48 @@ class ModuleAttendanceController extends Controller {
      * Mark user as attended for this module
      */
     private function markAttendance($user, ClassModule $classModule) {
-        // Get or create class participant
-        $participant = ClassParticipant::firstOrCreate(
-                [
-                    'mentorship_class_id' => $classModule->mentorship_class_id,
-                    'user_id' => $user->id,
-                ],
-                [
-                    'status' => 'enrolled',
-                    'enrolled_at' => now(),
-                ]
-        );
+        // NEW: Add this check at the beginning
+        if ($this->hasCompletedModuleBefore($user, $classModule->program_module_id)) {
+            return view('mentee.attendance-already-completed', [
+                'module' => $classModule,
+                'class' => $classModule->class,
+                'user' => $user,
+                'message' => 'You have already completed this module in a previous class.',
+            ]);
+        }
 
-        // Get or create module progress
+        // ... existing code to find participant and progress ...
+
+        $participant = ClassParticipant::where('mentorship_class_id', $classModule->mentorship_class_id)
+                ->where('user_id', $user->id)
+                ->first();
+
+        if (!$participant) {
+            return back()->withErrors(['error' => 'You are not enrolled in this class.']);
+        }
+
         $progress = MenteeModuleProgress::firstOrCreate(
                 [
                     'class_participant_id' => $participant->id,
                     'class_module_id' => $classModule->id,
                 ],
                 [
-                    'status' => 'in_progress',
-                    'started_at' => now(),
+                    'status' => 'not_started',
                 ]
         );
 
-        // Mark as in progress if not started
-        if ($progress->status === 'not_started') {
-            $progress->update([
-                'status' => 'in_progress',
-                'started_at' => now(),
-            ]);
-        }
+        // CHANGE: Update to mark as 'completed' instead of 'in_progress'
+        $progress->update([
+            'status' => 'completed', // <-- CHANGED from 'in_progress'
+            'started_at' => $progress->started_at ?? now(),
+            'completed_at' => now(), // <-- ADDED
+        ]);
+
+        // ... rest of existing code ...
 
         return view('mentee.attendance-confirmed', [
             'module' => $classModule,
+            'class' => $classModule->class,
             'user' => $user,
             'progress' => $progress,
         ]);

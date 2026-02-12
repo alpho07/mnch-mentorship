@@ -28,15 +28,43 @@ class ClassModule extends Model {
         'order_sequence' => 'integer',
         'attendance_link_active' => 'boolean',
     ];
-
-    // Relationships
-    public function mentorshipClass(): BelongsTo {
+    
+       // Relationships
+    public function mentorshipClass(): BelongsTo
+    {
         return $this->belongsTo(MentorshipClass::class, 'mentorship_class_id');
     }
 
-    public function programModule(): BelongsTo {
+    // Alias for consistency
+    public function class(): BelongsTo
+    {
+        return $this->mentorshipClass();
+    }
+
+    public function programModule(): BelongsTo
+    {
         return $this->belongsTo(ProgramModule::class, 'program_module_id');
     }
+
+    // Module assessments
+    public function moduleAssessments(): HasMany
+    {
+        return $this->hasMany(ModuleAssessment::class, 'class_module_id');
+    }
+
+    // Mentee progress records for this module
+    public function menteeModuleProgress(): HasMany
+    {
+        return $this->hasMany(MenteeModuleProgress::class, 'class_module_id');
+    }
+
+    // Module sessions
+    public function moduleSessions(): HasMany
+    {
+        return $this->hasMany(ModuleSession::class, 'class_module_id');
+    }
+
+
 
     public function sessions(): HasMany {
         return $this->hasMany(ClassSession::class, 'class_module_id');

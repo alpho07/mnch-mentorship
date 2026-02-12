@@ -6,35 +6,77 @@ use App\Filament\Resources\ResourceResource;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Database\Eloquent\Model;
 
-class CreateResource extends CreateRecord
-{
+class CreateResource extends CreateRecord {
+
     protected static string $resource = ResourceResource::class;
 
-    protected function getRedirectUrl(): string
-    {
+    protected function getRedirectUrl(): string {
         return $this->getResource()::getUrl('edit', ['record' => $this->getRecord()]);
     }
 
-    protected function getCreatedNotificationTitle(): ?string
-    {
+    protected function getCreatedNotificationTitle(): ?string {
         return 'Resource created successfully';
     }
 
-    protected function handleRecordCreation(array $data): Model
-    {
+    protected function handleRecordCreation(array $data): Model {
         $record = static::getModel()::create($data);
 
         // Log the creation with custom properties
         activity()
-            ->performedOn($record)
-            ->causedBy(auth()->user())
-            ->withProperties([
-                'category' => $record->category?->name,
-                'type' => $record->resourceType?->name,
-                'visibility' => $record->visibility,
-            ])
-            ->log("Created resource: {$record->title}");
+                ->performedOn($record)
+                ->causedBy(auth()->user())
+                ->withProperties([
+                    'category' => $record->category?->name,
+                    'type' => $record->resourceType?->name,
+                    'visibility' => $record->visibility,
+                ])
+                ->log("Created resource: {$record->title}");
 
         return $record;
+    }
+
+    protected function mutateFormDataBeforeCreate(array $data): array {
+        // Handle tag names conversion
+        if (isset($data['tag_names']) && is_array($data['tag_names'])) {
+            $tagIds = [];
+            foreach ($data['tag_names'] as $tagName) {
+                if (!empty($tagName)) {
+                    $tag = Tag::firstOrCreate(
+                            ['name' => $tagName],
+                            ['slug' => Str::slug($tagName)]
+                    );
+                    $tagIds[] = $tag->id;
+                }
+            }
+            $data['tag_ids'] = $tagIds;
+            unset($data['tag_names']);
+        }
+
+        // Auto-generate slug if not provided
+        if (empty($data['slug']) && !empty($data['title'])) {
+            $data['slug'] = Str::slug($data['title']);
+        }
+
+        // Set author if not provided
+        if (empty($data['author_id'])) {
+            $data['author_id'] = auth()->id();
+        }
+
+        return $data;
+    }
+
+    protected function afterCreate(): void {
+        $record = $this->record;
+        $data = $this->data;
+
+        // Sync tags
+        if (isset($data['tag_ids'])) {
+            $record->tags()->sync($data['tag_ids']);
+        }
+
+        // Sync access groups
+        if (isset($data['access_groups'])) {
+            $record->accessGroups()->sync($data['access_groups']);
+        }
     }
 }

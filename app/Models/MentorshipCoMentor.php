@@ -6,8 +6,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class MentorshipCoMentor extends Model 
-{
+class MentorshipCoMentor extends Model {
+
     use HasFactory;
 
     protected $fillable = [
@@ -19,7 +19,6 @@ class MentorshipCoMentor extends Model
         'status',
         'permissions',
     ];
-
     protected $casts = [
         'invited_at' => 'datetime',
         'accepted_at' => 'datetime',
@@ -27,70 +26,58 @@ class MentorshipCoMentor extends Model
     ];
 
     // Relationships
-    public function training(): BelongsTo
-    {
-        return $this->belongsTo(Training::class);
+    public function training(): BelongsTo {
+        return $this->belongsTo(MentorshipTraining::class, 'training_id');
     }
 
-    public function user(): BelongsTo
-    {
-        return $this->belongsTo(User::class);
+    public function user(): BelongsTo {
+        return $this->belongsTo(User::class, 'user_id');
     }
 
-    public function inviter(): BelongsTo
-    {
+    public function inviter(): BelongsTo {
         return $this->belongsTo(User::class, 'invited_by');
     }
 
     // Scopes
-    public function scopePending($query)
-    {
+    public function scopePending($query) {
         return $query->where('status', 'pending');
     }
 
-    public function scopeAccepted($query)
-    {
+    public function scopeAccepted($query) {
         return $query->where('status', 'accepted');
     }
 
-    public function scopeActive($query)
-    {
+    public function scopeActive($query) {
         return $query->where('status', 'accepted');
     }
 
     // Computed Attributes
-    public function getIsAcceptedAttribute(): bool
-    {
+    public function getIsAcceptedAttribute(): bool {
         return $this->status === 'accepted';
     }
 
-    public function getIsPendingAttribute(): bool
-    {
+    public function getIsPendingAttribute(): bool {
         return $this->status === 'pending';
     }
 
     // Methods
-    public function accept(): void
-    {
+    public function accept(): void {
         $this->update([
             'status' => 'accepted',
             'accepted_at' => now(),
         ]);
     }
 
-    public function decline(): void
-    {
+    public function decline(): void {
         $this->update(['status' => 'declined']);
     }
 
-    public function remove(): void
-    {
+    public function remove(): void {
         $this->update(['status' => 'removed']);
     }
 
-    public function canFacilitate(): bool
-    {
-        return $this->is_accepted && 
-               ($this->permissions['can_facilitate'] ?? true);
+    public function canFacilitate(): bool {
+        return $this->is_accepted &&
+                ($this->permissions['can_facilitate'] ?? true);
     }
 }

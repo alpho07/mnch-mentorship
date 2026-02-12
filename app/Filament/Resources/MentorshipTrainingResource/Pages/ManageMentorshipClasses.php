@@ -40,14 +40,14 @@ class ManageMentorshipClasses extends Page implements HasTable {
         if ($this->viewingModules && $this->selectedClass) {
             return "Modules - {$this->selectedClass->name}";
         }
-        return "Classes - {$this->record->title}";
+        return "Classes";
     }
 
     public function getSubheading(): ?string {
         if ($this->viewingModules && $this->selectedClass) {
             return "{$this->selectedClass->module_count} modules • {$this->selectedClass->session_count} sessions";
         }
-        return "Manage training cohorts and modules";
+        return "Manage mentorship cohorts and modules";
     }
 
     protected function getHeaderActions(): array {
@@ -88,7 +88,7 @@ class ManageMentorshipClasses extends Page implements HasTable {
                     ])
                     ->action(fn(array $data) => $this->createClass($data)),
                     Actions\Action::make('back_to_training')
-                    ->label('Back to Training')
+                    ->label('Back to Mentorships')
                     ->icon('heroicon-o-arrow-left')
                     ->color('gray')
                     ->url(fn() => MentorshipTrainingResource::getUrl('view', ['record' => $this->record])),
@@ -98,7 +98,7 @@ class ManageMentorshipClasses extends Page implements HasTable {
     private function getModuleHeaderActions(): array {
         return [
                     Actions\Action::make('invite_mentees')
-                    ->label('Invite Mentees')
+                    ->label('Manage/Invite Mentees')
                     ->icon('heroicon-o-user-plus')
                     ->color('success')
                     ->url(fn() => MentorshipTrainingResource::getUrl('class-mentees', [
@@ -183,7 +183,7 @@ class ManageMentorshipClasses extends Page implements HasTable {
                                         ]) . '?class=' . $record->id
                                 ),
                                 Tables\Actions\Action::make('invite_mentees')
-                                ->label('Invite Mentees')
+                                ->label('Manage/Invite Mentees')
                                 ->icon('heroicon-o-user-plus')
                                 ->color('success')
                                 ->url(fn(MentorshipClass $record): string =>
@@ -192,19 +192,19 @@ class ManageMentorshipClasses extends Page implements HasTable {
                                             'class' => $record->id,
                                         ])
                                 ),
-                                Tables\Actions\Action::make('activate')
-                                ->label('Activate')
-                                ->icon('heroicon-o-check')
-                                ->color('warning')
-                                ->visible(fn(MentorshipClass $record) => $record->status === 'draft')
-                                ->requiresConfirmation()
-                                ->action(function (MentorshipClass $record) {
-                                    $record->activate();
-                                    Notification::make()
-                                            ->success()
-                                            ->title('Class Activated')
-                                            ->send();
-                                }),
+//                                Tables\Actions\Action::make('activate')
+//                                ->label('Activate')
+//                                ->icon('heroicon-o-check')
+//                                ->color('warning')
+//                                ->visible(fn(MentorshipClass $record) => $record->status === 'draft')
+//                                ->requiresConfirmation()
+//                                ->action(function (MentorshipClass $record) {
+//                                    $record->activate();
+//                                    Notification::make()
+//                                            ->success()
+//                                            ->title('Class Activated')
+//                                            ->send();
+//                                }),
                                 Tables\Actions\EditAction::make()
                                 ->form([
                                     Forms\Components\TextInput::make('name')
@@ -240,100 +240,100 @@ class ManageMentorshipClasses extends Page implements HasTable {
 
     private function getModulesTable(Table $table): Table {
         return $table
-        ->query(
-        ClassModule::query()
-        ->where('mentorship_class_id', $this->selectedClass->id)
-        ->with(['programModule'])
-        )
-        ->columns([
-        Tables\Columns\TextColumn::make('order_sequence')
-        ->label('#')
-        ->badge()
-        ->color('gray')
-        ->sortable(),
-        Tables\Columns\TextColumn::make('programModule.name')
-        ->label('Module Name')
-        ->searchable()
-        ->weight('bold')
-        ->description(fn(ClassModule $record): string =>
-        $record->programModule->description ?? ''
-        ),
-        Tables\Columns\BadgeColumn::make('status')
-        ->colors([
-        'secondary' => 'not_started',
-        'warning' => 'in_progress',
-        'success' => 'completed',
-        ])
-        ->formatStateUsing(fn(string $state): string =>
-        match ($state) {
-        'not_started' => 'Not Started',
-        'in_progress' => 'In Progress',
-        'completed' => 'Completed',
-        default => ucfirst($state),
-        }
-        ),
-        Tables\Columns\TextColumn::make('session_count')
-        ->label('Sessions')
-        ->badge()
-        ->color('primary')
-        ->description(function (ClassModule $record) {
-        $completed = $record->sessions()->where('status', 'completed')->count();
-        return $completed > 0 ? "{$completed} completed" : 'None completed';
-        }),
-        Tables\Columns\TextColumn::make('progress_percentage')
-        ->label('Progress')
-        ->suffix('%')
-        ->badge()
-        ->color(fn($state) => $state >= 100 ? 'success' : ($state >= 50 ? 'warning' : 'danger')),
-        Tables\Columns\TextColumn::make('programModule.duration_weeks')
-        ->label('Duration')
-        ->suffix(' weeks')
-        ->toggleable(),
-        ])
-        ->actions([
-                    Tables\Actions\ActionGroup::make([
-                        Tables\Actions\Action::make('add_sessions')
-                        ->label('Add Sessions')
-                        ->icon('heroicon-o-plus-circle')
-                        ->color('success')
-                        ->url(fn(ClassModule $record): string =>
-                                MentorshipTrainingResource::getUrl('module-sessions', [
-                                    'training' => $this->record->id,
-                                    'class' => $this->selectedClass->id,
-                                    'module' => $record->id,
-                                ])
-                        ),
-                        Tables\Actions\Action::make('start_module')
-                        ->label('Start Module')
-                        ->icon('heroicon-o-play')
-                        ->color('primary')
-                        ->visible(fn(ClassModule $record) => $record->status === 'not_started')
-                        ->requiresConfirmation()
-                        ->action(function (ClassModule $record) {
-                            $record->start();
-                            Notification::make()
-                                    ->success()
-                                    ->title('Module Started')
-                                    ->send();
-                        }),
-                        Tables\Actions\Action::make('complete_module')
-                        ->label('Complete Module')
-                        ->icon('heroicon-o-check-circle')
-                        ->color('success')
-                        ->visible(fn(ClassModule $record) => $record->status === 'in_progress')
-                        ->requiresConfirmation()
-                        ->action(function (ClassModule $record) {
-                            $record->complete();
-                            Notification::make()
-                                    ->success()
-                                    ->title('Module Completed')
-                                    ->send();
-                        }),
-                    ]),
-                ])
-                ->reorderable('order_sequence')
-                ->emptyStateHeading('No Modules Configured')
-                ->emptyStateDescription('Modules should be auto-populated from the training program.');
+                        ->query(
+                                ClassModule::query()
+                                ->where('mentorship_class_id', $this->selectedClass->id)
+                                ->with(['programModule'])
+                        )
+                        ->columns([
+                            Tables\Columns\TextColumn::make('order_sequence')
+                            ->label('#')
+                            ->badge()
+                            ->color('gray')
+                            ->sortable(),
+                            Tables\Columns\TextColumn::make('programModule.name')
+                            ->label('Module Name')
+                            ->searchable()
+                            ->weight('bold')
+                            ->description(fn(ClassModule $record): string =>
+                                    $record->programModule->description ?? ''
+                            ),
+                            Tables\Columns\BadgeColumn::make('status')
+                            ->colors([
+                                'secondary' => 'not_started',
+                                'warning' => 'in_progress',
+                                'success' => 'completed',
+                            ])
+                            ->formatStateUsing(fn(string $state): string =>
+                                    match ($state) {
+                                        'not_started' => 'Not Started',
+                                        'in_progress' => 'In Progress',
+                                        'completed' => 'Completed',
+                                        default => ucfirst($state),
+                                    }
+                            ),
+                            Tables\Columns\TextColumn::make('session_count')
+                            ->label('Sessions')
+                            ->badge()
+                            ->color('primary')
+                            ->description(function (ClassModule $record) {
+                                $completed = $record->sessions()->where('status', 'completed')->count();
+                                return $completed > 0 ? "{$completed} completed" : 'None completed';
+                            }),
+                            Tables\Columns\TextColumn::make('progress_percentage')
+                            ->label('Progress')
+                            ->suffix('%')
+                            ->badge()
+                            ->color(fn($state) => $state >= 100 ? 'success' : ($state >= 50 ? 'warning' : 'danger')),
+                            Tables\Columns\TextColumn::make('programModule.duration_weeks')
+                            ->label('Duration')
+                            ->suffix(' weeks')
+                            ->toggleable(),
+                        ])
+                        ->actions([
+                            Tables\Actions\ActionGroup::make([
+                                Tables\Actions\Action::make('add_sessions')
+                                ->label('Add Sessions')
+                                ->icon('heroicon-o-plus-circle')
+                                ->color('success')
+                                ->url(fn(ClassModule $record): string =>
+                                        MentorshipTrainingResource::getUrl('module-sessions', [
+                                            'training' => $this->record->id,
+                                            'class' => $this->selectedClass->id,
+                                            'module' => $record->id,
+                                        ])
+                                ),
+                                Tables\Actions\Action::make('start_module')
+                                ->label('Start Module')
+                                ->icon('heroicon-o-play')
+                                ->color('primary')
+                                ->visible(fn(ClassModule $record) => $record->status === 'not_started')
+                                ->requiresConfirmation()
+                                ->action(function (ClassModule $record) {
+                                    $record->start();
+                                    Notification::make()
+                                            ->success()
+                                            ->title('Module Started')
+                                            ->send();
+                                }),
+                                Tables\Actions\Action::make('complete_module')
+                                ->label('Complete Module')
+                                ->icon('heroicon-o-check-circle')
+                                ->color('success')
+                                ->visible(fn(ClassModule $record) => $record->status === 'in_progress')
+                                ->requiresConfirmation()
+                                ->action(function (ClassModule $record) {
+                                    $record->complete();
+                                    Notification::make()
+                                            ->success()
+                                            ->title('Module Completed')
+                                            ->send();
+                                }),
+                            ]),
+                        ])
+                        ->reorderable('order_sequence')
+                        ->emptyStateHeading('No Modules Configured')
+                        ->emptyStateDescription('Modules should be auto-populated from the mentorship program.');
     }
 
     private function createClass(array $data): void {

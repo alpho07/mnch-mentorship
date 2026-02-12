@@ -43,16 +43,16 @@ class ViewMentorshipTraining extends ViewRecord {
         return [
                     Actions\EditAction::make()
                     ->color('warning'),
-                    Actions\Action::make('manage_mentees')
-                    ->label('Manage Mentees')
+                    Actions\Action::make('manage_classes')
+                    ->label('Manage Classes')
                     ->icon('heroicon-o-users')
                     ->color('success')
                     ->url(fn() => static::getResource()::getUrl('mentees', ['record' => $this->record])),
-                    Actions\Action::make('assessment_matrix')
-                    ->label('Assessment Matrix')
-                    ->icon('heroicon-o-clipboard-document-check')
-                    ->color('primary')
-                    ->url(fn() => static::getResource()::getUrl('assessments', ['record' => $this->record])),
+//                    Actions\Action::make('assessment_matrix')
+//                    ->label('Assessment Matrix')
+//                    ->icon('heroicon-o-clipboard-document-check')
+//                    ->color('primary')
+//                    ->url(fn() => static::getResource()::getUrl('assessments', ['record' => $this->record])),
             /* Actions\Action::make('smart_insights')
               ->label('Smart Insights')
               ->icon('heroicon-o-sparkles')
@@ -71,8 +71,8 @@ class ViewMentorshipTraining extends ViewRecord {
               ->action(function () {
               return $this->exportTrainingSummary();
               }), */
-                    Actions\DeleteAction::make()
-                    ->requiresConfirmation(),
+//                    Actions\DeleteAction::make()
+//                    ->requiresConfirmation(),
         ];
     }
 
