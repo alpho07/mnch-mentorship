@@ -5,31 +5,38 @@ namespace App\Http\Controllers;
 use App\Models\MentorshipClass;
 use App\Models\ClassParticipant;
 use App\Models\User;
+use App\Services\EnrollmentService;
+use App\Services\AttendanceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 
 class MenteeEnrollmentController extends Controller {
 
+    public function __construct(
+            private EnrollmentService $enrollmentService,
+            private AttendanceService $attendanceService
+    ) {
+        
+    }
+
     /**
-     * Handle enrollment link access
+     * Handle enrollment link access.
      */
     public function enroll(Request $request, string $token) {
-        // Find class by enrollment token
         $class = MentorshipClass::where('enrollment_token', $token)
                 ->where('enrollment_link_active', true)
                 ->with(['training', 'classModules.programModule'])
                 ->firstOrFail();
 
         // Check if class is accepting enrollments
-        if ($class->status === 'completed' || $class->status === 'cancelled') {
+        if (in_array($class->status, ['completed', 'cancelled'])) {
             return view('mentee.enrollment-closed', [
                 'class' => $class,
                 'message' => 'This class is no longer accepting enrollments.',
             ]);
         }
 
-        // If user is logged in
+        // If user is logged in, process immediately
         if (Auth::check()) {
             return $this->processEnrollment(Auth::user(), $class);
         }
@@ -42,7 +49,7 @@ class MenteeEnrollmentController extends Controller {
     }
 
     /**
-     * Process enrollment submission
+     * Process enrollment submission from guest form.
      */
     public function processEnrollmentSubmission(Request $request, string $token) {
         $request->validate([
@@ -51,6 +58,7 @@ class MenteeEnrollmentController extends Controller {
 
         $class = MentorshipClass::where('enrollment_token', $token)
                 ->where('enrollment_link_active', true)
+                ->with(['training', 'classModules.programModule'])
                 ->firstOrFail();
 
         // Find user by phone
@@ -80,7 +88,7 @@ class MenteeEnrollmentController extends Controller {
     }
 
     /**
-     * Process actual enrollment
+     * Process actual enrollment using EnrollmentService + AttendanceService.
      */
     private function processEnrollment(User $user, MentorshipClass $class) {
         // Check if already enrolled
@@ -89,37 +97,22 @@ class MenteeEnrollmentController extends Controller {
                 ->first();
 
         if ($existing) {
-            // Already enrolled - show their progress
             return redirect()->route('mentee.class-progress', [
                         'class' => $class->id,
                     ])->with('message', 'You are already enrolled in this class.');
         }
 
-        // Get modules the user has completed in previous classes
-        $completedModuleIds = $this->getUserCompletedModules($user->id);
+        // Enroll via service (handles exemption check + module progress creation)
+        $participant = $this->enrollmentService->enrollInClass($user, $class, 'link');
 
-        // Enroll the user
-        $participant = ClassParticipant::create([
-            'mentorship_class_id' => $class->id,
-            'user_id' => $user->id,
-            'status' => 'enrolled',
-            'enrolled_at' => now(),
-        ]);
-
-        // Create module progress records
-        foreach ($class->classModules as $classModule) {
-            $isCompleted = in_array($classModule->program_module_id, $completedModuleIds);
-
-            DB::table('mentee_module_progress')->insert([
-                'class_participant_id' => $participant->id,
-                'class_module_id' => $classModule->id,
-                'status' => $isCompleted ? 'exempted' : 'not_started',
-                'completed_in_previous_class' => $isCompleted,
-                'exempted_at' => $isCompleted ? now() : null,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-        }
+        // Auto-mark attendance for enrollment via invite link (TDD rule)
+        $this->attendanceService->markAttendance(
+                classId: $class->id,
+                sessionId: null, // enrollment-level attendance, not session-specific
+                userId: $user->id,
+                markedBy: $user->id,
+                source: 'auto'
+        );
 
         // Mark as active if class is active
         if ($class->status === 'active') {
@@ -129,19 +122,5 @@ class MenteeEnrollmentController extends Controller {
         return redirect()->route('mentee.class-progress', [
                     'class' => $class->id,
                 ])->with('success', 'Successfully enrolled in the class!');
-    }
-
-    /**
-     * Get modules user has completed in any previous class
-     */
-    private function getUserCompletedModules(int $userId): array {
-        return DB::table('class_participants')
-                        ->join('mentee_module_progress', 'class_participants.id', '=', 'mentee_module_progress.class_participant_id')
-                        ->join('class_modules', 'mentee_module_progress.class_module_id', '=', 'class_modules.id')
-                        ->where('class_participants.user_id', $userId)
-                        ->where('mentee_module_progress.status', 'completed')
-                        ->pluck('class_modules.program_module_id')
-                        ->unique()
-                        ->toArray();
     }
 }

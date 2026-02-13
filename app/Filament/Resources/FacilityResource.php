@@ -30,16 +30,9 @@ class FacilityResource extends Resource {
     protected static ?string $navigationGroup = 'System Administration';
     protected static ?int $navigationSort = 1;
     protected static ?string $recordTitleAttribute = 'name';
-    
-    
-    public static function shouldRegisterNavigation(): bool
-    {
-        return !auth()->user()->hasRole('Assessor');
-    }
 
-    public static function canAccess(): bool
-    {
-        return !auth()->user()->hasRole('Assessor');
+    public static function shouldRegisterNavigation(): bool {
+        return auth()->check() && auth()->user()->hasRole(['super_admin', 'admin', 'division']);
     }
 
     public static function form(Form $form): Form {
@@ -520,9 +513,9 @@ class FacilityResource extends Resource {
 
     public static function getRelations(): array {
         return [
-            //RelationManagers\AssessmentsRelationManager::class,
-            //RelationManagers\TrainingsRelationManager::class,
-            //RelationManagers\UsersRelationManager::class,
+                //RelationManagers\AssessmentsRelationManager::class,
+                //RelationManagers\TrainingsRelationManager::class,
+                //RelationManagers\UsersRelationManager::class,
         ];
     }
 
@@ -543,6 +536,6 @@ class FacilityResource extends Resource {
     }
 
     public static function getNavigationBadge(): ?string {
-        return number_format(static::getModel()::count(),0);
+        return number_format(static::getModel()::count(), 0);
     }
 }

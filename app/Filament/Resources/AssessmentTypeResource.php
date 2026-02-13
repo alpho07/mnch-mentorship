@@ -12,44 +12,32 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
-class AssessmentTypeResource extends Resource
-{
+class AssessmentTypeResource extends Resource {
+
     protected static ?string $model = AssessmentType::class;
-
     protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-list';
-
     protected static ?string $navigationGroup = 'Assessment Management';
-
     protected static ?int $navigationSort = 1;
-
     protected static ?string $navigationLabel = 'Assessment Types';
-    
-    public static function shouldRegisterNavigation(): bool
-    {
-        return !auth()->user()->hasRole('Assessor');
+
+    public static function shouldRegisterNavigation(): bool {
+        return false;
     }
 
-    public static function canAccess(): bool
-    {
-        return !auth()->user()->hasRole('Assessor');
-    }
-
-    public static function form(Form $form): Form
-    {
+    public static function form(Form $form): Form {
         return $form
-            ->schema([
-                Forms\Components\Section::make('Basic Information')
-                    ->schema([
-                        Forms\Components\Grid::make(2)
+                        ->schema([
+                            Forms\Components\Section::make('Basic Information')
                             ->schema([
-                                Forms\Components\TextInput::make('name')
+                                Forms\Components\Grid::make(2)
+                                ->schema([
+                                    Forms\Components\TextInput::make('name')
                                     ->label('Assessment Type Name')
                                     ->required()
                                     ->maxLength(255)
                                     ->placeholder('e.g., MNCH Baseline Assessment')
                                     ->columnSpan(2),
-
-                                Forms\Components\TextInput::make('code')
+                                    Forms\Components\TextInput::make('code')
                                     ->label('Code')
                                     ->required()
                                     ->unique(ignoreRecord: true)
@@ -57,131 +45,116 @@ class AssessmentTypeResource extends Resource
                                     ->placeholder('e.g., MNCH_BASELINE')
                                     ->alphaDash()
                                     ->helperText('Unique identifier (alphanumeric, underscores, hyphens only)'),
-
-                                Forms\Components\TextInput::make('version')
+                                    Forms\Components\TextInput::make('version')
                                     ->label('Version')
                                     ->default('1.0')
                                     ->required()
                                     ->placeholder('1.0')
                                     ->helperText('Version number for tracking changes'),
-
-                                Forms\Components\TextInput::make('validity_period_days')
+                                    Forms\Components\TextInput::make('validity_period_days')
                                     ->label('Validity Period (Days)')
                                     ->numeric()
                                     ->minValue(1)
                                     ->placeholder('365')
                                     ->helperText('How long this assessment remains valid (optional)'),
-
-                                Forms\Components\Toggle::make('is_active')
+                                    Forms\Components\Toggle::make('is_active')
                                     ->label('Active')
                                     ->default(true)
                                     ->helperText('Only active assessment types can be used'),
-
-                                Forms\Components\Textarea::make('description')
+                                    Forms\Components\Textarea::make('description')
                                     ->label('Description')
                                     ->rows(4)
                                     ->columnSpan(2)
                                     ->placeholder('Detailed description of this assessment type'),
+                                ]),
                             ]),
-                    ]),
-
-                Forms\Components\Section::make('Metadata')
-                    ->schema([
-                        Forms\Components\KeyValue::make('metadata')
-                            ->label('Additional Metadata')
-                            ->keyLabel('Property')
-                            ->valueLabel('Value')
-                            ->addActionLabel('Add Property')
-                            ->helperText('Store any additional configuration data'),
-                    ])
-                    ->collapsible()
-                    ->collapsed(),
-            ]);
+                            Forms\Components\Section::make('Metadata')
+                            ->schema([
+                                Forms\Components\KeyValue::make('metadata')
+                                ->label('Additional Metadata')
+                                ->keyLabel('Property')
+                                ->valueLabel('Value')
+                                ->addActionLabel('Add Property')
+                                ->helperText('Store any additional configuration data'),
+                            ])
+                            ->collapsible()
+                            ->collapsed(),
+        ]);
     }
 
-    public static function table(Table $table): Table
-    {
+    public static function table(Table $table): Table {
         return $table
-            ->columns([
-                Tables\Columns\TextColumn::make('name')
-                    ->label('Assessment Type')
-                    ->searchable()
-                    ->sortable()
-                    ->weight('medium')
-                    ->description(fn (AssessmentType $record): ?string => $record->description),
-
-                Tables\Columns\TextColumn::make('code')
-                    ->label('Code')
-                    ->badge()
-                    ->color('primary')
-                    ->searchable()
-                    ->sortable(),
-
-                Tables\Columns\TextColumn::make('version')
-                    ->label('Version')
-                    ->badge()
-                    ->color('success'),
-
-                Tables\Columns\TextColumn::make('sections_count')
-                    ->label('Sections')
-                    ->counts('sections')
-                    ->sortable()
-                    ->alignCenter()
-                    ->badge()
-                    ->color('info'),
-
-                Tables\Columns\TextColumn::make('assessments_count')
-                    ->label('Assessments')
-                    ->counts('assessments')
-                    ->sortable()
-                    ->alignCenter()
-                    ->badge()
-                    ->color('warning'),
-
-                Tables\Columns\TextColumn::make('validity_period_days')
-                    ->label('Validity (Days)')
-                    ->sortable()
-                    ->alignCenter()
-                    ->placeholder('No limit'),
-
-                Tables\Columns\IconColumn::make('is_active')
-                    ->label('Active')
-                    ->boolean()
-                    ->sortable(),
-
-                Tables\Columns\TextColumn::make('created_at')
-                    ->label('Created')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-            ])
-            ->filters([
-                Tables\Filters\TernaryFilter::make('is_active')
-                    ->label('Active Status')
-                    ->default(true),
-            ])
-            ->actions([
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
-            ])
-            ->defaultSort('name');
+                        ->columns([
+                            Tables\Columns\TextColumn::make('name')
+                            ->label('Assessment Type')
+                            ->searchable()
+                            ->sortable()
+                            ->weight('medium')
+                            ->description(fn(AssessmentType $record): ?string => $record->description),
+                            Tables\Columns\TextColumn::make('code')
+                            ->label('Code')
+                            ->badge()
+                            ->color('primary')
+                            ->searchable()
+                            ->sortable(),
+                            Tables\Columns\TextColumn::make('version')
+                            ->label('Version')
+                            ->badge()
+                            ->color('success'),
+                            Tables\Columns\TextColumn::make('sections_count')
+                            ->label('Sections')
+                            ->counts('sections')
+                            ->sortable()
+                            ->alignCenter()
+                            ->badge()
+                            ->color('info'),
+                            Tables\Columns\TextColumn::make('assessments_count')
+                            ->label('Assessments')
+                            ->counts('assessments')
+                            ->sortable()
+                            ->alignCenter()
+                            ->badge()
+                            ->color('warning'),
+                            Tables\Columns\TextColumn::make('validity_period_days')
+                            ->label('Validity (Days)')
+                            ->sortable()
+                            ->alignCenter()
+                            ->placeholder('No limit'),
+                            Tables\Columns\IconColumn::make('is_active')
+                            ->label('Active')
+                            ->boolean()
+                            ->sortable(),
+                            Tables\Columns\TextColumn::make('created_at')
+                            ->label('Created')
+                            ->dateTime()
+                            ->sortable()
+                            ->toggleable(isToggledHiddenByDefault: true),
+                        ])
+                        ->filters([
+                            Tables\Filters\TernaryFilter::make('is_active')
+                            ->label('Active Status')
+                            ->default(true),
+                        ])
+                        ->actions([
+                            Tables\Actions\ViewAction::make(),
+                            Tables\Actions\EditAction::make(),
+                            Tables\Actions\DeleteAction::make(),
+                        ])
+                        ->bulkActions([
+                            Tables\Actions\BulkActionGroup::make([
+                                Tables\Actions\DeleteBulkAction::make(),
+                            ]),
+                        ])
+                        ->defaultSort('name');
     }
 
-    public static function getRelations(): array
-    {
+    public static function getRelations(): array {
         return [
             RelationManagers\SectionsRelationManager::class,
         ];
     }
 
-    public static function getPages(): array
-    {
+    public static function getPages(): array {
         return [
             'index' => Pages\ListAssessmentTypes::route('/'),
             'create' => Pages\CreateAssessmentType::route('/create'),
@@ -190,8 +163,7 @@ class AssessmentTypeResource extends Resource
         ];
     }
 
-    public static function getNavigationBadge(): ?string
-    {
+    public static function getNavigationBadge(): ?string {
         return static::getModel()::active()->count();
     }
 }

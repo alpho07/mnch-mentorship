@@ -7,13 +7,15 @@ use App\Models\MentorshipClass;
 use App\Models\ClassModule;
 use App\Models\ClassSession;
 use App\Models\ClassParticipant;
+use App\Models\MentorshipCoMentor;
+use App\Models\ClassAttendance;
 use Filament\Pages\Page;
-use Filament\Widgets\StatsOverviewWidget;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use App\Filament\Resources\MentorshipTrainingResource;
+use Illuminate\Support\Facades\DB;
 
 class MentorDashboard extends Page implements HasTable {
 
@@ -23,6 +25,15 @@ class MentorDashboard extends Page implements HasTable {
     protected static ?string $navigationLabel = 'My Dashboard';
     protected static ?int $navigationSort = 1;
     protected static string $view = 'filament.pages.mentor-dashboard';
+
+    public static function shouldRegisterNavigation(): bool {
+        return auth()->check() && auth()->user()->hasRole(['super_admin', 'facility_mentor', 'division']);
+    }
+    
+    public static function canAccess(): bool {
+        return auth()->check() && auth()->user()->hasRole(['super_admin', 'facility_mentor', 'division']);
+    }
+
 
     public function getTitle(): string {
         return 'Mentor Dashboard';
@@ -34,24 +45,85 @@ class MentorDashboard extends Page implements HasTable {
     }
 
     public function getSubheading(): ?string {
-        $activeCount = Training::where('mentor_id', auth()->id())
+        $stats = $this->getDashboardStats();
+        return "You have {$stats['active_mentorships']} active mentorship(s) with {$stats['total_mentees']} total mentees";
+    }
+
+    /**
+     * Get all training IDs where user is lead mentor OR accepted co-mentor.
+     */
+    private function getMyTrainingIds(): array {
+        $userId = auth()->id();
+
+        $asLead = Training::where('mentor_id', $userId)
+                ->where('type', 'facility_mentorship')
+                ->pluck('id');
+
+        $asCoMentor = MentorshipCoMentor::where('user_id', $userId)
+                ->where('status', 'accepted')
+                ->pluck('training_id');
+
+        return $asLead->merge($asCoMentor)->unique()->toArray();
+    }
+
+    /**
+     * Compute accurate dashboard stats.
+     */
+    public function getDashboardStats(): array {
+        $trainingIds = $this->getMyTrainingIds();
+
+        $totalMentorships = count($trainingIds);
+
+        $activeClasses = MentorshipClass::whereIn('training_id', $trainingIds)
                 ->where('status', 'active')
                 ->count();
 
-        return "You have {$activeCount} active mentorship program(s)";
-    }
+        $totalMentees = ClassParticipant::whereHas('mentorshipClass', function ($q) use ($trainingIds) {
+                    $q->whereIn('training_id', $trainingIds);
+                })->distinct('user_id')->count('user_id');
 
-    protected function getHeaderWidgets(): array {
+        $totalModules = ClassModule::whereHas('mentorshipClass', function ($q) use ($trainingIds) {
+                    $q->whereIn('training_id', $trainingIds);
+                })->count();
+
+        $completedModules = ClassModule::whereHas('mentorshipClass', function ($q) use ($trainingIds) {
+                    $q->whereIn('training_id', $trainingIds);
+                })->where('status', 'completed')->count();
+
+        $totalSessions = ClassSession::whereHas('classModule.mentorshipClass', function ($q) use ($trainingIds) {
+                    $q->whereIn('training_id', $trainingIds);
+                })->count();
+
+        $completedSessions = ClassSession::whereHas('classModule.mentorshipClass', function ($q) use ($trainingIds) {
+                    $q->whereIn('training_id', $trainingIds);
+                })->where('status', 'completed')->count();
+
+        // Attendance rate from class_attendances table
+        $attendanceRecords = ClassAttendance::whereHas('mentorshipClass', function ($q) use ($trainingIds) {
+                    $q->whereIn('training_id', $trainingIds);
+                })->count();
+
         return [
-            \App\Filament\Widgets\MentorStatsWidget::class,
+            'total_mentorships' => $totalMentorships,
+            'active_mentorships' => Training::whereIn('id', $trainingIds)->where('status', 'active')->count(),
+            'active_classes' => $activeClasses,
+            'total_mentees' => $totalMentees,
+            'total_modules' => $totalModules,
+            'completed_modules' => $completedModules,
+            'module_completion_rate' => $totalModules > 0 ? round(($completedModules / $totalModules) * 100, 1) : 0,
+            'total_sessions' => $totalSessions,
+            'completed_sessions' => $completedSessions,
+            'attendance_records' => $attendanceRecords,
         ];
     }
 
     public function table(Table $table): Table {
+        $trainingIds = $this->getMyTrainingIds();
+
         return $table
                         ->query(
                                 Training::query()
-                                ->where('mentor_id', auth()->id())
+                                ->whereIn('id', $trainingIds)
                                 ->with(['program', 'facility'])
                                 ->latest()
                         )
@@ -62,6 +134,16 @@ class MentorDashboard extends Page implements HasTable {
                             ->weight('bold')
                             ->icon('heroicon-o-academic-cap')
                             ->description(fn($record) => $record->facility?->name),
+                            Tables\Columns\TextColumn::make('role')
+                            ->label('My Role')
+                            ->getStateUsing(function ($record) {
+                                if ($record->mentor_id === auth()->id()) {
+                                    return 'Lead Mentor';
+                                }
+                                return 'Co-Mentor';
+                            })
+                            ->badge()
+                            ->color(fn($state) => $state === 'Lead Mentor' ? 'success' : 'info'),
                             Tables\Columns\TextColumn::make('dates')
                             ->label('Duration')
                             ->icon('heroicon-o-calendar')
@@ -81,10 +163,19 @@ class MentorDashboard extends Page implements HasTable {
                             ->getStateUsing(function ($record) {
                                 return ClassParticipant::whereHas('mentorshipClass', function ($query) use ($record) {
                                             $query->where('training_id', $record->id);
-                                        })->distinct('user_id')->count();
+                                        })->distinct('user_id')->count('user_id');
                             })
                             ->badge()
                             ->color('success'),
+                            Tables\Columns\TextColumn::make('module_progress')
+                            ->label('Modules')
+                            ->getStateUsing(function ($record) {
+                                $total = ClassModule::whereHas('mentorshipClass', fn($q) => $q->where('training_id', $record->id))->count();
+                                $completed = ClassModule::whereHas('mentorshipClass', fn($q) => $q->where('training_id', $record->id))->where('status', 'completed')->count();
+                                return $total > 0 ? "{$completed}/{$total}" : '0';
+                            })
+                            ->badge()
+                            ->color('warning'),
                             Tables\Columns\BadgeColumn::make('status')
                             ->colors([
                                 'secondary' => 'draft',
@@ -105,9 +196,22 @@ class MentorDashboard extends Page implements HasTable {
                         ->emptyStateIcon('heroicon-o-academic-cap');
     }
 
-    public static function shouldRegisterNavigation(): bool {
-        // Only show for users who are mentors
-        return auth()->check() && Training::where('mentor_id', auth()->id())->exists();
-    }
+//    public static function shouldRegisterNavigation(): bool {
+//        if (!auth()->check()) {
+//            return false;
+//        }
+//
+//        $userId = auth()->id();
+//
+//        // Show if user is lead mentor OR accepted co-mentor
+//        $isLeadMentor = Training::where('mentor_id', $userId)
+//                ->where('type', 'facility_mentorship')
+//                ->exists();
+//
+//        $isCoMentor = MentorshipCoMentor::where('user_id', $userId)
+//                ->where('status', 'accepted')
+//                ->exists();
+//
+//        return $isLeadMentor || $isCoMentor;
+//    }
 }
-

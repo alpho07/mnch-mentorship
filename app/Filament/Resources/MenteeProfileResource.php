@@ -19,22 +19,14 @@ class MenteeProfileResource extends Resource {
     protected static ?string $navigationIcon = 'heroicon-o-academic-cap';
     protected static ?string $navigationLabel = 'Mentor Profiles';
     protected static ?string $navigationGroup = 'Training Management';
-    protected static ?int $navigationSort =7;
+    protected static ?int $navigationSort = 7;
     protected static ?string $slug = 'mentee-profiles';
-    
-    
-    public static function shouldRegisterNavigation(): bool
-    {
-        return !auth()->user()->hasRole('Assessor');
+
+    public static function shouldRegisterNavigation(): bool {
+        return auth()->check() && auth()->user()->hasRole(['super_admin', 'admin', 'division']);
     }
 
-    public static function canAccess(): bool
-    {
-        return !auth()->user()->hasRole('Assessor');
-    }
-    
-     public function getTitle(): string
-    {
+    public function getTitle(): string {
         return 'Mentorship Counties';
     }
 
@@ -90,35 +82,35 @@ class MenteeProfileResource extends Resource {
                             ->alignCenter()
                             ->badge()
                             ->color('success'),
-                            /*TextColumn::make('completion_rate')
-                            ->label('Completion Rate')
-                            ->getStateUsing(function ($record) {
-                                $total = TrainingParticipant::whereHas('training', function ($query) use ($record) {
-                                            $query->where('type', 'facility_mentorship')
-                                                    ->whereHas('facility.subcounty', function ($q) use ($record) {
-                                                        $q->where('county_id', $record->id);
-                                                    });
-                                        })->count();
+                                /* TextColumn::make('completion_rate')
+                                  ->label('Completion Rate')
+                                  ->getStateUsing(function ($record) {
+                                  $total = TrainingParticipant::whereHas('training', function ($query) use ($record) {
+                                  $query->where('type', 'facility_mentorship')
+                                  ->whereHas('facility.subcounty', function ($q) use ($record) {
+                                  $q->where('county_id', $record->id);
+                                  });
+                                  })->count();
 
-                                $completed = TrainingParticipant::whereHas('training', function ($query) use ($record) {
-                                            $query->where('type', 'facility_mentorship')
-                                                    ->whereHas('facility.subcounty', function ($q) use ($record) {
-                                                        $q->where('county_id', $record->id);
-                                                    });
-                                        })->where('completion_status', 'completed')->count();
+                                  $completed = TrainingParticipant::whereHas('training', function ($query) use ($record) {
+                                  $query->where('type', 'facility_mentorship')
+                                  ->whereHas('facility.subcounty', function ($q) use ($record) {
+                                  $q->where('county_id', $record->id);
+                                  });
+                                  })->where('completion_status', 'completed')->count();
 
-                                return $total > 0 ? round(($completed / $total) * 100, 1) . '%' : '0%';
-                            })
-                            ->alignCenter()
-                            ->badge()
-                            ->color(function ($record) {
-                                $rate = (float) str_replace('%', '', $record->completion_rate ?? '0');
-                                if ($rate >= 80)
-                                    return 'success';
-                                if ($rate >= 60)
-                                    return 'warning';
-                                return 'danger';
-                            }),*/
+                                  return $total > 0 ? round(($completed / $total) * 100, 1) . '%' : '0%';
+                                  })
+                                  ->alignCenter()
+                                  ->badge()
+                                  ->color(function ($record) {
+                                  $rate = (float) str_replace('%', '', $record->completion_rate ?? '0');
+                                  if ($rate >= 80)
+                                  return 'success';
+                                  if ($rate >= 60)
+                                  return 'warning';
+                                  return 'danger';
+                                  }), */
                         ])
                         ->actions([
                             Action::make('view_facilities')

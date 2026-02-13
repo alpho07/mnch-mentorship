@@ -5,13 +5,12 @@ namespace App\Filament\Widgets;
 use App\Models\Training;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
+use Illuminate\Database\Eloquent\Builder;
 
 class MentorshipStatsOverview extends BaseWidget {
 
     protected function getStats(): array {
         $stats = $this->getQuickStats();
-
-       // dd($stats);
 
         return [
                     Stat::make('All Mentorships', $stats['total'])
@@ -33,25 +32,28 @@ class MentorshipStatsOverview extends BaseWidget {
         ];
     }
 
+    /**
+     * Build a base query scoped by role: admins see all, others see only their own.
+     */
+    protected function getScopedBaseQuery(): Builder {
+        $query = Training::where('type', 'facility_mentorship');
+
+        $user = auth()->user();
+        if (!$user->hasRole(['super_admin', 'admin', 'division'])) {
+            $query->where('mentor_id', $user->id);
+        }
+
+        return $query;
+    }
+
     protected function getQuickStats(): array {
         return [
-            'total' => Training::where('type', 'facility_mentorship')->count(),
-            'ongoing' => Training::where('type', 'facility_mentorship')
-                    ->where('status', 'ongoing')
-                    ->count(),
-            'completed' => Training::where('type', 'facility_mentorship')
-                    ->where('status', 'completed')
-                    ->count(),
-            'new' => Training::where('type', 'facility_mentorship')
-                    ->where('status', 'new') // fixed typo "statu"
-                    ->count(),
-            'upcoming' => Training::where('type', 'facility_mentorship')
-                    ->where('start_date', '>', now())
-                    ->count(),
-            'mentees' => Training::where('type', 'facility_mentorship')
-                    ->withCount('participants')
-                    ->get()
-                    ->sum('participants_count'),
+            'total' => $this->getScopedBaseQuery()->count(),
+            'ongoing' => $this->getScopedBaseQuery()->where('status', 'ongoing')->count(),
+            'completed' => $this->getScopedBaseQuery()->where('status', 'completed')->count(),
+            'new' => $this->getScopedBaseQuery()->where('status', 'new')->count(),
+            'upcoming' => $this->getScopedBaseQuery()->where('start_date', '>', now())->count(),
+            'mentees' => $this->getScopedBaseQuery()->withCount('participants')->get()->sum('participants_count'),
         ];
     }
 }

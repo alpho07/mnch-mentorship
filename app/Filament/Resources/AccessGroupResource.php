@@ -20,11 +20,23 @@ class AccessGroupResource extends Resource {
     protected static ?string $recordTitleAttribute = 'name';
 
     public static function shouldRegisterNavigation(): bool {
-        return !auth()->user()->hasRole('Assessor');
+        return auth()->check() && auth()->user()->hasRole(['super_admin', 'admin', 'division']);
     }
 
     public static function canAccess(): bool {
-        return !auth()->user()->hasRole('Assessor');
+        return auth()->check() && auth()->user()->hasRole(['super_admin', 'admin', 'division']);
+    }
+
+    public static function canCreate(): bool {
+        return static::canAccess();
+    }
+
+    public static function canEdit($record): bool {
+        return static::canAccess();
+    }
+
+    public static function canDelete($record): bool {
+        return static::canAccess();
     }
 
     public static function form(Form $form): Form {

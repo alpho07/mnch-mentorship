@@ -5,8 +5,6 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\MentorshipTrainingResource\Pages;
 use App\Models\Training;
 use App\Models\Facility;
-use App\Models\County;
-use App\Models\Program;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -15,7 +13,6 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Actions\ActionGroup;
 use Filament\Tables\Actions\Action;
@@ -39,14 +36,39 @@ class MentorshipTrainingResource extends Resource {
     protected static ?string $breadcrumb = 'Mentorships';
 
     public static function shouldRegisterNavigation(): bool {
-        // Show for users who are mentees
-        return false;
+        return auth()->check() && auth()->user()->hasRole(['super_admin', 'facility_mentor']);
+    }
+
+    public static function canAccess(): bool {
+        return auth()->check() && auth()->user()->hasRole(['super_admin', 'facility_mentor']);
+    }
+
+    public static function canCreate(): bool {
+        return static::canAccess();
+    }
+
+    public static function canEdit($record): bool {
+        return static::canAccess();
+    }
+
+    public static function canDelete($record): bool {
+        return static::canAccess();
     }
 
     public static function getEloquentQuery(): Builder {
-        return parent::getEloquentQuery()
-                        ->where('type', 'facility_mentorship')
-                        ->withoutGlobalScopes([SoftDeletingScope::class]);
+        $query = parent::getEloquentQuery()
+                ->where('type', 'facility_mentorship')
+                ->withoutGlobalScopes([SoftDeletingScope::class]);
+
+        $user = auth()->user();
+
+        // Super admin, admin, division: see all mentorships
+        // Everyone else: only see mentorships where they are the mentor
+        if (!$user->hasRole(['super_admin', 'admin', 'division'])) {
+            $query->where('mentor_id', $user->id);
+        }
+
+        return $query;
     }
 
     public static function form(Form $form): Form {
@@ -77,8 +99,11 @@ class MentorshipTrainingResource extends Resource {
                                         }
 
                                         return Facility::whereHas('subcounty', function ($query) use ($countyId) {
-                                                    $query->where('county_id', $countyId);
-                                                })->pluck('name', 'id');
+                                                            $query->where('county_id', $countyId);
+                                                        })->get()
+                                                        ->mapWithKeys(fn($facility) => [
+                                                            $facility->id => "{$facility->mfl_code} - {$facility->name}",
+                                        ]);
                                     })
                                     ->searchable()
                                     ->required()
@@ -98,13 +123,16 @@ class MentorshipTrainingResource extends Resource {
                                     ->label('Start Date')
                                     ->required()
                                     ->native(false)
+                                    ->live()
                                     ->minDate(now())
+                                    ->afterStateUpdated(fn(Set $set) => $set('end_date', null))
                                     ->displayFormat('M j, Y'),
                                     DatePicker::make('end_date')
                                     ->label('End Date')
                                     ->required()
                                     ->native(false)
-                                    ->after('start_date')
+                                    ->minDate(fn(Get $get) => $get('start_date') ?: now())
+                                    ->afterOrEqual('start_date')
                                     ->displayFormat('M j, Y'),
                                     TextInput::make('max_participants')
                                     ->label('Maximum Mentees')
@@ -165,7 +193,11 @@ class MentorshipTrainingResource extends Resource {
                             ->color('warning'),
                             TextColumn::make('participants_count')
                             ->label('Mentees')
-                            ->counts('participants')
+                            ->getStateUsing(function (Training $record): int {
+                                return \App\Models\ClassParticipant::whereHas('mentorshipClass', function ($query) use ($record) {
+                                            $query->where('training_id', $record->id);
+                                        })->count();
+                            })
                             ->badge()
                             ->color('success'),
                             TextColumn::make('created_at')
@@ -191,7 +223,7 @@ class MentorshipTrainingResource extends Resource {
                         ])
                         ->actions([
                             ActionGroup::make([
-                                     Action::make('manage_classes')
+                                Action::make('manage_classes')
                                 ->label('Manage Classes')
                                 ->icon('heroicon-o-academic-cap')
                                 ->color('success')
@@ -202,7 +234,6 @@ class MentorshipTrainingResource extends Resource {
 //                                ->color('info'),
                                 Tables\Actions\EditAction::make()
                                 ->color('warning'),
-                           
 //                                Action::make('manage_mentees')
 //                                ->label('Manage Mentees')
 //                                ->icon('heroicon-o-users')
@@ -264,11 +295,18 @@ class MentorshipTrainingResource extends Resource {
     }
 
     public static function getNavigationBadge(): ?string {
-        $count = static::getModel()::where('type', 'facility_mentorship')
+        $query = static::getModel()::where('type', 'facility_mentorship')
                 ->whereHas('mentorshipClasses', function ($query) {
                     $query->where('status', 'active');
-                })
-                ->count();
+                });
+
+        // Apply same role-based filtering for badge count
+        $user = auth()->user();
+        if (!$user->hasRole(['super_admin', 'admin', 'division'])) {
+            $query->where('mentor_id', $user->id);
+        }
+
+        $count = $query->count();
 
         return $count > 0 ? (string) $count : null;
     }

@@ -59,10 +59,10 @@ class ModuleSummary extends Page implements HasInfolists {
                     ->label('Manage Mentees')
                     ->icon('heroicon-o-users')
                     ->color('success')
-                    ->url(fn() => MentorshipTrainingResource::getUrl('module-mentees', [
+                    ->url(fn() => MentorshipTrainingResource::getUrl('class-mentees', [
                                 'training' => $this->training->id,
                                 'class' => $this->class->id,
-                                'module' => $this->module->id,
+                                //'module' => $this->module->id,
                             ])),
                     Actions\Action::make('back')
                     ->label('Back to Modules')
@@ -97,7 +97,7 @@ class ModuleSummary extends Page implements HasInfolists {
                             ->schema([
                                 Infolists\Components\Grid::make(4)
                                 ->schema([
-                                    Infolists\Components\TextEntry::make('training.facility.subcounty.county.name')
+                                    Infolists\Components\TextEntry::make('training.facility.name')
                                     ->label('County')
                                     ->icon('heroicon-o-map')
                                     ->weight(FontWeight::Bold)

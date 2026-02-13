@@ -45,7 +45,7 @@ class ManageMentorshipClasses extends Page implements HasTable {
 
     public function getSubheading(): ?string {
         if ($this->viewingModules && $this->selectedClass) {
-            return "{$this->selectedClass->module_count} modules • {$this->selectedClass->session_count} sessions";
+            return "{$this->selectedClass->module_count} modules â€¢ {$this->selectedClass->session_count} sessions";
         }
         return "Manage mentorship cohorts and modules";
     }
@@ -74,12 +74,18 @@ class ManageMentorshipClasses extends Page implements HasTable {
                             Forms\Components\DatePicker::make('start_date')
                             ->label('Start Date')
                             ->required()
-                            ->native(false),
+                            ->native(false)
+                            ->live()
+                            ->minDate(fn() => $this->record->start_date)
+                            ->maxDate(fn() => $this->record->end_date)
+                            ->helperText(fn() => 'Between ' . $this->record->start_date->format('M j, Y') . ' and ' . $this->record->end_date->format('M j, Y')),
                             Forms\Components\DatePicker::make('end_date')
                             ->label('End Date')
                             ->required()
                             ->native(false)
-                            ->after('start_date'),
+                            ->minDate(fn(Forms\Get $get) => $get('start_date') ?: $this->record->start_date)
+                            ->maxDate(fn() => $this->record->end_date)
+                            ->afterOrEqual('start_date'),
                         ]),
                         Forms\Components\Textarea::make('description')
                         ->label('Description')
@@ -91,7 +97,7 @@ class ManageMentorshipClasses extends Page implements HasTable {
                     ->label('Back to Mentorships')
                     ->icon('heroicon-o-arrow-left')
                     ->color('gray')
-                    ->url(fn() => MentorshipTrainingResource::getUrl('view', ['record' => $this->record])),
+                    ->url(fn() => MentorshipTrainingResource::getUrl('index'))
         ];
     }
 
@@ -139,13 +145,13 @@ class ManageMentorshipClasses extends Page implements HasTable {
                             ->description(fn(MentorshipClass $record): string =>
                                     $record->description ?? ''
                             ),
-                            Tables\Columns\BadgeColumn::make('status')
-                            ->colors([
-                                'secondary' => 'draft',
-                                'warning' => 'active',
-                                'success' => 'completed',
-                                'danger' => 'cancelled',
-                            ]),
+//                            Tables\Columns\BadgeColumn::make('status')
+//                            ->colors([
+//                                'secondary' => 'draft',
+//                                'warning' => 'active',
+//                                'success' => 'completed',
+//                                'danger' => 'cancelled',
+//                            ]),
                             Tables\Columns\TextColumn::make('start_date')
                             ->date('M j, Y')
                             ->sortable(),
@@ -212,10 +218,16 @@ class ManageMentorshipClasses extends Page implements HasTable {
                                     Forms\Components\Grid::make(2)->schema([
                                         Forms\Components\DatePicker::make('start_date')
                                         ->required()
-                                        ->native(false),
+                                        ->native(false)
+                                        ->live()
+                                        ->minDate(fn() => $this->record->start_date)
+                                        ->maxDate(fn() => $this->record->end_date),
                                         Forms\Components\DatePicker::make('end_date')
                                         ->required()
-                                        ->native(false),
+                                        ->native(false)
+                                        ->minDate(fn(Forms\Get $get) => $get('start_date') ?: $this->record->start_date)
+                                        ->maxDate(fn() => $this->record->end_date)
+                                        ->afterOrEqual('start_date'),
                                     ]),
                                     Forms\Components\Textarea::make('description')
                                     ->rows(3),
@@ -258,37 +270,37 @@ class ManageMentorshipClasses extends Page implements HasTable {
                             ->description(fn(ClassModule $record): string =>
                                     $record->programModule->description ?? ''
                             ),
-                            Tables\Columns\BadgeColumn::make('status')
-                            ->colors([
-                                'secondary' => 'not_started',
-                                'warning' => 'in_progress',
-                                'success' => 'completed',
-                            ])
-                            ->formatStateUsing(fn(string $state): string =>
-                                    match ($state) {
-                                        'not_started' => 'Not Started',
-                                        'in_progress' => 'In Progress',
-                                        'completed' => 'Completed',
-                                        default => ucfirst($state),
-                                    }
-                            ),
+//                            Tables\Columns\BadgeColumn::make('status')
+//                            ->colors([
+//                                'secondary' => 'not_started',
+//                                'warning' => 'in_progress',
+//                                'success' => 'completed',
+//                            ])
+//                            ->formatStateUsing(fn(string $state): string =>
+//                                    match ($state) {
+//                                        'not_started' => 'Not Started',
+//                                        'in_progress' => 'In Progress',
+//                                        'completed' => 'Completed',
+//                                        default => ucfirst($state),
+//                                    }
+//                            ), 
                             Tables\Columns\TextColumn::make('session_count')
                             ->label('Sessions')
                             ->badge()
-                            ->color('primary')
-                            ->description(function (ClassModule $record) {
-                                $completed = $record->sessions()->where('status', 'completed')->count();
-                                return $completed > 0 ? "{$completed} completed" : 'None completed';
-                            }),
-                            Tables\Columns\TextColumn::make('progress_percentage')
-                            ->label('Progress')
-                            ->suffix('%')
-                            ->badge()
-                            ->color(fn($state) => $state >= 100 ? 'success' : ($state >= 50 ? 'warning' : 'danger')),
-                            Tables\Columns\TextColumn::make('programModule.duration_weeks')
-                            ->label('Duration')
-                            ->suffix(' weeks')
-                            ->toggleable(),
+                            ->color('primary'),
+//                            ->description(function (ClassModule $record) {
+//                                $completed = $record->sessions()->where('status', 'completed')->count();
+//                                return $completed > 0 ? "{$completed} completed" : 'None completed';
+//                            }),
+//                            Tables\Columns\TextColumn::make('progress_percentage')
+//                            ->label('Progress')
+//                            ->suffix('%')
+//                            ->badge()
+//                            ->color(fn($state) => $state >= 100 ? 'success' : ($state >= 50 ? 'warning' : 'danger')),
+//                            Tables\Columns\TextColumn::make('programModule.duration_weeks')
+//                            ->label('Duration')
+//                            ->suffix(' weeks')
+//                            ->toggleable(),
                         ])
                         ->actions([
                             Tables\Actions\ActionGroup::make([
@@ -347,32 +359,16 @@ class ManageMentorshipClasses extends Page implements HasTable {
             'created_by' => auth()->id(),
         ]);
 
-        // Auto-populate modules from training's program
-        if ($this->record->program_id) {
-            $programModules = \App\Models\ProgramModule::where('program_id', $this->record->program_id)
-                    ->where('is_active', true)
-                    ->orderBy('order_sequence')
-                    ->get();
-
-            foreach ($programModules as $index => $programModule) {
-                ClassModule::create([
-                    'mentorship_class_id' => $class->id,
-                    'program_module_id' => $programModule->id,
-                    'order_sequence' => $index + 1,
-                    'status' => 'not_started',
-                ]);
-            }
-        }
-
         Notification::make()
                 ->success()
                 ->title('Class Created')
-                ->body("Class '{$data['name']}' created with modules. Now add sessions to each module.")
+                ->body("Class '{$data['name']}' created. Now add modules to it.")
                 ->send();
 
-        // Navigate to the new class's modules using query parameter
-        redirect(MentorshipTrainingResource::getUrl('classes', [
-                    'record' => $this->record,
-                ]) . '?class=' . $class->id);
+        // Navigate to the class modules page to manually add modules
+        redirect(MentorshipTrainingResource::getUrl('class-modules', [
+                    'record' => $this->record->id,
+                    'class' => $class->id,
+        ]));
     }
 }

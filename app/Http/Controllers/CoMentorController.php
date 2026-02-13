@@ -3,39 +3,67 @@
 namespace App\Http\Controllers;
 
 use App\Models\MentorshipCoMentor;
-use App\Models\MentorshipTraining;
+use App\Models\Training;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
-class CoMentorController extends Controller
-{
-    public function show(string $token)
-    {
-        $invitation = MentorshipCoMentor::where('invitation_token', $token)
-            ->whereIn('status', ['pending'])
-            ->firstOrFail();
+class CoMentorController extends Controller {
 
-        $training = MentorshipTraining::findOrFail($invitation->training_id);
-        $inviter = \App\Models\User::find($invitation->invited_by);
+    /**
+     * Show invitation page.
+     * Only pending invitations with a valid token can be viewed.
+     */
+    public function show(string $token) {
+        $invitation = MentorshipCoMentor::where('invitation_token', $token)
+                ->with(['user', 'inviter'])
+                ->firstOrFail();
+
+        // Check if invitation is still actionable
+        if ($invitation->status === 'revoked') {
+            return view('co-mentor.invitation', [
+                'invitation' => $invitation,
+                'training' => null,
+                'inviter' => $invitation->inviter,
+                'token' => $token,
+                'error' => 'This invitation has been revoked by the lead mentor.',
+            ]);
+        }
+
+        if (!in_array($invitation->status, ['pending'])) {
+            return view('co-mentor.invitation', [
+                'invitation' => $invitation,
+                'training' => null,
+                'inviter' => $invitation->inviter,
+                'token' => $token,
+                'error' => 'This invitation has already been ' . $invitation->status . '.',
+            ]);
+        }
+
+        $training = Training::findOrFail($invitation->training_id);
+        $inviter = $invitation->inviter;
 
         return view('co-mentor.invitation', [
             'invitation' => $invitation,
             'training' => $training,
             'inviter' => $inviter,
             'token' => $token,
+            'error' => null,
         ]);
     }
 
-    public function process(Request $request, string $token)
-    {
+    /**
+     * Process invitation acceptance or decline.
+     */
+    public function process(Request $request, string $token) {
         $request->validate([
             'action' => 'required|in:accept,decline',
         ]);
 
         $invitation = MentorshipCoMentor::where('invitation_token', $token)
-            ->whereIn('status', ['pending'])
-            ->firstOrFail();
+                ->where('status', 'pending') // Only pending can be processed
+                ->firstOrFail();
 
         // Ensure authenticated user matches invitation
         if (Auth::id() !== $invitation->user_id) {
@@ -53,8 +81,8 @@ class CoMentorController extends Controller
                 DB::commit();
 
                 return redirect()
-                    ->route('filament.admin.pages.dashboard')
-                    ->with('success', 'You are now a co-mentor for this training!');
+                                ->route('filament.admin.pages.dashboard')
+                                ->with('success', 'You are now a co-mentor for this training!');
             } else {
                 $invitation->update([
                     'status' => 'declined',
@@ -63,11 +91,12 @@ class CoMentorController extends Controller
                 DB::commit();
 
                 return redirect()
-                    ->route('filament.admin.pages.dashboard')
-                    ->with('info', 'Invitation declined.');
+                                ->route('filament.admin.pages.dashboard')
+                                ->with('info', 'Invitation declined.');
             }
         } catch (\Exception $e) {
             DB::rollBack();
+
             return back()->withErrors(['error' => 'Failed to process invitation: ' . $e->getMessage()]);
         }
     }

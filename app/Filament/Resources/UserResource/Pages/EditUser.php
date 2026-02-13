@@ -5,12 +5,11 @@ namespace App\Filament\Resources\UserResource\Pages;
 use App\Filament\Resources\UserResource;
 use Filament\Resources\Pages\EditRecord;
 
-class EditUser extends EditRecord
-{
+class EditUser extends EditRecord {
+
     protected static string $resource = UserResource::class;
 
-    protected function mutateFormDataBeforeFill(array $data): array
-    {
+    protected function mutateFormDataBeforeFill(array $data): array {
         $user = $this->record;
 
         // Load current roles and org units for the form
@@ -19,11 +18,18 @@ class EditUser extends EditRecord
         $data['subcounties'] = $user->subcounties->pluck('id')->toArray();
         $data['facilities'] = $user->facilities->pluck('id')->toArray();
 
+        // Recalculate display name from first, middle, last names
+        $parts = array_filter([
+            trim($data['first_name'] ?? ''),
+            trim($data['middle_name'] ?? ''),
+            trim($data['last_name'] ?? ''),
+        ]);
+        $data['name'] = implode(' ', $parts);
+
         return $data;
     }
 
-    protected function handleRecordUpdate($user, array $data): \Illuminate\Database\Eloquent\Model
-    {
+    protected function handleRecordUpdate($user, array $data): \Illuminate\Database\Eloquent\Model {
         $roles = $data['roles'] ?? [];
         $counties = $data['counties'] ?? [];
         $subcounties = $data['subcounties'] ?? [];
@@ -31,7 +37,18 @@ class EditUser extends EditRecord
 
         unset($data['roles'], $data['counties'], $data['subcounties'], $data['facilities']);
 
-        // Update user data (excluding pivot data)
+        // Remove password from update data — password cannot be changed during edit
+        unset($data['password']);
+
+        // Ensure display name is built from first, middle, last names
+        $parts = array_filter([
+            trim($data['first_name'] ?? ''),
+            trim($data['middle_name'] ?? ''),
+            trim($data['last_name'] ?? ''),
+        ]);
+        $data['name'] = implode(' ', $parts);
+
+        // Update user data (excluding pivot data and password)
         $user->update($data);
 
         // Sync roles

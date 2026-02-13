@@ -10,6 +10,8 @@ use App\Models\Facility;
 use App\Models\Cadre;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Forms\Get;
+use Filament\Forms\Set;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -21,18 +23,43 @@ class UserResource extends Resource {
     protected static ?string $navigationIcon = 'heroicon-o-users';
     protected static ?string $navigationGroup = 'User Management';
 
-
+    public static function shouldRegisterNavigation(): bool {
+        return auth()->check() && auth()->user()->hasRole(['super_admin', 'admin', 'division']);
+    }
 
     public static function form(Form $form): Form {
         return $form
                         ->schema([
-                            Forms\Components\TextInput::make('first_name')->label('First Name')->required(),
-                            Forms\Components\TextInput::make('middle_name')->label('Middle Name'),
-                            Forms\Components\TextInput::make('last_name')->label('Last Name')->required(),
-                            Forms\Components\TextInput::make('name')->label('Display Name')->required(),
-                            Forms\Components\TextInput::make('email')->email()->required()->unique(ignoreRecord: true),
-                            Forms\Components\TextInput::make('id_number')->label('ID Number')->required()->maxLength(50),
-                            Forms\Components\TextInput::make('phone')->label('Phone Number')->required()->maxLength(20),
+                            Forms\Components\TextInput::make('first_name')
+                            ->label('First Name')
+                            ->required()
+                            ->live(onBlur: true)
+                            ->afterStateUpdated(fn(Get $get, Set $set) => static::updateDisplayName($get, $set)),
+                            Forms\Components\TextInput::make('middle_name')
+                            ->label('Middle Name')
+                            ->live(onBlur: true)
+                            ->afterStateUpdated(fn(Get $get, Set $set) => static::updateDisplayName($get, $set)),
+                            Forms\Components\TextInput::make('last_name')
+                            ->label('Last Name')
+                            ->required()
+                            ->live(onBlur: true)
+                            ->afterStateUpdated(fn(Get $get, Set $set) => static::updateDisplayName($get, $set)),
+                            Forms\Components\TextInput::make('name')
+                            ->label('Display Name')
+                            ->required()
+                            ->readOnly(),
+                            Forms\Components\TextInput::make('email')
+                            ->email()
+                            ->required()
+                            ->unique(ignoreRecord: true),
+                            Forms\Components\TextInput::make('id_number')
+                            ->label('ID Number')
+                            ->required()
+                            ->maxLength(50),
+                            Forms\Components\TextInput::make('phone')
+                            ->label('Phone Number')
+                            ->required()
+                            ->maxLength(20),
                             Forms\Components\Select::make('cadre_id')
                             ->label('Cadre')
                             ->options(Cadre::all()->pluck('name', 'id'))
@@ -47,12 +74,11 @@ class UserResource extends Resource {
                             ])
                             ->default('active')
                             ->required(),
-                            Forms\Components\TextInput::make('password')
+                            // Password field: only visible during create, auto-generated
+                            Forms\Components\Placeholder::make('password_notice')
                             ->label('Password')
-                            ->password()
-                            ->dehydrateStateUsing(fn($state) => !empty($state) ? bcrypt($state) : null)
-                            ->required(fn($context) => $context === 'create')
-                            ->maxLength(255),
+                            ->content('A password will be auto-generated for this user (8 characters). You will see it after saving.')
+                            ->visible(fn(string $context): bool => $context === 'create'),
                             Forms\Components\Select::make('roles')
                             ->label('Roles')
                             ->multiple()
@@ -62,25 +88,27 @@ class UserResource extends Resource {
                             ->label('Organization Level')
                             ->options([
                                 'above_site' => 'Above Site (Super Admin/National/Division)',
-                                'county' => 'County',
-                                'subcounty' => 'Subcounty',
+                                // 'county' => 'County',
+                                // 'subcounty' => 'Subcounty',
                                 'facility' => 'Facility',
                             ])
                             ->required()
                             ->live(),
                             // Org assignment fields, shown based on org_level
-                            Forms\Components\Select::make('counties')
-                            ->label('Counties (for County Level)')
-                            ->multiple()
-                            ->options(County::all()->pluck('name', 'id'))
-                            ->visible(fn($get) => $get('org_level') === 'county')
-                            ->required(fn($get) => $get('org_level') === 'county'),
-                            Forms\Components\Select::make('subcounties')
-                            ->label('Subcounties (for Subcounty Level)')
-                            ->multiple()
-                            ->options(Subcounty::all()->pluck('name', 'id'))
-                            ->visible(fn($get) => $get('org_level') === 'subcounty')
-                            ->required(fn($get) => $get('org_level') === 'subcounty'),
+                            // County level - commented out
+                            // Forms\Components\Select::make('counties')
+                            //     ->label('Counties (for County Level)')
+                            //     ->multiple()
+                            //     ->options(County::all()->pluck('name', 'id'))
+                            //     ->visible(fn($get) => $get('org_level') === 'county')
+                            //     ->required(fn($get) => $get('org_level') === 'county'),
+                            // Subcounty level - commented out
+                            // Forms\Components\Select::make('subcounties')
+                            //     ->label('Subcounties (for Subcounty Level)')
+                            //     ->multiple()
+                            //     ->options(Subcounty::all()->pluck('name', 'id'))
+                            //     ->visible(fn($get) => $get('org_level') === 'subcounty')
+                            //     ->required(fn($get) => $get('org_level') === 'subcounty'),
                             Forms\Components\Select::make('facilities')
                             ->label('Facilities (for Facility Level)')
                             ->multiple()
@@ -92,6 +120,19 @@ class UserResource extends Resource {
                             ->options(Facility::all()->pluck('name', 'id'))
                             ->searchable(),
         ]);
+    }
+
+    /**
+     * Auto-fill display name from first, middle, and last names.
+     */
+    public static function updateDisplayName(Get $get, Set $set): void {
+        $parts = array_filter([
+            trim($get('first_name') ?? ''),
+            trim($get('middle_name') ?? ''),
+            trim($get('last_name') ?? ''),
+        ]);
+
+        $set('name', implode(' ', $parts));
     }
 
     public static function table(Table $table): Table {

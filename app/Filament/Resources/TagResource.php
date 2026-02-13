@@ -21,11 +21,7 @@ class TagResource extends Resource {
     protected static ?string $recordTitleAttribute = 'name';
 
     public static function shouldRegisterNavigation(): bool {
-        return !auth()->user()->hasRole('Assessor');
-    }
-
-    public static function canAccess(): bool {
-        return !auth()->user()->hasRole('Assessor');
+        return auth()->check() && auth()->user()->hasRole(['super_admin', 'admin', 'division', 'resource_manager']);
     }
 
     public static function form(Form $form): Form {

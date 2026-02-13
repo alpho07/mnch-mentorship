@@ -36,8 +36,8 @@ use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Section;
 use Filament\Notifications\Notification;
 
-class GlobalTrainingResource extends Resource
-{
+class GlobalTrainingResource extends Resource {
+
     protected static ?string $model = Training::class;
     protected static ?string $navigationIcon = 'heroicon-o-academic-cap';
     protected static ?string $navigationLabel = 'MOH Trainings';
@@ -46,148 +46,142 @@ class GlobalTrainingResource extends Resource
     protected static ?string $slug = 'moh-trainings';
     protected static ?string $recordTitleAttribute = 'title';
 
+    public static function shouldRegisterNavigation(): bool {
+        return auth()->check() && auth()->user()->hasRole(['super_admin', 'division']);
+    }
+
+    public static function canAccess(): bool {
+        return auth()->check() && auth()->user()->hasRole(['super_admin', 'division']);
+    }
+
     // Filter to only show global trainings
-    public static function getEloquentQuery(): Builder
-    {
+    public static function getEloquentQuery(): Builder {
         return parent::getEloquentQuery()
-            ->where('type', 'global_training')
-            ->withoutGlobalScopes([
-                SoftDeletingScope::class,
-            ]);
+                        ->where('type', 'global_training')
+                        ->withoutGlobalScopes([
+                            SoftDeletingScope::class,
+        ]);
     }
 
     // Ensure proper route model binding for global trainings only
-    public static function resolveRecordRouteBinding($value): ?Model
-    {
+    public static function resolveRecordRouteBinding($value): ?Model {
         return static::getModel()::where('type', 'global_training')->findOrFail($value);
     }
 
-    public static function form(Form $form): Form
-    {
+    public static function form(Form $form): Form {
         return $form
-            ->schema([
-                // Hidden field to ensure type is always set
-                Forms\Components\Hidden::make('type')
-                    ->default('global_training'),
-
-                // Hidden field to store mentor_id (logged in user)
-                Forms\Components\Hidden::make('mentor_id')
-                    ->default(auth()->id()),
-
-                Forms\Components\Section::make('Training Information')
-                    ->description('Basic details about the training program')
-                    ->schema([
-                        Forms\Components\Select::make('approved_training_area_id')
-                            ->label('Training Area')
-                            ->relationship('approvedTrainingArea', 'name', fn (Builder $query) => $query->active()->ordered())
-                            ->required()
-                            ->searchable()
-                            ->preload()
-                            ->helperText('Select the approved training area for this program')
-                            ->columnSpanFull(),
-
-                        Forms\Components\Grid::make(2)
+                        ->schema([
+                            // Hidden field to ensure type is always set
+                            Forms\Components\Hidden::make('type')
+                            ->default('global_training'),
+                            // Hidden field to store mentor_id (logged in user)
+                            Forms\Components\Hidden::make('mentor_id')
+                            ->default(auth()->id()),
+                            Forms\Components\Section::make('Training Information')
+                            ->description('Basic details about the training program')
                             ->schema([
-                                Forms\Components\TextInput::make('title')
+                                Forms\Components\Select::make('approved_training_area_id')
+                                ->label('Training Area')
+                                ->relationship('approvedTrainingArea', 'name', fn(Builder $query) => $query->active()->ordered())
+                                ->required()
+                                ->searchable()
+                                ->preload()
+                                ->helperText('Select the approved training area for this program')
+                                ->columnSpanFull(),
+                                Forms\Components\Grid::make(2)
+                                ->schema([
+                                    Forms\Components\TextInput::make('title')
                                     ->label('Training Title')
                                     ->required()
                                     ->maxLength(255)
                                     ->placeholder('Enter the training title')
                                     ->columnSpanFull(),
-
-                                TextInput::make('identifier')
+                                    TextInput::make('identifier')
                                     ->label('Training ID')
                                     ->required()
                                     ->readOnly(true)
                                     ->unique(Training::class, ignoreRecord: true)
                                     ->maxLength(50)
-                                    ->default(fn ($record) => $record?->identifier ?? strtoupper('TRN-' . Str::random(8)))
-                                    ->disabled(fn ($record) => filled($record?->identifier))
+                                    ->default(fn($record) => $record?->identifier ?? strtoupper('TRN-' . Str::random(8)))
+                                    ->disabled(fn($record) => filled($record?->identifier))
                                     ->dehydrated(true)
                                     ->helperText('Auto-generated unique identifier'),
+                                ]),
+                                Forms\Components\Textarea::make('description')
+                                ->label('Training Description')
+                                ->rows(3)
+                                ->placeholder('Provide a detailed description of the training program')
+                                ->columnSpanFull(),
                             ]),
-
-                        Forms\Components\Textarea::make('description')
-                            ->label('Training Description')
-                            ->rows(3)
-                            ->placeholder('Provide a detailed description of the training program')
-                            ->columnSpanFull(),
-                    ]),
-
-                Forms\Components\Section::make('Training Leadership')
-                    ->description('Select who will lead this training')
-                    ->schema([
-                        Forms\Components\Select::make('lead_type')
-                            ->label('Training Lead Type')
-                            ->options([
-                                'national' => 'National',
-                                'county' => 'County',
-                                'partner' => 'Partner Led',
-                            ])
-                            ->required()
-                            ->live()
-                            ->afterStateUpdated(function (Set $set, $state) {
-                                // Clear dependent fields when lead type changes
-                                $set('lead_division_id', null);
-                                $set('counties', []);
-                                $set('partners', []);
-                            }),
-
-                        // National Lead: Division + Multiple Counties
-                        Forms\Components\Grid::make(2)
+                            Forms\Components\Section::make('Training Leadership')
+                            ->description('Select who will lead this training')
                             ->schema([
-                                Forms\Components\Select::make('lead_division_id')
+                                Forms\Components\Select::make('lead_type')
+                                ->label('Training Lead Type')
+                                ->options([
+                                    'national' => 'National',
+                                    'county' => 'County',
+                                    'partner' => 'Partner Led',
+                                ])
+                                ->required()
+                                ->live()
+                                ->afterStateUpdated(function (Set $set, $state) {
+                                    // Clear dependent fields when lead type changes
+                                    $set('lead_division_id', null);
+                                    $set('counties', []);
+                                    $set('partners', []);
+                                }),
+                                // National Lead: Division + Multiple Counties
+                                Forms\Components\Grid::make(2)
+                                ->schema([
+                                    Forms\Components\Select::make('lead_division_id')
                                     ->label('Division')
                                     ->relationship('division', 'name')
                                     ->searchable()
                                     ->preload()
-                                    ->required(fn (Get $get): bool => $get('lead_type') === 'national')
-                                    ->visible(fn (Get $get): bool => $get('lead_type') === 'national')
+                                    ->required(fn(Get $get): bool => $get('lead_type') === 'national')
+                                    ->visible(fn(Get $get): bool => $get('lead_type') === 'national')
                                     ->placeholder('Select the division leading this training'),
-
-                                Forms\Components\Select::make('counties')
+                                    Forms\Components\Select::make('counties')
                                     ->label('Counties')
                                     ->relationship('counties', 'name')
                                     ->multiple()
                                     ->searchable()
                                     ->preload()
-                                    ->required(fn (Get $get): bool => $get('lead_type') === 'national')
-                                    ->visible(fn (Get $get): bool => $get('lead_type') === 'national')
+                                    ->required(fn(Get $get): bool => $get('lead_type') === 'national')
+                                    ->visible(fn(Get $get): bool => $get('lead_type') === 'national')
                                     ->placeholder('Select counties for this training')
                                     ->helperText('Select one or more counties'),
-                            ]),
-
-                        // County Lead: Multiple Counties
-                        Forms\Components\Select::make('counties')
-                            ->label('Counties')
-                            ->relationship('counties', 'name')
-                            ->multiple()
-                            ->searchable()
-                            ->preload()
-                            ->required(fn (Get $get): bool => $get('lead_type') === 'county')
-                            ->visible(fn (Get $get): bool => $get('lead_type') === 'county')
-                            ->placeholder('Select counties leading this training')
-                            ->helperText('Select one or more counties')
-                            ->columnSpanFull(),
-
-                        // Partner Lead: Multiple Partners with on-the-fly creation
-                        Forms\Components\Select::make('partners')
-                            ->label('Partner Organizations')
-                            ->relationship('partners', 'name')
-                            ->multiple()
-                            ->searchable()
-                            ->preload()
-                            ->required(fn (Get $get): bool => $get('lead_type') === 'partner')
-                            ->visible(fn (Get $get): bool => $get('lead_type') === 'partner')
-                            ->placeholder('Select partner organizations leading this training')
-                            ->helperText('Select one or more partners or create new ones')
-                            ->createOptionForm([
-                                Forms\Components\TextInput::make('name')
+                                ]),
+                                // County Lead: Multiple Counties
+                                Forms\Components\Select::make('counties')
+                                ->label('Counties')
+                                ->relationship('counties', 'name')
+                                ->multiple()
+                                ->searchable()
+                                ->preload()
+                                ->required(fn(Get $get): bool => $get('lead_type') === 'county')
+                                ->visible(fn(Get $get): bool => $get('lead_type') === 'county')
+                                ->placeholder('Select counties leading this training')
+                                ->helperText('Select one or more counties')
+                                ->columnSpanFull(),
+                                // Partner Lead: Multiple Partners with on-the-fly creation
+                                Forms\Components\Select::make('partners')
+                                ->label('Partner Organizations')
+                                ->relationship('partners', 'name')
+                                ->multiple()
+                                ->searchable()
+                                ->preload()
+                                ->required(fn(Get $get): bool => $get('lead_type') === 'partner')
+                                ->visible(fn(Get $get): bool => $get('lead_type') === 'partner')
+                                ->placeholder('Select partner organizations leading this training')
+                                ->helperText('Select one or more partners or create new ones')
+                                ->createOptionForm([
+                                    Forms\Components\TextInput::make('name')
                                     ->required()
                                     ->maxLength(255)
                                     ->label('Partner Name'),
-
-                                Forms\Components\Select::make('type')
+                                    Forms\Components\Select::make('type')
                                     ->label('Partner Type')
                                     ->options([
                                         'ngo' => 'NGO',
@@ -200,140 +194,126 @@ class GlobalTrainingResource extends Resource
                                     ])
                                     ->default('ngo')
                                     ->required(),
-
-                                Forms\Components\TextInput::make('contact_person')
+                                    Forms\Components\TextInput::make('contact_person')
                                     ->label('Contact Person')
                                     ->maxLength(255),
-
-                                Forms\Components\TextInput::make('email')
+                                    Forms\Components\TextInput::make('email')
                                     ->email()
                                     ->maxLength(255),
-
-                                Forms\Components\TextInput::make('phone')
+                                    Forms\Components\TextInput::make('phone')
                                     ->tel()
                                     ->maxLength(20),
-
-                                Forms\Components\Textarea::make('description')
+                                    Forms\Components\Textarea::make('description')
                                     ->rows(2),
-                            ])
-                            ->createOptionUsing(function (array $data) {
-                                $partner = Partner::create($data);
-                                
-                                Notification::make()
-                                    ->title('Partner Created')
-                                    ->body("Partner '{$partner->name}' has been created successfully.")
-                                    ->success()
-                                    ->send();
-                                    
-                                return $partner->id;
-                            })
-                            ->columnSpanFull(),
-                    ]),
+                                ])
+                                ->createOptionUsing(function (array $data) {
+                                    $partner = Partner::create($data);
 
-                Forms\Components\Section::make('Schedule & Logistics')
-                    ->description('Training dates and capacity')
-                    ->schema([
-                        Forms\Components\Grid::make(3)
+                                    Notification::make()
+                                            ->title('Partner Created')
+                                            ->body("Partner '{$partner->name}' has been created successfully.")
+                                            ->success()
+                                            ->send();
+
+                                    return $partner->id;
+                                })
+                                ->columnSpanFull(),
+                            ]),
+                            Forms\Components\Section::make('Schedule & Logistics')
+                            ->description('Training dates and capacity')
                             ->schema([
-                                Forms\Components\DatePicker::make('start_date')
+                                Forms\Components\Grid::make(3)
+                                ->schema([
+                                    Forms\Components\DatePicker::make('start_date')
                                     ->label('Start Date')
                                     ->required()
                                     ->native(false)
                                     ->displayFormat('M j, Y'),
-
-                                Forms\Components\DatePicker::make('end_date')
+                                    Forms\Components\DatePicker::make('end_date')
                                     ->label('End Date')
                                     ->required()
                                     ->native(false)
                                     ->displayFormat('M j, Y')
                                     ->after('start_date'),
-
-                                Forms\Components\TextInput::make('max_participants')
+                                    Forms\Components\TextInput::make('max_participants')
                                     ->label('Maximum Participants')
                                     ->numeric()
                                     ->minValue(1)
                                     ->default(30)
                                     ->suffix('people'),
+                                ]),
                             ]),
-                    ]),
-
-                Forms\Components\Section::make('Training Locations')
-                    ->description('Select the type of training location')
-                    ->schema([
-                        Radio::make('location_type')
-                            ->label('Location Type')
-                            ->options([
-                                'hospital' => 'Hospital-based',
-                                'hotel' => 'Hotel-based',
-                                'online' => 'Online',
-                            ])
-                            ->required()
-                            ->live()
-                            ->descriptions([
-                                'hospital' => 'Training will be conducted at hospital facilities',
-                                'hotel' => 'Training will be conducted at hotels or conference venues',
-                                'online' => 'Training will be conducted online via video conferencing',
-                            ])
-                            ->columnSpanFull(),
-
-                        // Hospital-based: Multiple hospitals selection
-                        Forms\Components\Select::make('hospitals')
-                            ->label('Select Hospitals/Facilities')
-                            ->relationship('hospitals', 'name')
-                            ->multiple()
-                            ->searchable()
-                            ->preload()
-                            ->required(fn (Get $get): bool => $get('location_type') === 'hospital')
-                            ->visible(fn (Get $get): bool => $get('location_type') === 'hospital')
-                            ->placeholder('Select one or more hospitals')
-                            ->helperText('Hold Ctrl/Cmd to select multiple hospitals')
-                            ->columnSpanFull(),
-
-                        // Hotel-based: Multiple hotels input
-                        Repeater::make('hotels_data')
-                            ->label('Hotels')
+                            Forms\Components\Section::make('Training Locations')
+                            ->description('Select the type of training location')
                             ->schema([
-                                Grid::make(3)
+                                Radio::make('location_type')
+                                ->label('Location Type')
+                                ->options([
+                                    'hospital' => 'Hospital-based',
+                                    'hotel' => 'Hotel-based',
+                                    'online' => 'Online',
+                                ])
+                                ->required()
+                                ->live()
+                                ->descriptions([
+                                    'hospital' => 'Training will be conducted at hospital facilities',
+                                    'hotel' => 'Training will be conducted at hotels or conference venues',
+                                    'online' => 'Training will be conducted online via video conferencing',
+                                ])
+                                ->columnSpanFull(),
+                                // Hospital-based: Multiple hospitals selection
+                                Forms\Components\Select::make('hospitals')
+                                ->label('Select Hospitals/Facilities')
+                                ->relationship('hospitals', 'name')
+                                ->multiple()
+                                ->searchable()
+                                ->preload()
+                                ->required(fn(Get $get): bool => $get('location_type') === 'hospital')
+                                ->visible(fn(Get $get): bool => $get('location_type') === 'hospital')
+                                ->placeholder('Select one or more hospitals')
+                                ->helperText('Hold Ctrl/Cmd to select multiple hospitals')
+                                ->columnSpanFull(),
+                                // Hotel-based: Multiple hotels input
+                                Repeater::make('hotels_data')
+                                ->label('Hotels')
+                                ->schema([
+                                    Grid::make(3)
                                     ->schema([
                                         TextInput::make('hotel_name')
-                                            ->label('Hotel Name')
-                                            ->required()
-                                            ->placeholder('e.g., Sarova Panafric Hotel'),
-
+                                        ->label('Hotel Name')
+                                        ->required()
+                                        ->placeholder('e.g., Sarova Panafric Hotel'),
                                         TextInput::make('hotel_contact')
-                                            ->label('Contact Number')
-                                            ->tel()
-                                            ->placeholder('+254700000000'),
-
+                                        ->label('Contact Number')
+                                        ->tel()
+                                        ->placeholder('+254700000000'),
                                         Forms\Components\Textarea::make('hotel_address')
-                                            ->label('Address')
-                                            ->rows(1)
-                                            ->placeholder('Full address of the hotel'),
+                                        ->label('Address')
+                                        ->rows(1)
+                                        ->placeholder('Full address of the hotel'),
                                     ]),
-                            ])
-                            ->required(fn (Get $get): bool => $get('location_type') === 'hotel')
-                            ->visible(fn (Get $get): bool => $get('location_type') === 'hotel')
-                            ->addActionLabel('Add Another Hotel')
-                            ->collapsible()
-                            ->itemLabel(fn (array $state): ?string => $state['hotel_name'] ?? 'New Hotel')
-                            ->defaultItems(1)
-                            ->columnSpanFull(),
-
-                        // Online: Single link input
-                        TextInput::make('online_link')
-                            ->label('Online Meeting Link')
-                            ->url()
-                            ->required(fn (Get $get): bool => $get('location_type') === 'online')
-                            ->visible(fn (Get $get): bool => $get('location_type') === 'online')
-                            ->placeholder('https://zoom.us/j/... or https://meet.google.com/...')
-                            ->helperText('Provide the full URL for the online meeting')
-                            ->columnSpanFull(),
-                    ]),
-            ]);
+                                ])
+                                ->required(fn(Get $get): bool => $get('location_type') === 'hotel')
+                                ->visible(fn(Get $get): bool => $get('location_type') === 'hotel')
+                                ->addActionLabel('Add Another Hotel')
+                                ->collapsible()
+                                ->itemLabel(fn(array $state): ?string => $state['hotel_name'] ?? 'New Hotel')
+                                ->defaultItems(1)
+                                ->columnSpanFull(),
+                                // Online: Single link input
+                                TextInput::make('online_link')
+                                ->label('Online Meeting Link')
+                                ->url()
+                                ->required(fn(Get $get): bool => $get('location_type') === 'online')
+                                ->visible(fn(Get $get): bool => $get('location_type') === 'online')
+                                ->placeholder('https://zoom.us/j/... or https://meet.google.com/...')
+                                ->helperText('Provide the full URL for the online meeting')
+                                ->columnSpanFull(),
+                            ]),
+        ]);
     }
 
-    protected static function mutateFormDataBeforeCreate(array $data): array
-    {
+    protected static function mutateFormDataBeforeCreate(array $data): array {
         $data['type'] = 'global_training';
         $data['mentor_id'] = auth()->id();
 
@@ -352,8 +332,7 @@ class GlobalTrainingResource extends Resource
         return $data;
     }
 
-    protected static function mutateFormDataBeforeSave(array $data): array
-    {
+    protected static function mutateFormDataBeforeSave(array $data): array {
         $data['type'] = 'global_training';
 
         // Only set mentor_id if it's not already set
@@ -375,315 +354,305 @@ class GlobalTrainingResource extends Resource
         return $data;
     }
 
-    public static function table(Table $table): Table
-    {
+    public static function table(Table $table): Table {
         return $table
-            ->query(
-                static::getEloquentQuery()->with([
-                    'approvedTrainingArea',
-                    'counties',
-                    'partners',
-                    'division',
-                    'hospitals',
-                    'hotels',
-                    'mentor',
-                    'participants'
-                ])
-            )
-            ->columns([
-                TextColumn::make('identifier')
-                    ->label('ID')
-                    ->searchable()
-                    ->sortable()
-                    ->weight('bold'),
+                        ->query(
+                                static::getEloquentQuery()->with([
+                                    'approvedTrainingArea',
+                                    'counties',
+                                    'partners',
+                                    'division',
+                                    'hospitals',
+                                    'hotels',
+                                    'mentor',
+                                    'participants'
+                                ])
+                        )
+                        ->columns([
+                            TextColumn::make('identifier')
+                            ->label('ID')
+                            ->searchable()
+                            ->sortable()
+                            ->weight('bold'),
+                            TextColumn::make('title')
+                            ->searchable()
+                            ->sortable()
+                            ->wrap()
+                            ->description(function ($record): string {
+                                if (!$record instanceof Training)
+                                    return '';
+                                return $record->description ? Str::limit($record->description, 60) : '';
+                            }),
+                            TextColumn::make('approvedTrainingArea.name')
+                            ->label('Training Area')
+                            ->badge()
+                            ->color('primary')
+                            ->sortable()
+                            ->searchable(),
+                            BadgeColumn::make('lead_type')
+                            ->label('Lead Type')
+                            ->colors([
+                                'primary' => 'national',
+                                'success' => 'county',
+                                'warning' => 'partner',
+                            ])
+                            ->formatStateUsing(fn(?string $state): string => match ($state) {
+                                        'national' => 'National',
+                                        'county' => 'County',
+                                        'partner' => 'Partner Led',
+                                        default => ucfirst($state ?? ''),
+                                    }),
+                            TextColumn::make('lead_organization')
+                            ->label('Lead Organization')
+                            ->getStateUsing(function ($record): string {
+                                if (!$record instanceof Training)
+                                    return 'Not specified';
 
-                TextColumn::make('title')
-                    ->searchable()
-                    ->sortable()
-                    ->wrap()
-                    ->description(function ($record): string {
-                        if (!$record instanceof Training) return '';
-                        return $record->description ? Str::limit($record->description, 60) : '';
-                    }),
+                                return match ($record->lead_type) {
+                                    'national' => $record->division?->name ?? 'Ministry of Health',
+                                    'county' => $record->counties->pluck('name')->implode(', ') ?: 'Not specified',
+                                    'partner' => $record->partners->pluck('name')->implode(', ') ?: 'Not specified',
+                                    default => 'Not specified',
+                                };
+                            })
+                            ->searchable(['division.name', 'counties.name', 'partners.name'])
+                            ->limit(50)
+                            ->tooltip(function ($record): ?string {
+                                if (!$record instanceof Training)
+                                    return null;
+                                return $record->lead_organization;
+                            }),
+                            BadgeColumn::make('location_type')
+                            ->label('Location Type')
+                            ->colors([
+                                'info' => 'hospital',
+                                'success' => 'hotel',
+                                'warning' => 'online',
+                            ])
+                            ->formatStateUsing(fn(?string $state): string => match ($state) {
+                                        'hospital' => 'Hospital',
+                                        'hotel' => 'Hotel',
+                                        'online' => 'Online',
+                                        default => 'Not set',
+                                    }),
+                            TextColumn::make('location_display')
+                            ->label('Locations')
+                            ->getStateUsing(function ($record): string {
+                                if (!$record instanceof Training)
+                                    return 'Not specified';
 
-                TextColumn::make('approvedTrainingArea.name')
-                    ->label('Training Area')
-                    ->badge()
-                    ->color('primary')
-                    ->sortable()
-                    ->searchable(),
-
-                BadgeColumn::make('lead_type')
-                    ->label('Lead Type')
-                    ->colors([
-                        'primary' => 'national',
-                        'success' => 'county',
-                        'warning' => 'partner',
-                    ])
-                    ->formatStateUsing(fn (?string $state): string => match ($state) {
-                        'national' => 'National',
-                        'county' => 'County',
-                        'partner' => 'Partner Led',
-                        default => ucfirst($state ?? ''),
-                    }),
-
-                TextColumn::make('lead_organization')
-                    ->label('Lead Organization')
-                    ->getStateUsing(function ($record): string {
-                        if (!$record instanceof Training) return 'Not specified';
-
-                        return match ($record->lead_type) {
-                            'national' => $record->division?->name ?? 'Ministry of Health',
-                            'county' => $record->counties->pluck('name')->implode(', ') ?: 'Not specified',
-                            'partner' => $record->partners->pluck('name')->implode(', ') ?: 'Not specified',
-                            default => 'Not specified',
-                        };
-                    })
-                    ->searchable(['division.name', 'counties.name', 'partners.name'])
-                    ->limit(50)
-                    ->tooltip(function ($record): ?string {
-                        if (!$record instanceof Training) return null;
-                        return $record->lead_organization;
-                    }),
-
-                BadgeColumn::make('location_type')
-                    ->label('Location Type')
-                    ->colors([
-                        'info' => 'hospital',
-                        'success' => 'hotel',
-                        'warning' => 'online',
-                    ])
-                    ->formatStateUsing(fn (?string $state): string => match ($state) {
-                        'hospital' => 'Hospital',
-                        'hotel' => 'Hotel',
-                        'online' => 'Online',
-                        default => 'Not set',
-                    }),
-
-                TextColumn::make('location_display')
-                    ->label('Locations')
-                    ->getStateUsing(function ($record): string {
-                        if (!$record instanceof Training) return 'Not specified';
-
-                        return match ($record->location_type) {
-                            'hospital' => $record->hospitals->count() . ' hospital(s)',
-                            'hotel' => $record->hotels->count() . ' hotel(s)',
-                            'online' => 'Online',
-                            default => 'Not specified',
-                        };
-                    })
-                    ->badge()
-                    ->color('info'),
-
-                TextColumn::make('mentor.full_name')
-                    ->label('Created By')
-                    ->searchable(['first_name', 'last_name'])
-                    ->description(function ($record): string {
-                        if (!$record instanceof Training) return '';
-                        return $record->mentor?->facility?->name ?? '';
-                    }),
-
-                TextColumn::make('start_date')
-                    ->date('M j, Y')
-                    ->sortable()
-                    ->description(function ($record): string {
-                        if (!$record instanceof Training) return '';
-                        return $record->end_date ? 'to ' . $record->end_date->format('M j, Y') : '';
-                    }),
-
-                TextColumn::make('participants_count')
-                    ->label('Participants')
-                    ->counts('participants')
-                    ->sortable()
-                    ->badge()
-                    ->color('success'),
-            ])
-            ->filters([
-                SelectFilter::make('approved_training_area_id')
-                    ->label('Training Area')
-                    ->relationship('approvedTrainingArea', 'name')
-                    ->multiple()
-                    ->preload(),
-
-                SelectFilter::make('lead_type')
-                    ->label('Lead Type')
-                    ->options([
-                        'national' => 'National',
-                        'county' => 'County',
-                        'partner' => 'Partner Led',
-                    ])
-                    ->multiple(),
-
-                SelectFilter::make('location_type')
-                    ->label('Location Type')
-                    ->options([
-                        'hospital' => 'Hospital-based',
-                        'hotel' => 'Hotel-based',
-                        'online' => 'Online',
-                    ])
-                    ->multiple(),
-
-                SelectFilter::make('division')
-                    ->relationship('division', 'name')
-                    ->multiple()
-                    ->preload(),
-
-                SelectFilter::make('counties')
-                    ->relationship('counties', 'name')
-                    ->multiple()
-                    ->preload(),
-
-                SelectFilter::make('partners')
-                    ->relationship('partners', 'name')
-                    ->multiple()
-                    ->preload(),
-
-                SelectFilter::make('mentor')
-                    ->relationship('mentor', 'first_name')
-                    ->getOptionLabelFromRecordUsing(fn (User $record): string => $record->full_name)
-                    ->multiple()
-                    ->preload(),
-
-                Filter::make('date_range')
-                    ->form([
-                        DatePicker::make('start_date')
-                            ->label('From Date'),
-                        DatePicker::make('end_date')
-                            ->label('To Date'),
-                    ])
-                    ->query(function (Builder $query, array $data): Builder {
-                        return $query
-                            ->when(
-                                $data['start_date'],
-                                fn (Builder $query, $date): Builder => $query->whereDate('start_date', '>=', $date),
-                            )
-                            ->when(
-                                $data['end_date'],
-                                fn (Builder $query, $date): Builder => $query->whereDate('end_date', '<=', $date),
-                            );
-                    })
-                    ->indicateUsing(function (array $data): array {
-                        $indicators = [];
-                        if ($data['start_date'] ?? null) {
-                            $indicators['start_date'] = 'From ' . Carbon::parse($data['start_date'])->toFormattedDateString();
-                        }
-                        if ($data['end_date'] ?? null) {
-                            $indicators['end_date'] = 'To ' . Carbon::parse($data['end_date'])->toFormattedDateString();
-                        }
-                        return $indicators;
-                    }),
-            ])
-            ->actions([
-                ActionGroup::make([
-                    Tables\Actions\ViewAction::make()
-                        ->color('info'),
-                    Tables\Actions\EditAction::make()
-                        ->color('warning'),
-                    Action::make('manage_participants')
-                        ->label('Participants')
-                        ->icon('heroicon-o-users')
-                        ->color('success')
-                        ->url(function ($record): string {
-                            if (!$record instanceof Training) return '#';
-                            return static::getUrl('participants', ['record' => $record]);
-                        }),
-                    Action::make('manage_assessments')
-                        ->label('Assessments')
-                        ->icon('heroicon-o-clipboard-document-check')
-                        ->color('primary')
-                        ->url(function ($record): string {
-                            if (!$record instanceof Training) return '#';
-                            return static::getUrl('assessments', ['record' => $record]);
-                        })
-                        ->visible(function ($record): bool {
-                            return $record instanceof Training && $record->hasAssessments();
-                        }),
-                    Action::make('duplicate')
-                        ->label('Duplicate')
-                        ->icon('heroicon-o-document-duplicate')
-                        ->color('gray')
-                        ->action(function ($record) {
-                            if (!$record instanceof Training) return;
-
-                            $newTraining = $record->replicate();
-                            $newTraining->title = $record->title . ' (Copy)';
-                            $newTraining->identifier = 'TRN-' . strtoupper(Str::random(8));
-                            $newTraining->type = 'global_training';
-                            $newTraining->mentor_id = auth()->id();
-                            $newTraining->save();
-
-                            // Copy relationships
-                            if ($record->counties && $record->counties->isNotEmpty()) {
-                                $newTraining->counties()->attach($record->counties->pluck('id'));
-                            }
-                            if ($record->partners && $record->partners->isNotEmpty()) {
-                                $newTraining->partners()->attach($record->partners->pluck('id'));
-                            }
-                            if ($record->hospitals && $record->hospitals->isNotEmpty()) {
-                                $newTraining->hospitals()->attach($record->hospitals->pluck('id'));
-                            }
-                            if ($record->hotels && $record->hotels->isNotEmpty()) {
-                                foreach ($record->hotels as $hotel) {
-                                    $newTraining->hotels()->create([
-                                        'hotel_name' => $hotel->hotel_name,
-                                        'hotel_address' => $hotel->hotel_address,
-                                        'hotel_contact' => $hotel->hotel_contact,
-                                    ]);
+                                return match ($record->location_type) {
+                                    'hospital' => $record->hospitals->count() . ' hospital(s)',
+                                    'hotel' => $record->hotels->count() . ' hotel(s)',
+                                    'online' => 'Online',
+                                    default => 'Not specified',
+                                };
+                            })
+                            ->badge()
+                            ->color('info'),
+                            TextColumn::make('mentor.full_name')
+                            ->label('Created By')
+                            ->searchable(['first_name', 'last_name'])
+                            ->description(function ($record): string {
+                                if (!$record instanceof Training)
+                                    return '';
+                                return $record->mentor?->facility?->name ?? '';
+                            }),
+                            TextColumn::make('start_date')
+                            ->date('M j, Y')
+                            ->sortable()
+                            ->description(function ($record): string {
+                                if (!$record instanceof Training)
+                                    return '';
+                                return $record->end_date ? 'to ' . $record->end_date->format('M j, Y') : '';
+                            }),
+                            TextColumn::make('participants_count')
+                            ->label('Participants')
+                            ->counts('participants')
+                            ->sortable()
+                            ->badge()
+                            ->color('success'),
+                        ])
+                        ->filters([
+                            SelectFilter::make('approved_training_area_id')
+                            ->label('Training Area')
+                            ->relationship('approvedTrainingArea', 'name')
+                            ->multiple()
+                            ->preload(),
+                            SelectFilter::make('lead_type')
+                            ->label('Lead Type')
+                            ->options([
+                                'national' => 'National',
+                                'county' => 'County',
+                                'partner' => 'Partner Led',
+                            ])
+                            ->multiple(),
+                            SelectFilter::make('location_type')
+                            ->label('Location Type')
+                            ->options([
+                                'hospital' => 'Hospital-based',
+                                'hotel' => 'Hotel-based',
+                                'online' => 'Online',
+                            ])
+                            ->multiple(),
+                            SelectFilter::make('division')
+                            ->relationship('division', 'name')
+                            ->multiple()
+                            ->preload(),
+                            SelectFilter::make('counties')
+                            ->relationship('counties', 'name')
+                            ->multiple()
+                            ->preload(),
+                            SelectFilter::make('partners')
+                            ->relationship('partners', 'name')
+                            ->multiple()
+                            ->preload(),
+                            SelectFilter::make('mentor')
+                            ->relationship('mentor', 'first_name')
+                            ->getOptionLabelFromRecordUsing(fn(User $record): string => $record->full_name)
+                            ->multiple()
+                            ->preload(),
+                            Filter::make('date_range')
+                            ->form([
+                                DatePicker::make('start_date')
+                                ->label('From Date'),
+                                DatePicker::make('end_date')
+                                ->label('To Date'),
+                            ])
+                            ->query(function (Builder $query, array $data): Builder {
+                                return $query
+                                                ->when(
+                                                        $data['start_date'],
+                                                        fn(Builder $query, $date): Builder => $query->whereDate('start_date', '>=', $date),
+                                                )
+                                                ->when(
+                                                        $data['end_date'],
+                                                        fn(Builder $query, $date): Builder => $query->whereDate('end_date', '<=', $date),
+                                                );
+                            })
+                            ->indicateUsing(function (array $data): array {
+                                $indicators = [];
+                                if ($data['start_date'] ?? null) {
+                                    $indicators['start_date'] = 'From ' . Carbon::parse($data['start_date'])->toFormattedDateString();
                                 }
-                            }
-
-                            // Copy assessment categories if they exist
-                            if ($record->assessmentCategories && $record->assessmentCategories->isNotEmpty()) {
-                                $categoryData = [];
-                                foreach ($record->assessmentCategories as $category) {
-                                    $categoryData[$category->id] = [
-                                        'weight_percentage' => $category->pivot->weight_percentage,
-                                        'pass_threshold' => $category->pivot->pass_threshold,
-                                        'is_required' => $category->pivot->is_required,
-                                        'order_sequence' => $category->pivot->order_sequence,
-                                        'is_active' => $category->pivot->is_active,
-                                    ];
+                                if ($data['end_date'] ?? null) {
+                                    $indicators['end_date'] = 'To ' . Carbon::parse($data['end_date'])->toFormattedDateString();
                                 }
-                                $newTraining->assessmentCategories()->sync($categoryData);
-                            }
+                                return $indicators;
+                            }),
+                        ])
+                        ->actions([
+                            ActionGroup::make([
+                                Tables\Actions\ViewAction::make()
+                                ->color('info'),
+                                Tables\Actions\EditAction::make()
+                                ->color('warning'),
+                                Action::make('manage_participants')
+                                ->label('Participants')
+                                ->icon('heroicon-o-users')
+                                ->color('success')
+                                ->url(function ($record): string {
+                                    if (!$record instanceof Training)
+                                        return '#';
+                                    return static::getUrl('participants', ['record' => $record]);
+                                }),
+                                Action::make('manage_assessments')
+                                ->label('Assessments')
+                                ->icon('heroicon-o-clipboard-document-check')
+                                ->color('primary')
+                                ->url(function ($record): string {
+                                    if (!$record instanceof Training)
+                                        return '#';
+                                    return static::getUrl('assessments', ['record' => $record]);
+                                })
+                                ->visible(function ($record): bool {
+                                    return $record instanceof Training && $record->hasAssessments();
+                                }),
+                                Action::make('duplicate')
+                                ->label('Duplicate')
+                                ->icon('heroicon-o-document-duplicate')
+                                ->color('gray')
+                                ->action(function ($record) {
+                                    if (!$record instanceof Training)
+                                        return;
 
-                            return redirect()->to(static::getUrl('edit', ['record' => $newTraining]));
-                        }),
-                    Tables\Actions\DeleteAction::make()
-                        ->requiresConfirmation(),
-                ])
-                    ->label('Actions')
-                    ->icon('heroicon-m-ellipsis-horizontal')
-                    ->size('sm')
-                    ->color('gray')
-                    ->button()
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make()
-                        ->requiresConfirmation(),
-                ]),
-            ])
-            ->defaultSort('start_date', 'desc')
-            ->poll('30s')
-            ->striped()
-            ->emptyStateHeading('No MOH Trainings Found')
-            ->emptyStateDescription('Create your first MOH training to get started.')
-            ->emptyStateIcon('heroicon-o-academic-cap')
-            ->emptyStateActions([
-                Tables\Actions\CreateAction::make()
-                    ->label('Create MOH Training')
-                    ->icon('heroicon-o-plus'),
-            ]);
+                                    $newTraining = $record->replicate();
+                                    $newTraining->title = $record->title . ' (Copy)';
+                                    $newTraining->identifier = 'TRN-' . strtoupper(Str::random(8));
+                                    $newTraining->type = 'global_training';
+                                    $newTraining->mentor_id = auth()->id();
+                                    $newTraining->save();
+
+                                    // Copy relationships
+                                    if ($record->counties && $record->counties->isNotEmpty()) {
+                                        $newTraining->counties()->attach($record->counties->pluck('id'));
+                                    }
+                                    if ($record->partners && $record->partners->isNotEmpty()) {
+                                        $newTraining->partners()->attach($record->partners->pluck('id'));
+                                    }
+                                    if ($record->hospitals && $record->hospitals->isNotEmpty()) {
+                                        $newTraining->hospitals()->attach($record->hospitals->pluck('id'));
+                                    }
+                                    if ($record->hotels && $record->hotels->isNotEmpty()) {
+                                        foreach ($record->hotels as $hotel) {
+                                            $newTraining->hotels()->create([
+                                                'hotel_name' => $hotel->hotel_name,
+                                                'hotel_address' => $hotel->hotel_address,
+                                                'hotel_contact' => $hotel->hotel_contact,
+                                            ]);
+                                        }
+                                    }
+
+                                    // Copy assessment categories if they exist
+                                    if ($record->assessmentCategories && $record->assessmentCategories->isNotEmpty()) {
+                                        $categoryData = [];
+                                        foreach ($record->assessmentCategories as $category) {
+                                            $categoryData[$category->id] = [
+                                                'weight_percentage' => $category->pivot->weight_percentage,
+                                                'pass_threshold' => $category->pivot->pass_threshold,
+                                                'is_required' => $category->pivot->is_required,
+                                                'order_sequence' => $category->pivot->order_sequence,
+                                                'is_active' => $category->pivot->is_active,
+                                            ];
+                                        }
+                                        $newTraining->assessmentCategories()->sync($categoryData);
+                                    }
+
+                                    return redirect()->to(static::getUrl('edit', ['record' => $newTraining]));
+                                }),
+                                Tables\Actions\DeleteAction::make()
+                                ->requiresConfirmation(),
+                            ])
+                            ->label('Actions')
+                            ->icon('heroicon-m-ellipsis-horizontal')
+                            ->size('sm')
+                            ->color('gray')
+                            ->button()
+                        ])
+                        ->bulkActions([
+                            Tables\Actions\BulkActionGroup::make([
+                                Tables\Actions\DeleteBulkAction::make()
+                                ->requiresConfirmation(),
+                            ]),
+                        ])
+                        ->defaultSort('start_date', 'desc')
+                        ->poll('30s')
+                        ->striped()
+                        ->emptyStateHeading('No MOH Trainings Found')
+                        ->emptyStateDescription('Create your first MOH training to get started.')
+                        ->emptyStateIcon('heroicon-o-academic-cap')
+                        ->emptyStateActions([
+                            Tables\Actions\CreateAction::make()
+                            ->label('Create MOH Training')
+                            ->icon('heroicon-o-plus'),
+        ]);
     }
 
-    public static function getRelations(): array
-    {
+    public static function getRelations(): array {
         return [];
     }
 
-    public static function getPages(): array
-    {
+    public static function getPages(): array {
         return [
             'index' => Pages\ListGlobalTrainings::route('/'),
             'create' => Pages\CreateGlobalTraining::route('/create'),
@@ -694,32 +663,27 @@ class GlobalTrainingResource extends Resource
         ];
     }
 
-    public static function getNavigationBadge(): ?string
-    {
+    public static function getNavigationBadge(): ?string {
         $count = static::getModel()::where('type', 'global_training')
-           // ->ongoing()
-            ->count();
+                // ->ongoing()
+                ->count();
 
         return $count > 0 ? (string) $count : null;
     }
 
-    public static function getNavigationBadgeColor(): string|array|null
-    {
+    public static function getNavigationBadgeColor(): string|array|null {
         return 'success';
     }
 
-    public static function getGloballySearchableAttributes(): array
-    {
+    public static function getGloballySearchableAttributes(): array {
         return ['title', 'identifier', 'description'];
     }
 
-    public static function getGlobalSearchResultTitle(Model $record): string
-    {
+    public static function getGlobalSearchResultTitle(Model $record): string {
         return $record->title;
     }
 
-    public static function getGlobalSearchResultDetails(Model $record): array
-    {
+    public static function getGlobalSearchResultDetails(Model $record): array {
         return [
             'ID' => $record->identifier,
             'Area' => $record->approvedTrainingArea?->name,

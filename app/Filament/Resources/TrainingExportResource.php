@@ -36,11 +36,7 @@ class TrainingExportResource extends Resource {
     protected static ?string $slug = 'training-exports';
 
     public static function shouldRegisterNavigation(): bool {
-        return !auth()->user()->hasRole('Assessor');
-    }
-
-    public static function canAccess(): bool {
-        return !auth()->user()->hasRole('Assessor');
+        return auth()->check() && auth()->user()->hasRole(['super_admin', 'facility_mentor']);
     }
 
     public static function form(Form $form): Form {

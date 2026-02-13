@@ -22,6 +22,26 @@ class AssessmentResource extends Resource {
     protected static ?string $navigationGroup = 'Facility Assessment';
     protected static ?int $navigationSort = 1;
 
+    public static function shouldRegisterNavigation(): bool {
+        return auth()->user()->hasRole(['super_admin', 'admin', 'Assessor']);
+    }
+
+    public static function canAccess(): bool {
+        return auth()->user()->hasRole(['super_admin', 'admin', 'Assessor']);
+    }
+
+    public static function canCreate(): bool {
+        return static::canAccess();
+    }
+
+    public static function canEdit($record): bool {
+        return static::canAccess();
+    }
+
+    public static function canDelete($record): bool {
+        return static::canAccess();
+    }
+
     public static function form(Form $form): Form {
         return $form; // Empty — pages define their own forms
     }

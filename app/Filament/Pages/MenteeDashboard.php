@@ -4,12 +4,13 @@ namespace App\Filament\Pages;
 
 use App\Models\ClassParticipant;
 use App\Models\MenteeModuleProgress;
+use App\Models\ClassAttendance;
 use Filament\Pages\Page;
-use Filament\Widgets\StatsOverviewWidget;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
+use Illuminate\Support\Facades\DB;
 
 class MenteeDashboard extends Page implements HasTable {
 
@@ -19,8 +20,6 @@ class MenteeDashboard extends Page implements HasTable {
     protected static ?string $navigationLabel = 'My Progress';
     protected static ?int $navigationSort = 1;
     protected static string $view = 'filament.pages.mentee-dashboard';
-    
-
 
     public function getTitle(): string {
         return 'My Learning Dashboard';
@@ -32,16 +31,62 @@ class MenteeDashboard extends Page implements HasTable {
     }
 
     public function getSubheading(): ?string {
-        $activeEnrollments = ClassParticipant::where('user_id', auth()->id())
+        $stats = $this->getDashboardStats();
+        return "You are enrolled in {$stats['active_enrollments']} active class(es) • {$stats['completed_modules']}/{$stats['total_modules']} modules completed";
+    }
+
+    /**
+     * Compute accurate dashboard stats for the mentee.
+     */
+    public function getDashboardStats(): array {
+        $userId = auth()->id();
+
+        $activeEnrollments = ClassParticipant::where('user_id', $userId)
                 ->whereIn('status', ['enrolled', 'active'])
                 ->count();
 
-        return "You are enrolled in {$activeEnrollments} active class(es)";
-    }
+        $totalEnrollments = ClassParticipant::where('user_id', $userId)->count();
 
-    protected function getHeaderWidgets(): array {
+        $completedEnrollments = ClassParticipant::where('user_id', $userId)
+                ->where('status', 'completed')
+                ->count();
+
+        // Module stats from mentee_module_progress
+        $moduleStats = MenteeModuleProgress::whereHas('classParticipant', function ($q) use ($userId) {
+                    $q->where('user_id', $userId);
+                })
+                ->selectRaw("
+            COUNT(*) as total_modules,
+            SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_modules,
+            SUM(CASE WHEN status = 'exempted' THEN 1 ELSE 0 END) as exempted_modules,
+            SUM(CASE WHEN status = 'in_progress' THEN 1 ELSE 0 END) as in_progress_modules,
+            SUM(CASE WHEN status = 'not_started' THEN 1 ELSE 0 END) as not_started_modules,
+            AVG(CASE WHEN assessment_score IS NOT NULL THEN assessment_score END) as avg_assessment_score,
+            AVG(CASE WHEN attendance_percentage IS NOT NULL THEN attendance_percentage END) as avg_attendance
+        ")
+                ->first();
+
+        // Attendance from class_attendances table
+        $attendanceCount = ClassAttendance::where('user_id', $userId)->count();
+
+        $totalModules = $moduleStats->total_modules ?? 0;
+        $completedModules = $moduleStats->completed_modules ?? 0;
+        $exemptedModules = $moduleStats->exempted_modules ?? 0;
+        $effectiveCompleted = $completedModules + $exemptedModules;
+
         return [
-            \App\Filament\Widgets\MenteeStatsWidget::class,
+            'active_enrollments' => $activeEnrollments,
+            'total_enrollments' => $totalEnrollments,
+            'completed_enrollments' => $completedEnrollments,
+            'total_modules' => $totalModules,
+            'completed_modules' => $completedModules,
+            'exempted_modules' => $exemptedModules,
+            'in_progress_modules' => $moduleStats->in_progress_modules ?? 0,
+            'not_started_modules' => $moduleStats->not_started_modules ?? 0,
+            'module_completion_rate' => $totalModules > 0 ? round(($effectiveCompleted / $totalModules) * 100, 1) : 0,
+            'avg_assessment_score' => $moduleStats->avg_assessment_score ? round($moduleStats->avg_assessment_score, 1) : null,
+            'avg_attendance' => $moduleStats->avg_attendance ? round($moduleStats->avg_attendance, 1) : null,
+            'attendance_records' => $attendanceCount,
         ];
     }
 
@@ -55,7 +100,7 @@ class MenteeDashboard extends Page implements HasTable {
                                 ->with([
                                     'classModule.programModule',
                                     'classModule.mentorshipClass',
-                                    'classParticipant.mentorshipClass.training.program'
+                                    'classParticipant.mentorshipClass.training.program',
                                 ])
                                 ->latest()
                         )
@@ -149,9 +194,7 @@ class MenteeDashboard extends Page implements HasTable {
                         ->emptyStateIcon('heroicon-o-book-open');
     }
 
-    public static function shouldRegisterNavigation(): bool {
-        // Show for users who are mentees
-         return true;
+     public static function shouldRegisterNavigation(): bool {
+        return auth()->check() && auth()->user()->hasRole(['super_admin', 'mentee','division']);
     }
 }
-

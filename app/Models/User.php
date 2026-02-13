@@ -26,6 +26,7 @@ class User extends Authenticatable {
         'facility_id',
         'department_id',
         'cadre_id',
+        'name',
         'role',
         'first_name',
         'middle_name',

@@ -10,58 +10,51 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 
-class MethodologyResource extends Resource
-{
+class MethodologyResource extends Resource {
+
     protected static ?string $model = Methodology::class;
     protected static ?string $navigationIcon = 'heroicon-o-light-bulb';
     protected static ?string $navigationGroup = 'Curriculum';
-      protected static ?int $navigationSort = 4;
-      
-      public static function shouldRegisterNavigation(): bool
-    {
-        return !auth()->user()->hasRole('Assessor');
+    protected static ?int $navigationSort = 4;
+
+    public static function shouldRegisterNavigation(): bool {
+        return auth()->check() && auth()->user()->hasRole(['super_admin', 'admin', 'division']);
     }
 
-    public static function canAccess(): bool
-    {
-        return !auth()->user()->hasRole('Assessor');
-    }
-
-    public static function form(Form $form): Form
-    {
+    public static function form(Form $form): Form {
         return $form->schema([
-            Forms\Components\TextInput::make('name')
-                ->label('Methodology Name')
-                ->required()
-                ->unique(ignoreRecord: true)
-                ->maxLength(255),
-            Forms\Components\Textarea::make('description')->label('Description'),
+                            Forms\Components\TextInput::make('name')
+                            ->label('Methodology Name')
+                            ->required()
+                            ->unique(ignoreRecord: true)
+                            ->maxLength(255),
+                    Forms\Components\Textarea::make('description')->label('Description'),
         ]);
     }
 
-    public static function table(Table $table): Table
-    {
+    public static function table(Table $table): Table {
         return $table
-            ->columns([
-                Tables\Columns\TextColumn::make('name')->sortable()->searchable(),
-                Tables\Columns\TextColumn::make('description')->limit(40),
-                Tables\Columns\TextColumn::make('created_at')->date(),
-            ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
-            ]);
+                        ->columns([
+                            Tables\Columns\TextColumn::make('name')->sortable()->searchable(),
+                            Tables\Columns\TextColumn::make('description')->limit(40),
+                            Tables\Columns\TextColumn::make('created_at')->date(),
+                        ])
+                        ->actions([
+                            Tables\Actions\EditAction::make(),
+                            Tables\Actions\DeleteAction::make(),
+                        ])
+                        ->bulkActions([
+                            Tables\Actions\BulkActionGroup::make([
+                                Tables\Actions\DeleteBulkAction::make(),
+                            ]),
+        ]);
     }
 
-    public static function getRelations(): array { return []; }
+    public static function getRelations(): array {
+        return [];
+    }
 
-    public static function getPages(): array
-    {
+    public static function getPages(): array {
         return [
             'index' => Pages\ListMethodologies::route('/'),
             'create' => Pages\CreateMethodology::route('/create'),

@@ -21,16 +21,9 @@ class ParticipantProfileResource extends Resource {
     protected static ?string $navigationGroup = 'Training Management';
     protected static ?int $navigationSort = 6;
     protected static ?string $slug = 'participant-profiles';
-    
-    
-    public static function shouldRegisterNavigation(): bool
-    {
-        return !auth()->user()->hasRole('Assessor');
-    }
 
-    public static function canAccess(): bool
-    {
-        return !auth()->user()->hasRole('Assessor');
+    public static function shouldRegisterNavigation(): bool {
+        return auth()->check() && auth()->user()->hasRole(['super_admin', 'admin', 'division']);
     }
 
     public static function table(Table $table): Table {
@@ -73,33 +66,33 @@ class ParticipantProfileResource extends Resource {
                             ->alignCenter()
                             ->badge()
                             ->color('success'),
-                            /*TextColumn::make('completion_rate')
-                            ->label('Completion Rate')
-                            ->getStateUsing(function ($record) {
-                                $total = TrainingParticipant::whereHas('user.facility.subcounty', function ($query) use ($record) {
-                                            $query->where('county_id', $record->id);
-                                        })->whereHas('training', function ($query) {
-                                            $query->where('type', 'global_training');
-                                        })->count();
+                                /* TextColumn::make('completion_rate')
+                                  ->label('Completion Rate')
+                                  ->getStateUsing(function ($record) {
+                                  $total = TrainingParticipant::whereHas('user.facility.subcounty', function ($query) use ($record) {
+                                  $query->where('county_id', $record->id);
+                                  })->whereHas('training', function ($query) {
+                                  $query->where('type', 'global_training');
+                                  })->count();
 
-                                $completed = TrainingParticipant::whereHas('user.facility.subcounty', function ($query) use ($record) {
-                                            $query->where('county_id', $record->id);
-                                        })->whereHas('training', function ($query) {
-                                            $query->where('type', 'global_training');
-                                        })->where('completion_status', 'completed')->count();
+                                  $completed = TrainingParticipant::whereHas('user.facility.subcounty', function ($query) use ($record) {
+                                  $query->where('county_id', $record->id);
+                                  })->whereHas('training', function ($query) {
+                                  $query->where('type', 'global_training');
+                                  })->where('completion_status', 'completed')->count();
 
-                                return $total > 0 ? round(($completed / $total) * 100, 1) . '%' : '0%';
-                            })
-                            ->alignCenter()
-                            ->badge()
-                            ->color(function ($record) {
-                                $rate = (float) str_replace('%', '', $record->completion_rate ?? '0');
-                                if ($rate >= 80)
-                                    return 'success';
-                                if ($rate >= 60)
-                                    return 'warning';
-                                return 'danger';
-                            }),*/
+                                  return $total > 0 ? round(($completed / $total) * 100, 1) . '%' : '0%';
+                                  })
+                                  ->alignCenter()
+                                  ->badge()
+                                  ->color(function ($record) {
+                                  $rate = (float) str_replace('%', '', $record->completion_rate ?? '0');
+                                  if ($rate >= 80)
+                                  return 'success';
+                                  if ($rate >= 60)
+                                  return 'warning';
+                                  return 'danger';
+                                  }), */
                         ])
                         ->actions([
                             Action::make('view_trainings')

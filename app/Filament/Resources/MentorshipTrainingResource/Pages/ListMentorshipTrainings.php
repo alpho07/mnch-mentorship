@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Builder;
 class ListMentorshipTrainings extends ListRecords {
 
     protected static string $resource = MentorshipTrainingResource::class;
+
     //static protected string|null $breadcrumb = 'Mentorship';
 
     protected function getHeaderActions(): array {
@@ -20,22 +21,7 @@ class ListMentorshipTrainings extends ListRecords {
                     Actions\CreateAction::make()
                     ->label('New Mentorship')
                     ->icon('heroicon-o-plus')
-                    ->color('primary')
-                    ->before(function () {
-                        // Check if user's facility has valid assessment
-                        $userFacility = auth()->user()->facility_id;
-                        if ($userFacility) {
-                            $assessment = FacilityAssessment::where('facility_id', $userFacility)
-                                    ->valid()
-                                    ->latest()
-                                    ->first();
-
-                            if (!$assessment) {
-                                $this->redirectToAssessment();
-                                return false;
-                            }
-                        }
-                    }),
+                    ->color('primary'),
         ];
     }
 
@@ -80,21 +66,33 @@ class ListMentorshipTrainings extends ListRecords {
         ];
     }
 
-    protected function getQuickStats(): array {
+    /**
+     * Build a base query scoped by role: admins see all, others see only their own.
+     */
+    protected function getScopedBaseQuery(): Builder {
         $query = Training::where('type', 'facility_mentorship');
 
+        $user = auth()->user();
+        if (!$user->hasRole(['super_admin', 'admin', 'division'])) {
+            $query->where('mentor_id', $user->id);
+        }
+
+        return $query;
+    }
+
+    protected function getQuickStats(): array {
         return [
-            'total' => $query->count(),
-            'ongoing' => $query->where('status', 'ongoing')->count(),
-            'completed' => $query->where('status', 'completed')->count(),
-            'new' => $query->where('status', 'new')->count(),
-            'repeat' => $query->where('status', 'repeat')->count(),
-            'mentees' => $query->withCount('participants')->get()->sum('participants_count'),
+            'total' => $this->getScopedBaseQuery()->count(),
+            'ongoing' => $this->getScopedBaseQuery()->where('status', 'ongoing')->count(),
+            'completed' => $this->getScopedBaseQuery()->where('status', 'completed')->count(),
+            'new' => $this->getScopedBaseQuery()->where('status', 'new')->count(),
+            'upcoming' => $this->getScopedBaseQuery()->where('start_date', '>', now())->count(),
+            'mentees' => $this->getScopedBaseQuery()->withCount('participants')->get()->sum('participants_count'),
         ];
     }
 
     protected function getTabCount(string $tab): int {
-        $query = Training::where('type', 'facility_mentorship');
+        $query = $this->getScopedBaseQuery();
 
         return match ($tab) {
             'all' => $query->count(),

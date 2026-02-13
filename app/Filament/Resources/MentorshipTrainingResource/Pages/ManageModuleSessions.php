@@ -7,7 +7,6 @@ use App\Models\Training;
 use App\Models\MentorshipClass;
 use App\Models\ClassModule;
 use App\Models\ClassSession;
-use App\Models\User;
 use Filament\Forms;
 use Filament\Resources\Pages\Page;
 use Filament\Tables;
@@ -44,15 +43,15 @@ class ManageModuleSessions extends Page implements HasTable {
 
     protected function getHeaderActions(): array {
         return [
-                    Actions\Action::make('manage_mentees')
-                    ->label('Manage Mentees')
-                    ->icon('heroicon-o-users')
-                    ->color('primary')
-                    ->url(fn() => MentorshipTrainingResource::getUrl('module-mentees', [
-                                'training' => $this->training->id,
-                                'class' => $this->class->id,
-                                'module' => $this->module->id,
-                            ])),
+//                    Actions\Action::make('manage_mentees')
+//                    ->label('Manage Mentees')
+//                    ->icon('heroicon-o-users')
+//                    ->color('primary')
+//                    ->url(fn() => MentorshipTrainingResource::getUrl('module-mentees', [
+//                                'training' => $this->training->id,
+//                                'class' => $this->class->id,
+//                                'module' => $this->module->id,
+//                            ])),
                     Actions\Action::make('view_summary')
                     ->label('View Summary')
                     ->icon('heroicon-o-chart-bar-square')
@@ -150,60 +149,60 @@ class ManageModuleSessions extends Page implements HasTable {
                         ]),
                     ])
                     ->action(fn(array $data) => $this->addSessionsFromTemplates($data)),
-                    Actions\Action::make('create_custom_session')
-                    ->label('Create Custom')
-                    ->icon('heroicon-o-pencil-square')
-                    ->color('warning')
-                    ->form([
-                        Forms\Components\TextInput::make('title')
-                        ->label('Session Title')
-                        ->required()
-                        ->maxLength(255),
-                        Forms\Components\Textarea::make('description')
-                        ->label('Description')
-                        ->rows(3),
-                        Forms\Components\Grid::make(3)->schema([
-                            Forms\Components\DatePicker::make('scheduled_date')
-                            ->label('Date')
-                            ->required()
-                            ->native(false),
-                            Forms\Components\TimePicker::make('scheduled_time')
-                            ->label('Time')
-                            ->required()
-                            ->seconds(false),
-                            Forms\Components\TextInput::make('duration_minutes')
-                            ->label('Duration')
-                            ->numeric()
-                            ->required()
-                            ->default(120)
-                            ->suffix('minutes'),
-                        ]),
-                        Forms\Components\TextInput::make('location')
-                        ->label('Location')
-                        ->maxLength(255),
-                        Forms\Components\Select::make('facilitator_id')
-                        ->label('Facilitator')
-                        ->options(function () {
-                            $facilitators = collect([$this->training->mentor]);
-
-                            if (method_exists($this->training, 'coMentors')) {
-                                $coMentors = $this->training->coMentors()
-                                        ->where('status', 'accepted')
-                                        ->with('user')
-                                        ->get()
-                                        ->pluck('user');
-
-                                $facilitators = $facilitators->concat($coMentors);
-                            }
-
-                            return $facilitators->filter()->mapWithKeys(fn($user) => [
-                                        $user->id => $user->full_name,
-                            ]);
-                        })
-                        ->default(auth()->id())
-                        ->required(),
-                    ])
-                    ->action(fn(array $data) => $this->createCustomSession($data)),
+//                    Actions\Action::make('create_custom_session')
+//                    ->label('Create Custom')
+//                    ->icon('heroicon-o-pencil-square')
+//                    ->color('warning')
+//                    ->form([
+//                        Forms\Components\TextInput::make('title')
+//                        ->label('Session Title')
+//                        ->required()
+//                        ->maxLength(255),
+//                        Forms\Components\Textarea::make('description')
+//                        ->label('Description')
+//                        ->rows(3),
+//                        Forms\Components\Grid::make(3)->schema([
+//                            Forms\Components\DatePicker::make('scheduled_date')
+//                            ->label('Date')
+//                            ->required()
+//                            ->native(false),
+//                            Forms\Components\TimePicker::make('scheduled_time')
+//                            ->label('Time')
+//                            ->required()
+//                            ->seconds(false),
+//                            Forms\Components\TextInput::make('duration_minutes')
+//                            ->label('Duration')
+//                            ->numeric()
+//                            ->required()
+//                            ->default(120)
+//                            ->suffix('minutes'),
+//                        ]),
+//                        Forms\Components\TextInput::make('location')
+//                        ->label('Location')
+//                        ->maxLength(255),
+//                        Forms\Components\Select::make('facilitator_id')
+//                        ->label('Facilitator')
+//                        ->options(function () {
+//                            $facilitators = collect([$this->training->mentor]);
+//
+//                            if (method_exists($this->training, 'coMentors')) {
+//                                $coMentors = $this->training->coMentors()
+//                                        ->where('status', 'accepted')
+//                                        ->with('user')
+//                                        ->get()
+//                                        ->pluck('user');
+//
+//                                $facilitators = $facilitators->concat($coMentors);
+//                            }
+//
+//                            return $facilitators->filter()->mapWithKeys(fn($user) => [
+//                                        $user->id => $user->full_name,
+//                            ]);
+//                        })
+//                        ->default(auth()->id())
+//                        ->required(),
+//                    ])
+//                    ->action(fn(array $data) => $this->createCustomSession($data)),
                     Actions\ActionGroup::make([
                         Actions\Action::make('start_module')
                         ->label('Start Module')
