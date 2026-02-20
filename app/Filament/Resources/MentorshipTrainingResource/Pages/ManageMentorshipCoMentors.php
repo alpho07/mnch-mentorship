@@ -15,6 +15,7 @@ use Filament\Tables\Contracts\HasTable;
 use Filament\Actions;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Str;
+use Illuminate\Support\HtmlString;
 
 class ManageMentorshipCoMentors extends Page implements HasTable {
 
@@ -24,20 +25,26 @@ class ManageMentorshipCoMentors extends Page implements HasTable {
     protected static string $view = 'filament.pages.manage-co-mentors';
     public Training $record;
 
+    /**
+     * Holds the invitation link after a co-mentor is invited.
+     * Displayed in the blade template.
+     */
+    public ?string $lastInvitationLink = null;
+    public ?string $lastInvitedName = null;
+
     public function mount(int|string $record): void {
         $this->record = Training::where('type', 'facility_mentorship')
-                ->with(['mentor', 'coMentors'])
+                ->with(['mentor', 'coMentors', 'facility', 'program'])
                 ->findOrFail($this->record->id);
     }
 
     public function getTitle(): string {
-        return "Co-Mentors - {$this->record->program->name}";
+        return "Co-Mentors — {$this->record->program->name}";
     }
 
     public function getSubheading(): ?string {
         $accepted = $this->record->coMentors()->where('status', 'accepted')->count();
         $pending = $this->record->coMentors()->where('status', 'pending')->count();
-
         return "Facility: {$this->record->facility->name} • {$accepted} active co-mentors • {$pending} pending invitations";
     }
 
@@ -51,10 +58,7 @@ class ManageMentorshipCoMentors extends Page implements HasTable {
                         Forms\Components\Select::make('user_id')
                         ->label('Select Mentor')
                         ->options(function () {
-                            $existingCoMentorIds = $this->record->coMentors()
-                                    ->whereIn('status', ['pending', 'accepted'])
-                                    ->pluck('user_id')
-                                    ->toArray();
+                            $existingCoMentorIds = $this->record->coMentors()->pluck('user_id')->toArray();
                             $existingCoMentorIds[] = $this->record->mentor_id;
 
                             return User::whereNotIn('id', $existingCoMentorIds)
@@ -114,14 +118,29 @@ class ManageMentorshipCoMentors extends Page implements HasTable {
                             ->colors([
                                 'warning' => 'pending',
                                 'success' => 'accepted',
-                                'danger' => 'declined',
-                                'gray' => 'revoked',
+                                'danger' => fn($state) => in_array($state, ['declined', 'removed', 'revoked']),
                                 'secondary' => 'removed',
-                            ])
-                            ->formatStateUsing(fn(string $state): string => ucfirst($state)),
+                            ]),
+                            Tables\Columns\TextColumn::make('invitation_link')
+                            ->label('Invitation Link')
+                            ->getStateUsing(function (MentorshipCoMentor $record) {
+                                if ($record->invitation_token) {
+                                    return url("/co-mentor/accept/{$record->invitation_token}");
+                                }
+                                return '—';
+                            })
+                            ->copyable()
+                            ->copyMessage('Invitation link copied!')
+                            ->limit(35)
+                            ->tooltip(function (MentorshipCoMentor $record) {
+                                if ($record->invitation_token) {
+                                    return url("/co-mentor/accept/{$record->invitation_token}");
+                                }
+                                return null;
+                            })
+                            ->visible(fn() => $this->record->coMentors()->whereNotNull('invitation_token')->exists()),
                             Tables\Columns\TextColumn::make('inviter.full_name')
                             ->label('Invited By')
-                            ->searchable(['first_name', 'last_name'])
                             ->toggleable(),
                             Tables\Columns\TextColumn::make('invited_at')
                             ->label('Invited')
@@ -139,30 +158,31 @@ class ManageMentorshipCoMentors extends Page implements HasTable {
                                 'pending' => 'Pending',
                                 'accepted' => 'Accepted',
                                 'declined' => 'Declined',
-                                'revoked' => 'Revoked',
                                 'removed' => 'Removed',
                             ])
                             ->multiple(),
                         ])
                         ->actions([
                             Tables\Actions\ActionGroup::make([
-                                // Copy invitation link (for pending invitations)
-                                Tables\Actions\Action::make('copy_invite_link')
-                                ->label('Copy Invite Link')
+                                Tables\Actions\Action::make('copy_link')
+                                ->label('Copy Invitation Link')
                                 ->icon('heroicon-o-clipboard-document')
                                 ->color('info')
                                 ->visible(fn(MentorshipCoMentor $record) =>
                                         $record->status === 'pending' && $record->invitation_token
                                 )
                                 ->action(function (MentorshipCoMentor $record) {
-                                    $link = route('co-mentor.invitation', ['token' => $record->invitation_token]);
+                                    $link = url("/co-mentor/accept/{$record->invitation_token}");
                                     Notification::make()
                                             ->success()
                                             ->title('Invitation Link')
-                                            ->body($link)
+                                            ->body(new HtmlString(
+                                                            "<div class='font-mono text-xs break-all bg-gray-100 dark:bg-gray-800 p-2 rounded'>{$link}</div>" .
+                                                            "<p class='mt-2 text-sm'>Share this link with <strong>{$record->user->full_name}</strong> to accept the invitation.</p>"
+                                            ))
+                                            ->persistent()
                                             ->send();
                                 }),
-                                // Accept (only visible to the invited user themselves)
                                 Tables\Actions\Action::make('accept')
                                 ->label('Accept')
                                 ->icon('heroicon-o-check')
@@ -180,7 +200,6 @@ class ManageMentorshipCoMentors extends Page implements HasTable {
                                             ->body('You are now a co-mentor for this mentorship.')
                                             ->send();
                                 }),
-                                // Decline (only visible to the invited user themselves)
                                 Tables\Actions\Action::make('decline')
                                 ->label('Decline')
                                 ->icon('heroicon-o-x-mark')
@@ -197,31 +216,12 @@ class ManageMentorshipCoMentors extends Page implements HasTable {
                                             ->title('Invitation Declined')
                                             ->send();
                                 }),
-                                // Revoke (lead mentor can revoke pending invitations)
-                                Tables\Actions\Action::make('revoke')
-                                ->label('Revoke Invitation')
-                                ->icon('heroicon-o-no-symbol')
-                                ->color('warning')
-                                ->visible(fn(MentorshipCoMentor $record) =>
-                                        $record->status === 'pending' &&
-                                        auth()->id() === $this->record->mentor_id
-                                )
-                                ->requiresConfirmation()
-                                ->modalDescription('Revoke this invitation? The co-mentor will no longer be able to accept it.')
-                                ->action(function (MentorshipCoMentor $record) {
-                                    $record->update(['status' => 'revoked']);
-                                    Notification::make()
-                                            ->warning()
-                                            ->title('Invitation Revoked')
-                                            ->send();
-                                }),
-                                // Remove (lead mentor can remove accepted co-mentors)
                                 Tables\Actions\Action::make('remove')
                                 ->label('Remove')
                                 ->icon('heroicon-o-trash')
                                 ->color('danger')
                                 ->visible(fn(MentorshipCoMentor $record) =>
-                                        $record->status === 'accepted' &&
+                                        in_array($record->status, ['accepted', 'pending']) &&
                                         auth()->id() === $this->record->mentor_id
                                 )
                                 ->requiresConfirmation()
@@ -233,19 +233,23 @@ class ManageMentorshipCoMentors extends Page implements HasTable {
                                             ->title('Co-Mentor Removed')
                                             ->send();
                                 }),
-                                // Resend invitation
                                 Tables\Actions\Action::make('resend_invitation')
                                 ->label('Resend Invitation')
                                 ->icon('heroicon-o-envelope')
                                 ->color('info')
                                 ->visible(fn(MentorshipCoMentor $record) => $record->status === 'pending')
                                 ->action(function (MentorshipCoMentor $record) {
-                                    // TODO: Send invitation email with link
-                                    $link = route('co-mentor.invitation', ['token' => $record->invitation_token]);
+                                    // TODO: Resend invitation email
+                                    $link = $record->invitation_token ? url("/co-mentor/accept/{$record->invitation_token}") : 'No link generated';
+
                                     Notification::make()
                                             ->success()
                                             ->title('Invitation Resent')
-                                            ->body('Invitation email sent to ' . $record->user->email)
+                                            ->body(new HtmlString(
+                                                            "Invitation email sent to {$record->user->email}<br>" .
+                                                            "<span class='font-mono text-xs'>{$link}</span>"
+                                            ))
+                                            ->persistent()
                                             ->send();
                                 }),
                             ]),
@@ -265,11 +269,9 @@ class ManageMentorshipCoMentors extends Page implements HasTable {
         ]);
     }
 
-    /**
-     * Invite a co-mentor with a generated invitation_token.
-     */
     private function inviteCoMentor(array $data): void {
-        $token = Str::random(32);
+        // Generate a unique invitation token
+        $token = Str::random(64);
 
         $coMentor = MentorshipCoMentor::create([
             'training_id' => $this->record->id,
@@ -286,15 +288,25 @@ class ManageMentorshipCoMentors extends Page implements HasTable {
         ]);
 
         $user = User::find($data['user_id']);
-        $inviteLink = route('co-mentor.invitation', ['token' => $token]);
+        $invitationLink = url("/co-mentor/accept/{$token}");
+
+        // Store for blade template display
+        $this->lastInvitationLink = $invitationLink;
+        $this->lastInvitedName = $user->full_name;
 
         // TODO: Send invitation email
-        // Mail::to($user->email)->send(new CoMentorInvitation($this->record, $coMentor, $inviteLink, $data['invitation_message'] ?? null));
+        // Mail::to($user->email)->send(new CoMentorInvitation($this->record, $coMentor, $data['invitation_message'] ?? null));
 
         Notification::make()
                 ->success()
-                ->title('Invitation Sent')
-                ->body("Co-mentor invitation sent to {$user->full_name}. Link: {$inviteLink}")
+                ->title('Co-Mentor Invited Successfully')
+                ->body(new HtmlString(
+                                "<p><strong>{$user->full_name}</strong> has been invited as a co-mentor.</p>" .
+                                "<p class='mt-2 text-sm font-medium'>Invitation Link:</p>" .
+                                "<div class='font-mono text-xs break-all bg-gray-100 dark:bg-gray-800 p-2 rounded mt-1'>{$invitationLink}</div>" .
+                                "<p class='mt-2 text-xs text-gray-500'>Share this link with the co-mentor to accept the invitation.</p>"
+                ))
+                ->persistent()
                 ->send();
     }
 }

@@ -4,7 +4,10 @@ namespace App\Filament\Resources\MentorshipTrainingResource\Pages;
 
 use App\Filament\Resources\MentorshipTrainingResource;
 use App\Models\Training;
-use App\Models\MenteeAssessmentResult;
+use App\Models\MentorshipClass;
+use App\Models\ClassModule;
+use App\Models\ClassSession;
+use App\Models\ClassParticipant;
 use Filament\Actions;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Infolists;
@@ -34,7 +37,7 @@ class ViewMentorshipTraining extends ViewRecord {
                     'methodologies:id,name,description',
                     'assessmentCategories:id,name,description,assessment_method',
                     'trainingMaterials:id,training_id,inventory_item_id,quantity_planned,quantity_used,total_cost,usage_notes',
-                    'trainingMaterials.inventoryItem:id,name'
+                    'trainingMaterials.inventoryItem:id,name',
                 ])
                 ->findOrFail($record);
     }
@@ -45,40 +48,156 @@ class ViewMentorshipTraining extends ViewRecord {
                     ->color('warning'),
                     Actions\Action::make('manage_classes')
                     ->label('Manage Classes')
-                    ->icon('heroicon-o-users')
+                    ->icon('heroicon-o-academic-cap')
                     ->color('success')
+                    ->url(fn() => static::getResource()::getUrl('classes', ['record' => $this->record])),
+                    Actions\Action::make('manage_co_mentors')
+                    ->label('Co-Mentors')
+                    ->icon('heroicon-o-user-group')
+                    ->color('primary')
+                    ->url(fn() => static::getResource()::getUrl('co-mentors', ['record' => $this->record])),
+                    Actions\Action::make('manage_mentees')
+                    ->label('Mentees')
+                    ->icon('heroicon-o-users')
+                    ->color('info')
                     ->url(fn() => static::getResource()::getUrl('mentees', ['record' => $this->record])),
-//                    Actions\Action::make('assessment_matrix')
-//                    ->label('Assessment Matrix')
-//                    ->icon('heroicon-o-clipboard-document-check')
-//                    ->color('primary')
-//                    ->url(fn() => static::getResource()::getUrl('assessments', ['record' => $this->record])),
-            /* Actions\Action::make('smart_insights')
-              ->label('Smart Insights')
-              ->icon('heroicon-o-sparkles')
-              ->color('info')
-              ->modalHeading('Training Insights & Recommendations')
-              ->modalContent(fn () => view('filament.components.training-insights', [
-              'training' => $this->record,
-              'insights' => $this->getSmartInsights()
-              ]))
-              ->modalWidth('5xl'),
-
-              Actions\Action::make('export_summary')
-              ->label('Export Summary')
-              ->icon('heroicon-o-arrow-down-tray')
-              ->color('gray')
-              ->action(function () {
-              return $this->exportTrainingSummary();
-              }), */
-//                    Actions\DeleteAction::make()
-//                    ->requiresConfirmation(),
         ];
     }
 
     public function infolist(Infolist $infolist): Infolist {
         return $infolist
                         ->schema([
+                            // ==========================================
+                            // MENTORSHIP PROGRESS TRACKER
+                            // ==========================================
+                            Section::make('Mentorship Progress')
+                            ->icon('heroicon-o-chart-bar')
+                            ->schema([
+                                Grid::make(5)
+                                ->schema([
+                                    TextEntry::make('progress_classes')
+                                    ->label('① Classes')
+                                    ->getStateUsing(function ($record) {
+                                        $total = $record->mentorshipClasses()->count();
+                                        $active = $record->mentorshipClasses()->where('status', 'active')->count();
+                                        $completed = $record->mentorshipClasses()->where('status', 'completed')->count();
+                                        return "{$total} total ({$active} active, {$completed} done)";
+                                    })
+                                    ->icon('heroicon-o-rectangle-group')
+                                    ->badge()
+                                    ->color(fn($record) =>
+                                            $record->mentorshipClasses()->count() > 0 ? 'success' : 'danger'
+                                    ),
+                                    TextEntry::make('progress_modules')
+                                    ->label('② Modules')
+                                    ->getStateUsing(function ($record) {
+                                        $total = ClassModule::whereHas('mentorshipClass', fn($q) =>
+                                                        $q->where('training_id', $record->id)
+                                                )->count();
+                                        $completed = ClassModule::whereHas('mentorshipClass', fn($q) =>
+                                                        $q->where('training_id', $record->id)
+                                                )->where('status', 'completed')->count();
+                                        return $total > 0 ? "{$completed}/{$total} completed" : 'None added';
+                                    })
+                                    ->icon('heroicon-o-book-open')
+                                    ->badge()
+                                    ->color(function ($record) {
+                                        $total = ClassModule::whereHas('mentorshipClass', fn($q) =>
+                                                        $q->where('training_id', $record->id)
+                                                )->count();
+                                        return $total > 0 ? 'success' : 'danger';
+                                    }),
+                                    TextEntry::make('progress_sessions')
+                                    ->label('③ Sessions')
+                                    ->getStateUsing(function ($record) {
+                                        $total = ClassSession::whereHas('classModule.mentorshipClass', fn($q) =>
+                                                        $q->where('training_id', $record->id)
+                                                )->count();
+                                        $completed = ClassSession::whereHas('classModule.mentorshipClass', fn($q) =>
+                                                        $q->where('training_id', $record->id)
+                                                )->where('status', 'completed')->count();
+                                        return $total > 0 ? "{$completed}/{$total} completed" : 'None scheduled';
+                                    })
+                                    ->icon('heroicon-o-calendar')
+                                    ->badge()
+                                    ->color(function ($record) {
+                                        $total = ClassSession::whereHas('classModule.mentorshipClass', fn($q) =>
+                                                        $q->where('training_id', $record->id)
+                                                )->count();
+                                        return $total > 0 ? 'success' : 'warning';
+                                    }),
+                                    TextEntry::make('progress_mentees')
+                                    ->label('④ Mentees')
+                                    ->getStateUsing(function ($record) {
+                                        $total = ClassParticipant::whereHas('mentorshipClass', fn($q) =>
+                                                        $q->where('training_id', $record->id)
+                                                )->count();
+                                        $unique = ClassParticipant::whereHas('mentorshipClass', fn($q) =>
+                                                        $q->where('training_id', $record->id)
+                                                )->distinct('user_id')->count('user_id');
+                                        return $total > 0 ? "{$unique} mentees ({$total} enrollments)" : 'None enrolled';
+                                    })
+                                    ->icon('heroicon-o-users')
+                                    ->badge()
+                                    ->color(function ($record) {
+                                        $total = ClassParticipant::whereHas('mentorshipClass', fn($q) =>
+                                                        $q->where('training_id', $record->id)
+                                                )->count();
+                                        return $total > 0 ? 'success' : 'warning';
+                                    }),
+                                    TextEntry::make('progress_comentors')
+                                    ->label('⑤ Co-Mentors')
+                                    ->getStateUsing(function ($record) {
+                                        $accepted = $record->coMentors()->where('status', 'accepted')->count();
+                                        $pending = $record->coMentors()->where('status', 'pending')->count();
+                                        if ($accepted + $pending === 0)
+                                            return 'None invited';
+                                        return "{$accepted} active" . ($pending > 0 ? ", {$pending} pending" : '');
+                                    })
+                                    ->icon('heroicon-o-user-group')
+                                    ->badge()
+                                    ->color(function ($record) {
+                                        $any = $record->coMentors()
+                                                ->whereIn('status', ['accepted', 'pending'])
+                                                ->count();
+                                        return $any > 0 ? 'info' : 'gray';
+                                    }),
+                                ]),
+                                // Per-class breakdown
+                                TextEntry::make('class_breakdown')
+                                ->label('Class Details')
+                                ->getStateUsing(function ($record) {
+                                    $classes = $record->mentorshipClasses()
+                                            ->withCount(['classModules', 'participants'])
+                                            ->get();
+
+                                    if ($classes->isEmpty()) {
+                                        return 'No classes created yet. Click "Manage Classes" to get started.';
+                                    }
+
+                                    $lines = [];
+                                    foreach ($classes as $class) {
+                                        $sessionCount = ClassSession::whereHas('classModule', fn($q) =>
+                                                        $q->where('mentorship_class_id', $class->id)
+                                                )->count();
+
+                                        $statusIcon = match ($class->status) {
+                                            'active' => '🟢',
+                                            'completed' => '✅',
+                                            'cancelled' => '🔴',
+                                            default => '⚪',
+                                        };
+
+                                        $lines[] = "{$statusIcon} {$class->name}: {$class->class_modules_count} modules, {$sessionCount} sessions, {$class->participants_count} mentees";
+                                    }
+
+                                    return implode("\n", $lines);
+                                })
+                                ->columnSpanFull(),
+                            ]),
+                            // ==========================================
+                            // MENTORSHIP OVERVIEW
+                            // ==========================================
                             Section::make('Mentorship Overview')
                             ->schema([
                                 Grid::make(2)
@@ -139,7 +258,7 @@ class ViewMentorshipTraining extends ViewRecord {
                                     ->label('Lead Mentor')
                                     ->getStateUsing(fn($record) =>
                                             $record->mentor ? "{$record->mentor->first_name} {$record->mentor->last_name}" .
-                                            ($record->mentor->cadre ? " ({$record->mentor->cadre->name})" : "") : 'Not assigned'
+                                            ($record->mentor->cadre ? " ({$record->mentor->cadre->name})" : '') : 'Not assigned'
                                     )
                                     ->icon('heroicon-o-academic-cap')
                                     ->weight(FontWeight::Medium),
@@ -150,7 +269,7 @@ class ViewMentorshipTraining extends ViewRecord {
                                             'national' => $record->division?->name ?? 'Ministry of Health',
                                             'county' => $record->county?->name ?? 'County not specified',
                                             'partner' => $record->partner?->name ?? 'Partner not specified',
-                                            default => 'Not specified'
+                                            default => 'Not specified',
                                         };
                                     })
                                     ->icon(function ($record) {
@@ -158,7 +277,7 @@ class ViewMentorshipTraining extends ViewRecord {
                                             'national' => 'heroicon-o-building-office-2',
                                             'county' => 'heroicon-o-map-pin',
                                             'partner' => 'heroicon-o-users',
-                                            default => 'heroicon-o-question-mark-circle'
+                                            default => 'heroicon-o-question-mark-circle',
                                         };
                                     })
                                     ->badge(function ($record) {
@@ -166,7 +285,7 @@ class ViewMentorshipTraining extends ViewRecord {
                                             'national' => 'National',
                                             'county' => 'County',
                                             'partner' => 'Partner',
-                                            default => 'Unknown'
+                                            default => 'Unknown',
                                         };
                                     })
                                     ->color(function ($record) {
@@ -174,7 +293,7 @@ class ViewMentorshipTraining extends ViewRecord {
                                             'national' => 'primary',
                                             'county' => 'success',
                                             'partner' => 'warning',
-                                            default => 'gray'
+                                            default => 'gray',
                                         };
                                     })
                                     ->weight(FontWeight::Medium),
@@ -258,7 +377,10 @@ class ViewMentorshipTraining extends ViewRecord {
                                         ->color(fn($state) => $state >= 80 ? 'success' : ($state >= 60 ? 'warning' : 'danger')),
                                         TextEntry::make('departments_represented')
                                         ->label('Departments Represented')
-                                        ->getStateUsing(fn($record) => $record->participants()->with('user.department')->get()->pluck('user.department.name')->filter()->unique()->count())
+                                        ->getStateUsing(fn($record) =>
+                                                $record->participants()->with('user.department')->get()
+                                                ->pluck('user.department.name')->filter()->unique()->count()
+                                        )
                                         ->badge()
                                         ->color('info'),
                                         TextEntry::make('assessment_categories_count')
@@ -362,55 +484,10 @@ class ViewMentorshipTraining extends ViewRecord {
         ]);
     }
 
-    private function getSmartInsights(): array {
-        $insights = [];
-
-        $totalMentees = $this->record->participants()->count();
-        $totalCategories = $this->record->assessmentCategories()->count();
-
-        if ($totalMentees == 0) {
-            $insights[] = [
-                'type' => 'info',
-                'title' => 'No Mentees Enrolled',
-                'message' => 'Add mentees to begin the mentorship program.',
-                'action' => 'Use the "Manage Mentees" button to add participants'
-            ];
-        }
-
-        if ($totalCategories == 0) {
-            $insights[] = [
-                'type' => 'warning',
-                'title' => 'No Assessment Categories',
-                'message' => 'Configure assessment categories to evaluate mentees.',
-                'action' => 'Edit the training to add assessment categories'
-            ];
-        }
-
-        // Training content insights
-        if ($this->record->programs->isEmpty()) {
-            $insights[] = [
-                'type' => 'warning',
-                'title' => 'No Programs Selected',
-                'message' => 'Link this mentorship to training programs for better structure.',
-                'action' => 'Edit training to add programs and modules'
-            ];
-        }
-
-        if ($this->record->trainingMaterials->isEmpty()) {
-            $insights[] = [
-                'type' => 'info',
-                'title' => 'No Materials Planned',
-                'message' => 'Consider adding training materials for better resource tracking.',
-                'action' => 'Add materials to track costs and usage'
-            ];
-        }
-
-        return $insights;
-    }
-
     private function getMaterialStatus($material): string {
-        if ($material->quantity_planned <= 0)
+        if ($material->quantity_planned <= 0) {
             return 'Unknown';
+        }
 
         $usagePercent = ($material->quantity_used / $material->quantity_planned) * 100;
 
@@ -423,111 +500,7 @@ class ViewMentorshipTraining extends ViewRecord {
         return 'Overused';
     }
 
-    private function exportTrainingSummary() {
-        $filename = "mentorship_summary_{$this->record->identifier}_" . now()->format('Y-m-d_H-i-s') . '.csv';
-
-        return response()->streamDownload(function () {
-                    $file = fopen('php://output', 'w');
-
-                    // Training Overview
-                    fputcsv($file, ['MENTORSHIP TRAINING SUMMARY']);
-                    fputcsv($file, ['Generated on: ' . now()->format('Y-m-d H:i:s')]);
-                    fputcsv($file, ['']);
-
-                    // Basic Information
-                    fputcsv($file, ['BASIC INFORMATION']);
-                    fputcsv($file, ['Training Title', $this->record->title]);
-                    fputcsv($file, ['Training ID', $this->record->identifier]);
-                    fputcsv($file, ['Facility', $this->record->facility->name]);
-                    fputcsv($file, ['Status', ucfirst($this->record->status)]);
-                    fputcsv($file, ['Start Date', $this->record->start_date?->format('Y-m-d')]);
-                    fputcsv($file, ['End Date', $this->record->end_date?->format('Y-m-d')]);
-                    fputcsv($file, ['Lead Mentor', $this->record->mentor ? "{$this->record->mentor->first_name} {$this->record->mentor->last_name}" : 'Not assigned']);
-                    fputcsv($file, ['Coordinator', $this->record->organizer ? "{$this->record->organizer->first_name} {$this->record->organizer->last_name}" : 'Not assigned']);
-                    fputcsv($file, ['']);
-
-                    // Training Content Summary
-                    if ($this->record->programs->isNotEmpty()) {
-                        fputcsv($file, ['TRAINING PROGRAMS']);
-                        fputcsv($file, ['Program Name', 'Description']);
-                        foreach ($this->record->programs as $program) {
-                            fputcsv($file, [$program->name, $program->description ?? 'N/A']);
-                        }
-                        fputcsv($file, ['']);
-                    }
-
-                    if ($this->record->modules->isNotEmpty()) {
-                        fputcsv($file, ['TRAINING MODULES']);
-                        fputcsv($file, ['Module Name', 'Program', 'Description']);
-                        foreach ($this->record->modules as $module) {
-                            fputcsv($file, [
-                                $module->name,
-                                $module->program->name ?? 'N/A',
-                                $module->description ?? 'N/A'
-                            ]);
-                        }
-                        fputcsv($file, ['']);
-                    }
-
-                    if ($this->record->methodologies->isNotEmpty()) {
-                        fputcsv($file, ['TRAINING METHODOLOGIES']);
-                        fputcsv($file, ['Methodology', 'Description', 'Status']);
-                        foreach ($this->record->methodologies as $methodology) {
-                            fputcsv($file, [
-                                $methodology->name,
-                                $methodology->description ?? 'N/A',
-                                $methodology->is_active ? 'Active' : 'Inactive'
-                            ]);
-                        }
-                        fputcsv($file, ['']);
-                    }
-
-                    // Basic Statistics
-                    fputcsv($file, ['BASIC STATISTICS']);
-                    fputcsv($file, ['Total Mentees', $this->record->participants()->count()]);
-                    fputcsv($file, ['Assessment Categories', $this->record->assessmentCategories()->count()]);
-                    fputcsv($file, ['']);
-
-                    // Assessment Categories
-                    if ($this->record->assessmentCategories->isNotEmpty()) {
-                        fputcsv($file, ['ASSESSMENT CATEGORIES']);
-                        fputcsv($file, ['Category', 'Weight (%)', 'Pass Threshold (%)', 'Method']);
-                        foreach ($this->record->assessmentCategories as $category) {
-                            fputcsv($file, [
-                                $category->name,
-                                $category->pivot->weight_percentage,
-                                $category->pivot->pass_threshold,
-                                $category->assessment_method,
-                            ]);
-                        }
-                        fputcsv($file, ['']);
-                    }
-
-                    // Materials Summary
-                    if ($this->record->trainingMaterials->isNotEmpty()) {
-                        fputcsv($file, ['MATERIALS SUMMARY']);
-                        fputcsv($file, ['Material', 'Planned Qty', 'Used Qty', 'Cost', 'Status']);
-                        foreach ($this->record->trainingMaterials as $material) {
-                            fputcsv($file, [
-                                $material->inventoryItem->name,
-                                $material->quantity_planned,
-                                $material->quantity_used ?? 0,
-                                'KES ' . number_format($material->total_cost, 2),
-                                $this->getMaterialStatus($material)
-                            ]);
-                        }
-                    }
-
-                    fclose($file);
-                }, $filename, [
-                    'Content-Type' => 'text/csv',
-                    'Content-Disposition' => 'attachment; filename="' . $filename . '"',
-        ]);
-    }
-    
-       
-    public function getTitle(): string{
+    public function getTitle(): string {
         return 'View Mentorship';
     }
-
 }

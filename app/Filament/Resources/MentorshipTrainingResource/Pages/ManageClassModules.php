@@ -7,7 +7,6 @@ use App\Models\Training;
 use App\Models\MentorshipClass;
 use App\Models\ClassModule;
 use App\Models\ProgramModule;
-use App\Services\ModuleUsageService;
 use Filament\Forms;
 use Filament\Resources\Pages\Page;
 use Filament\Tables;
@@ -16,6 +15,7 @@ use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Actions;
 use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\DB;
 
 class ManageClassModules extends Page implements HasTable {
 
@@ -33,24 +33,14 @@ class ManageClassModules extends Page implements HasTable {
     }
 
     public function getTitle(): string {
-        return "Manage Modules - {$this->class->name}";
+        return "Manage Modules — {$this->class->name}";
     }
 
     public function getSubheading(): ?string {
         $moduleCount = $this->class->classModules()->count();
-        $usageService = app(ModuleUsageService::class);
-        $availableCount = $usageService->getAvailableModules($this->training, $this->class)->count();
-
-        return "{$this->training->name} • {$moduleCount} modules selected • {$availableCount} available";
-    }
-
-    /**
-     * Get the structured module availability data.
-     */
-    private function getModuleAvailability(): \Illuminate\Support\Collection {
-        $usageService = app(ModuleUsageService::class);
-
-        return $usageService->getModulesWithAvailability($this->training, $this->class);
+        $sessionCount = $this->class->session_count;
+        $menteeCount = $this->class->participants()->count();
+        return "{$this->training->title} • {$moduleCount} modules • {$sessionCount} sessions • {$menteeCount} mentees";
     }
 
     protected function getHeaderActions(): array {
@@ -61,133 +51,36 @@ class ManageClassModules extends Page implements HasTable {
                     ->color('success')
                     ->slideOver()
                     ->modalWidth('3xl')
-                    ->visible(function () {
-                        try {
-                            return $this->getModuleAvailability()->isNotEmpty();
-                        } catch (\Throwable $e) {
-                            // If query fails, show button anyway so user can see the error
-                            return true;
-                        }
-                    })
                     ->form([
                         Forms\Components\Section::make('Select Modules to Add')
-                        ->description('Choose modules for this class. Modules already used in this mentorship are hidden. Modules completed at this facility in other mentorships are shown but disabled.')
+                        ->description('Choose modules for this class. Modules assigned to completed classes in this mentorship are excluded.')
                         ->schema([
-                            Forms\Components\Placeholder::make('info')
-                            ->content(function () {
-                                $availability = $this->getModuleAvailability();
-
-                                $programIds = [];
-                                if ($this->training->program_id) {
-                                    $programIds[] = $this->training->program_id;
-                                }
-                                $pivotIds = \Illuminate\Support\Facades\DB::table('training_programs')
-                                        ->where('training_id', $this->training->id)
-                                        ->pluck('program_id')
-                                        ->toArray();
-                                $programIds = array_unique(array_merge($programIds, $pivotIds));
-
-                                $total = ProgramModule::whereIn('program_id', $programIds)
-                                                ->where('is_active', true)->count();
-
-                                $usageService = app(ModuleUsageService::class);
-                                $usedInMentorship = $usageService->getUsedModules($this->training)->count();
-                                $inThisClass = $this->class->classModules()->count();
-                                $selectableCount = $availability->filter(fn($i) => $i->available)->count();
-                                $disabledCount = $availability->filter(fn($i) => !$i->available)->count();
-
-                                $text = "Total program modules: {$total} | Used in this mentorship: {$usedInMentorship} | In this class: {$inThisClass} | Selectable: {$selectableCount}";
-                                if ($disabledCount > 0) {
-                                    $text .= " | Completed at facility: {$disabledCount} (disabled)";
-                                }
-
-                                return $text;
-                            }),
                             Forms\Components\CheckboxList::make('selected_modules')
                             ->label('Available Modules')
                             ->options(function () {
-                                $availability = $this->getModuleAvailability();
-
-                                return $availability->mapWithKeys(function ($item) {
-                                            $label = $item->module->name;
-                                            if (!$item->available) {
-                                                $label .= ' 🔒';
-                                            }
-
-                                            return [$item->module->id => $label];
-                                        })->toArray();
+                                return $this->getAvailableModuleOptions();
                             })
                             ->descriptions(function () {
-                                $availability = $this->getModuleAvailability();
-
-                                return $availability->mapWithKeys(function ($item) {
-                                            if (!$item->available && $item->disabled_reason) {
-                                                // Show the reason it's disabled
-                                                return [$item->module->id => '⚠️ ' . $item->disabled_reason];
-                                            }
-
-                                            // Normal description for available modules
-                                            $desc = $item->module->description ?? '';
-                                            if ($item->module->duration_weeks) {
-                                                $desc .= ($desc ? ' • ' : '') . $item->module->duration_weeks . ' weeks';
-                                            }
-
-                                            return [$item->module->id => $desc];
-                                        })->toArray();
-                            })
-                            ->disableOptionWhen(function (string $value) {
-                                $availability = $this->getModuleAvailability();
-                                $item = $availability->first(fn($i) => $i->module->id == $value);
-
-                                return $item && !$item->available;
+                                return $this->getAvailableModuleDescriptions();
                             })
                             ->columns(1)
                             ->gridDirection('row')
                             ->bulkToggleable()
-                            ->helperText('Modules can only be taught once per mentorship. Disabled modules were completed at this facility in another mentorship.')
+                            ->helperText('Modules already assigned to completed classes in this mentorship are not shown.')
                             ->columnSpanFull(),
                         ]),
                     ])
                     ->action(function (array $data) {
-                        // Filter out any disabled modules that somehow got through
-                        $availability = $this->getModuleAvailability();
-                        $disabledIds = $availability->filter(fn($i) => !$i->available)
-                                ->map(fn($i) => $i->module->id)
-                                ->toArray();
-
-                        $selectedModules = array_diff($data['selected_modules'] ?? [], $disabledIds);
-
-                        if (empty($selectedModules)) {
-                            Notification::make()
-                                    ->warning()
-                                    ->title('No Modules Selected')
-                                    ->body('Please select at least one available module to add.')
-                                    ->send();
-
-                            return;
-                        }
-
-                        $usageService = app(ModuleUsageService::class);
-                        $assigned = $usageService->assignModulesToClass(
-                                $this->training,
-                                $this->class,
-                                $selectedModules
-                        );
-
-                        if ($assigned > 0) {
-                            Notification::make()
-                                    ->success()
-                                    ->title('Modules Added')
-                                    ->body("{$assigned} module(s) added to class successfully.")
-                                    ->send();
-                        } else {
-                            Notification::make()
-                                    ->warning()
-                                    ->title('No Modules Added')
-                                    ->body('Selected modules may have already been used.')
-                                    ->send();
-                        }
+                        $this->addModulesToClass($data['selected_modules'] ?? []);
                     }),
+                    Actions\Action::make('manage_mentees')
+                    ->label('Manage Mentees')
+                    ->icon('heroicon-o-user-plus')
+                    ->color('primary')
+                    ->url(fn() => MentorshipTrainingResource::getUrl('class-mentees', [
+                                'training' => $this->training->id,
+                                'class' => $this->class->id,
+                            ])),
                     Actions\Action::make('back')
                     ->label('Back to Classes')
                     ->icon('heroicon-o-arrow-left')
@@ -198,12 +91,172 @@ class ManageClassModules extends Page implements HasTable {
         ];
     }
 
+    // ==========================================
+    // MODULE AVAILABILITY (WITHIN MENTORSHIP)
+    // ==========================================
+
+    /**
+     * Get module options for the checkbox list.
+     *
+     * Rule: Only exclude modules that are assigned to COMPLETED classes
+     * within THIS mentorship. Draft/active classes don't lock modules.
+     * NO cross-mentorship filtering.
+     */
+    private function getAvailableModuleOptions(): array {
+        $excludeIds = $this->getExcludedModuleIds();
+        $programIds = $this->getTrainingProgramIds();
+
+        if (empty($programIds)) {
+            return [];
+        }
+
+        return ProgramModule::whereIn('program_id', $programIds)
+                        ->when(!empty($excludeIds), fn($q) => $q->whereNotIn('id', $excludeIds))
+                        ->where('is_active', true)
+                        ->orderBy('order_sequence')
+                        ->pluck('name', 'id')
+                        ->toArray();
+    }
+
+    private function getAvailableModuleDescriptions(): array {
+        $excludeIds = $this->getExcludedModuleIds();
+        $programIds = $this->getTrainingProgramIds();
+
+        if (empty($programIds)) {
+            return [];
+        }
+
+        return ProgramModule::whereIn('program_id', $programIds)
+                        ->when(!empty($excludeIds), fn($q) => $q->whereNotIn('id', $excludeIds))
+                        ->where('is_active', true)
+                        ->orderBy('order_sequence')
+                        ->get()
+                        ->mapWithKeys(fn($module) => [
+                            $module->id => ($module->description ?? '') .
+                            ($module->duration_weeks ? ' • ' . $module->duration_weeks . ' weeks' : ''),
+                                ])
+                        ->toArray();
+    }
+
+    /**
+     * Module IDs to exclude from the "Add Modules" list.
+     *
+     * 1. Modules already in THIS class
+     * 2. Modules assigned to COMPLETED classes in this mentorship
+     *
+     * Modules in draft/active classes are NOT excluded — only completed locks them.
+     */
+    private function getExcludedModuleIds(): array {
+        // 1. Already in this class
+        $inThisClass = $this->class->classModules()
+                ->pluck('program_module_id')
+                ->toArray();
+
+        // 2. In COMPLETED classes of this mentorship (not this class)
+        $inCompletedClasses = DB::table('class_modules')
+                ->join('mentorship_classes', 'class_modules.mentorship_class_id', '=', 'mentorship_classes.id')
+                ->where('mentorship_classes.training_id', $this->training->id)
+                ->where('mentorship_classes.status', 'completed')
+                ->where('mentorship_classes.id', '!=', $this->class->id)
+                ->pluck('class_modules.program_module_id')
+                ->toArray();
+
+        return array_unique(array_merge($inThisClass, $inCompletedClasses));
+    }
+
+    private function getTrainingProgramIds(): array {
+        $ids = [];
+
+        if ($this->training->program_id) {
+            $ids[] = $this->training->program_id;
+        }
+
+        $pivotIds = DB::table('training_programs')
+                ->where('training_id', $this->training->id)
+                ->pluck('program_id')
+                ->toArray();
+
+        return array_unique(array_merge($ids, $pivotIds));
+    }
+
+    // ==========================================
+    // ADD MODULES ACTION
+    // ==========================================
+
+    private function addModulesToClass(array $selectedModuleIds): void {
+        if (empty($selectedModuleIds)) {
+            Notification::make()
+                    ->warning()
+                    ->title('No Modules Selected')
+                    ->body('Please select at least one module to add.')
+                    ->send();
+            return;
+        }
+
+        $excludeIds = $this->getExcludedModuleIds();
+        $validModuleIds = array_diff($selectedModuleIds, $excludeIds);
+
+        if (empty($validModuleIds)) {
+            Notification::make()
+                    ->warning()
+                    ->title('No Modules Added')
+                    ->body('All selected modules are already in use.')
+                    ->send();
+            return;
+        }
+
+        DB::transaction(function () use ($validModuleIds) {
+            $maxSequence = $this->class->classModules()->max('order_sequence') ?? 0;
+
+            foreach ($validModuleIds as $programModuleId) {
+                ClassModule::create([
+                    'mentorship_class_id' => $this->class->id,
+                    'program_module_id' => $programModuleId,
+                    'status' => 'not_started',
+                    'order_sequence' => ++$maxSequence,
+                ]);
+            }
+        });
+
+        $count = count($validModuleIds);
+
+        // Step 1: Success notification
+        Notification::make()
+                ->success()
+                ->title("{$count} Module(s) Added")
+                ->body("Next step: Add sessions to each module, then add mentees to this class.")
+                ->persistent()
+                ->send();
+
+        // Step 2: Reminder notification about sessions
+        Notification::make()
+                ->info()
+                ->icon('heroicon-o-calendar')
+                ->title('Reminder: Add Sessions')
+                ->body('Click on each module below and add sessions before enrolling mentees.')
+                ->persistent()
+                ->actions([
+                    \Filament\Notifications\Actions\Action::make('go_to_mentees')
+                    ->label('Skip to Manage Mentees')
+                    ->url(MentorshipTrainingResource::getUrl('class-mentees', [
+                                'training' => $this->training->id,
+                                'class' => $this->class->id,
+                            ]))
+                    ->color('primary'),
+                ])
+                ->send();
+    }
+
+    // ==========================================
+    // TABLE
+    // ==========================================
+
     public function table(Table $table): Table {
         return $table
                         ->query(
                                 ClassModule::query()
                                 ->where('mentorship_class_id', $this->class->id)
-                                ->with(['programModule'])
+                                ->with(['programModule', 'sessions'])
                         )
                         ->columns([
                             Tables\Columns\TextColumn::make('order_sequence')
@@ -214,31 +267,45 @@ class ManageClassModules extends Page implements HasTable {
                             ->label('Module Name')
                             ->searchable()
                             ->sortable()
-                            ->weight('bold'),
-                            Tables\Columns\TextColumn::make('programModule.description')
-                            ->label('Description')
-                            ->limit(50)
-                            ->toggleable(),
+                            ->weight('bold')
+                            ->description(fn(ClassModule $record): string => $record->programModule?->description ?? ''),
                             Tables\Columns\TextColumn::make('programModule.duration_weeks')
                             ->label('Duration')
                             ->suffix(' weeks')
                             ->toggleable(),
+                            Tables\Columns\TextColumn::make('session_count')
+                            ->label('Sessions')
+                            ->badge()
+                            ->color(fn(ClassModule $record) => $record->sessions->count() > 0 ? 'primary' : 'danger')
+                            ->formatStateUsing(function (ClassModule $record) {
+                                $total = $record->sessions->count();
+                                $completed = $record->sessions->where('status', 'completed')->count();
+                                return $total > 0 ? "{$completed}/{$total}" : '0 ⚠️';
+                            }),
                             Tables\Columns\BadgeColumn::make('status')
                             ->colors([
                                 'secondary' => 'not_started',
                                 'warning' => 'in_progress',
                                 'success' => 'completed',
-                            ]),
+                            ])
+                            ->formatStateUsing(fn(string $state): string => match ($state) {
+                                        'not_started' => 'Not Started',
+                                        'in_progress' => 'In Progress',
+                                        'completed' => 'Completed',
+                                        default => ucfirst($state),
+                                    }),
                             Tables\Columns\TextColumn::make('started_at')
                             ->label('Started')
-                            ->dateTime()
+                            ->dateTime('M j, Y')
                             ->sortable()
+                            ->placeholder('—')
                             ->toggleable()
                             ->toggledHiddenByDefault(),
                             Tables\Columns\TextColumn::make('completed_at')
                             ->label('Completed')
-                            ->dateTime()
+                            ->dateTime('M j, Y')
                             ->sortable()
+                            ->placeholder('—')
                             ->toggleable()
                             ->toggledHiddenByDefault(),
                         ])
@@ -256,19 +323,12 @@ class ManageClassModules extends Page implements HasTable {
                             Tables\Actions\Action::make('manage_sessions')
                             ->label('Sessions')
                             ->icon('heroicon-o-calendar')
-                            ->color('primary')
-                            ->url(fn(ClassModule $classModule) => MentorshipTrainingResource::getUrl('module-sessions', [
+                            ->color(fn(ClassModule $record) => $record->sessions()->count() > 0 ? 'primary' : 'warning')
+                            ->badge(fn(ClassModule $record) => $record->sessions()->count() ?: null)
+                            ->url(fn(ClassModule $record) => MentorshipTrainingResource::getUrl('module-sessions', [
                                         'training' => $this->training->id,
                                         'class' => $this->class->id,
-                                        'module' => $classModule->id,
-                                    ])),
-                            Tables\Actions\Action::make('manage_mentees')
-                            ->label('Mentees')
-                            ->icon('heroicon-o-users')
-                            ->url(fn(ClassModule $classModule) => MentorshipTrainingResource::getUrl('module-mentees', [
-                                        'training' => $this->training->id,
-                                        'class' => $this->class->id,
-                                        'module' => $classModule->id,
+                                        'module' => $record->id,
                                     ])),
                             Tables\Actions\EditAction::make()
                             ->form([
@@ -286,39 +346,20 @@ class ManageClassModules extends Page implements HasTable {
                                 Forms\Components\Textarea::make('notes')
                                 ->rows(3),
                             ]),
-                            Tables\Actions\Action::make('remove')
+                            Tables\Actions\DeleteAction::make()
                             ->label('Remove')
-                            ->icon('heroicon-o-trash')
-                            ->color('danger')
-                            ->requiresConfirmation()
                             ->modalHeading('Remove Module from Class')
-                            ->modalDescription('This will remove the module from this class and delete related progress records. The module slot remains consumed for this mentorship.')
-                            ->action(function (ClassModule $record) {
-                                $usageService = app(ModuleUsageService::class);
-                                $removed = $usageService->removeModuleFromClass(
-                                        $this->training,
-                                        $this->class,
-                                        $record
-                                );
-
-                                if ($removed) {
-                                    Notification::make()
-                                            ->success()
-                                            ->title('Module Removed')
-                                            ->body('Module removed from this class. The module slot remains consumed for this mentorship.')
-                                            ->send();
-                                } else {
-                                    Notification::make()
-                                            ->danger()
-                                            ->title('Cannot Remove Module')
-                                            ->body('This module has completed sessions and cannot be removed.')
-                                            ->send();
-                                }
-                            }),
+                            ->modalDescription('Are you sure? This will delete all related sessions and progress records.')
+                            ->successNotificationTitle('Module removed from class'),
                         ])
-                        ->bulkActions([])
+                        ->bulkActions([
+                            Tables\Actions\BulkActionGroup::make([
+                                Tables\Actions\DeleteBulkAction::make()
+                                ->label('Remove Selected'),
+                            ]),
+                        ])
                         ->emptyStateHeading('No Modules Added Yet')
-                        ->emptyStateDescription('Click "Add Modules" to select modules for this class. Modules already taught in this mentorship or completed at this facility are restricted.')
+                        ->emptyStateDescription('Click "Add Modules" to select modules from the training program.')
                         ->emptyStateIcon('heroicon-o-academic-cap')
                         ->emptyStateActions([
                             Tables\Actions\Action::make('add_first_module')

@@ -19,7 +19,8 @@ class DatabaseSeeder extends Seeder
 
         $this->call([
            // RolePermissionSeeder::class,
-            SuperAdminSeeder::class, // Run after roles are created
+            //NationalMentorsSeeder::class, // Run after roles are created
+            MenteeSeeder::class,
         ]);
     }
-}
+} 
