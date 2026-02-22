@@ -18,6 +18,7 @@ use App\Http\Controllers\AssessmentReportController;
 use App\Http\Controllers\MenteeEnrollmentController;
 use App\Http\Controllers\MenteeClassProgressController;
 use App\Http\Controllers\ModuleAttendanceController;
+use App\Http\Controllers\AccountVerificationController;
 use Illuminate\Http\Request;
 
 /*
@@ -25,7 +26,29 @@ use Illuminate\Http\Request;
   | Web Routes - Complete Resource Management System
   |--------------------------------------------------------------------------
  */
+use Illuminate\Support\Facades\Mail;
 
+Route::get('/test-mail', function () {
+    Mail::raw('Gmail is working!', function ($message) {
+        $message->to('alpho07@gmail.com')
+                ->subject('Test Email');
+    });
+
+    return 'Email sent!';
+});
+
+Route::middleware('guest')->group(function () {
+
+    // GET  /account/verify/{user}?expires=...&signature=...
+    // Shows the "Hello {name}, set your password" page
+    Route::get('/account/verify/{user}', [AccountVerificationController::class, 'show'])
+            ->name('account.verify.show');
+
+    // POST /account/verify/{user}?expires=...&signature=...
+    // Validates password, marks verified, auto-logs in, redirects to /admin
+    Route::post('/account/verify/{user}', [AccountVerificationController::class, 'update'])
+            ->name('account.verify.update');
+});
 
 // Override Livewire upload to bypass signature
 Route::post('/livewire/upload-file', function (Request $request) {
@@ -140,20 +163,16 @@ Route::middleware(['auth'])->group(function () {
 Route::get('/attend/{token}', [App\Http\Controllers\ModuleAttendanceController::class, 'confirm'])
         ->name('module.attendance');
 
-
-
-
 Route::get('/enroll/{token}', [MenteeEnrollmentController::class, 'show'])
-    ->name('mentee.enroll');
+        ->name('mentee.enroll');
 
 Route::post('/enroll/{token}', [MenteeEnrollmentController::class, 'submit'])
-    ->name('mentee.enroll.submit');
+        ->name('mentee.enroll.submit');
 
 // ── Auth required — complete enrollment after login ───────────────────────────
 Route::middleware(['auth'])->group(function () {
     Route::get('/enroll/{token}/complete', [MenteeEnrollmentController::class, 'complete'])
-        ->name('mentee.enroll.complete');
-  
+            ->name('mentee.enroll.complete');
 });
 
 Route::middleware(['auth'])->group(function () {

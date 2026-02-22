@@ -35,6 +35,26 @@ class MentorshipTrainingResource extends Resource {
     protected static ?string $slug = 'mentorship';
     protected static ?int $navigationSort = 1;
 
+    public static function shouldRegisterNavigation(): bool {
+        return auth()->check() && auth()->user()->hasRole(['super_admin', 'admin', 'division', 'facility_mentor', 'national_mentor']);
+    }
+
+    public static function canAccess(): bool {
+        return auth()->check() && auth()->user()->hasRole(['super_admin', 'admin', 'division', 'facility_mentor', 'national_mentor']);
+    }
+
+    public static function canCreate(): bool {
+        return static::canAccess();
+    }
+
+    public static function canEdit($record): bool {
+        return static::canAccess();
+    }
+
+    public static function canDelete($record): bool {
+        return static::canAccess();
+    }
+
     // ─────────────────────────────────────────────────────────────────────────
     // Query scoping
     // ─────────────────────────────────────────────────────────────────────────
@@ -146,7 +166,6 @@ class MentorshipTrainingResource extends Resource {
                                     ->helperText('Recommended: 15–30'),
                                 ]),
                             ]),
-                  
         ]);
     }
 

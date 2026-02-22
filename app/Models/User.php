@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Traits\HasResourceInteractions;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -12,6 +11,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
+use Illuminate\Auth\Notifications\ResetPassword as ResetPasswordNotification;
 
 class User extends Authenticatable {
 
@@ -19,6 +19,7 @@ class User extends Authenticatable {
         Notifiable,
         HasRoles,
         SoftDeletes;
+    use Notifiable;
 
     // HasResourceInteractions; // Add the resource interactions trait
 
@@ -49,6 +50,31 @@ class User extends Authenticatable {
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    public function sendPasswordResetNotification($token) {
+        $url = url('/admin/password-reset/' . $token . '?email=' . urlencode($this->email));
+
+        $this->notify(new class($url) extends Notification {
+
+            protected string $url;
+
+            public function __construct($url) {
+                $this->url = $url;
+            }
+
+            public function via($notifiable) {
+                return ['mail'];
+            }
+
+            public function toMail($notifiable) {
+                return (new MailMessage)
+                                ->subject('Reset Your Password')
+                                ->line('Click the button below to reset your password.')
+                                ->action('Reset Password', $this->url)
+                                ->line('If you did not request a password reset, no further action is required.');
+            }
+        });
     }
 
     public function placementLogs() {

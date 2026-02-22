@@ -20,8 +20,11 @@ use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
-use App\Livewire\Auth\{CustomLogin, CustomRegister, CustomRequestPasswordReset};
-
+use App\Livewire\Auth\{
+    CustomLogin,
+    CustomRegister,
+    CustomRequestPasswordReset
+};
 
 class AdminPanelProvider extends PanelProvider {
 
@@ -33,6 +36,7 @@ class AdminPanelProvider extends PanelProvider {
                         //->login()
                         ->login(CustomLogin::class)
                         ->registration(CustomRegister::class)
+                       // ->passwordResetRequest(CustomRequestPasswordReset::class)
                         ->passwordReset(CustomRequestPasswordReset::class)
                         ->colors([
                             'primary' => Color::Blue,

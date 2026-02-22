@@ -7,7 +7,6 @@
             padding: 0;
             box-sizing: border-box;
         }
-
         html, body {
             height: 100% !important;
             margin: 0 !important;
@@ -16,8 +15,6 @@
             font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
             -webkit-font-smoothing: antialiased;
         }
-
-        /* ── Filament shell overrides ────────────────────────────────── */
         .fi-simple-page {
             min-height: 100vh !important;
             padding: 0 !important;
@@ -35,15 +32,13 @@
             display: flex !important;
             align-items: stretch !important;
         }
-
-        /* ── Two-column shell ────────────────────────────────────────── */
         .auth-shell {
             display: flex;
             min-height: 100vh;
             width: 100%;
         }
 
-        /* ── LEFT hero ───────────────────────────────────────────────── */
+        /* LEFT */
         .auth-hero {
             position: relative;
             width: 47%;
@@ -54,7 +49,6 @@
             justify-content: flex-end;
             padding: 52px 56px;
         }
-
         .hero-bg {
             position: absolute;
             inset: 0;
@@ -62,23 +56,15 @@
             background-size: cover;
             background-position: center 30%;
         }
-
         .hero-gradient {
             position: absolute;
             inset: 0;
-            background: linear-gradient(
-                175deg,
-                rgba(10,15,40,0.38) 0%,
-                rgba(10,15,40,0.58) 40%,
-                rgba(10,15,40,0.90) 100%
-                );
+            background: linear-gradient(175deg, rgba(10,15,40,0.38) 0%, rgba(10,15,40,0.58) 40%, rgba(10,15,40,0.90) 100%);
         }
-
         .hero-content {
             position: relative;
             z-index: 2;
         }
-
         .hero-badge {
             display: inline-flex;
             align-items: center;
@@ -86,7 +72,6 @@
             background: rgba(255,255,255,0.10);
             border: 1px solid rgba(255,255,255,0.22);
             backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
             color: #fff;
             font-size: 10.5px;
             font-weight: 700;
@@ -96,7 +81,6 @@
             border-radius: 100px;
             margin-bottom: 24px;
         }
-
         .hero-dot {
             width: 7px;
             height: 7px;
@@ -104,7 +88,6 @@
             background: #34d399;
             animation: blink 2.4s ease-in-out infinite;
         }
-
         @keyframes blink {
             0%,100%{
                 opacity:1
@@ -113,7 +96,6 @@
                 opacity:.35
             }
         }
-
         .hero-title {
             font-size: 2.85rem;
             font-weight: 800;
@@ -122,12 +104,10 @@
             letter-spacing: -0.5px;
             margin-bottom: 18px;
         }
-
         .hero-title em {
             font-style: normal;
             color: #6ee7b7;
         }
-
         .hero-desc {
             font-size: 1rem;
             color: rgba(255,255,255,0.72);
@@ -135,22 +115,18 @@
             max-width: 360px;
             margin-bottom: 44px;
         }
-
         .hero-stats {
             display: flex;
             gap: 36px;
             padding-top: 32px;
             border-top: 1px solid rgba(255,255,255,0.18);
         }
-
         .stat-val {
             font-size: 1.6rem;
             font-weight: 800;
             color: #fff;
             line-height: 1;
-            letter-spacing: -0.5px;
         }
-
         .stat-lbl {
             font-size: 0.72rem;
             color: rgba(255,255,255,0.5);
@@ -159,7 +135,7 @@
             text-transform: uppercase;
         }
 
-        /* ── RIGHT form panel ────────────────────────────────────────── */
+        /* RIGHT */
         .auth-right {
             flex: 1;
             display: flex;
@@ -169,13 +145,10 @@
             padding: 60px 40px;
             overflow-y: auto;
         }
-
         .auth-box {
             width: 100%;
             max-width: 408px;
         }
-
-        /* Logo mark */
         .auth-mark {
             width: 46px;
             height: 46px;
@@ -196,7 +169,6 @@
             stroke-linecap: round;
             stroke-linejoin: round;
         }
-
         .auth-h1 {
             font-size: 1.95rem;
             font-weight: 800;
@@ -205,7 +177,6 @@
             line-height: 1.2;
             margin-bottom: 7px;
         }
-
         .auth-sub {
             font-size: 0.9rem;
             color: #64748b;
@@ -213,24 +184,71 @@
             margin-bottom: 36px;
         }
 
-        /* ── Filament form field refinements ─────────────────────────── */
+        /* Steps */
+        .steps {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            margin-bottom: 32px;
+        }
+        .step {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: #cbd5e1;
+            flex: 1;
+        }
+        .step.active {
+            color: #4f46e5;
+        }
+        .step.done {
+            color: #22c55e;
+        }
+        .step-num {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            border: 2px solid currentColor;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.72rem;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+        .step.active .step-num {
+            background: #4f46e5;
+            color: #fff;
+            border-color: #4f46e5;
+        }
+        .step.done .step-num {
+            background: #22c55e;
+            color: #fff;
+            border-color: #22c55e;
+        }
+        .step-line {
+            flex: 1;
+            height: 1.5px;
+            background: #e2e8f0;
+            margin: 0 8px;
+        }
+        .step.done + .step-line {
+            background: #22c55e;
+        }
+
+        /* Filament inputs */
         .fi-fo-field-wrp {
             margin-bottom: 22px !important;
         }
-
-        .fi-fo-field-wrp-label label,
-        .fi-label-wrp label,
-        .fi-fo-field-wrp > div > label,
-        [data-field-wrapper] label {
+        .fi-fo-field-wrp-label label, .fi-label-wrp label {
             font-size: 0.8125rem !important;
             font-weight: 600 !important;
             color: #334155 !important;
-            letter-spacing: 0.05px !important;
             margin-bottom: 7px !important;
             display: block !important;
         }
-
-        /* Input wrapper */
         .fi-input-wrp {
             border: 1.5px solid #e2e8f0 !important;
             border-radius: 11px !important;
@@ -239,13 +257,11 @@
             overflow: hidden !important;
             box-shadow: none !important;
         }
-
         .fi-input-wrp:focus-within {
             border-color: #4f46e5 !important;
             background: #ffffff !important;
             box-shadow: 0 0 0 3.5px rgba(79,70,229,0.10) !important;
         }
-
         .fi-input {
             height: 52px !important;
             background: transparent !important;
@@ -259,15 +275,10 @@
             font-weight: 500 !important;
             width: 100% !important;
         }
-
         .fi-input::placeholder {
             color: #94a3b8 !important;
             font-weight: 400 !important;
-            font-size: 0.9rem !important;
         }
-
-        /* Password reveal button */
-        .fi-input-wrp .fi-input-suffix-item button,
         .fi-input-wrp button[type="button"] {
             background: none !important;
             border: none !important;
@@ -281,54 +292,61 @@
         .fi-input-wrp button[type="button"]:hover {
             color: #4f46e5 !important;
         }
-
-        /* Validation error */
         .fi-fo-field-wrp-validation-error {
             font-size: 0.8rem !important;
             color: #ef4444 !important;
             margin-top: 6px !important;
-            display: flex !important;
-            align-items: center !important;
-            gap: 4px !important;
         }
 
-        /* Checkbox */
-        .fi-fo-field-wrp .fi-checkbox-input,
-        .fi-checkbox-input {
-            width: 16px !important;
-            height: 16px !important;
-            border-radius: 4px !important;
-            border: 1.5px solid #cbd5e1 !important;
-            cursor: pointer !important;
-            accent-color: #4f46e5 !important;
-            flex-shrink: 0 !important;
+        /* Password strength indicator */
+        .strength-wrap {
+            margin: -14px 0 20px;
         }
-        .fi-fo-field-wrp .fi-checkbox-label,
-        .fi-checkbox-label {
-            font-size: 0.875rem !important;
-            color: #475569 !important;
-            font-weight: 500 !important;
-            cursor: pointer !important;
-        }
-
-        /* ── Custom elements ─────────────────────────────────────────── */
-        .auth-meta {
+        .strength-bar {
             display: flex;
-            justify-content: flex-end;
-            align-items: center;
-            margin: -10px 0 24px;
+            gap: 4px;
+            margin-bottom: 5px;
+        }
+        .strength-seg {
+            flex: 1;
+            height: 3px;
+            border-radius: 3px;
+            background: #e2e8f0;
+            transition: background 0.3s;
+        }
+        .strength-label {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            font-weight: 500;
         }
 
-        .auth-forgot {
-            font-size: 0.8125rem;
-            font-weight: 600;
-            color: #4f46e5;
-            text-decoration: none;
-            transition: color 0.15s;
+        /* Rules */
+        .pw-rules {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            margin: -10px 0 22px;
         }
-        .auth-forgot:hover {
-            color: #3730a3;
-            text-decoration: underline;
+        .pw-rule {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            font-size: 0.8rem;
+            color: #94a3b8;
+            transition: color 0.2s;
+        }
+        .pw-rule.met {
+            color: #22c55e;
+        }
+        .pw-rule svg {
+            width: 14px;
+            height: 14px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 2.5;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            flex-shrink: 0;
         }
 
         .auth-submit {
@@ -341,7 +359,6 @@
             font-size: 0.9375rem;
             font-weight: 700;
             font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
-            letter-spacing: 0.15px;
             cursor: pointer;
             box-shadow: 0 4px 16px rgba(79,70,229,0.30);
             transition: opacity 0.18s, transform 0.15s, box-shadow 0.2s;
@@ -366,7 +383,6 @@
             transform: none !important;
             box-shadow: none !important;
         }
-
         .auth-submit svg {
             width: 18px;
             height: 18px;
@@ -375,69 +391,33 @@
             stroke-width: 2;
             stroke-linecap: round;
             stroke-linejoin: round;
-            transition: transform 0.2s;
-        }
-        .auth-submit:hover svg {
-            transform: translateX(3px);
         }
 
-        .auth-divider {
+        .auth-back {
             display: flex;
             align-items: center;
-            gap: 14px;
-            margin: 28px 0 0;
-            font-size: 0.8125rem;
-            color: #94a3b8;
-        }
-        .auth-divider::before, .auth-divider::after {
-            content: '';
-            flex: 1;
-            height: 1px;
-            background: #e2e8f0;
-        }
-
-        .auth-footer {
-            margin-top: 24px;
-            font-size: 0.8rem;
-            color: #94a3b8;
-            text-align: center;
-            line-height: 1.65;
-        }
-
-        /* ── Alert box ───────────────────────────────────────────────── */
-        .auth-alert {
-            display: flex;
-            align-items: flex-start;
-            gap: 11px;
-            padding: 14px 16px;
-            border-radius: 11px;
+            justify-content: center;
+            gap: 6px;
+            margin-top: 20px;
             font-size: 0.875rem;
-            line-height: 1.55;
-            margin-bottom: 24px;
+            font-weight: 600;
+            color: #64748b;
+            text-decoration: none;
+            transition: color 0.15s;
         }
-        .auth-alert-info {
-            background: #eff6ff;
-            border: 1px solid #bfdbfe;
-            color: #1e40af;
+        .auth-back:hover {
+            color: #4f46e5;
         }
-        .auth-alert-success {
-            background: #f0fdf4;
-            border: 1px solid #bbf7d0;
-            color: #15803d;
-        }
-        .auth-alert svg {
-            width: 18px;
-            height: 18px;
+        .auth-back svg {
+            width: 15px;
+            height: 15px;
             stroke: currentColor;
             fill: none;
-            stroke-width: 2;
+            stroke-width: 2.5;
             stroke-linecap: round;
             stroke-linejoin: round;
-            flex-shrink: 0;
-            margin-top: 1px;
         }
 
-        /* ── Responsive ──────────────────────────────────────────────── */
         @media (max-width: 860px) {
             .auth-hero {
                 display: none;
@@ -453,7 +433,6 @@
                 box-shadow: 0 10px 50px rgba(79,70,229,0.10);
             }
         }
-
         @media (max-width: 480px) {
             .auth-right {
                 padding: 24px 16px;
@@ -469,92 +448,114 @@
 
     <div class="auth-shell">
 
-        {{-- ── LEFT: Hero panel ──────────────────────────────────── --}}
+        {{-- LEFT --}}
         <div class="auth-hero">
             <div class="hero-bg"></div>
             <div class="hero-gradient"></div>
-
             <div class="hero-content">
-                <div class="hero-badge">
-                    <span class="hero-dot"></span>
-                    Ministry of Health · Kenya
-                </div>
-
-                <h2 class="hero-title">
-                    <em>MNCH</em> Mentorship<br>Platform
-                </h2>
-
-                <p class="hero-desc">
-                    Transforming maternal, newborn and child health outcomes through structured, evidence-based mentorship across Kenya's health facilities.
-                </p>
-
+                <div class="hero-badge"><span class="hero-dot"></span> Ministry of Health · Kenya</div>
+                <h2 class="hero-title"><em>MNCH</em> Mentorship<br>Platform</h2>
+                <p class="hero-desc">Transforming maternal, newborn and child health outcomes through structured, evidence-based mentorship across Kenya's health facilities.</p>
                 <div class="hero-stats">
-                    <div>
-                        <div class="stat-val">47</div>
-                        <div class="stat-lbl">Counties</div>
-                    </div>
-                    <div>
-                        <div class="stat-val">2,400+</div>
-                        <div class="stat-lbl">Health workers</div>
-                    </div>
-                    <div>
-                        <div class="stat-val">580+</div>
-                        <div class="stat-lbl">Facilities</div>
-                    </div>
+                    <div><div class="stat-val">47</div><div class="stat-lbl">Counties</div></div>
+                    <div><div class="stat-val">2,400+</div><div class="stat-lbl">Health workers</div></div>
+                    <div><div class="stat-val">580+</div><div class="stat-lbl">Facilities</div></div>
                 </div>
             </div>
         </div>
 
-    {{-- ── RIGHT: Login form ─────────────────────────────────── --}}
+    {{-- RIGHT --}}
         <div class="auth-right">
             <div class="auth-box">
 
-            {{-- Flash info (e.g. from enrollment redirect) --}}
-            @if(session('info'))
-                <div class="auth-alert auth-alert-info">
-                    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                    <span>{{ session('info') }}</span>
-                </div>
-            @endif
-
                 <div class="auth-mark">
-                    <svg viewBox="0 0 24 24">
-                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                    </svg>
+                    <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
                 </div>
 
-                <h1 class="auth-h1">Welcome back</h1>
-                <p class="auth-sub">Sign in to continue your mentorship journey</p>
+                <div class="steps">
+                    <div class="step done">
+                        <span class="step-num">✓</span>
+                        <span>Email sent</span>
+                    </div>
+                    <div class="step-line"></div>
+                    <div class="step done">
+                        <span class="step-num">✓</span>
+                        <span>Link opened</span>
+                    </div>
+                    <div class="step-line"></div>
+                    <div class="step active">
+                        <span class="step-num">3</span>
+                        <span>Set password</span>
+                    </div>
+                </div>
 
-                <form wire:submit="authenticate">
+                <h1 class="auth-h1">Set your new password</h1>
+                <p class="auth-sub">Choose a strong password to secure your account.</p>
+
+                <form wire:submit="resetPassword">
                 {{ $this->form }}
 
-                    <div class="auth-meta">
-                        <a href="{{ route('filament.admin.auth.password-reset.request') }}" class="auth-forgot">
-                            Forgot password?
-                        </a>
+                {{-- Live password strength indicator --}}
+                    <div class="strength-wrap" x-data="{
+                         password: '',
+                         get strength() {
+                         let s = 0;
+                         if (this.password.length >= 8) s++;
+                         if (/[A-Z]/.test(this.password)) s++;
+                         if (/[0-9]/.test(this.password)) s++;
+                         if (/[^A-Za-z0-9]/.test(this.password)) s++;
+                         return s;
+                         },
+                         get label() {
+                         return ['','Weak','Fair','Good','Strong'][this.strength] ?? '';
+                         },
+                         get color() {
+                         return ['#e2e8f0','#ef4444','#f59e0b','#3b82f6','#22c55e'][this.strength];
+                         }
+                         }" x-init="$watch('$wire.data.password', v => password = v || '')">
+                        <div class="strength-bar">
+                            <div class="strength-seg" :style="strength >= 1 ? `background:${color}` : ''"></div>
+                            <div class="strength-seg" :style="strength >= 2 ? `background:${color}` : ''"></div>
+                            <div class="strength-seg" :style="strength >= 3 ? `background:${color}` : ''"></div>
+                            <div class="strength-seg" :style="strength >= 4 ? `background:${color}` : ''"></div>
+                        </div>
+                        <div class="strength-label" x-text="label" :style="`color:${color}`"></div>
+                    </div>
+
+                    <div class="pw-rules" x-data="{
+                         password: ''
+                         }" x-init="$watch('$wire.data.password', v => password = v || '')">
+                        <div class="pw-rule" :class="{ met: password.length >= 8 }">
+                            <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                            At least 8 characters
+                        </div>
+                        <div class="pw-rule" :class="{ met: /[A-Z]/.test(password) }">
+                            <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                            One uppercase letter
+                        </div>
+                        <div class="pw-rule" :class="{ met: /[0-9]/.test(password) }">
+                            <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                            One number
+                        </div>
                     </div>
 
                     <button type="submit"
                             class="auth-submit"
                             wire:loading.attr="disabled"
-                            wire:target="authenticate">
-                        <span wire:loading.remove wire:target="authenticate">Sign in</span>
-                        <span wire:loading wire:target="authenticate">Signing in…</span>
-                        <svg wire:loading.remove wire:target="authenticate" viewBox="0 0 24 24">
-                        <line x1="5" y1="12" x2="19" y2="12"/>
-                        <polyline points="12 5 19 12 12 19"/>
+                            wire:target="resetPassword">
+                        <span wire:loading.remove wire:target="resetPassword">Set new password & sign in</span>
+                        <span wire:loading wire:target="resetPassword">Updating…</span>
+                        <svg wire:loading.remove wire:target="resetPassword" viewBox="0 0 24 24">
+                        <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
                         </svg>
                     </button>
-
                 </form>
 
-                <div class="auth-divider">MNCH Kenya</div>
+                <a href="{{ route('filament.admin.auth.login') }}" class="auth-back">
+                <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+                    Back to sign in
+            </a>
 
-                <div class="auth-footer">
-                    Having trouble signing in? Contact your programme coordinator<br>or email
-                <a href="mailto:support@mnchkenyamentorship.org" style="color:#4f46e5; text-decoration:none; font-weight:600;">support@mnchkenyamentorship.org</a>
-            </div>
         </div>
     </div>
 

@@ -7,8 +7,8 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Pages\SimplePage;
-use Illuminate\Contracts\Auth\CanResetPassword;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Validation\ValidationException;
 
 class CustomRequestPasswordReset extends SimplePage {
 
@@ -19,16 +19,20 @@ class CustomRequestPasswordReset extends SimplePage {
         if (Filament::auth()->check()) {
             redirect()->intended(Filament::getUrl());
         }
-
-        $this->form->fill();
     }
 
-    public function request(): void {
+    public function sendResetLink(): void {
         $data = $this->form->getState();
 
-        $status = Password::broker(Filament::getAuthPasswordBroker())->sendResetLink(
-                $data,
-        );
+        // Validate email exists
+        if (!\App\Models\User::where('email', $data['email'])->exists()) {
+            throw ValidationException::withMessages([
+                        'data.email' => 'We cannot find a user with that email address.',
+            ]);
+        }
+
+        $status = Password::broker(Filament::getAuthPasswordBroker())
+                ->sendResetLink(['email' => $data['email']]);
 
         if ($status !== Password::RESET_LINK_SENT) {
             Notification::make()
@@ -40,31 +44,21 @@ class CustomRequestPasswordReset extends SimplePage {
         }
 
         Notification::make()
-                ->title(__($status))
+                ->title('Password reset link sent successfully.')
                 ->success()
                 ->send();
-
-        $this->form->fill();
     }
 
     public function form(Form $form): Form {
         return $form
                         ->schema([
                             TextInput::make('email')
-                            ->label('Email address')
+                            ->label('Email Address')
                             ->email()
                             ->required()
-                            ->autofocus()
-                            ->extraInputAttributes(['class' => 'custom-input']),
+                            ->exists('users', 'email')
+                            ->autocomplete('email'),
                         ])
                         ->statePath('data');
-    }
-
-    public function getTitle(): string {
-        return '';
-    }
-
-    public function hasLogo(): bool {
-        return false;
     }
 }
