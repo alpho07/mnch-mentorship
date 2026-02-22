@@ -73,6 +73,13 @@ class CreateMentorshipTraining extends CreateRecord {
             $this->record->assessmentCategories()->sync($attachData);
         }
     }
+    
+    // ── Rename the submit button to "Submit" ──────────────────────────────
+    public static function canCreateAnother(): bool
+    {
+        return false;
+    }
+
 
     protected function getCreatedNotification(): ?Notification {
         return Notification::make()

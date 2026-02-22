@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ClassModule;
 use App\Models\ClassParticipant;
+use App\Models\ClassAttendance;
 use App\Models\MenteeModuleProgress;
 use App\Models\User;
 use App\Services\AttendanceService;
@@ -154,6 +155,78 @@ class ModuleAttendanceController extends Controller {
     /**
      * Check if user has completed this module in any previous class.
      */
+    public function confirm(string $token) {
+        $module = ClassModule::where('attendance_token', $token)
+                ->where('attendance_link_active', true)
+                ->with(['mentorshipClass'])
+                ->first();
+
+        if (!$module) {
+            return redirect()->route('mentee.dashboard')
+                            ->with('error', 'This attendance link is no longer active or is invalid.');
+        }
+
+        if ($module->status !== 'in_progress') {
+            return redirect()->route('mentee.dashboard')
+                            ->with('error', 'This module is not currently in progress.');
+        }
+
+        $class = $module->mentorshipClass;
+        $userId = Auth::id();
+
+        // Verify the mentee is enrolled in this class
+        $participant = ClassParticipant::where('mentorship_class_id', $class->id)
+                ->where('user_id', $userId)
+                ->whereIn('status', ['enrolled', 'active'])
+                ->first();
+
+        if (!$participant) {
+            return redirect()->route('mentee.dashboard')
+                            ->with('error', 'You are not enrolled in this class.');
+        }
+
+        // Check if already confirmed attendance for this module
+        $alreadyConfirmed = ClassAttendance::where('class_id', $class->id)
+                ->where('user_id', $userId)
+                ->whereNull('session_id') // module-level attendance has no session
+                ->where('marked_by', $userId) // self-confirmed
+                ->exists();
+
+        // Also check via module-level attendance records relationship
+        if (!$alreadyConfirmed) {
+            $alreadyConfirmed = $module->hasUserConfirmedAttendance($userId);
+        }
+
+        if ($alreadyConfirmed) {
+            return redirect()->route('mentee.class.progress', ['class' => $class->id])
+                            ->with('info', 'You have already confirmed your attendance for this module.');
+        }
+
+        DB::transaction(function () use ($module, $class, $participant, $userId) {
+            // 1. Create attendance record (module-level, no session_id)
+            ClassAttendance::create([
+                'class_id' => $class->id,
+                'session_id' => null,
+                'user_id' => $userId,
+                'marked_by' => $userId,
+                'marked_at' => now(),
+                'source' => 'auto', // self-confirmed via link
+            ]);
+
+            // 2. Update module progress to in_progress if still not_started
+            MenteeModuleProgress::where('class_participant_id', $participant->id)
+                    ->where('class_module_id', $module->id)
+                    ->where('status', 'not_started')
+                    ->update([
+                        'status' => 'in_progress',
+                        'started_at' => now(),
+            ]);
+        });
+
+        return redirect()->route('mentee.class.progress', ['class' => $class->id])
+                        ->with('success', 'Your attendance for "' . ($module->programModule->name ?? 'this module') . '" has been confirmed!');
+    }
+
     private function hasCompletedModuleBefore(User $user, int $programModuleId): bool {
         return DB::table('class_participants')
                         ->join('mentee_module_progress', 'class_participants.id', '=', 'mentee_module_progress.class_participant_id')

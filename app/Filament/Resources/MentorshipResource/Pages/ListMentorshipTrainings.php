@@ -42,7 +42,7 @@ class ListMentorshipTrainings extends ListRecords {
         ];
     }
 
-    public function getTabs(): array {
+    public function getTabs1(): array {
         return [
             'all' => Tab::make('All Mentorships')
                     ->badge($this->getTabCount('all'))

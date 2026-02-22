@@ -1,200 +1,151 @@
 <?php
 
-namespace App\Filament\Pages;
+namespace App\Filament\Resources\MentorshipTrainingResource\Pages;
 
-use App\Models\ClassParticipant;
-use App\Models\MenteeModuleProgress;
+use App\Filament\Resources\MentorshipTrainingResource;
 use App\Models\ClassAttendance;
-use Filament\Pages\Page;
-use Filament\Tables;
-use Filament\Tables\Table;
-use Filament\Tables\Concerns\InteractsWithTable;
-use Filament\Tables\Contracts\HasTable;
-use Illuminate\Support\Facades\DB;
+use App\Models\ClassModule;
+use App\Models\ClassParticipant;
+use App\Models\MentorshipClass;
+use App\Services\AttendanceService;
+use Carbon\Carbon;
+use Filament\Notifications\Notification;
+use Filament\Resources\Pages\Page;
 
-class MenteeDashboard extends Page implements HasTable {
+class MenteeDashboard extends Page
+{
+    protected static string $resource = MentorshipTrainingResource::class;
+    protected static string $view     = 'filament.pages.mentee-dashboard';
+    protected static bool   $shouldRegisterNavigation = false;
 
-    use InteractsWithTable;
+    public array $enrollments      = [];
+    public array $confirmedModules = [];
+    public array $summaryStats     = [];
 
-    protected static ?string $navigationIcon = 'heroicon-o-user';
-    protected static ?string $navigationLabel = 'My Progress';
-    protected static ?int $navigationSort = 1;
-    protected static string $view = 'filament.pages.mentee-dashboard';
-
-    public function getTitle(): string {
-        return 'My Learning Dashboard';
+    public function mount(): void
+    {
+        $this->loadDashboard();
     }
 
-    public function getHeading(): string {
+    public function loadDashboard(): void
+    {
         $user = auth()->user();
-        return "Welcome, {$user->first_name}!";
-    }
 
-    public function getSubheading(): ?string {
-        $stats = $this->getDashboardStats();
-        return "You are enrolled in {$stats['active_enrollments']} active class(es) • {$stats['completed_modules']}/{$stats['total_modules']} modules completed";
-    }
+        $participants = ClassParticipant::with([
+            'mentorshipClass.training.facility',
+            'mentorshipClass.classModules'           => fn ($q) => $q->orderBy('order_sequence'),
+            'mentorshipClass.classModules.programModule',
+            'mentorshipClass.classModules.sessions'  => fn ($q) => $q->orderBy('session_number'),
+            'moduleProgress',
+        ])
+            ->where('user_id', $user->id)
+            ->whereIn('status', ['enrolled', 'active', 'completed'])
+            ->get();
 
-    /**
-     * Compute accurate dashboard stats for the mentee.
-     */
-    public function getDashboardStats(): array {
-        $userId = auth()->id();
+        $classIds = $participants->pluck('mentorship_class_id');
 
-        $activeEnrollments = ClassParticipant::where('user_id', $userId)
-                ->whereIn('status', ['enrolled', 'active'])
-                ->count();
+        $this->confirmedModules = ClassAttendance::where('user_id', $user->id)
+            ->whereIn('class_id', $classIds)
+            ->whereNotNull('class_module_id')
+            ->pluck('class_module_id')
+            ->flip()
+            ->toArray();
 
-        $totalEnrollments = ClassParticipant::where('user_id', $userId)->count();
+        $confirmed = $this->confirmedModules;
 
-        $completedEnrollments = ClassParticipant::where('user_id', $userId)
-                ->where('status', 'completed')
-                ->count();
+        $this->enrollments = $participants->map(function (ClassParticipant $p) use ($confirmed) {
+            $class    = $p->mentorshipClass;
+            $training = $class?->training;
 
-        // Module stats from mentee_module_progress
-        $moduleStats = MenteeModuleProgress::whereHas('classParticipant', function ($q) use ($userId) {
-                    $q->where('user_id', $userId);
-                })
-                ->selectRaw("
-            COUNT(*) as total_modules,
-            SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_modules,
-            SUM(CASE WHEN status = 'exempted' THEN 1 ELSE 0 END) as exempted_modules,
-            SUM(CASE WHEN status = 'in_progress' THEN 1 ELSE 0 END) as in_progress_modules,
-            SUM(CASE WHEN status = 'not_started' THEN 1 ELSE 0 END) as not_started_modules,
-            AVG(CASE WHEN assessment_score IS NOT NULL THEN assessment_score END) as avg_assessment_score,
-            AVG(CASE WHEN attendance_percentage IS NOT NULL THEN attendance_percentage END) as avg_attendance
-        ")
-                ->first();
+            $modules = ($class?->classModules ?? collect())->map(function (ClassModule $m) use ($p, $confirmed) {
+                $prog = $p->moduleProgress->firstWhere('class_module_id', $m->id);
 
-        // Attendance from class_attendances table
-        $attendanceCount = ClassAttendance::where('user_id', $userId)->count();
+                $sessions = $m->sessions->map(fn ($s) => [
+                    'session_number'   => $s->session_number,
+                    'title'            => $s->title,
+                    'description'      => $s->description,
+                    'duration_minutes' => $s->duration_minutes,
+                    'scheduled_date'   => $s->scheduled_date ? Carbon::parse($s->scheduled_date)->format('d M Y') : null,
+                    'scheduled_time'   => $s->scheduled_time ? Carbon::parse($s->scheduled_time)->format('H:i') : null,
+                    'location'         => $s->location,
+                    'status'           => $s->status,
+                ])->values()->toArray();
 
-        $totalModules = $moduleStats->total_modules ?? 0;
-        $completedModules = $moduleStats->completed_modules ?? 0;
-        $exemptedModules = $moduleStats->exempted_modules ?? 0;
-        $effectiveCompleted = $completedModules + $exemptedModules;
+                return [
+                    'id'                => $m->id,
+                    'name'              => $m->programModule?->name ?? 'Unnamed Module',
+                    'description'       => $m->programModule?->description,
+                    'status'            => $m->status,
+                    'attendance_open'   => $m->attendance_link_active && $m->status === 'in_progress',
+                    'already_confirmed' => isset($confirmed[$m->id]),
+                    'sessions'          => $sessions,
+                    'progress_status'   => $prog?->status ?? 'not_started',
+                    'completed_at'      => $prog?->completed_at ? Carbon::parse($prog->completed_at)->format('d M Y') : null,
+                    'started_at'        => $m->started_at ? Carbon::parse($m->started_at)->format('d M Y') : null,
+                    'recommendation'    => $prog?->mentor_recommendation,
+                    'rec_written_at'    => $prog?->recommendation_written_at ? Carbon::parse($prog->recommendation_written_at)->format('d M Y') : null,
+                ];
+            })->values()->toArray();
 
-        return [
-            'active_enrollments' => $activeEnrollments,
-            'total_enrollments' => $totalEnrollments,
-            'completed_enrollments' => $completedEnrollments,
-            'total_modules' => $totalModules,
-            'completed_modules' => $completedModules,
-            'exempted_modules' => $exemptedModules,
-            'in_progress_modules' => $moduleStats->in_progress_modules ?? 0,
-            'not_started_modules' => $moduleStats->not_started_modules ?? 0,
-            'module_completion_rate' => $totalModules > 0 ? round(($effectiveCompleted / $totalModules) * 100, 1) : 0,
-            'avg_assessment_score' => $moduleStats->avg_assessment_score ? round($moduleStats->avg_assessment_score, 1) : null,
-            'avg_attendance' => $moduleStats->avg_attendance ? round($moduleStats->avg_attendance, 1) : null,
-            'attendance_records' => $attendanceCount,
+            $done    = collect($modules)->where('progress_status', 'completed')->count();
+            $inProg  = collect($modules)->where('progress_status', 'in_progress')->count();
+            $total   = count($modules);
+            $pct     = $total > 0 ? round(($done / $total) * 100) : 0;
+            $pending = collect($modules)->where('attendance_open', true)->where('already_confirmed', false)->count();
+            $recs    = collect($modules)->filter(fn ($m) => !empty($m['recommendation']))->count();
+
+            return [
+                'participant_id'      => $p->id,
+                'class_id'            => $class?->id,
+                'class_name'          => $class?->name ?? 'Unnamed Class',
+                'class_status'        => $class?->status,
+                'training_name'       => $training?->title ?? 'Unnamed Mentorship',
+                'facility_name'       => $training?->facility?->name ?? '',
+                'progress_pct'        => $pct,
+                'completed_modules'   => $done,
+                'in_progress_modules' => $inProg,
+                'total_modules'       => $total,
+                'pending_attendance'  => $pending,
+                'recommendations'     => $recs,
+                'enrolled_at'         => $p->enrolled_at ? Carbon::parse($p->enrolled_at)->format('d M Y') : null,
+                'modules'             => $modules,
+            ];
+        })->values()->toArray();
+
+        $tMods = array_sum(array_column($this->enrollments, 'total_modules'));
+        $cMods = array_sum(array_column($this->enrollments, 'completed_modules'));
+
+        $this->summaryStats = [
+            'enrollments'        => count($this->enrollments),
+            'total_modules'      => $tMods,
+            'completed_modules'  => $cMods,
+            'pending_attendance' => array_sum(array_column($this->enrollments, 'pending_attendance')),
+            'recommendations'    => array_sum(array_column($this->enrollments, 'recommendations')),
+            'overall_pct'        => $tMods > 0 ? round(($cMods / $tMods) * 100) : 0,
         ];
     }
 
-    public function table(Table $table): Table {
-        return $table
-                        ->query(
-                                MenteeModuleProgress::query()
-                                ->whereHas('classParticipant', function ($query) {
-                                    $query->where('user_id', auth()->id());
-                                })
-                                ->with([
-                                    'classModule.programModule',
-                                    'classModule.mentorshipClass',
-                                    'classParticipant.mentorshipClass.training.program',
-                                ])
-                                ->latest()
-                        )
-                        ->columns([
-                            Tables\Columns\TextColumn::make('classParticipant.mentorshipClass.training.program.name')
-                            ->label('Program')
-                            ->searchable()
-                            ->weight('bold')
-                            ->icon('heroicon-o-academic-cap'),
-                            Tables\Columns\TextColumn::make('classModule.programModule.name')
-                            ->label('Module')
-                            ->searchable()
-                            ->description(fn($record) =>
-                                    $record->classModule->mentorshipClass->name
-                            ),
-                            Tables\Columns\BadgeColumn::make('status')
-                            ->colors([
-                                'secondary' => 'not_started',
-                                'warning' => 'in_progress',
-                                'success' => 'completed',
-                                'info' => 'exempted',
-                            ])
-                            ->formatStateUsing(fn(string $state): string =>
-                                    match ($state) {
-                                        'not_started' => 'Not Started',
-                                        'in_progress' => 'In Progress',
-                                        'completed' => 'Completed',
-                                        'exempted' => 'Exempted',
-                                        default => ucfirst($state),
-                                    }
-                            ),
-                            Tables\Columns\IconColumn::make('completed_in_previous_class')
-                            ->label('Previous')
-                            ->boolean()
-                            ->trueIcon('heroicon-o-check-badge')
-                            ->falseIcon('heroicon-o-x-mark')
-                            ->trueColor('info')
-                            ->falseColor('gray')
-                            ->tooltip(fn($record) =>
-                                    $record->completed_in_previous_class ? 'Completed in previous class' : 'First time'
-                            ),
-                            Tables\Columns\TextColumn::make('attendance_percentage')
-                            ->label('Attendance')
-                            ->suffix('%')
-                            ->badge()
-                            ->color(fn($state) => match (true) {
-                                        $state >= 80 => 'success',
-                                        $state >= 60 => 'warning',
-                                        $state === null => 'gray',
-                                        default => 'danger',
-                                    })
-                            ->default('N/A')
-                            ->sortable(),
-                            Tables\Columns\TextColumn::make('assessment_score')
-                            ->label('Assessment')
-                            ->formatStateUsing(fn($state) => $state ? number_format($state, 1) . '%' : 'N/A')
-                            ->badge()
-                            ->color(fn($state) => $state >= 70 ? 'success' : ($state ? 'danger' : 'gray'))
-                            ->sortable(),
-                            Tables\Columns\BadgeColumn::make('assessment_status')
-                            ->colors([
-                                'gray' => 'pending',
-                                'success' => 'passed',
-                                'danger' => 'failed',
-                            ]),
-                            Tables\Columns\TextColumn::make('completed_at')
-                            ->label('Completed')
-                            ->dateTime('M j, Y')
-                            ->placeholder('Not completed')
-                            ->sortable(),
-                        ])
-                        ->filters([
-                            Tables\Filters\SelectFilter::make('status')
-                            ->options([
-                                'not_started' => 'Not Started',
-                                'in_progress' => 'In Progress',
-                                'completed' => 'Completed',
-                                'exempted' => 'Exempted',
-                            ]),
-                            Tables\Filters\SelectFilter::make('assessment_status')
-                            ->label('Assessment Status')
-                            ->options([
-                                'pending' => 'Pending',
-                                'passed' => 'Passed',
-                                'failed' => 'Failed',
-                            ]),
-                        ])
-                        ->defaultSort('created_at', 'desc')
-                        ->emptyStateHeading('No Modules Yet')
-                        ->emptyStateDescription('You haven\'t been enrolled in any modules yet.')
-                        ->emptyStateIcon('heroicon-o-book-open');
-    }
+    public function confirmAttendance(int $classModuleId): void
+    {
+        $module = ClassModule::find($classModuleId);
 
-     public static function shouldRegisterNavigation(): bool {
-        return auth()->check() && auth()->user()->hasRole(['super_admin', 'mentee','division']);
+        if (!$module) {
+            Notification::make()->danger()->title('Module not found')->send();
+            return;
+        }
+
+        $result = app(AttendanceService::class)->confirmModuleAttendance(auth()->user(), $module);
+
+        if ($result['success']) {
+            $this->confirmedModules[$classModuleId] = true;
+            Notification::make()
+                ->success()
+                ->title('Attendance Confirmed')
+                ->body('You are marked present for "' . $module->programModule?->name . '".')
+                ->send();
+            $this->loadDashboard();
+        } else {
+            Notification::make()->warning()->title($result['message'])->send();
+        }
     }
 }

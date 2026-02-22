@@ -99,7 +99,7 @@
                                 icon="heroicon-o-users" 
                                 class="h-4 w-4"
                             />
-                            <span>{{ $module->menteeModuleProgress()->count() }} enrolled</span>
+                            <span>{{ $module->menteeProgress()->count() }} enrolled</span>
                         </div>
                         <div class="flex items-center gap-2">
                             <x-filament::icon 

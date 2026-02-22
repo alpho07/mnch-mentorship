@@ -3,168 +3,247 @@
 namespace App\Services;
 
 use App\Models\ClassAttendance;
+use App\Models\ClassModule;
+use App\Models\ClassParticipant;
+use App\Models\MentorshipClass;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
-/**
- * Sole authority for creating attendance records.
- * 
- * DOMAIN RULES:
- * - Attendance records are IMMUTABLE once created (enforced at model level).
- * - All attendance MUST be created through this service.
- * - Controllers and pages MUST NOT insert into class_attendances directly.
- * - Auto-marked attendance occurs via EnrollmentService (invite link enrollment).
- * - Manual attendance is marked by mentors/co-mentors via Filament pages.
- */
 class AttendanceService
 {
-    /**
-     * Mark attendance for a user in a class/session.
-     * 
-     * Idempotent: If attendance already exists, returns the existing record.
-     * Immutable: Once created, the record cannot be updated or deleted.
-     * 
-     * @param int      $classId   The mentorship class ID
-     * @param int|null $sessionId The session ID (null for enrollment-level attendance)
-     * @param int      $userId    The user being marked
-     * @param int      $markedBy  The user performing the marking
-     * @param string   $source    'auto' (via invite link) or 'manual' (by mentor)
-     * 
-     * @return ClassAttendance The created or existing attendance record
-     */
-    public function markAttendance(
-        int $classId,
-        ?int $sessionId,
-        int $userId,
-        int $markedBy,
-        string $source = 'manual'
-    ): ClassAttendance {
-        // Idempotent: check if already exists
-        $existing = $this->findAttendance($classId, $sessionId, $userId);
+    // ─────────────────────────────────────────────────────────────────────────
+    // Enrollment-Level Attendance (class join via invite link)
+    // ─────────────────────────────────────────────────────────────────────────
 
-        if ($existing) {
-            return $existing;
+    /**
+     * Auto-mark class-level attendance when a mentee enrolls via invite link.
+     * source = 'auto', session_id = null, class_module_id = null.
+     * Idempotent — safe to call multiple times.
+     */
+    public function markEnrollmentAttendance(User $user, MentorshipClass $class): ClassAttendance
+    {
+        return ClassAttendance::firstOrCreate(
+            [
+                'class_id'        => $class->id,
+                'class_module_id' => null,
+                'session_id'      => null,
+                'user_id'         => $user->id,
+            ],
+            [
+                'marked_by' => $user->id,
+                'marked_at' => now(),
+                'source'    => 'auto',
+            ]
+        );
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Module-Level Attendance (mentee self-confirms via dashboard)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Confirm a mentee's attendance for a specific module.
+     *
+     * Rules:
+     *  - Module must be in_progress and attendance_link_active.
+     *  - User must be an enrolled participant in the parent class.
+     *  - Idempotent — returns false (no error) if already confirmed.
+     *
+     * @return array{success: bool, message: string}
+     */
+    public function confirmModuleAttendance(User $user, ClassModule $classModule): array
+    {
+        // Guard: module must be active
+        if ($classModule->status !== 'in_progress') {
+            return ['success' => false, 'message' => 'This module is not currently active.'];
         }
 
-        // Create within transaction for safety
-        return DB::transaction(function () use ($classId, $sessionId, $userId, $markedBy, $source) {
-            // Double-check within transaction (race condition guard)
-            $existing = $this->findAttendance($classId, $sessionId, $userId);
-            if ($existing) {
-                return $existing;
-            }
+        if (!$classModule->attendance_link_active) {
+            return ['success' => false, 'message' => 'Attendance confirmation is not open for this module.'];
+        }
 
-            return ClassAttendance::create([
-                'class_id'   => $classId,
-                'session_id' => $sessionId,
-                'user_id'    => $userId,
-                'marked_by'  => $markedBy,
-                'marked_at'  => now(),
-                'source'     => $source,
-            ]);
-        });
-    }
-
-    /**
-     * Check if attendance exists for a user in a class/session.
-     */
-    public function hasAttendance(int $classId, ?int $sessionId, int $userId): bool
-    {
-        return $this->findAttendance($classId, $sessionId, $userId) !== null;
-    }
-
-    /**
-     * Find an existing attendance record.
-     */
-    public function findAttendance(int $classId, ?int $sessionId, int $userId): ?ClassAttendance
-    {
-        return ClassAttendance::where('class_id', $classId)
-            ->where('session_id', $sessionId)
-            ->where('user_id', $userId)
+        // Guard: user must be enrolled
+        $participant = ClassParticipant::where('mentorship_class_id', $classModule->mentorship_class_id)
+            ->where('user_id', $user->id)
+            ->whereIn('status', ['enrolled', 'active'])
             ->first();
-    }
 
-    /**
-     * Get all attendance records for a class.
-     */
-    public function getClassAttendance(int $classId): \Illuminate\Database\Eloquent\Collection
-    {
-        return ClassAttendance::where('class_id', $classId)
-            ->with(['user', 'marker'])
-            ->orderBy('marked_at')
-            ->get();
-    }
-
-    /**
-     * Get attendance for a specific session.
-     */
-    public function getSessionAttendance(int $classId, int $sessionId): \Illuminate\Database\Eloquent\Collection
-    {
-        return ClassAttendance::where('class_id', $classId)
-            ->where('session_id', $sessionId)
-            ->with(['user', 'marker'])
-            ->orderBy('marked_at')
-            ->get();
-    }
-
-    /**
-     * Get attendance count for a user across a class.
-     */
-    public function getUserAttendanceCount(int $classId, int $userId): int
-    {
-        return ClassAttendance::where('class_id', $classId)
-            ->where('user_id', $userId)
-            ->count();
-    }
-
-    /**
-     * Get attendance rate for a class (percentage of expected records that exist).
-     * 
-     * @param int $classId
-     * @param int $totalExpected Total expected attendance records (sessions × participants)
-     */
-    public function getClassAttendanceRate(int $classId, int $totalExpected): float
-    {
-        if ($totalExpected === 0) {
-            return 0.0;
+        if (!$participant) {
+            return ['success' => false, 'message' => 'You are not enrolled in this class.'];
         }
 
-        $actual = ClassAttendance::where('class_id', $classId)->count();
+        // Idempotency check
+        $alreadyConfirmed = ClassAttendance::where('class_id', $classModule->mentorship_class_id)
+            ->where('class_module_id', $classModule->id)
+            ->where('user_id', $user->id)
+            ->exists();
 
-        return round(($actual / $totalExpected) * 100, 1);
+        if ($alreadyConfirmed) {
+            return ['success' => false, 'message' => 'You have already confirmed attendance for this module.'];
+        }
+
+        try {
+            DB::transaction(function () use ($user, $classModule, $participant) {
+                // Write audit-safe attendance record
+                ClassAttendance::create([
+                    'class_id'        => $classModule->mentorship_class_id,
+                    'class_module_id' => $classModule->id,
+                    'session_id'      => null,
+                    'user_id'         => $user->id,
+                    'marked_by'       => $user->id,
+                    'marked_at'       => now(),
+                    'source'          => 'auto',
+                ]);
+
+                // Update mentee progress to in_progress if it was not_started
+                \App\Models\MenteeModuleProgress::where('class_participant_id', $participant->id)
+                    ->where('class_module_id', $classModule->id)
+                    ->where('status', 'not_started')
+                    ->update([
+                        'status'     => 'in_progress',
+                        'started_at' => now(),
+                    ]);
+            });
+
+            return ['success' => true, 'message' => 'Attendance confirmed successfully.'];
+        } catch (\Exception $e) {
+            Log::error('Module attendance confirmation failed', [
+                'user_id'         => $user->id,
+                'class_module_id' => $classModule->id,
+                'error'           => $e->getMessage(),
+            ]);
+
+            return ['success' => false, 'message' => 'An error occurred. Please try again.'];
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Manual Attendance (mentor marks present/absent)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Mentor manually marks a mentee's attendance for a module.
+     * Overwrites any existing record (marked_by = mentor, source = manual).
+     *
+     * @param  string $status 'present'|'absent'
+     */
+    public function markManualModuleAttendance(
+        User $mentor,
+        ClassModule $classModule,
+        User $mentee,
+        string $status = 'present'
+    ): array {
+        $participant = ClassParticipant::where('mentorship_class_id', $classModule->mentorship_class_id)
+            ->where('user_id', $mentee->id)
+            ->first();
+
+        if (!$participant) {
+            return ['success' => false, 'message' => 'Mentee is not enrolled in this class.'];
+        }
+
+        try {
+            DB::transaction(function () use ($mentor, $mentee, $classModule, $participant, $status) {
+                $present = $status === 'present';
+
+                ClassAttendance::updateOrCreate(
+                    [
+                        'class_id'        => $classModule->mentorship_class_id,
+                        'class_module_id' => $classModule->id,
+                        'user_id'         => $mentee->id,
+                    ],
+                    [
+                        'session_id' => null,
+                        'marked_by'  => $mentor->id,
+                        'marked_at'  => now(),
+                        'source'     => 'manual',
+                    ]
+                );
+
+                if ($present) {
+                    \App\Models\MenteeModuleProgress::updateOrCreate(
+                        [
+                            'class_participant_id' => $participant->id,
+                            'class_module_id'      => $classModule->id,
+                        ],
+                        [
+                            'status'                => 'in_progress',
+                            'started_at'            => now(),
+                            'attendance_percentage' => 100.0,
+                        ]
+                    );
+                }
+            });
+
+            return ['success' => true, 'message' => "Marked as {$status}."];
+        } catch (\Exception $e) {
+            Log::error('Manual attendance marking failed', [
+                'mentor_id'       => $mentor->id,
+                'mentee_id'       => $mentee->id,
+                'class_module_id' => $classModule->id,
+                'error'           => $e->getMessage(),
+            ]);
+
+            return ['success' => false, 'message' => 'An error occurred.'];
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Queries
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Get attendance summary for a module:
+     * [confirmed => int, total_enrolled => int, rate => float, records => Collection]
+     */
+    public function getModuleAttendanceSummary(ClassModule $classModule): array
+    {
+        $confirmed = ClassAttendance::where('class_id', $classModule->mentorship_class_id)
+            ->where('class_module_id', $classModule->id)
+            ->count();
+
+        $totalEnrolled = ClassParticipant::where('mentorship_class_id', $classModule->mentorship_class_id)
+            ->whereIn('status', ['enrolled', 'active'])
+            ->count();
+
+        $rate = $totalEnrolled > 0 ? round(($confirmed / $totalEnrolled) * 100, 1) : 0.0;
+
+        return [
+            'confirmed'      => $confirmed,
+            'total_enrolled' => $totalEnrolled,
+            'rate'           => $rate,
+        ];
     }
 
     /**
-     * Bulk mark attendance for multiple users in a session.
-     * Used by mentor when marking attendance from Filament page.
-     * 
-     * @return int Number of new records created
+     * Get the list of all enrolled mentees with their confirmation status for a module.
+     * Used by ManageModuleMentees to show the attendance panel.
+     *
+     * @return \Illuminate\Support\Collection<array{participant: ClassParticipant, confirmed: bool, confirmed_at: ?Carbon, source: ?string}>
      */
-    public function bulkMarkAttendance(
-        int $classId,
-        int $sessionId,
-        array $userIds,
-        int $markedBy,
-        string $source = 'manual'
-    ): int {
-        $created = 0;
+    public function getModuleAttendanceRoster(ClassModule $classModule): \Illuminate\Support\Collection
+    {
+        $participants = ClassParticipant::with('user')
+            ->where('mentorship_class_id', $classModule->mentorship_class_id)
+            ->whereIn('status', ['enrolled', 'active'])
+            ->get();
 
-        DB::transaction(function () use ($classId, $sessionId, $userIds, $markedBy, $source, &$created) {
-            foreach ($userIds as $userId) {
-                $existing = $this->findAttendance($classId, $sessionId, $userId);
-                if (! $existing) {
-                    ClassAttendance::create([
-                        'class_id'   => $classId,
-                        'session_id' => $sessionId,
-                        'user_id'    => $userId,
-                        'marked_by'  => $markedBy,
-                        'marked_at'  => now(),
-                        'source'     => $source,
-                    ]);
-                    $created++;
-                }
-            }
+        $attendanceMap = ClassAttendance::where('class_id', $classModule->mentorship_class_id)
+            ->where('class_module_id', $classModule->id)
+            ->get()
+            ->keyBy('user_id');
+
+        return $participants->map(function (ClassParticipant $participant) use ($attendanceMap) {
+            $record = $attendanceMap->get($participant->user_id);
+
+            return [
+                'participant'  => $participant,
+                'user'         => $participant->user,
+                'confirmed'    => $record !== null,
+                'confirmed_at' => $record?->marked_at,
+                'source'       => $record?->source,
+                'marked_by'    => $record?->marked_by,
+            ];
         });
-
-        return $created;
     }
 }

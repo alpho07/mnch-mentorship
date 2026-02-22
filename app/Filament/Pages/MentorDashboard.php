@@ -1,217 +1,274 @@
 <?php
 
-namespace App\Filament\Pages;
+namespace App\Filament\Resources\MentorshipTrainingResource\Pages;
 
-use App\Models\Training;
-use App\Models\MentorshipClass;
-use App\Models\ClassModule;
-use App\Models\ClassSession;
-use App\Models\ClassParticipant;
-use App\Models\MentorshipCoMentor;
-use App\Models\ClassAttendance;
-use Filament\Pages\Page;
-use Filament\Tables;
-use Filament\Tables\Table;
-use Filament\Tables\Concerns\InteractsWithTable;
-use Filament\Tables\Contracts\HasTable;
 use App\Filament\Resources\MentorshipTrainingResource;
+use App\Models\ClassAttendance;
+use App\Models\ClassModule;
+use App\Models\ClassParticipant;
+use App\Models\MenteeModuleProgress;
+use App\Models\MentorshipClass;
+use App\Models\MentorshipCoMentor;
+use App\Models\Training;
+use Filament\Resources\Pages\Page;
 use Illuminate\Support\Facades\DB;
 
-class MentorDashboard extends Page implements HasTable {
+class MentorDashboard extends Page
+{
+    protected static string $resource = MentorshipTrainingResource::class;
+    protected static string $view     = 'filament.pages.mentor-dashboard';
+    protected static bool   $shouldRegisterNavigation = false;
 
-    use InteractsWithTable;
+    // ─── Loaded state ────────────────────────────────────────────────────────
+    public array $kpis          = [];
+    public array $mentorships   = [];   // per-mentorship breakdown
+    public array $menteeRoster  = [];   // all mentees + their stats
+    public array $activityFeed  = [];   // recent recommendations + confirmations
+    public array $insights      = [];   // derived flags for decision-making
 
-    protected static ?string $navigationIcon = 'heroicon-o-academic-cap';
-    protected static ?string $navigationLabel = 'My Dashboard';
-    protected static ?int $navigationSort = 1;
-    protected static string $view = 'filament.pages.mentor-dashboard';
-
-    public static function shouldRegisterNavigation(): bool {
-        return auth()->check() && auth()->user()->hasRole(['super_admin', 'facility_mentor', 'division']);
-    }
-    
-    public static function canAccess(): bool {
-        return auth()->check() && auth()->user()->hasRole(['super_admin', 'facility_mentor', 'division']);
-    }
-
-
-    public function getTitle(): string {
-        return 'Mentor Dashboard';
+    public function mount(): void
+    {
+        $this->loadDashboard();
     }
 
-    public function getHeading(): string {
-        $user = auth()->user();
-        return "Welcome back, {$user->first_name}!";
-    }
+    // ─────────────────────────────────────────────────────────────────────────
+    // Core loader
+    // ─────────────────────────────────────────────────────────────────────────
 
-    public function getSubheading(): ?string {
-        $stats = $this->getDashboardStats();
-        return "You have {$stats['active_mentorships']} active mentorship(s) with {$stats['total_mentees']} total mentees";
-    }
+    private function loadDashboard(): void
+    {
+        $userId      = auth()->id();
+        $trainingIds = $this->getMyTrainingIds($userId);
 
-    /**
-     * Get all training IDs where user is lead mentor OR accepted co-mentor.
-     */
-    private function getMyTrainingIds(): array {
-        $userId = auth()->id();
+        if (empty($trainingIds)) {
+            $this->kpis = $this->emptyKpis();
+            return;
+        }
 
-        $asLead = Training::where('mentor_id', $userId)
-                ->where('type', 'facility_mentorship')
-                ->pluck('id');
+        // Pull full data in one batch per entity type
+        $trainings   = Training::whereIn('id', $trainingIds)
+            ->with(['facility', 'program'])
+            ->get()
+            ->keyBy('id');
 
-        $asCoMentor = MentorshipCoMentor::where('user_id', $userId)
-                ->where('status', 'accepted')
-                ->pluck('training_id');
+        $classes = MentorshipClass::whereIn('training_id', $trainingIds)
+            ->with(['classModules.programModule', 'classModules.attendanceRecords'])
+            ->get();
 
-        return $asLead->merge($asCoMentor)->unique()->toArray();
-    }
+        $classIds       = $classes->pluck('id');
+        $classModuleIds = $classes->flatMap(fn ($c) => $c->classModules->pluck('id'));
 
-    /**
-     * Compute accurate dashboard stats.
-     */
-    public function getDashboardStats(): array {
-        $trainingIds = $this->getMyTrainingIds();
+        $participants = ClassParticipant::with('user')
+            ->whereIn('mentorship_class_id', $classIds)
+            ->whereIn('status', ['enrolled', 'active', 'completed'])
+            ->get();
 
-        $totalMentorships = count($trainingIds);
+        $progress = MenteeModuleProgress::whereIn('class_module_id', $classModuleIds)
+            ->get();
 
-        $activeClasses = MentorshipClass::whereIn('training_id', $trainingIds)
-                ->where('status', 'active')
-                ->count();
+        $attendances = ClassAttendance::whereIn('class_id', $classIds)
+            ->whereNotNull('class_module_id')
+            ->get();
 
-        $totalMentees = ClassParticipant::whereHas('mentorshipClass', function ($q) use ($trainingIds) {
-                    $q->whereIn('training_id', $trainingIds);
-                })->distinct('user_id')->count('user_id');
+        // ── KPIs ──────────────────────────────────────────────────────────────
+        $totalMentees      = $participants->pluck('user_id')->unique()->count();
+        $totalModules      = $classes->sum(fn ($c) => $c->classModules->count());
+        $completedModules  = $classes->sum(fn ($c) => $c->classModules->where('status', 'completed')->count());
+        $totalEnrollments  = $participants->count();
+        $confirmedAtt      = $attendances->count();
 
-        $totalModules = ClassModule::whereHas('mentorshipClass', function ($q) use ($trainingIds) {
-                    $q->whereIn('training_id', $trainingIds);
-                })->count();
+        // Attendance rate: confirmations / (modules_in_progress_or_completed * enrolled_per_class)
+        $possibleAttendances = 0;
+        foreach ($classes as $class) {
+            $enrolled       = $participants->where('mentorship_class_id', $class->id)->count();
+            $activeModules  = $class->classModules->whereIn('status', ['in_progress', 'completed'])->count();
+            $possibleAttendances += $enrolled * $activeModules;
+        }
+        $attendanceRate = $possibleAttendances > 0
+            ? round(($confirmedAtt / $possibleAttendances) * 100, 1)
+            : 0;
 
-        $completedModules = ClassModule::whereHas('mentorshipClass', function ($q) use ($trainingIds) {
-                    $q->whereIn('training_id', $trainingIds);
-                })->where('status', 'completed')->count();
+        // Completion rate: per mentee, how many modules completed vs total
+        $progressByParticipant = $progress->groupBy('class_participant_id');
+        $completionRates        = [];
+        foreach ($participants as $p) {
+            $myProgress = $progressByParticipant->get($p->id, collect());
+            $total      = $myProgress->count();
+            if ($total === 0) continue;
+            $done       = $myProgress->where('status', 'completed')->count();
+            $completionRates[] = round(($done / $total) * 100);
+        }
+        $avgCompletion = count($completionRates) > 0
+            ? round(array_sum($completionRates) / count($completionRates), 1)
+            : 0;
 
-        $totalSessions = ClassSession::whereHas('classModule.mentorshipClass', function ($q) use ($trainingIds) {
-                    $q->whereIn('training_id', $trainingIds);
-                })->count();
+        $activeClasses    = $classes->where('status', 'active')->count();
+        $completedClasses = $classes->where('status', 'completed')->count();
+        $recCount         = $progress->whereNotNull('mentor_recommendation')->count();
 
-        $completedSessions = ClassSession::whereHas('classModule.mentorshipClass', function ($q) use ($trainingIds) {
-                    $q->whereIn('training_id', $trainingIds);
-                })->where('status', 'completed')->count();
+        $this->kpis = [
+            'active_mentorships'  => $trainings->count(),
+            'active_classes'      => $activeClasses,
+            'completed_classes'   => $completedClasses,
+            'total_mentees'       => $totalMentees,
+            'total_enrollments'   => $totalEnrollments,
+            'total_modules'       => $totalModules,
+            'completed_modules'   => $completedModules,
+            'attendance_rate'     => $attendanceRate,
+            'avg_completion'      => $avgCompletion,
+            'recommendations'     => $recCount,
+            'module_completion_rate' => $totalModules > 0
+                ? round(($completedModules / $totalModules) * 100, 1)
+                : 0,
+        ];
 
-        // Attendance rate from class_attendances table
-        $attendanceRecords = ClassAttendance::whereHas('mentorshipClass', function ($q) use ($trainingIds) {
-                    $q->whereIn('training_id', $trainingIds);
-                })->count();
+        // ── Per-Mentorship Breakdown ──────────────────────────────────────────
+        $this->mentorships = [];
+        foreach ($trainingIds as $tid) {
+            $training = $trainings->get($tid);
+            if (!$training) continue;
 
-        return [
-            'total_mentorships' => $totalMentorships,
-            'active_mentorships' => Training::whereIn('id', $trainingIds)->where('status', 'active')->count(),
-            'active_classes' => $activeClasses,
-            'total_mentees' => $totalMentees,
-            'total_modules' => $totalModules,
-            'completed_modules' => $completedModules,
-            'module_completion_rate' => $totalModules > 0 ? round(($completedModules / $totalModules) * 100, 1) : 0,
-            'total_sessions' => $totalSessions,
-            'completed_sessions' => $completedSessions,
-            'attendance_records' => $attendanceRecords,
+            $myClasses       = $classes->where('training_id', $tid);
+            $myClassIds      = $myClasses->pluck('id');
+            $myParticipants  = $participants->whereIn('mentorship_class_id', $myClassIds->toArray());
+            $myModuleIds     = $myClasses->flatMap(fn ($c) => $c->classModules->pluck('id'));
+            $myProgress      = $progress->whereIn('class_module_id', $myModuleIds->toArray());
+            $myAttendances   = $attendances->whereIn('class_id', $myClassIds->toArray());
+
+            $mModTotal = $myClasses->sum(fn ($c) => $c->classModules->count());
+            $mModDone  = $myClasses->sum(fn ($c) => $c->classModules->where('status', 'completed')->count());
+            $mMentees  = $myParticipants->pluck('user_id')->unique()->count();
+            $mRecs     = $myProgress->whereNotNull('mentor_recommendation')->count();
+
+            // Module progress distribution
+            $notStarted  = $myProgress->where('status', 'not_started')->count();
+            $inProgress  = $myProgress->where('status', 'in_progress')->count();
+            $completed   = $myProgress->where('status', 'completed')->count();
+            $total       = $notStarted + $inProgress + $completed;
+
+            $this->mentorships[] = [
+                'id'            => $tid,
+                'title'         => $training->title ?? 'Unnamed Mentorship',
+                'facility'      => $training->facility?->name ?? '—',
+                'status'        => $training->status,
+                'start_date'    => $training->start_date,
+                'end_date'      => $training->end_date,
+                'classes_count' => $myClasses->count(),
+                'active_classes'=> $myClasses->where('status', 'active')->count(),
+                'mentees'       => $mMentees,
+                'modules_total' => $mModTotal,
+                'modules_done'  => $mModDone,
+                'module_pct'    => $mModTotal > 0 ? round(($mModDone / $mModTotal) * 100) : 0,
+                'recommendations'=> $mRecs,
+                'dist_not_started' => $total > 0 ? round(($notStarted / $total) * 100) : 0,
+                'dist_in_progress' => $total > 0 ? round(($inProgress / $total) * 100) : 0,
+                'dist_completed'   => $total > 0 ? round(($completed / $total) * 100) : 0,
+                'url'           => MentorshipTrainingResource::getUrl('classes', ['record' => $tid]),
+            ];
+        }
+
+        // ── Mentee Roster ─────────────────────────────────────────────────────
+        $this->menteeRoster = [];
+        $seenUsers          = [];
+
+        foreach ($participants as $p) {
+            $uid = $p->user_id;
+            if (isset($seenUsers[$uid])) continue;
+            $seenUsers[$uid] = true;
+
+            $myEnrollments    = $participants->where('user_id', $uid);
+            $myParticipantIds = $myEnrollments->pluck('id');
+            $myProg           = $progress->whereIn('class_participant_id', $myParticipantIds->toArray());
+            $myModTotal       = $myProg->count();
+            $myModDone        = $myProg->where('status', 'completed')->count();
+            $myRecs           = $myProg->whereNotNull('mentor_recommendation')->count();
+
+            $pct = $myModTotal > 0 ? round(($myModDone / $myModTotal) * 100) : 0;
+
+            $this->menteeRoster[] = [
+                'user_id'        => $uid,
+                'name'           => $p->user?->name ?? 'Unknown',
+                'email'          => $p->user?->email ?? '—',
+                'cadre'          => $p->user?->cadre?->name ?? '—',
+                'facility'       => $p->user?->primary_facility?->name ?? '—',
+                'enrollments'    => $myEnrollments->count(),
+                'modules_total'  => $myModTotal,
+                'modules_done'   => $myModDone,
+                'completion_pct' => $pct,
+                'recommendations'=> $myRecs,
+                'status_flag'    => $pct >= 80 ? 'on_track'
+                    : ($pct >= 40 ? 'in_progress' : 'needs_attention'),
+            ];
+        }
+
+        // Sort: needs attention first, then by completion desc
+        usort($this->menteeRoster, fn ($a, $b) =>
+            $a['status_flag'] === 'needs_attention' ? -1
+            : ($b['status_flag'] === 'needs_attention' ? 1 : $b['completion_pct'] - $a['completion_pct'])
+        );
+
+        // ── Activity Feed ─────────────────────────────────────────────────────
+        $recentRecs = MenteeModuleProgress::whereIn('class_module_id', $classModuleIds)
+            ->whereNotNull('mentor_recommendation')
+            ->whereNotNull('recommendation_written_at')
+            ->with(['classParticipant.user', 'classModule.programModule'])
+            ->orderByDesc('recommendation_written_at')
+            ->limit(10)
+            ->get();
+
+        $this->activityFeed = $recentRecs->map(fn ($r) => [
+            'type'     => 'recommendation',
+            'mentee'   => $r->classParticipant?->user?->name ?? '—',
+            'module'   => $r->classModule?->programModule?->name ?? '—',
+            'excerpt'  => \Illuminate\Support\Str::limit($r->mentor_recommendation, 80),
+            'at'       => $r->recommendation_written_at,
+        ])->toArray();
+
+        // ── Insights ──────────────────────────────────────────────────────────
+        $needsAttentionCount = collect($this->menteeRoster)->where('status_flag', 'needs_attention')->count();
+        $this->insights = [
+            'mentees_needing_attention' => $needsAttentionCount,
+            'low_attendance_classes'    => $classes->filter(function ($c) use ($attendances, $participants) {
+                $enrolled  = $participants->where('mentorship_class_id', $c->id)->count();
+                $confirmed = $attendances->where('class_id', $c->id)->count();
+                if ($enrolled === 0) return false;
+                return ($confirmed / $enrolled) < 0.6;
+            })->count(),
+            'stalled_modules' => $classes->sum(fn ($c) =>
+                $c->classModules->where('status', 'not_started')->count()
+            ),
+            'recs_coverage' => $totalEnrollments > 0
+                ? round(($recCount / max($totalEnrollments, 1)) * 100)
+                : 0,
         ];
     }
 
-    public function table(Table $table): Table {
-        $trainingIds = $this->getMyTrainingIds();
+    // ─────────────────────────────────────────────────────────────────────────
+    // Helpers
+    // ─────────────────────────────────────────────────────────────────────────
 
-        return $table
-                        ->query(
-                                Training::query()
-                                ->whereIn('id', $trainingIds)
-                                ->with(['program', 'facility'])
-                                ->latest()
-                        )
-                        ->columns([
-                            Tables\Columns\TextColumn::make('program.name')
-                            ->label('Mentorship Program')
-                            ->searchable()
-                            ->weight('bold')
-                            ->icon('heroicon-o-academic-cap')
-                            ->description(fn($record) => $record->facility?->name),
-                            Tables\Columns\TextColumn::make('role')
-                            ->label('My Role')
-                            ->getStateUsing(function ($record) {
-                                if ($record->mentor_id === auth()->id()) {
-                                    return 'Lead Mentor';
-                                }
-                                return 'Co-Mentor';
-                            })
-                            ->badge()
-                            ->color(fn($state) => $state === 'Lead Mentor' ? 'success' : 'info'),
-                            Tables\Columns\TextColumn::make('dates')
-                            ->label('Duration')
-                            ->icon('heroicon-o-calendar')
-                            ->getStateUsing(fn($record) =>
-                                    $record->start_date?->format('M j, Y') . ' - ' .
-                                    ($record->end_date?->format('M j, Y') ?? 'Ongoing')
-                            ),
-                            Tables\Columns\TextColumn::make('classes_count')
-                            ->label('Classes')
-                            ->icon('heroicon-o-user-group')
-                            ->counts('mentorshipClasses')
-                            ->badge()
-                            ->color('primary'),
-                            Tables\Columns\TextColumn::make('total_mentees')
-                            ->label('Total Mentees')
-                            ->icon('heroicon-o-users')
-                            ->getStateUsing(function ($record) {
-                                return ClassParticipant::whereHas('mentorshipClass', function ($query) use ($record) {
-                                            $query->where('training_id', $record->id);
-                                        })->distinct('user_id')->count('user_id');
-                            })
-                            ->badge()
-                            ->color('success'),
-                            Tables\Columns\TextColumn::make('module_progress')
-                            ->label('Modules')
-                            ->getStateUsing(function ($record) {
-                                $total = ClassModule::whereHas('mentorshipClass', fn($q) => $q->where('training_id', $record->id))->count();
-                                $completed = ClassModule::whereHas('mentorshipClass', fn($q) => $q->where('training_id', $record->id))->where('status', 'completed')->count();
-                                return $total > 0 ? "{$completed}/{$total}" : '0';
-                            })
-                            ->badge()
-                            ->color('warning'),
-                            Tables\Columns\BadgeColumn::make('status')
-                            ->colors([
-                                'secondary' => 'draft',
-                                'success' => 'active',
-                                'info' => 'completed',
-                                'danger' => 'cancelled',
-                            ]),
-                        ])
-                        ->actions([
-                            Tables\Actions\Action::make('view_classes')
-                            ->label('Manage')
-                            ->icon('heroicon-o-cog-6-tooth')
-                            ->color('primary')
-                            ->url(fn($record) => MentorshipTrainingResource::getUrl('classes', ['record' => $record])),
-                        ])
-                        ->emptyStateHeading('No Mentorships Yet')
-                        ->emptyStateDescription('You haven\'t been assigned any mentorship programs yet.')
-                        ->emptyStateIcon('heroicon-o-academic-cap');
+    private function getMyTrainingIds(int $userId): array
+    {
+        $asLead = Training::where('mentor_id', $userId)
+            ->where('type', 'facility_mentorship')
+            ->pluck('id');
+
+        $asCoMentor = MentorshipCoMentor::where('user_id', $userId)
+            ->where('status', 'accepted')
+            ->pluck('training_id');
+
+        return $asLead->merge($asCoMentor)->unique()->values()->toArray();
     }
 
-//    public static function shouldRegisterNavigation(): bool {
-//        if (!auth()->check()) {
-//            return false;
-//        }
-//
-//        $userId = auth()->id();
-//
-//        // Show if user is lead mentor OR accepted co-mentor
-//        $isLeadMentor = Training::where('mentor_id', $userId)
-//                ->where('type', 'facility_mentorship')
-//                ->exists();
-//
-//        $isCoMentor = MentorshipCoMentor::where('user_id', $userId)
-//                ->where('status', 'accepted')
-//                ->exists();
-//
-//        return $isLeadMentor || $isCoMentor;
-//    }
+    private function emptyKpis(): array
+    {
+        return [
+            'active_mentorships'  => 0, 'active_classes'    => 0,
+            'completed_classes'   => 0, 'total_mentees'     => 0,
+            'total_enrollments'   => 0, 'total_modules'     => 0,
+            'completed_modules'   => 0, 'attendance_rate'   => 0,
+            'avg_completion'      => 0, 'recommendations'   => 0,
+            'module_completion_rate' => 0,
+        ];
+    }
 }

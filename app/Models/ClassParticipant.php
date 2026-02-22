@@ -49,8 +49,13 @@ class ClassParticipant extends Model {
 
     // Computed Attributes
     public function getAttendanceRateAttribute(): float {
-        $totalSessions = $this->mentorshipClass
-                ->classModules()
+        $class = $this->relationLoaded('mentorshipClass') ? $this->mentorshipClass : $this->mentorshipClass()->first();
+
+        if (!$class) {
+            return 0;
+        }
+
+        $totalSessions = $class->classModules()
                 ->withCount('sessions')
                 ->get()
                 ->sum('sessions_count');
@@ -71,8 +76,13 @@ class ClassParticipant extends Model {
     }
 
     public function getTotalSessionsAttribute(): int {
-        return $this->mentorshipClass
-                        ->classModules()
+        $class = $this->relationLoaded('mentorshipClass') ? $this->mentorshipClass : $this->mentorshipClass()->first();
+
+        if (!$class) {
+            return 0;
+        }
+
+        return $class->classModules()
                         ->withCount('sessions')
                         ->get()
                         ->sum('sessions_count');
