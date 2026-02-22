@@ -57,8 +57,11 @@ class ClassModule extends Model {
     }
 
     /**
-     * Module-level attendance records (session_id = null).
-     * These are written when a mentee self-confirms via dashboard.
+     * Authoritative module-level attendance records.
+     * Written by:
+     *   - Mentee clicking attendance link  → source = 'link'
+     *   - Mentor marking manually          → source = 'manual'
+     * NOT written by class enrollment (those have class_module_id = null).
      */
     public function attendanceRecords(): HasMany {
         return $this->hasMany(ClassAttendance::class, 'class_module_id');
@@ -68,34 +71,22 @@ class ClassModule extends Model {
     // Lifecycle Guards
     // ─────────────────────────────────────────────────────────────────────────
 
-    /**
-     * Module can start if it is in 'not_started' state and the parent class is active.
-     */
     public function canStart(): bool {
         if ($this->status !== 'not_started') {
             return false;
         }
 
-        // Query the class status fresh from DB — never use the cached relationship here.
-        // When called from MentorshipClass::start(), the class was just updated to 'active'
-        // in the same transaction, but the in-memory relationship still holds the old status.
+        // Query fresh from DB — in-memory relationship may hold stale class status.
         $classStatus = \App\Models\MentorshipClass::where('id', $this->mentorship_class_id)
                 ->value('status');
 
         return $classStatus === 'active';
     }
 
-    /**
-     * Module can be completed if it is in_progress.
-     * Optionally enforce that all sessions are completed first (soft rule — warn only).
-     */
     public function canComplete(): bool {
         return $this->status === 'in_progress';
     }
 
-    /**
-     * True if there are no session or progress records that would be orphaned.
-     */
     public function canBeRemoved(): bool {
         return $this->status === 'not_started' && $this->sessions()->count() === 0 && $this->menteeProgress()->count() === 0;
     }
@@ -105,11 +96,21 @@ class ClassModule extends Model {
     // ─────────────────────────────────────────────────────────────────────────
 
     /**
-     * Start the module: set status, generate attendance token, open attendance link.
+     * Start the module.
+     *
+     * What changes:
+     *  - module.status          → 'in_progress'
+     *  - attendance_token       → generated (once)
+     *  - attendance_link_active → true
+     *  - mentee_module_progress → 'not_started' rows created for every enrolled mentee
+     *                             (status is NOT forced to in_progress — mentees must confirm
+     *                              attendance themselves via the link)
      */
     public function start(): void {
         if (!$this->canStart()) {
-            throw new \LogicException("Module [{$this->id}] cannot be started in its current state: {$this->status}");
+            throw new \LogicException(
+                            "Module [{$this->id}] cannot be started in its current state: {$this->status}"
+                    );
         }
 
         $this->update([
@@ -119,17 +120,27 @@ class ClassModule extends Model {
             'attendance_link_active' => true,
         ]);
 
-        // Initialise mentee_module_progress records for all enrolled mentees
-        // who don't yet have a progress row for this module.
+        // Ensure every enrolled mentee has a progress placeholder row.
+        // Status = 'not_started' until THEY confirm attendance via the link.
         $this->ensureMenteeProgressRecords();
     }
 
     /**
-     * Complete the module: close attendance link, update progress for all mentees.
+     * Complete the module (mentor action after teaching is done).
+     *
+     * What changes:
+     *  - module.status          → 'completed'
+     *  - attendance_link_active → false  (link deactivated)
+     *  - mentee_module_progress:
+     *      • Has ClassAttendance record  → 'completed', attendance_pct = 100
+     *      • No  ClassAttendance record  → stays 'not_started' (absent)
+     *      • Already 'exempted'          → untouched
      */
     public function complete(): void {
         if (!$this->canComplete()) {
-            throw new \LogicException("Module [{$this->id}] cannot be completed in its current state: {$this->status}");
+            throw new \LogicException(
+                            "Module [{$this->id}] cannot be completed in its current state: {$this->status}"
+                    );
         }
 
         DB::transaction(function () {
@@ -139,33 +150,63 @@ class ClassModule extends Model {
                 'attendance_link_active' => false,
             ]);
 
-            // Calculate final attendance % and complete progress for each mentee
             $enrolledParticipants = ClassParticipant::where('mentorship_class_id', $this->mentorship_class_id)
                     ->whereIn('status', ['enrolled', 'active'])
                     ->get();
 
-            $totalParticipants = $enrolledParticipants->count();
-            if ($totalParticipants === 0) {
+            if ($enrolledParticipants->isEmpty()) {
                 return;
             }
 
-            $confirmedUserIds = $this->attendanceRecords()->pluck('user_id')->toArray();
+            // Collect user IDs that are confirmed present for THIS module.
+            // Uses MenteeModuleProgress (in_progress/completed) as source of truth —
+            // handles both new records (class_module_id set on ClassAttendance) and
+            // legacy records (class_module_id = null on ClassAttendance).
+            $confirmedParticipantIds = MenteeModuleProgress::where('class_module_id', $this->id)
+                    ->whereIn('status', ['in_progress', 'completed'])
+                    ->pluck('class_participant_id')
+                    ->toArray();
 
             foreach ($enrolledParticipants as $participant) {
-                $attended = in_array($participant->user_id, $confirmedUserIds);
-                $attendancePct = $attended ? 100.0 : 0.0;
+                $attended = in_array($participant->id, $confirmedParticipantIds);
 
-                MenteeModuleProgress::updateOrCreate(
-                        [
-                            'class_participant_id' => $participant->id,
-                            'class_module_id' => $this->id,
-                        ],
-                        [
-                            'status' => $attended ? 'completed' : 'not_started',
-                            'completed_at' => $attended ? now() : null,
-                            'attendance_percentage' => $attendancePct,
-                        ]
-                );
+                if ($attended) {
+                    // Attended → mark completed.
+                    // Two-step firstOrCreate then update avoids passing DB::raw()
+                    // in the updateOrCreate values array, which triggers a TypeError
+                    // when Eloquent's casting layer calls preg_match on the Expression object.
+                    $progress = MenteeModuleProgress::firstOrCreate(
+                            [
+                                'class_participant_id' => $participant->id,
+                                'class_module_id' => $this->id,
+                            ],
+                            [
+                                'status' => 'completed',
+                                'started_at' => now(),
+                                'completed_at' => now(),
+                                'attendance_percentage' => 100.0,
+                            ]
+                    );
+
+                    if (!$progress->wasRecentlyCreated) {
+                        $progress->update([
+                            'status' => 'completed',
+                            'started_at' => $progress->started_at ?? now(),
+                            'completed_at' => now(),
+                            'attendance_percentage' => 100.0,
+                        ]);
+                    }
+                } else {
+                    // Absent → leave 'exempted' untouched, others go to 'not_started'
+                    MenteeModuleProgress::where('class_participant_id', $participant->id)
+                            ->where('class_module_id', $this->id)
+                            ->whereNotIn('status', ['exempted'])
+                            ->update([
+                                'status' => 'not_started',
+                                'attendance_percentage' => 0.0,
+                                'completed_at' => null,
+                    ]);
+                }
             }
         });
     }
@@ -175,11 +216,8 @@ class ClassModule extends Model {
     // ─────────────────────────────────────────────────────────────────────────
 
     /**
-     * Auto-populate class_sessions from the program module's template sessions.
-     * Called immediately after a ClassModule is created.
+     * Auto-populate class_sessions from program module template sessions.
      * Safe to call multiple times — skips if sessions already exist.
-     *
-     * @return int Number of sessions created
      */
     public function autoCreateSessions(): int {
         if ($this->sessions()->exists()) {
@@ -218,10 +256,17 @@ class ClassModule extends Model {
     // ─────────────────────────────────────────────────────────────────────────
 
     /**
-     * Count of mentees who have confirmed attendance for this module.
+     * Number of mentees confirmed present for this module.
+     *
+     * Uses MenteeModuleProgress as source of truth (status = in_progress or completed).
+     * This correctly handles both:
+     *  - New records: ClassAttendance with class_module_id set + progress updated
+     *  - Legacy records: ClassAttendance with class_module_id = null + progress updated
      */
     public function confirmedAttendanceCount(): int {
-        return $this->attendanceRecords()->count();
+        return MenteeModuleProgress::where('class_module_id', $this->id)
+                        ->whereIn('status', ['in_progress', 'completed'])
+                        ->count();
     }
 
     /**
@@ -234,7 +279,7 @@ class ClassModule extends Model {
     }
 
     /**
-     * Attendance rate as percentage (0-100).
+     * Attendance rate as percentage (0–100).
      */
     public function attendanceRate(): float {
         $total = $this->enrolledMenteeCount();
@@ -246,19 +291,41 @@ class ClassModule extends Model {
     }
 
     /**
-     * Whether a given user has already confirmed attendance for this module.
+     * Whether a given user is confirmed present for this module.
+     *
+     * Checks MenteeModuleProgress (status = in_progress or completed) as primary source.
+     * Falls back to ClassAttendance for forward compatibility.
      */
     public function hasUserConfirmedAttendance(int $userId): bool {
+        $participant = ClassParticipant::where('mentorship_class_id', $this->mentorship_class_id)
+                ->where('user_id', $userId)
+                ->first();
+
+        if ($participant) {
+            $hasProgress = MenteeModuleProgress::where('class_participant_id', $participant->id)
+                    ->where('class_module_id', $this->id)
+                    ->whereIn('status', ['in_progress', 'completed'])
+                    ->exists();
+
+            if ($hasProgress) {
+                return true;
+            }
+        }
+
+        // Fallback: direct ClassAttendance record (new records have class_module_id set)
         return $this->attendanceRecords()->where('user_id', $userId)->exists();
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Helpers
+    // Private Helpers
     // ─────────────────────────────────────────────────────────────────────────
 
     /**
-     * Ensure every enrolled class participant has a progress row for this module.
-     * Called on start() so the ManageModuleMentees page shows everyone immediately.
+     * Create a mentee_module_progress placeholder row for every enrolled mentee.
+     * Called on start(). Status is 'not_started' — mentees must confirm attendance
+     * themselves via the attendance link to move to 'in_progress'.
+     *
+     * Idempotent — never overwrites existing progress rows.
      */
     private function ensureMenteeProgressRecords(): void {
         $participants = ClassParticipant::where('mentorship_class_id', $this->mentorship_class_id)
@@ -266,32 +333,24 @@ class ClassModule extends Model {
                 ->get();
 
         foreach ($participants as $participant) {
-            $progress = MenteeModuleProgress::firstOrCreate(
+            MenteeModuleProgress::firstOrCreate(
                     [
                         'class_participant_id' => $participant->id,
                         'class_module_id' => $this->id,
                     ],
                     [
-                        'status' => 'in_progress',
-                        'started_at' => now(),
+                        'status' => 'not_started',
                     ]
             );
-
-            // firstOrCreate only sets status on NEW records.
-            // If the row already existed as 'not_started' (enrolled before module started),
-            // we must explicitly update it to 'in_progress'.
-            if (!$progress->wasRecentlyCreated && $progress->status === 'not_started') {
-                $progress->update([
-                    'status' => 'in_progress',
-                    'started_at' => now(),
-                ]);
-            }
+            // Do NOT update existing rows here — if a mentee already confirmed
+            // attendance (progress = in_progress), we must not reset them.
         }
     }
 
-    /**
-     * Formatted status label for display.
-     */
+    // ─────────────────────────────────────────────────────────────────────────
+    // Display Helpers
+    // ─────────────────────────────────────────────────────────────────────────
+
     public function getStatusLabelAttribute(): string {
         return match ($this->status) {
             'not_started' => 'Not Started',
@@ -301,9 +360,6 @@ class ClassModule extends Model {
         };
     }
 
-    /**
-     * Filament badge color for status.
-     */
     public function getStatusColorAttribute(): string {
         return match ($this->status) {
             'not_started' => 'gray',

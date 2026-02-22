@@ -5,6 +5,7 @@ namespace App\Filament\Resources\MentorshipTrainingResource\Pages;
 use App\Filament\Resources\MentorshipTrainingResource;
 use App\Models\ClassModule;
 use App\Models\ClassParticipant;
+use App\Models\MenteeModuleProgress;
 use App\Models\MentorshipClass;
 use App\Models\Training;
 use App\Services\ModuleUsageService;
@@ -97,7 +98,6 @@ class ManageClassModules extends Page implements HasTable {
                         }
 
                         $sessionText = $createdSessions > 0 ? " with {$createdSessions} sessions auto-created" : '';
-
                         Notification::make()->success()->title("{$created} module(s) added{$sessionText}")->send();
                     }),
         ];
@@ -111,7 +111,7 @@ class ManageClassModules extends Page implements HasTable {
         return $table
                         ->query(
                                 ClassModule::query()
-                                ->with(['programModule', 'sessions', 'attendanceRecords', 'menteeProgress'])
+                                ->with(['programModule', 'sessions', 'menteeProgress'])
                                 ->where('mentorship_class_id', $this->class->id)
                                 ->orderBy('order_sequence')
                         )
@@ -122,7 +122,6 @@ class ManageClassModules extends Page implements HasTable {
                             ->label('#')
                             ->width(40)
                             ->sortable(),
-                            // ── Status indicator (icon + badge) ───────────────────────
                             Tables\Columns\TextColumn::make('status')
                             ->label('Status')
                             ->badge()
@@ -154,26 +153,50 @@ class ManageClassModules extends Page implements HasTable {
                             ->getStateUsing(fn(ClassModule $record) => $record->sessions->count())
                             ->alignCenter()
                             ->color('gray'),
+                            // ── Attendance ────────────────────────────────────────────────
+                            // Uses MenteeModuleProgress (status in_progress|completed) as the
+                            // source of truth — correct for both new records (class_module_id
+                            // set on ClassAttendance) and legacy records (class_module_id = null).
                             Tables\Columns\TextColumn::make('attendance_summary')
                             ->label('Attendance')
                             ->getStateUsing(function (ClassModule $record) {
-                                $confirmed = $record->attendanceRecords->count();
+                                if ($record->status === 'not_started') {
+                                    return '—';
+                                }
+
+                                $confirmed = MenteeModuleProgress::where('class_module_id', $record->id)
+                                        ->whereIn('status', ['in_progress', 'completed'])
+                                        ->count();
+
                                 $total = ClassParticipant::where('mentorship_class_id', $record->mentorship_class_id)
                                         ->whereIn('status', ['enrolled', 'active'])
                                         ->count();
 
-                                if ($total === 0)
+                                if ($total === 0) {
                                     return '—';
+                                }
 
                                 $pct = round(($confirmed / $total) * 100);
                                 return "{$confirmed}/{$total} ({$pct}%)";
                             })
-                            ->color(fn(ClassModule $record) => match (true) {
-                                        $record->status === 'not_started' => 'gray',
-                                        $record->attendanceRecords->count() === 0 => 'danger',
-                                        default => 'success',
-                                    })
-                            ->icon(fn(ClassModule $record) => $record->attendanceRecords->count() > 0 ? 'heroicon-m-check-circle' : null),
+                            ->color(function (ClassModule $record) {
+                                if ($record->status === 'not_started') {
+                                    return 'gray';
+                                }
+                                $confirmed = MenteeModuleProgress::where('class_module_id', $record->id)
+                                        ->whereIn('status', ['in_progress', 'completed'])
+                                        ->count();
+                                return $confirmed > 0 ? 'success' : 'danger';
+                            })
+                            ->icon(function (ClassModule $record) {
+                                if ($record->status === 'not_started') {
+                                    return null;
+                                }
+                                $confirmed = MenteeModuleProgress::where('class_module_id', $record->id)
+                                        ->whereIn('status', ['in_progress', 'completed'])
+                                        ->count();
+                                return $confirmed > 0 ? 'heroicon-m-check-circle' : null;
+                            }),
                             Tables\Columns\TextColumn::make('started_at')
                             ->label('Started')
                             ->date('d M Y')
@@ -184,8 +207,6 @@ class ManageClassModules extends Page implements HasTable {
                             ->placeholder('—'),
                         ])
                         ->actions([
-                            // ── Lifecycle ─────────────────────────────────────────────
-
                             Tables\Actions\Action::make('start_module')
                             ->label('Start')
                             ->icon('heroicon-o-play')
@@ -198,7 +219,6 @@ class ManageClassModules extends Page implements HasTable {
                             ->modalSubmitActionLabel('Yes, Start')
                             ->action(function (ClassModule $record) {
                                 try {
-                                    // If class is still draft, activate it first then refresh
                                     $freshClass = MentorshipClass::find($this->class->id);
                                     if ($freshClass->status === 'draft') {
                                         $freshClass->update(['status' => 'active']);
@@ -228,11 +248,11 @@ class ManageClassModules extends Page implements HasTable {
                             ->requiresConfirmation()
                             ->modalHeading('Complete Module')
                             ->modalDescription(fn(ClassModule $record) => implode("\n", [
-                                        "Completing this module will:",
-                                        "• Close attendance confirmation for mentees",
-                                        "• Calculate final attendance rates",
-                                        "• Update all mentee progress records",
-                                        "",
+                                        'Completing this module will:',
+                                        '• Close attendance confirmation for mentees',
+                                        '• Calculate final attendance rates',
+                                        '• Update all mentee progress records',
+                                        '',
                                         "Attendance: {$record->attendanceRate()}% ({$record->confirmedAttendanceCount()} of {$record->enrolledMenteeCount()} confirmed)",
                                     ]))
                             ->action(function (ClassModule $record) {
@@ -252,7 +272,6 @@ class ManageClassModules extends Page implements HasTable {
                                             ->send();
                                 }
                             }),
-                            // ── Navigation (inline icon-only links) ───────────────────
                             Tables\Actions\Action::make('manage_sessions')
                             ->label('Sessions')
                             ->icon('heroicon-o-calendar-days')
@@ -330,26 +349,20 @@ class ManageClassModules extends Page implements HasTable {
                                 }
 
                                 $service->removeModuleFromClass($this->training, $this->class, $record);
-
                                 Notification::make()->success()->title('Module Removed')->send();
                             }),
                         ])
                         ->emptyStateHeading('No Modules Added Yet')
-                        ->emptyStateDescription('Add modules from the program curriculum to get started.')
-                        ->emptyStateIcon('heroicon-o-academic-cap')
-                        ->striped()
-                        ->paginated(false);
+                        ->emptyStateDescription('Add modules from the program curriculum to get started.');
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Helpers
+    // Private Helpers
     // ─────────────────────────────────────────────────────────────────────────
 
     private function getModuleOptions(ModuleUsageService $service): array {
         return $service->getAvailableModules($this->training, $this->class)
-                        ->mapWithKeys(fn($module) => [
-                            $module->id => $module->name . ($module->duration_weeks ? " ({$module->duration_weeks}w)" : ''),
-                                ])
+                        ->mapWithKeys(fn($module) => [$module->id => $module->name])
                         ->toArray();
     }
 }

@@ -9,7 +9,6 @@ use App\Models\ClassParticipant;
 use App\Models\MenteeModuleProgress;
 use App\Models\MentorshipClass;
 use App\Models\Training;
-use App\Services\AttendanceService;
 use Filament\Actions;
 use Filament\Forms;
 use Filament\Notifications\Notification;
@@ -43,26 +42,18 @@ class ManageModuleMentees extends Page implements HasTable {
     }
 
     public function getSubheading(): ?string {
-        $service = app(AttendanceService::class);
-        $summary = $service->getModuleAttendanceSummary($this->module);
-
-        $confirmed = $summary['confirmed'];
-        $total = $summary['total_enrolled'];
-        $rate = $summary['rate'];
+        $confirmed = $this->module->confirmedAttendanceCount();
+        $total = $this->module->enrolledMenteeCount();
+        $rate = $this->module->attendanceRate();
         $status = $this->module->status_label;
 
         return "Status: {$status} · {$confirmed}/{$total} confirmed ({$rate}%) · Class: {$this->class->name}";
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // View Data — passes variables to the blade view
+    // View Data
     // ─────────────────────────────────────────────────────────────────────────
 
-    /**
-     * Attendance link is derived from class_modules.attendance_token
-     * (the module-level QR/link token, not class_sessions).
-     * Returns null when the link is inactive or token not yet generated.
-     */
     public function getViewData(): array {
         $attendanceLink = ($this->module->attendance_token && $this->module->attendance_link_active) ? route('module.attendance', ['token' => $this->module->attendance_token]) : null;
 
@@ -74,7 +65,7 @@ class ManageModuleMentees extends Page implements HasTable {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Attendance link helpers
+    // Attendance Link Helpers
     // ─────────────────────────────────────────────────────────────────────────
 
     public function toggleAttendanceLink(): void {
@@ -111,7 +102,7 @@ class ManageModuleMentees extends Page implements HasTable {
     protected function getHeaderActions(): array {
         return [
                     Actions\Action::make('toggle_attendance_link')
-                    ->label(fn() => $this->module->attendance_link_active ? 'Deactivate Attendance Link' : 'Activate Attendance Link')
+                    ->label(fn() => $this->module->attendance_link_active ? 'Deactivate Link' : 'Activate Link')
                     ->icon(fn() => $this->module->attendance_link_active ? 'heroicon-o-link-slash' : 'heroicon-o-link')
                     ->color(fn() => $this->module->attendance_link_active ? 'warning' : 'success')
                     ->action('toggleAttendanceLink'),
@@ -120,17 +111,9 @@ class ManageModuleMentees extends Page implements HasTable {
                     ->icon('heroicon-o-arrow-path')
                     ->color('gray')
                     ->requiresConfirmation()
-                    ->modalDescription('This will invalidate the current link. All existing QR codes will stop working.')
+                    ->modalDescription('This will invalidate the current link. Existing QR codes will stop working.')
                     ->action('regenerateAttendanceLink')
                     ->visible(fn() => (bool) $this->module->attendance_token),
-                    Actions\Action::make('back')
-                    ->label('Back to Modules')
-                    ->icon('heroicon-o-arrow-left')
-                    ->color('gray')
-                    ->url(fn() => MentorshipTrainingResource::getUrl('class-modules', [
-                                'training' => $this->training->id,
-                                'class' => $this->class->id,
-                            ])),
                     Actions\Action::make('mark_all_present')
                     ->label('Mark All Present')
                     ->icon('heroicon-o-check-circle')
@@ -138,7 +121,7 @@ class ManageModuleMentees extends Page implements HasTable {
                     ->visible(fn() => $this->module->status === 'in_progress')
                     ->requiresConfirmation()
                     ->modalHeading('Mark All Mentees as Present')
-                    ->modalDescription('This will mark all enrolled mentees as present for this module. Mentees already confirmed are skipped.')
+                    ->modalDescription('This will mark all enrolled mentees as present for this module. Already confirmed mentees are skipped.')
                     ->action(function () {
                         $participants = ClassParticipant::where('mentorship_class_id', $this->class->id)
                                 ->whereIn('status', ['enrolled', 'active'])
@@ -146,8 +129,7 @@ class ManageModuleMentees extends Page implements HasTable {
 
                         $marked = 0;
                         foreach ($participants as $participant) {
-                            // Skip if already confirmed
-                            if ($this->hasAttendance($participant->user_id)) {
+                            if ($this->isPresent($participant)) {
                                 continue;
                             }
 
@@ -161,11 +143,18 @@ class ManageModuleMentees extends Page implements HasTable {
                                 'source' => 'manual',
                             ]);
 
-                            // Update mentee progress row to in_progress if not_started
                             MenteeModuleProgress::where('class_participant_id', $participant->id)
                                     ->where('class_module_id', $this->module->id)
                                     ->where('status', 'not_started')
                                     ->update(['status' => 'in_progress', 'started_at' => now()]);
+
+                            if ($participant->user) {
+                                Notification::make()
+                                        ->title('Attendance Confirmed')
+                                        ->body("You have been marked present for: {$this->module->programModule?->name}")
+                                        ->success()
+                                        ->sendToDatabase($participant->user);
+                            }
 
                             $marked++;
                         }
@@ -179,27 +168,15 @@ class ManageModuleMentees extends Page implements HasTable {
                     ->action(function () {
                         Notification::make()->info()->title('Export coming soon')->send();
                     }),
+                    Actions\Action::make('back')
+                    ->label('Back to Modules')
+                    ->icon('heroicon-o-arrow-left')
+                    ->color('gray')
+                    ->url(fn() => MentorshipTrainingResource::getUrl('class-modules', [
+                                'training' => $this->training->id,
+                                'class' => $this->class->id,
+                            ])),
         ];
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Helper: session IDs for this module (for ClassAttendance queries)
-    // class_attendances has no class_module_id — we resolve via class_sessions
-    // ─────────────────────────────────────────────────────────────────────────
-
-    private function hasAttendance(int $userId): bool {
-        return ClassAttendance::where('class_id', $this->class->id)
-                        ->where('class_module_id', $this->module->id)
-                        ->where('user_id', $userId)
-                        ->exists();
-    }
-
-    private function attendanceRecord(int $userId): ?ClassAttendance {
-        return ClassAttendance::where('class_id', $this->class->id)
-                        ->where('class_module_id', $this->module->id)
-                        ->where('user_id', $userId)
-                        ->latest('marked_at')
-                        ->first();
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -208,270 +185,390 @@ class ManageModuleMentees extends Page implements HasTable {
 
     public function table(Table $table): Table {
         return $table
-        ->query(ClassParticipant::query()
-        ->with([
-        'user.cadre',
-        'user.facility',
-        'moduleProgress' => fn ($q) => $q->where('class_module_id', $this->module->id),
-        ])
-        ->where('mentorship_class_id', $this->class->id)
-        ->whereIn('status', ['enrolled', 'active', 'completed'])
-        )
-        ->columns([
-                    Tables\Columns\TextColumn::make('user_name')
-                    ->label('Mentee')
-                    ->getStateUsing(fn(ClassParticipant $record) => trim(
-                                    collect([$record->user?->first_name, $record->user?->last_name])
-                                    ->filter()
-                                    ->implode(' ')
-                            ) ?: ($record->user?->name ?? '—'))
-                    ->searchable(query: function ($query, $search) {
-                        $query->whereHas('user', fn($q) => $q
-                                        ->where('first_name', 'like', "%{$search}%")
-                                        ->orWhere('last_name', 'like', "%{$search}%")
-                                        ->orWhere('email', 'like', "%{$search}%")
-                        );
-                    })
-                    ->description(fn(ClassParticipant $record) => $record->user?->email)
-                    ->weight('medium'),
-                    Tables\Columns\TextColumn::make('user.cadre.name')
-                    ->label('Cadre')
-                    ->placeholder('—')
-                    ->toggleable(),
-                    Tables\Columns\TextColumn::make('facility_name')
-                    ->label('Facility')
-                    ->getStateUsing(fn(ClassParticipant $record) => $record->user?->facility?->name ?? '—')
-                    ->placeholder('—')
-                    ->toggleable(),
-                    Tables\Columns\IconColumn::make('attendance_confirmed')
-                    ->label('Confirmed')
-                    ->getStateUsing(fn(ClassParticipant $record) => $this->hasAttendance($record->user_id))
-                    ->boolean()
-                    ->trueColor('success')
-                    ->falseColor('danger')
-                    ->trueIcon('heroicon-o-check-circle')
-                    ->falseIcon('heroicon-o-x-circle'),
-                    Tables\Columns\TextColumn::make('confirmed_at')
-                    ->label('Confirmed At')
-                    ->getStateUsing(fn(ClassParticipant $record) => $this->attendanceRecord($record->user_id)?->marked_at)
-                    ->dateTime('d M Y H:i')
-                    ->placeholder('Not confirmed')
-                    ->color(fn(ClassParticipant $record) => $this->hasAttendance($record->user_id) ? 'success' : 'gray'),
-                    Tables\Columns\TextColumn::make('attendance_source')
-                    ->label('Source')
-                    ->getStateUsing(fn(ClassParticipant $record) => $this->attendanceRecord($record->user_id)?->source)
-                    ->badge()
-                    ->color(fn(?string $state) => match ($state) {
-                                'auto' => 'success',
-                                'manual' => 'warning',
-                                default => 'gray',
+                        ->query(
+                                ClassParticipant::query()
+                                ->where('mentorship_class_id', $this->class->id)
+                                ->whereIn('status', ['enrolled', 'active'])
+                                ->with([
+                                    'user.facility',
+                                    'moduleProgress' => fn($q) => $q->where('class_module_id', $this->module->id),
+                                ])
+                        )
+                        ->columns([
+                            Tables\Columns\TextColumn::make('user.full_name')
+                            ->label('Mentee')
+                            ->searchable(['first_name', 'last_name'])
+                            ->weight('bold'),
+                            Tables\Columns\TextColumn::make('user.facility.name')
+                            ->label('Facility')
+                            ->searchable()
+                            ->toggleable(),
+                            // ── Attendance Confirmed (✓ / ✗) ────────────────────────────
+                            // Source of truth: MenteeModuleProgress status (in_progress/completed).
+                            // This handles both new records (class_module_id set on ClassAttendance)
+                            // and legacy records (class_module_id = null on ClassAttendance).
+                            Tables\Columns\IconColumn::make('attendance_confirmed')
+                            ->label('Confirmed')
+                            ->getStateUsing(fn(ClassParticipant $record) => $this->isPresent($record))
+                            ->boolean()
+                            ->trueColor('success')
+                            ->falseColor('danger')
+                            ->trueIcon('heroicon-o-check-circle')
+                            ->falseIcon('heroicon-o-x-circle'),
+                            // ── Confirmed At timestamp ───────────────────────────────────
+                            // Tries ClassAttendance first, falls back to progress.started_at
+                            Tables\Columns\TextColumn::make('confirmed_at')
+                            ->label('Confirmed At')
+                            ->getStateUsing(function (ClassParticipant $record) {
+                                $att = $this->attendanceRecord($record->user_id);
+                                if ($att) {
+                                    return $att->marked_at;
+                                }
+                                // Fallback: use progress started_at (covers legacy records)
+                                $progress = $record->moduleProgress->first();
+                                if ($progress && in_array($progress->status, ['in_progress', 'completed'])) {
+                                    return $progress->started_at;
+                                }
+                                return null;
                             })
-                    ->placeholder('—'),
-                    Tables\Columns\BadgeColumn::make('module_progress_status')
-                    ->label('Progress')
-                    ->getStateUsing(fn(ClassParticipant $record) => $record->moduleProgress->first()?->status ?? 'not_started')
-                    ->colors([
-                        'gray' => 'not_started',
-                        'warning' => 'in_progress',
-                        'success' => 'completed',
-                        'info' => 'exempted',
-                    ])
-                    ->formatStateUsing(fn(string $state) => match ($state) {
+                            ->dateTime('d M Y H:i')
+                            ->placeholder('Not confirmed')
+                            ->color(fn(ClassParticipant $record) => $this->isPresent($record) ? 'success' : 'gray'),
+                            // ── Source badge (link | manual | auto) ─────────────────────
+                            // Tries ClassAttendance, falls back to 'manual' if progress shows
+                            // present but no attendance record found (legacy data).
+                            Tables\Columns\TextColumn::make('attendance_source')
+                            ->label('Source')
+                            ->getStateUsing(function (ClassParticipant $record) {
+                                $att = $this->attendanceRecord($record->user_id);
+                                if ($att) {
+                                    return $att->source;
+                                }
+                                // Legacy: present in progress but no scoped attendance record
+                                $progress = $record->moduleProgress->first();
+                                if ($progress && in_array($progress->status, ['in_progress', 'completed'])) {
+                                    return 'auto'; // best guess for legacy auto-confirmed
+                                }
+                                return null;
+                            })
+                            ->badge()
+                            ->formatStateUsing(fn(?string $state) => match ($state) {
+                                        'link' => 'Self-Confirmed',
+                                        'manual' => 'Manual',
+                                        'auto' => 'Auto',
+                                        default => '—',
+                                    })
+                            ->color(fn(?string $state) => match ($state) {
+                                        'link' => 'success',
+                                        'manual' => 'warning',
+                                        'auto' => 'info',
+                                        default => 'gray',
+                                    })
+                            ->placeholder('—'),
+                            // ── Progress Status ──────────────────────────────────────────
+                            Tables\Columns\BadgeColumn::make('module_progress_status')
+                            ->label('Progress')
+                            ->getStateUsing(fn(ClassParticipant $record) => $record->moduleProgress->first()?->status ?? 'not_started')
+                            ->colors([
+                                'gray' => 'not_started',
+                                'warning' => 'in_progress',
+                                'success' => 'completed',
+                                'info' => 'exempted',
+                            ])
+                            ->formatStateUsing(fn(string $state) => match ($state) {
+                                        'not_started' => 'Not Started',
+                                        'in_progress' => 'Present',
+                                        'completed' => 'Completed',
+                                        'exempted' => 'Exempted',
+                                        default => ucfirst($state),
+                                    }),
+                            // ── Recommendation indicator ─────────────────────────────────
+                            // ── Recommendation indicator ─────────────────────────────────
+                            // Query DB fresh — eager-loaded moduleProgress is stale after
+                            // write/edit recommendation actions run in the same page load.
+                            Tables\Columns\IconColumn::make('has_recommendation')
+                            ->label('Recommendation')
+                            ->getStateUsing(fn(ClassParticipant $record) =>
+                                    MenteeModuleProgress::where('class_participant_id', $record->id)
+                                    ->where('class_module_id', $this->module->id)
+                                    ->whereNotNull('mentor_recommendation')
+                                    ->exists()
+                            )
+                            ->boolean()
+                            ->trueColor('primary')
+                            ->falseColor('gray')
+                            ->trueIcon('heroicon-o-document-text')
+                            ->falseIcon('heroicon-o-minus'),
+                        ])
+                        ->actions([
+                            Tables\Actions\ActionGroup::make([
+                                // ── Mark Present (mentor manual override) ────────────────
+                                Tables\Actions\Action::make('mark_present')
+                                ->label('Mark Present')
+                                ->icon('heroicon-o-check-circle')
+                                ->color('success')
+                                ->visible(fn(ClassParticipant $record) =>
+                                        $this->module->status === 'in_progress' &&
+                                        !$this->isPresent($record)
+                                )
+                                ->action(function (ClassParticipant $record) {
+                                    ClassAttendance::create([
+                                        'class_id' => $this->class->id,
+                                        'class_module_id' => $this->module->id,
+                                        'session_id' => null,
+                                        'user_id' => $record->user_id,
+                                        'marked_by' => auth()->id(),
+                                        'marked_at' => now(),
+                                        'source' => 'manual',
+                                    ]);
+
+                                    MenteeModuleProgress::where('class_participant_id', $record->id)
+                                            ->where('class_module_id', $this->module->id)
+                                            ->where('status', 'not_started')
+                                            ->update(['status' => 'in_progress', 'started_at' => now()]);
+
+                                    if ($record->user) {
+                                        Notification::make()
+                                                ->title('Attendance Confirmed')
+                                                ->body("Your mentor has marked you present for: {$this->module->programModule?->name}")
+                                                ->success()
+                                                ->sendToDatabase($record->user);
+                                    }
+
+                                    Notification::make()->success()->title("Marked {$record->user?->full_name} as present")->send();
+                                }),
+                                // ── Remove Attendance ────────────────────────────────────
+                                Tables\Actions\Action::make('remove_attendance')
+                                ->label('Remove Attendance')
+                                ->icon('heroicon-o-x-circle')
+                                ->color('danger')
+                                ->visible(fn(ClassParticipant $record) =>
+                                        $this->module->status === 'in_progress' &&
+                                        $this->isPresent($record)
+                                )
+                                ->requiresConfirmation()
+                                ->action(function (ClassParticipant $record) {
+                                    // Delete any scoped attendance record (new records)
+                                    ClassAttendance::where('class_id', $this->class->id)
+                                            ->where('class_module_id', $this->module->id)
+                                            ->where('user_id', $record->user_id)
+                                            ->delete();
+
+                                    // Also delete legacy records (null class_module_id, same class)
+                                    // that match this user — only if no scoped record existed
+                                    // Note: do NOT delete enrollment-level records (those have no marked_by = user)
+                                    ClassAttendance::where('class_id', $this->class->id)
+                                            ->whereNull('class_module_id')
+                                            ->where('user_id', $record->user_id)
+                                            ->where('marked_by', '!=', $record->user_id) // not self-enrollment
+                                            ->delete();
+
+                                    MenteeModuleProgress::where('class_participant_id', $record->id)
+                                            ->where('class_module_id', $this->module->id)
+                                            ->whereIn('status', ['in_progress'])
+                                            ->update(['status' => 'not_started', 'started_at' => null]);
+
+                                    Notification::make()->warning()->title('Attendance removed')->send();
+                                }),
+                                // ── Write / Edit Recommendation ──────────────────────────
+                                Tables\Actions\Action::make('write_recommendation')
+                                ->label(fn(ClassParticipant $record) =>
+                                        MenteeModuleProgress::where('class_participant_id', $record->id)
+                                        ->where('class_module_id', $this->module->id)
+                                        ->whereNotNull('mentor_recommendation')
+                                        ->exists() ? 'Edit Recommendation' : 'Write Recommendation'
+                                )
+                                ->icon(fn(ClassParticipant $record) =>
+                                        MenteeModuleProgress::where('class_participant_id', $record->id)
+                                        ->where('class_module_id', $this->module->id)
+                                        ->whereNotNull('mentor_recommendation')
+                                        ->exists() ? 'heroicon-o-pencil-square' : 'heroicon-o-document-text'
+                                )
+                                ->color(fn(ClassParticipant $record) =>
+                                        MenteeModuleProgress::where('class_participant_id', $record->id)
+                                        ->where('class_module_id', $this->module->id)
+                                        ->whereNotNull('mentor_recommendation')
+                                        ->exists() ? 'warning' : 'primary'
+                                )
+                                ->visible(fn(ClassParticipant $record) => $this->isPresent($record))
+                                ->slideOver()
+                                ->mountUsing(fn(\Filament\Forms\ComponentContainer $form, ClassParticipant $record) =>
+                                        $form->fill([
+                                            'mentor_recommendation' => MenteeModuleProgress::where('class_participant_id', $record->id)
+                                            ->where('class_module_id', $this->module->id)
+                                            ->value('mentor_recommendation') ?? '',
+                                        ])
+                                )
+                                ->form([
+                                    Forms\Components\Placeholder::make('mentee_name')
+                                    ->label('Mentee')
+                                    ->content(fn(ClassParticipant $record) => $record->user?->full_name ?? '—'),
+                                    Forms\Components\Placeholder::make('module_name')
+                                    ->label('Module')
+                                    ->content($this->module->programModule?->name ?? '—'),
+                                    Forms\Components\Textarea::make('mentor_recommendation')
+                                    ->label('Recommendation')
+                                    ->required()
+                                    ->rows(6)
+                                    ->maxLength(2000)
+                                    ->placeholder("Describe the mentee's performance, strengths, and areas for improvement..."),
+                                ])
+                                ->action(function (ClassParticipant $record, array $data) {
+                                    // Always query fresh from DB — never use eager-loaded moduleProgress
+                                    MenteeModuleProgress::updateOrCreate(
+                                            [
+                                                'class_participant_id' => $record->id,
+                                                'class_module_id' => $this->module->id,
+                                            ],
+                                            [
+                                                'status' => 'in_progress',
+                                                'started_at' => now(),
+                                                'mentor_recommendation' => $data['mentor_recommendation'],
+                                                'recommendation_by' => auth()->id(),
+                                                'recommendation_written_at' => now(),
+                                            ]
+                                    );
+
+                                    Notification::make()
+                                            ->success()
+                                            ->title('Recommendation Saved')
+                                            ->body("Recommendation written for {$record->user?->full_name}.")
+                                            ->send();
+                                }),
+                                // ── View Recommendation ──────────────────────────────────
+                                Tables\Actions\Action::make('view_recommendation')
+                                ->label('View Recommendation')
+                                ->icon('heroicon-o-eye')
+                                ->color('gray')
+                                ->visible(fn(ClassParticipant $record) =>
+                                        MenteeModuleProgress::where('class_participant_id', $record->id)
+                                        ->where('class_module_id', $this->module->id)
+                                        ->whereNotNull('mentor_recommendation')
+                                        ->exists()
+                                )
+                                ->modalHeading(fn(ClassParticipant $record) => "Recommendation — {$record->user?->full_name}")
+                                ->modalContent(fn(ClassParticipant $record) => view(
+                                                'filament.components.recommendation-view',
+                                                [
+                                                    'progress' => MenteeModuleProgress::where('class_participant_id', $record->id)
+                                                    ->where('class_module_id', $this->module->id)
+                                                    ->first(),
+                                                    'mentee' => $record->user,
+                                                    'module' => $this->module,
+                                                ]
+                                        ))
+                                ->modalSubmitAction(false)
+                                ->modalCancelActionLabel('Close'),
+                            ]),
+                        ])
+                        ->filters([
+                            Tables\Filters\SelectFilter::make('attendance_status')
+                            ->label('Attendance Status')
+                            ->options([
+                                'confirmed' => 'Confirmed Present',
+                                'absent' => 'Not Confirmed',
+                            ])
+                            ->query(function (Builder $query, array $data) {
+                                if (empty($data['value'])) {
+                                    return;
+                                }
+
+                                // Use MenteeModuleProgress as source of truth (handles legacy records)
+                                if ($data['value'] === 'confirmed') {
+                                    $query->whereHas('moduleProgress', function ($q) {
+                                        $q->where('class_module_id', $this->module->id)
+                                                ->whereIn('status', ['in_progress', 'completed']);
+                                    });
+                                } else {
+                                    $query->whereDoesntHave('moduleProgress', function ($q) {
+                                        $q->where('class_module_id', $this->module->id)
+                                                ->whereIn('status', ['in_progress', 'completed']);
+                                    });
+                                }
+                            }),
+                            Tables\Filters\SelectFilter::make('progress_status')
+                            ->label('Progress')
+                            ->options([
                                 'not_started' => 'Not Started',
-                                'in_progress' => 'In Progress',
+                                'in_progress' => 'Present',
                                 'completed' => 'Completed',
                                 'exempted' => 'Exempted',
-                                default => ucfirst($state),
-                            }),
-                    Tables\Columns\IconColumn::make('has_recommendation')
-                    ->label('Recommendation')
-                    ->getStateUsing(fn(ClassParticipant $record) => !empty($record->moduleProgress->first()?->mentor_recommendation))
-                    ->boolean()
-                    ->trueColor('primary')
-                    ->falseColor('gray')
-                    ->trueIcon('heroicon-o-document-text')
-                    ->falseIcon('heroicon-o-minus'),
-                ])
-                ->actions([
-                    Tables\Actions\ActionGroup::make([
-                        // ── Manual Attendance ────────────────────────────────────
-
-                        Tables\Actions\Action::make('mark_present')
-                        ->label('Mark Present')
-                        ->icon('heroicon-o-check-circle')
-                        ->color('success')
-                        ->visible(fn(ClassParticipant $record) =>
-                                $this->module->status === 'in_progress' &&
-                                !$this->hasAttendance($record->user_id)
-                        )
-                        ->action(function (ClassParticipant $record) {
-                            ClassAttendance::create([
-                                'class_id' => $this->class->id,
-                                'class_module_id' => $this->module->id,
-                                'session_id' => null,
-                                'user_id' => $record->user_id,
-                                'marked_by' => auth()->id(),
-                                'marked_at' => now(),
-                                'source' => 'manual',
-                            ]);
-
-                            // Update mentee progress row if still not_started
-                            MenteeModuleProgress::where('class_participant_id', $record->id)
-                                    ->where('class_module_id', $this->module->id)
-                                    ->where('status', 'not_started')
-                                    ->update(['status' => 'in_progress', 'started_at' => now()]);
-
-                            Notification::make()->success()->title('Marked as present')->send();
-                        }),
-                        Tables\Actions\Action::make('remove_attendance')
-                        ->label('Remove Attendance')
-                        ->icon('heroicon-o-x-circle')
-                        ->color('danger')
-                        ->visible(fn(ClassParticipant $record) =>
-                                $this->module->status === 'in_progress' &&
-                                $this->hasAttendance($record->user_id)
-                        )
-                        ->requiresConfirmation()
-                        ->action(function (ClassParticipant $record) {
-                            $sessionIds = $this->moduleSessionIds();
-                            ClassAttendance::where('class_id', $this->class->id)
-                                    ->where('user_id', $record->user_id)
-                                    ->where(function ($q) use ($sessionIds) {
-                                        $q->whereIn('session_id', $sessionIds);
-                                        if ($sessionIds->isEmpty()) {
-                                            $q->orWhereNull('session_id');
-                                        }
-                                    })
-                                    ->delete();
-
-                            Notification::make()->success()->title('Attendance removed')->send();
-                        }),
-                        // ── Recommendation ───────────────────────────────────────
-                        Tables\Actions\Action::make('write_recommendation')
-                        ->label('Write Recommendation')
-                        ->icon('heroicon-o-document-text')
-                        ->color('primary')
-                        ->slideOver()
-                        ->modalWidth('2xl')
-                        ->modalHeading(fn(ClassParticipant $record) => "Recommendation — {$record->user?->display_name}")
-                        ->fillForm(fn(ClassParticipant $record) => [
-                            'mentor_recommendation' => $record->moduleProgress->first()?->mentor_recommendation ?? '',
-                                ])
-                        ->form([
-                            Forms\Components\Placeholder::make('module_info')
-                            ->label('Module')
-                            ->content(fn() => $this->module->programModule?->name),
-                            Forms\Components\Textarea::make('mentor_recommendation')
-                            ->label('Recommendation / Feedback')
-                            ->rows(6)
-                            ->placeholder(
-                                    "Write your recommendation for this mentee based on their performance in this module.\n\n" .
-                                    "Consider:\n• Clinical competencies demonstrated\n• Areas for improvement\n• Suggested next steps\n• Overall readiness"
-                            )
-                            ->helperText('Visible to the mentee in their progress dashboard after the module is completed.')
-                            ->required(),
-                            Forms\Components\Select::make('recommendation_type')
-                            ->label('Assessment Outcome')
-                            ->options([
-                                'satisfactory' => '✅ Satisfactory — Ready to progress',
-                                'needs_support' => '⚠️ Needs Support — Additional mentoring recommended',
-                                'not_competent' => '❌ Not Yet Competent — Repeat module required',
-                                'exemplary' => '⭐ Exemplary — Recommend for peer mentoring role',
                             ])
-                            ->placeholder('Select outcome...')
-                            ->searchable(),
-                            Forms\Components\Textarea::make('private_notes')
-                            ->label('Private Mentor Notes (not visible to mentee)')
-                            ->rows(3)
-                            ->placeholder('Internal notes for program coordinators only...'),
+                            ->query(function (Builder $query, array $data) {
+                                if (empty($data['value'])) {
+                                    return;
+                                }
+
+                                $query->whereHas('moduleProgress', function ($q) use ($data) {
+                                    $q->where('class_module_id', $this->module->id)
+                                            ->where('status', $data['value']);
+                                });
+                            }),
                         ])
-                        ->action(function (ClassParticipant $record, array $data) {
-                            $progress = MenteeModuleProgress::firstOrCreate(
-                                    [
-                                        'class_participant_id' => $record->id,
-                                        'class_module_id' => $this->module->id,
-                                    ],
-                                    ['status' => 'not_started']
-                            );
+                        ->emptyStateHeading('No Mentees Enrolled')
+                        ->emptyStateDescription('Enroll mentees in the class first.');
+    }
 
-                            $recommendation = $data['mentor_recommendation'];
+    // ─────────────────────────────────────────────────────────────────────────
+    // Private Helpers
+    // ─────────────────────────────────────────────────────────────────────────
 
-                            if (!empty($data['recommendation_type'])) {
-                                $typeLabels = [
-                                    'satisfactory' => 'OUTCOME: Satisfactory — Ready to progress',
-                                    'needs_support' => 'OUTCOME: Needs Support — Additional mentoring recommended',
-                                    'not_competent' => 'OUTCOME: Not Yet Competent — Repeat module required',
-                                    'exemplary' => 'OUTCOME: Exemplary — Recommend for peer mentoring role',
-                                ];
-                                $recommendation = ($typeLabels[$data['recommendation_type']] ?? '') . "\n\n" . $recommendation;
-                            }
+    /**
+     * Whether a mentee is confirmed present for this module.
+     *
+     * Uses MenteeModuleProgress as the authoritative source — this is always
+     * correctly set regardless of whether the ClassAttendance record has
+     * class_module_id populated (handles legacy null records).
+     */
+    private function isPresent(ClassParticipant $participant): bool {
+        // Use eager-loaded progress if available
+        $progress = $participant->relationLoaded('moduleProgress') ? $participant->moduleProgress->first() : MenteeModuleProgress::where('class_participant_id', $participant->id)
+                        ->where('class_module_id', $this->module->id)
+                        ->first();
 
-                            $progress->update([
-                                'mentor_recommendation' => $recommendation,
-                                'notes' => $data['private_notes'] ?? $progress->notes,
-                                'recommendation_by' => auth()->id(),
-                                'recommendation_written_at' => now(),
-                            ]);
+        if ($progress && in_array($progress->status, ['in_progress', 'completed'])) {
+            return true;
+        }
 
-                            Notification::make()
-                                    ->success()
-                                    ->title('Recommendation Saved')
-                                    ->body("Recommendation written for {$record->user?->display_name}.")
-                                    ->send();
-                        }),
-                        Tables\Actions\Action::make('view_recommendation')
-                        ->label('View Recommendation')
-                        ->icon('heroicon-o-eye')
-                        ->color('gray')
-                        ->visible(fn(ClassParticipant $record) =>
-                                !empty($record->moduleProgress->first()?->mentor_recommendation)
-                        )
-                        ->modalHeading(fn(ClassParticipant $record) => "Recommendation — {$record->user?->display_name}")
-                        ->modalContent(fn(ClassParticipant $record) => view(
-                                        'filament.components.recommendation-view',
-                                        [
-                                            'progress' => $record->moduleProgress->first(),
-                                            'mentee' => $record->user,
-                                            'module' => $this->module,
-                                        ]
-                                ))
-                        ->modalSubmitAction(false)
-                        ->modalCancelActionLabel('Close'),
-                    ]),
-                ])
-                ->filters([
-                    Tables\Filters\SelectFilter::make('attendance_status')
-                    ->label('Attendance Status')
-                    ->options([
-                        'confirmed' => 'Confirmed Present',
-                        'absent' => 'Not Confirmed',
-                    ])
-                    ->query(function (Builder $query, array $data) {
-                        if (empty($data['value'])) {
-                            return;
-                        }
+        // Fallback: direct ClassAttendance record with class_module_id (new records)
+        return ClassAttendance::where('class_id', $this->class->id)
+                        ->where('class_module_id', $this->module->id)
+                        ->where('user_id', $participant->user_id)
+                        ->exists();
+    }
 
-                        $sessionIds = $this->moduleSessionIds();
-                        $confirmedIds = ClassAttendance::where('class_id', $this->class->id)
-                                ->where(function ($q) use ($sessionIds) {
-                                    $q->whereIn('session_id', $sessionIds);
-                                    if ($sessionIds->isEmpty()) {
-                                        $q->orWhereNull('session_id');
-                                    }
-                                })
-                                ->pluck('user_id');
+    /**
+     * Legacy: kept for hasAttendance calls by user_id (e.g. mark_all_present).
+     * Internal use only — prefer isPresent(ClassParticipant) where possible.
+     */
+    private function hasAttendance(int $userId): bool {
+        return ClassAttendance::where('class_id', $this->class->id)
+                        ->where('class_module_id', $this->module->id)
+                        ->where('user_id', $userId)
+                        ->exists();
+    }
 
-                        if ($data['value'] === 'confirmed') {
-                            $query->whereIn('user_id', $confirmedIds);
-                        } else {
-                            $query->whereNotIn('user_id', $confirmedIds);
-                        }
-                    }),
-                ])
-                ->emptyStateHeading('No Mentees Enrolled')
-                ->emptyStateDescription('Enroll mentees in the class first.')
-                ->emptyStateIcon('heroicon-o-users')
-                ->striped()
-                ->paginated(false);
+    /**
+     * Get the most relevant ClassAttendance record for a user.
+     * Prefers records with class_module_id set; falls back to class-scoped records.
+     */
+    private function attendanceRecord(int $userId): ?ClassAttendance {
+        // Try new record first (class_module_id is set)
+        $record = ClassAttendance::where('class_id', $this->class->id)
+                ->where('class_module_id', $this->module->id)
+                ->where('user_id', $userId)
+                ->first();
+
+        if ($record) {
+            return $record;
+        }
+
+        // Legacy: find any class-scoped record for this user (class_module_id = null)
+        // Only return if the user is actually confirmed present (via progress)
+        return ClassAttendance::where('class_id', $this->class->id)
+                        ->whereNull('class_module_id')
+                        ->where('user_id', $userId)
+                        ->where('source', '!=', 'auto') // exclude enrollment auto-marks
+                        ->first();
     }
 }
