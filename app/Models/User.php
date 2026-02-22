@@ -11,7 +11,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
-use Illuminate\Auth\Notifications\ResetPassword as ResetPasswordNotification;
+use Illuminate\Notifications\Notification;
+use Illuminate\Notifications\Messages\MailMessage;
 
 class User extends Authenticatable {
 
@@ -52,7 +53,32 @@ class User extends Authenticatable {
         ];
     }
 
-    public function sendPasswordResetNotification($token) {
+    public function sendPasswordResetNotification($token): void {
+        $url = url('/admin/set-password/' . $token . '?email=' . urlencode($this->email));
+
+        $this->notify(new class($url) extends \Illuminate\Notifications\Notification {
+
+            public function __construct(protected string $url) {
+                
+            }
+
+            public function via($notifiable): array {
+                return ['mail'];
+            }
+
+            public function toMail($notifiable): \Illuminate\Notifications\Messages\MailMessage {
+                return (new \Illuminate\Notifications\Messages\MailMessage)
+                                ->subject('Reset Your MNCH Password')
+                                ->greeting('Hello!')
+                                ->line('We received a request to reset your password.')
+                                ->action('Reset Password', $this->url)
+                                ->line('This link expires in 60 minutes.')
+                                ->line('If you did not request this, ignore this email.');
+            }
+        });
+    }
+
+    public function sendPasswordResetNotification1($token) {
         $url = url('/admin/password-reset/' . $token . '?email=' . urlencode($this->email));
 
         $this->notify(new class($url) extends Notification {

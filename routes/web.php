@@ -37,6 +37,10 @@ Route::get('/test-mail', function () {
     return 'Email sent!';
 });
 
+Route::get('/admin/set-password/{token}', App\Livewire\Auth\CustomResetPassword::class)
+        ->middleware(['web', 'guest'])
+        ->name('password.reset.custom');
+
 Route::middleware('guest')->group(function () {
 
     // GET  /account/verify/{user}?expires=...&signature=...

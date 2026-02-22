@@ -13,26 +13,27 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
-use Livewire\Attributes\Url;
 
 class CustomResetPassword extends SimplePage {
 
     protected static string $view = 'livewire.auth.custom-reset-password';
-
-    #[Url]
+    // No #[Url] — we read these manually from route param + query string
     public string $token = '';
-
-    #[Url]
     public string $email = '';
     public ?array $data = [];
 
-    public function mount(): void {
+    public function mount(string $token): void {
         if (Filament::auth()->check()) {
-            return redirect()->intended(Filament::getUrl());
+            redirect()->intended(Filament::getUrl());
+            return;
         }
 
+        $this->token = $token;
+        $this->email = request()->query('email', '');
+
         if (blank($this->token) || blank($this->email)) {
-            return redirect()->route('filament.admin.auth.password-reset.request');
+            redirect()->route('filament.admin.auth.password-reset.request');
+            return;
         }
 
         $this->form->fill([
@@ -72,14 +73,19 @@ class CustomResetPassword extends SimplePage {
                 ->success()
                 ->send();
 
-        return redirect()->route('filament.admin.auth.login');
+        redirect()->route('filament.admin.auth.login');
     }
 
     public function form(Form $form): Form {
         return $form
                         ->schema([
+                            TextInput::make('email')
+                            ->label('Email Address')
+                            ->email()
+                            ->disabled()
+                            ->dehydrated(false),
                             TextInput::make('password')
-                            ->label('New password')
+                            ->label('New Password')
                             ->password()
                             ->revealable()
                             ->required()
@@ -91,7 +97,7 @@ class CustomResetPassword extends SimplePage {
                             ->same('password_confirmation')
                             ->autocomplete('new-password'),
                             TextInput::make('password_confirmation')
-                            ->label('Confirm new password')
+                            ->label('Confirm New Password')
                             ->password()
                             ->revealable()
                             ->required()

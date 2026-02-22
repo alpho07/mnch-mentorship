@@ -420,7 +420,6 @@
             }
         }
     </style>
-
     <div class="auth-shell">
 
         {{-- LEFT --}}
@@ -449,21 +448,36 @@
 
             {{-- Step indicator --}}
                 <div class="steps">
-                    <div class="step active">
-                        <span class="step-num">1</span>
+                    <div class="step {{ !$linkSent ? 'active' : 'done' }}">
+                        <span class="step-num">
+                        @if($linkSent)
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+                            </svg>
+                        @else
+                            1
+                        @endif
+                        </span>
                         <span>Enter email</span>
                     </div>
-                    <div class="step-line"></div>
-                    <div class="step">
+
+                    <div class="step-connector"></div>
+
+                    <div class="step {{ $linkSent ? 'active' : '' }}">
                         <span class="step-num">2</span>
                         <span>Check inbox</span>
                     </div>
-                    <div class="step-line"></div>
+
+                    <div class="step-connector"></div>
+
                     <div class="step">
                         <span class="step-num">3</span>
                         <span>Set password</span>
                     </div>
                 </div>
+
+            {{-- ── STEP 1 — Enter email ── --}}
+            @if (!$linkSent)
 
                 <h1 class="auth-h1">Forgot your password?</h1>
                 <p class="auth-sub">Enter the email address linked to your account and we'll send you a reset link.</p>
@@ -473,18 +487,45 @@
                     <span>We'll only send a reset link if an account exists for this email address.</span>
                 </div>
 
-                <form wire:submit="sendResetLink">
-                {{ $this->form }}
+                <form wire:submit.prevent="sendResetLink">
+                    {{ $this->form }}
 
                     <button type="submit"
-                            class="auth-submit"
-                            wire:loading.attr="disabled"
-                            wire:target="request">
-                        <span wire:loading.remove wire:target="request">Send reset link</span>
-                        <span wire:loading wire:target="request">Sending…</span>
-                        <svg wire:loading.remove wire:target="request" viewBox="0 0 24 24">
-                        <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
-                        </svg>
+                            style="
+                            width: 100%;
+                            padding: 0.875rem 1.5rem;
+                            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+                            color: #fff;
+                            font-weight: 600;
+                            font-size: 0.95rem;
+                            border: none;
+                            border-radius: 0.75rem;
+                            cursor: pointer;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            gap: 0.5rem;
+                            box-shadow: 0 4px 15px rgba(79, 70, 229, 0.4);
+                            transition: opacity 0.2s ease, transform 0.1s ease;
+                            margin-top: 1.25rem;
+                            "
+                            onmouseover="this.style.opacity='0.9';this.style.transform='translateY(-1px)'"
+                            onmouseout="this.style.opacity='1';this.style.transform='translateY(0)'"
+                            >
+                        <span wire:loading.remove wire:target="sendResetLink" style="display:flex;align-items:center;gap:0.5rem;">
+                            Send reset link
+                            <svg style="width:1rem;height:1rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                            </svg>
+                        </span>
+                        <span wire:loading wire:target="sendResetLink" style="display:none;align-items:center;gap:0.5rem;">
+                            <svg style="width:1rem;height:1rem;animation:spin 1s linear infinite;" fill="none" viewBox="0 0 24 24">
+                            <circle style="opacity:0.25;" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                            <path style="opacity:0.75;" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                            </svg>
+                            Sending...
+                        </span>
                     </button>
                 </form>
 
@@ -492,6 +533,41 @@
                     <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
                     Back to sign in
                 </a>
+
+            {{-- ── STEP 2 — Check inbox ── --}}
+            @else
+
+                <div class="text-center py-4">
+
+                    <div class="mx-auto mb-5 flex items-center justify-center w-16 h-16 rounded-full bg-indigo-50">
+                        <svg class="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                        </svg>
+                    </div>
+
+                    <h1 class="auth-h1 mb-2">Check your inbox</h1>
+                    <p class="auth-sub mb-1">We sent a password reset link to</p>
+                    <p class="font-semibold text-gray-800 dark:text-gray-100 mb-6 text-sm">{{ $sentToEmail }}</p>
+
+                    <p class="text-sm text-gray-400 mb-8">
+                        Didn't receive it? Check your spam folder or
+                        <button
+                            wire:click="$set('linkSent', false)"
+                            class="text-indigo-600 hover:text-indigo-700 hover:underline font-medium transition"
+                            >
+                            try another email
+                        </button>
+                    </p>
+
+                    <a href="{{ route('filament.admin.auth.login') }}" class="auth-back justify-center">
+                        <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+                        Back to sign in
+                    </a>
+
+                </div>
+
+                @endif
 
             </div>
         </div>

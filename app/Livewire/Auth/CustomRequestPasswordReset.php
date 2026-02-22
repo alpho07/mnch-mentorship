@@ -14,6 +14,8 @@ class CustomRequestPasswordReset extends SimplePage {
 
     protected static string $view = 'livewire.auth.custom-request-password-reset';
     public ?array $data = [];
+    public bool $linkSent = false;
+    public string $sentToEmail = '';
 
     public function mount(): void {
         if (Filament::auth()->check()) {
@@ -24,7 +26,6 @@ class CustomRequestPasswordReset extends SimplePage {
     public function sendResetLink(): void {
         $data = $this->form->getState();
 
-        // Validate email exists
         if (!\App\Models\User::where('email', $data['email'])->exists()) {
             throw ValidationException::withMessages([
                         'data.email' => 'We cannot find a user with that email address.',
@@ -43,10 +44,9 @@ class CustomRequestPasswordReset extends SimplePage {
             return;
         }
 
-        Notification::make()
-                ->title('Password reset link sent successfully.')
-                ->success()
-                ->send();
+        // Advance to Step 2
+        $this->sentToEmail = $data['email'];
+        $this->linkSent = true;
     }
 
     public function form(Form $form): Form {
