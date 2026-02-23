@@ -1,279 +1,950 @@
 <x-filament-panels::page>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-        .lms-root {
-            font-family: 'Plus Jakarta Sans', sans-serif;
+        /* ── Reset & Base ─────────────────────────────────────────────────────── */
+        .md-container {
+            font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
         }
-        @keyframes ring-fill {
-            from {
-                stroke-dasharray: 0 100;
-            }
-        }
-        .ring-animate {
-            animation: ring-fill 1s ease-out forwards;
-        }
-        .module-card {
-            transition: box-shadow 0.2s, transform 0.2s;
-        }
-        .module-card:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 8px 24px rgba(0,0,0,0.08);
-        }
-        .session-line {
-            border-left: 2px solid #e5e7eb;
-            padding-left: 20px;
+
+        /* ── Profile Card ─────────────────────────────────────────────────────── */
+        .md-profile-card {
+            background: linear-gradient(135deg, #1e3a5f 0%, #1d4ed8 50%, #4f46e5 100%);
+            border-radius: 20px;
+            padding: 28px 32px;
+            display: flex;
+            align-items: center;
+            gap: 24px;
             position: relative;
+            overflow: hidden;
+            margin-bottom: 24px;
         }
-        .dark .session-line {
-            border-left-color: #374151;
-        }
-        .session-dot {
-            position: relative;
-        }
-        .session-dot::before {
+        .md-profile-card::before {
             content: '';
             position: absolute;
-            left: -25px;
-            top: 14px;
+            top: -60px;
+            right: -60px;
+            width: 200px;
+            height: 200px;
+            background: rgba(255,255,255,0.06);
+            border-radius: 50%;
+        }
+        .md-profile-card::after {
+            content: '';
+            position: absolute;
+            bottom: -40px;
+            right: 100px;
+            width: 140px;
+            height: 140px;
+            background: rgba(255,255,255,0.04);
+            border-radius: 50%;
+        }
+        .md-avatar {
+            width: 80px;
+            height: 80px;
+            min-width: 80px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            border: 3px solid rgba(255,255,255,0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            font-weight: 800;
+            color: #fff;
+            letter-spacing: -1px;
+            position: relative;
+            z-index: 1;
+        }
+        .md-profile-info {
+            flex: 1;
+            position: relative;
+            z-index: 1;
+        }
+        .md-profile-name {
+            color: #fff;
+            font-size: 22px;
+            font-weight: 800;
+            margin: 0 0 4px;
+            line-height: 1.2;
+        }
+        .md-profile-sub {
+            color: rgba(255,255,255,0.8);
+            font-size: 13px;
+            margin: 0 0 12px;
+        }
+        .md-profile-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .md-tag {
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.25);
+            color: #fff;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 3px 10px;
+            border-radius: 100px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .md-presence-badge {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 16px;
+            padding: 16px 20px;
+            min-width: 120px;
+        }
+        .md-presence-rate {
+            font-size: 32px;
+            font-weight: 900;
+            color: #fff;
+            line-height: 1;
+            margin-bottom: 4px;
+        }
+        .md-presence-label {
+            font-size: 11px;
+            color: rgba(255,255,255,0.7);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+        .md-presence-status {
+            font-size: 11px;
+            font-weight: 700;
+            padding: 2px 10px;
+            border-radius: 100px;
+            background: rgba(255,255,255,0.2);
+            color: #fff;
+            display: inline-block;
+        }
+
+        /* ── Stat Grid ────────────────────────────────────────────────────────── */
+        .md-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 14px;
+            margin-bottom: 24px;
+        }
+        .md-stat-card {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            padding: 18px 20px;
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            transition: box-shadow .15s ease, transform .15s ease;
+        }
+        .dark .md-stat-card {
+            background: #1e293b;
+            border-color: #334155;
+        }
+        .md-stat-card:hover {
+            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+            transform: translateY(-1px);
+        }
+        .md-stat-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+        .md-stat-value {
+            font-size: 26px;
+            font-weight: 800;
+            line-height: 1;
+            margin-bottom: 3px;
+        }
+        .md-stat-label {
+            font-size: 12px;
+            color: #64748b;
+            font-weight: 500;
+            line-height: 1.4;
+        }
+        .dark .md-stat-label {
+            color: #94a3b8;
+        }
+
+        /* ── Section Header ───────────────────────────────────────────────────── */
+        .md-section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+        }
+        .md-section-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: #0f172a;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .dark .md-section-title {
+            color: #f1f5f9;
+        }
+
+        /* ── Two-column Layout ────────────────────────────────────────────────── */
+        .md-two-col {
+            display: grid;
+            grid-template-columns: 1fr 340px;
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+        @media (max-width: 1100px) {
+            .md-two-col {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* ── Class Card ───────────────────────────────────────────────────────── */
+        .md-class-card {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            overflow: hidden;
+            margin-bottom: 16px;
+        }
+        .dark .md-class-card {
+            background: #1e293b;
+            border-color: #334155;
+        }
+        .md-class-header {
+            padding: 18px 22px 14px;
+            border-bottom: 1px solid #f1f5f9;
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+        }
+        .dark .md-class-header {
+            border-bottom-color: #334155;
+        }
+        .md-class-status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-top: 5px;
+            flex-shrink: 0;
+        }
+        .md-class-info {
+            flex: 1;
+        }
+        .md-class-name {
+            font-size: 15px;
+            font-weight: 700;
+            color: #0f172a;
+            margin: 0 0 3px;
+        }
+        .dark .md-class-name {
+            color: #f1f5f9;
+        }
+        .md-class-meta {
+            font-size: 12px;
+            color: #64748b;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .md-class-badge {
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 100px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+        .md-progress-row {
+            padding: 12px 22px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .md-progress-bar-wrap {
+            flex: 1;
+            height: 8px;
+            background: #f1f5f9;
+            border-radius: 100px;
+            overflow: hidden;
+        }
+        .dark .md-progress-bar-wrap {
+            background: #334155;
+        }
+        .md-progress-bar-fill {
+            height: 100%;
+            border-radius: 100px;
+            background: linear-gradient(90deg, #1d4ed8, #4f46e5);
+            transition: width .5s ease;
+        }
+        .md-progress-pct {
+            font-size: 13px;
+            font-weight: 700;
+            color: #1d4ed8;
+            min-width: 38px;
+            text-align: right;
+        }
+
+        /* ── Module List ──────────────────────────────────────────────────────── */
+        .md-module-list {
+            padding: 0 22px 18px;
+        }
+        .md-module-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 0;
+            border-bottom: 1px solid #f8fafc;
+        }
+        .dark .md-module-row {
+            border-bottom-color: #1e293b;
+        }
+        .md-module-row:last-child {
+            border-bottom: none;
+        }
+        .md-module-icon {
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+        .md-module-name {
+            flex: 1;
+            font-size: 13px;
+            font-weight: 600;
+            color: #1e293b;
+            line-height: 1.4;
+        }
+        .dark .md-module-name {
+            color: #e2e8f0;
+        }
+        .md-module-desc {
+            font-size: 11px;
+            color: #94a3b8;
+            margin-top: 1px;
+            font-weight: 400;
+        }
+        .md-module-status {
+            font-size: 10px;
+            font-weight: 700;
+            padding: 3px 9px;
+            border-radius: 100px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            white-space: nowrap;
+        }
+        .md-attend-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 5px 12px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #1d4ed8, #4f46e5);
+            color: #fff;
+            text-decoration: none;
+            white-space: nowrap;
+            transition: opacity .15s;
+        }
+        .md-attend-btn:hover {
+            opacity: 0.88;
+            color: #fff;
+        }
+
+        /* ── Sidebar cards ────────────────────────────────────────────────────── */
+        .md-sidebar-card {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            overflow: hidden;
+            margin-bottom: 16px;
+        }
+        .dark .md-sidebar-card {
+            background: #1e293b;
+            border-color: #334155;
+        }
+        .md-sidebar-header {
+            padding: 14px 18px 12px;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 13px;
+            font-weight: 700;
+            color: #0f172a;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .dark .md-sidebar-header {
+            color: #f1f5f9;
+            border-bottom-color: #334155;
+        }
+        .md-sidebar-body {
+            padding: 14px 18px;
+        }
+
+        /* ── Recommendation card ──────────────────────────────────────────────── */
+        .md-rec-card {
+            background: #fafbff;
+            border: 1px solid #e0e7ff;
+            border-left: 4px solid #4f46e5;
+            border-radius: 10px;
+            padding: 12px 14px;
+            margin-bottom: 10px;
+        }
+        .dark .md-rec-card {
+            background: #1e1b4b22;
+            border-color: #4338ca55;
+            border-left-color: #4f46e5;
+        }
+        .md-rec-card:last-child {
+            margin-bottom: 0;
+        }
+        .md-rec-module {
+            font-size: 12px;
+            font-weight: 700;
+            color: #3730a3;
+            margin-bottom: 5px;
+        }
+        .dark .md-rec-module {
+            color: #818cf8;
+        }
+        .md-rec-text {
+            font-size: 12px;
+            color: #475569;
+            line-height: 1.6;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .dark .md-rec-text {
+            color: #94a3b8;
+        }
+        .md-rec-date {
+            font-size: 10px;
+            color: #94a3b8;
+            margin-top: 5px;
+        }
+
+        /* ── Activity Feed ────────────────────────────────────────────────────── */
+        .md-feed-item {
+            display: flex;
+            gap: 12px;
+            padding: 10px 0;
+            border-bottom: 1px solid #f8fafc;
+        }
+        .dark .md-feed-item {
+            border-bottom-color: #334155;
+        }
+        .md-feed-item:last-child {
+            border-bottom: none;
+        }
+        .md-feed-icon {
+            width: 32px;
+            height: 32px;
+            min-width: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            margin-top: 2px;
+        }
+        .md-feed-text {
+            font-size: 12.5px;
+            color: #475569;
+            line-height: 1.5;
+            flex: 1;
+        }
+        .dark .md-feed-text {
+            color: #94a3b8;
+        }
+        .md-feed-text strong {
+            color: #0f172a;
+            font-weight: 600;
+        }
+        .dark .md-feed-text strong {
+            color: #e2e8f0;
+        }
+        .md-feed-time {
+            font-size: 10.5px;
+            color: #94a3b8;
+            margin-top: 2px;
+        }
+
+        /* ── Suggested modules ────────────────────────────────────────────────── */
+        .md-suggest-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 0;
+            border-bottom: 1px solid #f8fafc;
+        }
+        .dark .md-suggest-item {
+            border-bottom-color: #334155;
+        }
+        .md-suggest-item:last-child {
+            border-bottom: none;
+        }
+        .md-suggest-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, #dbeafe, #ede9fe);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+        .md-suggest-name {
+            flex: 1;
+            font-size: 12.5px;
+            font-weight: 600;
+            color: #1e293b;
+            line-height: 1.4;
+        }
+        .dark .md-suggest-name {
+            color: #e2e8f0;
+        }
+
+        /* ── Empty state ──────────────────────────────────────────────────────── */
+        .md-empty {
+            text-align: center;
+            padding: 48px 24px;
+            background: #f8fafc;
+            border: 2px dashed #e2e8f0;
+            border-radius: 16px;
+        }
+        .dark .md-empty {
+            background: #1e293b;
+            border-color: #334155;
+        }
+        .md-empty-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+        .md-empty-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 8px;
+        }
+        .dark .md-empty-title {
+            color: #f1f5f9;
+        }
+        .md-empty-sub {
+            font-size: 14px;
+            color: #64748b;
+        }
+        .dark .md-empty-sub {
+            color: #94a3b8;
+        }
+
+        /* ── Velocity badge ───────────────────────────────────────────────────── */
+        .md-velocity-fast   {
+            background: #dcfce7;
+            color: #15803d;
+        }
+        .md-velocity-steady {
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+        .md-velocity-slow   {
+            background: #fef9c3;
+            color: #854d0e;
+        }
+        .md-velocity-inactive {
+            background: #f1f5f9;
+            color: #64748b;
+        }
+
+        /* ── Donut mini chart ─────────────────────────────────────────────────── */
+        .md-donut-wrap {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 8px 0;
+        }
+        .md-donut {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .md-donut-pct {
+            font-size: 14px;
+            font-weight: 800;
+            color: #1d4ed8;
+            position: absolute;
+        }
+        .md-legend-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            color: #475569;
+            margin-bottom: 4px;
+        }
+        .dark .md-legend-row {
+            color: #94a3b8;
+        }
+        .md-legend-dot {
             width: 8px;
             height: 8px;
             border-radius: 50%;
-            background: #d1d5db;
+            flex-shrink: 0;
         }
-        .session-dot.dot-done::before {
-            background: #10b981;
+        .md-legend-val {
+            font-weight: 700;
+            margin-left: auto;
+            color: #1e293b;
         }
-        .session-dot.dot-active::before {
-            background: #14b8a6;
+        .dark .md-legend-val {
+            color: #e2e8f0;
         }
-        @keyframes soft-pulse {
-            0%,100% {
-                box-shadow: 0 0 0 0 rgba(16,185,129,0.3);
+
+        /* ── Collapsed modules toggle ─────────────────────────────────────────── */
+        .md-toggle-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 12px;
+            color: #1d4ed8;
+            font-weight: 600;
+            padding: 0 22px 14px;
+            display: block;
+            width: 100%;
+            text-align: left;
+        }
+        .dark .md-toggle-btn {
+            color: #818cf8;
+        }
+        .md-collapsible {
+            display: none;
+        }
+        .md-collapsible.open {
+            display: block;
+        }
+
+        /* ── Responsive ───────────────────────────────────────────────────────── */
+        @media (max-width: 640px) {
+            .md-profile-card {
+                flex-direction: column;
+                align-items: flex-start;
+                padding: 20px;
             }
-            50% {
-                box-shadow: 0 0 0 6px rgba(16,185,129,0);
+            .md-presence-badge {
+                width: 100%;
+                text-align: left;
+                display: flex;
+                align-items: center;
+                gap: 12px;
             }
-        }
-        .cta-pulse {
-            animation: soft-pulse 2s infinite;
+            .md-stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .md-two-col {
+                grid-template-columns: 1fr;
+            }
+            .md-profile-name {
+                font-size: 18px;
+            }
         }
     </style>
 
-    <div class="lms-root space-y-6">
+    <div class="md-container">
 
-        {{-- HERO --}}
-        <div class="relative rounded-2xl overflow-hidden bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-700 p-6 md:p-8">
-            <div class="absolute inset-0 opacity-10">
-                <svg width="100%" height="100%"><defs><pattern id="g" width="32" height="32" patternUnits="userSpaceOnUse"><path d="M 32 0 L 0 0 0 32" fill="none" stroke="white" stroke-width="1"/></pattern></defs><rect width="100%" height="100%" fill="url(#g)"/></svg>
-            </div>
-            <div class="relative flex flex-col md:flex-row md:items-center gap-6">
-                <div class="flex-1">
-                    <p class="text-emerald-200 text-xs font-bold uppercase tracking-widest mb-1">MNCH Learning Portal</p>
-                    <h1 class="text-2xl md:text-3xl font-extrabold text-white mb-2">Welcome back, {{ auth()->user()->first_name ?? auth()->user()->name }}</h1>
-            @if ($summaryStats['pending_attendance'] > 0)
-                        <p class="text-emerald-100 text-sm"><span class="font-bold text-white">{{ $summaryStats['pending_attendance'] }}</span> module(s) waiting for your attendance confirmation.</p>
-                    @else
-                        <p class="text-emerald-100 text-sm">You're all caught up — keep going!</p>
-            @endif
+        {{-- ══ PROFILE CARD ══════════════════════════════════════════════════════ --}}
+        <div class="md-profile-card">
+            {{-- Avatar --}}
+            <div class="md-avatar">{{ $profile['initials'] }}</div>
+
+            {{-- Info --}}
+            <div class="md-profile-info">
+                <h2 class="md-profile-name">{{ $profile['name'] }}</h2>
+                <p class="md-profile-sub">
+                    {{ $profile['email'] }}
+            @if($profile['phone'])  · {{ $profile['phone'] }} @endif
+                </p>
+                <div class="md-profile-tags">
+                    @if($profile['cadre'] !== '—')
+                        <span class="md-tag">🩺 {{ $profile['cadre'] }}</span>
+                    @endif
+            @if($profile['department'] !== '—')
+                        <span class="md-tag">🏢 {{ $profile['department'] }}</span>
+                    @endif
+            @if($profile['facility'] !== '—')
+                        <span class="md-tag">🏥 {{ $profile['facility'] }}</span>
+                    @endif
+            @if($profile['county'] !== '—')
+                        <span class="md-tag">📍 {{ $profile['county'] }}</span>
+                    @endif
+                    <span class="md-tag">🗓 Since {{ $profile['joined'] }}</span>
+                    {{-- Velocity --}}
+                    @php $vel = $globalStats['learning_velocity'] ?? 'Inactive'; $vClass = 'md-velocity-' . strtolower($vel); @endphp
+                    <span class="md-tag {{ $vClass }}" style="border: none;">
+                        ⚡ {{ $vel }} learner
+                    </span>
+            @if(($globalStats['streak_days'] ?? 0) > 0)
+                        <span class="md-tag" style="background:rgba(251,191,36,0.25);border-color:rgba(251,191,36,0.4);">
+                            🔥 {{ $globalStats['streak_days'] }}-day streak
+                        </span>
+                    @endif
                 </div>
-                <div class="flex items-center gap-5">
-                    <div class="relative w-24 h-24">
-                        <svg class="w-24 h-24 -rotate-90" viewBox="0 0 36 36">
-                        <circle cx="18" cy="18" r="15.9" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="3"/>
-                        <circle cx="18" cy="18" r="15.9" fill="none" stroke="white" stroke-width="3"
-                                stroke-dasharray="{{ $summaryStats['overall_pct'] }} {{ 100 - $summaryStats['overall_pct'] }}"
-                                stroke-linecap="round" class="ring-animate"/>
-                        </svg>
-                        <div class="absolute inset-0 flex flex-col items-center justify-center">
-                            <span class="text-xl font-extrabold text-white">{{ $summaryStats['overall_pct'] }}%</span>
-                            <span class="text-xs text-emerald-200">Overall</span>
+            </div>
+
+    {{-- Presence badge --}}
+            <div class="md-presence-badge">
+                <div class="md-presence-rate">{{ $globalStats['attendance_rate'] ?? 0 }}%</div>
+                <div class="md-presence-label">Attendance</div>
+                <span class="md-presence-status">{{ $globalStats['presence_status']['label'] ?? 'No Data' }}</span>
+            </div>
+        </div>
+
+        {{-- ══ GLOBAL STATS ═══════════════════════════════════════════════════════ --}}
+@php
+$stats = $globalStats;
+$cards = [
+    ['icon' => '📚', 'value' => $stats['total_classes'],       'label' => 'Classes Enrolled',   'bg' => '#eff6ff', 'ic' => '#dbeafe', 'vc' => '#1d4ed8'],
+    ['icon' => '✅', 'value' => $stats['completed_classes'],   'label' => 'Classes Completed',   'bg' => '#f0fdf4', 'ic' => '#dcfce7', 'vc' => '#16a34a'],
+    ['icon' => '🔵', 'value' => $stats['active_classes'],      'label' => 'Classes Active',      'bg' => '#f0f9ff', 'ic' => '#e0f2fe', 'vc' => '#0284c7'],
+    ['icon' => '🧩', 'value' => $stats['total_modules'],       'label' => 'Total Modules',       'bg' => '#faf5ff', 'ic' => '#ede9fe', 'vc' => '#7c3aed'],
+    ['icon' => '🏆', 'value' => $stats['completed_modules'],   'label' => 'Modules Completed',   'bg' => '#f0fdf4', 'ic' => '#dcfce7', 'vc' => '#16a34a'],
+    ['icon' => '⏳', 'value' => $stats['in_progress_modules'], 'label' => 'Modules In Progress', 'bg' => '#fffbeb', 'ic' => '#fef9c3', 'vc' => '#d97706'],
+    ['icon' => '📋', 'value' => $stats['pending_attendance'],  'label' => 'Pending Attendance',  'bg' => '#fef2f2', 'ic' => '#fee2e2', 'vc' => '#dc2626'],
+    ['icon' => '⭐', 'value' => $stats['exempted_modules'],    'label' => 'Modules Exempted',    'bg' => '#f8fafc', 'ic' => '#f1f5f9', 'vc' => '#475569'],
+];
+        @endphp
+
+        <div class="md-stats-grid">
+            @foreach($cards as $c)
+                <div class="md-stat-card">
+                    <div class="md-stat-icon" style="background:{{ $c['ic'] }}">{{ $c['icon'] }}</div>
+                    <div>
+                        <div class="md-stat-value" style="color:{{ $c['vc'] }}">{{ $c['value'] }}</div>
+                        <div class="md-stat-label">{{ $c['label'] }}</div>
+                    </div>
+            </div>
+        @endforeach
+        </div>
+
+{{-- ══ MAIN CONTENT + SIDEBAR ══════════════════════════════════════════════ --}}
+            @if(empty($enrollments))
+        <div class="md-empty">
+                <div class="md-empty-icon">🎓</div>
+                <div class="md-empty-title">You're not enrolled in any classes yet</div>
+            <div class="md-empty-sub">Your mentor will send you an enrollment invitation. Check your email inbox.</div>
+        </div>
+@else
+
+        <div class="md-two-col">
+
+    {{-- ── LEFT: Classes ─────────────────────────────────────────────── --}}
+            <div>
+        {{-- Active / In-Progress classes first --}}
+        @php
+            $activeEnrollments    = collect($enrollments)->filter(fn($e) => in_array($e['class_status'], ['active']))->values();
+            $otherEnrollments     = collect($enrollments)->filter(fn($e) => !in_array($e['class_status'], ['active']))->values();
+        @endphp
+
+        @if($activeEnrollments->isNotEmpty())
+                <div class="md-section-header">
+                    <div class="md-section-title">
+                        <span style="background:#dcfce7;color:#16a34a;width:26px;height:26px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:14px;">▶</span>
+                        Active Classes
+                    </div>
+                </div>
+
+        @foreach($activeEnrollments as $enrollment)
+            @include('filament.components.mentee-class-card', ['enrollment' => $enrollment, 'highlight' => true])
+        @endforeach
+        @endif
+
+        @if($otherEnrollments->isNotEmpty())
+                <div class="md-section-header" style="margin-top:{{ $activeEnrollments->isNotEmpty() ? '24px' : '0' }}">
+                    <div class="md-section-title">
+                        <span style="background:#f1f5f9;color:#64748b;width:26px;height:26px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:14px;">📦</span>
+                        All Enrollments
+                    </div>
+                </div>
+
+        @foreach($otherEnrollments as $enrollment)
+            @include('filament.components.mentee-class-card', ['enrollment' => $enrollment, 'highlight' => false])
+        @endforeach
+        @endif
+            </div>
+
+    {{-- ── RIGHT: Sidebar ─────────────────────────────────────────────── --}}
+            <div>
+
+        {{-- Progress Donut --}}
+                <div class="md-sidebar-card">
+                    <div class="md-sidebar-header">
+                        📊 Overall Progress
+                    </div>
+                    <div class="md-sidebar-body">
+                @php
+                    $total     = $stats['total_modules'] ?: 1;
+                    $done      = $stats['completed_modules'];
+                    $inProg    = $stats['in_progress_modules'];
+                    $notStart  = $stats['not_started_modules'];
+                    $exempted  = $stats['exempted_modules'];
+                    $donePct   = round($done / $total * 100);
+                    $inProgPct = round($inProg / $total * 100);
+
+                    $conic = "conic-gradient(
+                        #16a34a 0% {$donePct}%,
+                        #f59e0b {$donePct}% " . ($donePct + $inProgPct) . "%,
+                        #e2e8f0 " . ($donePct + $inProgPct) . "% 100%
+                    )";
+                @endphp
+                        <div class="md-donut-wrap">
+                            <div class="md-donut" style="background: {{ $conic }};">
+                                <div style="width:50px;height:50px;background:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;">
+                                    <span class="md-donut-pct">{{ $stats['completion_rate'] }}%</span>
+                                </div>
+                            </div>
+                            <div style="flex:1">
+                                <div class="md-legend-row">
+                                    <span class="md-legend-dot" style="background:#16a34a"></span>
+                                    Completed
+                                    <span class="md-legend-val">{{ $done }}</span>
+                                </div>
+                                <div class="md-legend-row">
+                                    <span class="md-legend-dot" style="background:#f59e0b"></span>
+                                    In Progress
+                                    <span class="md-legend-val">{{ $inProg }}</span>
+                                </div>
+                                <div class="md-legend-row">
+                                    <span class="md-legend-dot" style="background:#94a3b8"></span>
+                                    Not Started
+                                    <span class="md-legend-val">{{ $notStart }}</span>
+                                </div>
+                        @if($exempted > 0)
+                                <div class="md-legend-row">
+                                    <span class="md-legend-dot" style="background:#818cf8"></span>
+                                    Exempted
+                                    <span class="md-legend-val">{{ $exempted }}</span>
+                                </div>
+                        @endif
+                            </div>
+                        </div>
+
+                {{-- Attendance bar --}}
+                        <div style="margin-top:14px;padding-top:14px;border-top:1px solid #f1f5f9;">
+                            <div style="display:flex;justify-content:space-between;font-size:12px;color:#64748b;margin-bottom:6px;">
+                                <span>Attendance Rate</span>
+                                <strong style="color:{{ $stats['presence_status']['color'] }}">
+                            {{ $stats['attendance_rate'] }}% — {{ $stats['presence_status']['label'] }}
+                                </strong>
+                            </div>
+                            <div style="height:8px;background:#f1f5f9;border-radius:100px;overflow:hidden;">
+                                <div style="height:100%;width:{{ $stats['attendance_rate'] }}%;background:{{ $stats['presence_status']['color'] }};border-radius:100px;transition:width .5s ease;"></div>
+                            </div>
                         </div>
                     </div>
-                    <div class="grid grid-cols-2 gap-2">
-                @foreach ([['Classes',$summaryStats['enrollments']],['Modules',$summaryStats['total_modules']],['Done',$summaryStats['completed_modules']],['Feedback',$summaryStats['recommendations']]] as $q)
-                        <div class="bg-white/10 rounded-xl px-3 py-2 text-center">
-                            <p class="text-lg font-bold text-white">{{ $q[1] }}</p>
-                            <p class="text-xs text-emerald-200">{{ $q[0] }}</p>
+                </div>
+
+        {{-- Pending Attendance Actions --}}
+        @if(!empty($suggestedModules))
+                <div class="md-sidebar-card">
+                    <div class="md-sidebar-header" style="color:#dc2626;">
+                        🔔 Action Required
+                        <span style="background:#fef2f2;color:#dc2626;font-size:10px;font-weight:700;padding:2px 8px;border-radius:100px;margin-left:auto;">{{ count($suggestedModules) }} pending</span>
+                    </div>
+                    <div class="md-sidebar-body" style="padding-bottom:8px;">
+                @foreach($suggestedModules as $mod)
+                        <div class="md-suggest-item">
+                            <div class="md-suggest-icon">📌</div>
+                            <div>
+                                <div class="md-suggest-name">{{ $mod['name'] }}</div>
+                                <div style="font-size:11px;color:#94a3b8;">Attendance link is open</div>
+                            </div>
+                            <a href="{{ route('module.attend', ['token' => $mod['attendance_token']]) }}"
+                               class="md-attend-btn">
+                                ✓ Confirm
+                            </a>
                         </div>
                 @endforeach
                     </div>
                 </div>
-            </div>
-        </div>
+        @endif
 
-{{-- ALERT --}}
-@if ($summaryStats['pending_attendance'] > 0)
-        <div class="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-700/50 dark:bg-amber-900/20 px-4 py-3">
-            <span class="text-xl flex-shrink-0">⚡</span>
-            <div>
-                <p class="text-sm font-semibold text-amber-900 dark:text-amber-200">Action Required</p>
-                <p class="text-xs text-amber-700 dark:text-amber-400">{{ $summaryStats['pending_attendance'] }} module(s) in progress waiting for attendance confirmation.</p>
-            </div>
-        </div>
+        {{-- Mentor Recommendations --}}
+        @if(!empty($recommendations))
+                <div class="md-sidebar-card">
+                    <div class="md-sidebar-header">📋 Mentor Feedback</div>
+                    <div class="md-sidebar-body" style="padding-bottom:8px;">
+                @foreach($recommendations as $rec)
+                        <div class="md-rec-card">
+                            <div class="md-rec-module">{{ $rec['name'] }}</div>
+                            <div class="md-rec-text">{{ $rec['recommendation'] }}</div>
+                    @if($rec['rec_at'])
+                            <div class="md-rec-date">{{ $rec['rec_at'] }}</div>
+                    @endif
+                        </div>
+                @endforeach
+                    </div>
+                </div>
+        @endif
+
+        {{-- Activity Feed --}}
+        @if(!empty($activityFeed))
+                <div class="md-sidebar-card">
+                    <div class="md-sidebar-header">🕐 Recent Activity</div>
+                    <div class="md-sidebar-body" style="padding-bottom:8px;">
+                @foreach(array_slice($activityFeed, 0, 8) as $item)
+                        <div class="md-feed-item">
+                            <div class="md-feed-icon"
+                                 style="background:{{ match($item['color']) {
+                             'green'  => '#dcfce7',
+                             'blue'   => '#dbeafe',
+                             'purple' => '#ede9fe',
+                             'indigo' => '#e0e7ff',
+                             default  => '#f1f5f9',
+                         } }}">{{ $item['icon'] }}</div>
+                            <div style="flex:1">
+                                <div class="md-feed-text">{!! $item['text'] !!}</div>
+                                <div class="md-feed-time">{{ $item['time'] }}</div>
+                            </div>
+                        </div>
+                @endforeach
+                    </div>
+                </div>
+        @endif
+
+            </div>{{-- /sidebar --}}
+        </div>{{-- /two-col --}}
 @endif
 
-{{-- ENROLLMENT CARDS --}}
-@forelse ($enrollments as $enrollment)
-        <div class="rounded-2xl border border-gray-200 dark:border-gray-700/60 bg-white dark:bg-gray-900 overflow-hidden shadow-sm">
+    </div>{{-- /container --}}
 
-    {{-- Class header --}}
-            <div class="px-6 py-5 border-b border-gray-100 dark:border-gray-800">
-                <div class="flex flex-col sm:flex-row sm:items-center gap-4">
-                    <div class="flex-1 min-w-0">
-                        <p class="text-xs font-bold uppercase tracking-widest text-gray-400 mb-0.5">{{ $enrollment['training_name'] }}@if($enrollment['facility_name']) · {{ $enrollment['facility_name'] }}@endif</p>
-                        <h2 class="text-lg font-bold text-gray-900 dark:text-white">{{ $enrollment['class_name'] }}</h2>
-                @if($enrollment['enrolled_at'])<p class="text-xs text-gray-400 mt-0.5">Enrolled {{ $enrollment['enrolled_at'] }}</p>@endif
-                    </div>
-                    <div class="flex items-center gap-3 flex-shrink-0">
-                        <div class="hidden sm:block w-36">
-                            <div class="flex justify-between text-xs text-gray-400 mb-1">
-                                <span>Progress</span><span class="font-semibold">{{ $enrollment['completed_modules'] }}/{{ $enrollment['total_modules'] }}</span>
-                            </div>
-                            <div class="h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-                                <div class="h-full rounded-full transition-all duration-700 {{ $enrollment['progress_pct'] >= 100 ? 'bg-emerald-500' : ($enrollment['progress_pct'] >= 50 ? 'bg-teal-500' : 'bg-blue-500') }}" style="width:{{ $enrollment['progress_pct'] }}%"></div>
-                            </div>
-                            <p class="text-xs text-right mt-0.5 font-bold {{ $enrollment['progress_pct'] >= 100 ? 'text-emerald-600' : 'text-gray-400' }}">{{ $enrollment['progress_pct'] }}%</p>
-                        </div>
-                @php $sc = ['active'=>'bg-emerald-100 text-emerald-700','completed'=>'bg-gray-100 text-gray-600','draft'=>'bg-blue-100 text-blue-700']; @endphp
-                        <span class="rounded-full px-3 py-1 text-xs font-semibold {{ $sc[$enrollment['class_status']] ?? 'bg-gray-100 text-gray-600' }}">{{ ucfirst($enrollment['class_status']) }}</span>
-                @if($enrollment['pending_attendance'] > 0)
-                        <span class="rounded-full px-2.5 py-1 text-xs font-bold bg-amber-500 text-white">{{ $enrollment['pending_attendance'] }} ⚡</span>
-                @endif
-                    </div>
-                </div>
-            </div>
-
-    {{-- Modules --}}
-            <div class="divide-y divide-gray-50 dark:divide-gray-800/50">
-        @forelse ($enrollment['modules'] as $idx => $module)
-                <div x-data="{open:{{ ($module['status']==='in_progress'||!empty($module['recommendation'])) ? 'true':'false' }}}" class="module-card">
-
-            {{-- Module row --}}
-                    <button type="button" @click="open=!open" class="w-full text-left px-6 py-4 flex items-center gap-4 hover:bg-gray-50/80 dark:hover:bg-gray-800/30 transition-colors">
-                        <div class="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold
-                    {{ $module['status']==='completed' ? 'bg-emerald-500 text-white' : ($module['status']==='in_progress' ? 'bg-teal-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-400') }}">
-                    @if($module['status']==='completed')
-                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-                    @elseif($module['status']==='in_progress')
-                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                    @else
-                        {{ $idx + 1 }}
-                    @endif
-                        </div>
-                        <div class="flex-1 min-w-0">
-                            <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ $module['name'] }}</p>
-                            <div class="flex flex-wrap gap-x-3 mt-0.5">
-                                <span class="text-xs text-gray-400">{{ count($module['sessions']) }} session(s)</span>
-                        @if($module['status']==='in_progress'&&$module['started_at'])<span class="text-xs text-teal-500">Started {{ $module['started_at'] }}</span>@endif
-                        @if($module['status']==='completed'&&$module['completed_at'])<span class="text-xs text-emerald-500">Completed {{ $module['completed_at'] }}</span>@endif
-                            </div>
-                        </div>
-                        <div class="flex items-center gap-2 flex-shrink-0">
-                    @if(!empty($module['recommendation']))<span class="hidden sm:inline text-xs rounded-full px-2 py-0.5 bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400 font-medium">💬 Feedback</span>@endif
-                    @if($module['attendance_open']&&!$module['already_confirmed'])<span class="text-xs rounded-full px-2.5 py-0.5 font-bold bg-amber-500 text-white">Action ⚡</span>@endif
-                    @if($module['attendance_open']&&$module['already_confirmed'])<span class="text-xs rounded-full px-2 py-0.5 bg-emerald-100 text-emerald-700 font-medium">✓ Confirmed</span>@endif
-                    @php $pc=['not_started'=>'bg-gray-100 text-gray-500','in_progress'=>'bg-teal-100 text-teal-700','completed'=>'bg-emerald-100 text-emerald-700','exempted'=>'bg-blue-100 text-blue-700']; @endphp
-                            <span class="text-xs rounded-full px-2 py-0.5 font-medium {{ $pc[$module['progress_status']] ?? 'bg-gray-100 text-gray-500' }}">{{ match($module['progress_status']){'not_started'=>'Not Started','in_progress'=>'In Progress','completed'=>'Completed','exempted'=>'Exempted',default=>ucfirst($module['progress_status'])} }}</span>
-                            <svg class="w-4 h-4 text-gray-400 transition-transform duration-200" ::class="{'rotate-180':open}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                        </div>
-                    </button>
-
-            {{-- Expanded --}}
-                    <div x-show="open" x-collapse class="bg-gray-50/40 dark:bg-gray-800/10">
-                        <div class="px-6 pb-6 pt-2 space-y-4">
-
-                    @if(!empty($module['description']))
-                            <p class="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">{{ $module['description'] }}</p>
-                    @endif
-
-                    {{-- Attendance CTA --}}
-                    @if($module['attendance_open']&&!$module['already_confirmed'])
-                            <div class="rounded-xl border-2 border-amber-300 dark:border-amber-700 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/20 p-4 flex flex-col sm:flex-row sm:items-center gap-4">
-                                <div class="flex-1">
-                                    <p class="font-semibold text-amber-900 dark:text-amber-200 text-sm">📣 This module is currently in session</p>
-                                    <p class="text-xs text-amber-700 dark:text-amber-400 mt-0.5">Tap the button to confirm your presence.</p>
-                                </div>
-                                <button wire:click="confirmAttendance({{ $module['id'] }})" wire:loading.attr="disabled" wire:target="confirmAttendance({{ $module['id'] }})"
-                                        class="cta-pulse flex-shrink-0 inline-flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 px-5 py-2.5 text-sm font-bold text-white shadow-md transition-all disabled:opacity-60 whitespace-nowrap">
-                                    <span wire:loading.remove wire:target="confirmAttendance({{ $module['id'] }})">✓ Confirm Attendance</span>
-                                    <span wire:loading wire:target="confirmAttendance({{ $module['id'] }})">
-                                        <svg class="animate-spin h-4 w-4 inline" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
-                                        Confirming...
-                                    </span>
-                                </button>
-                            </div>
-                    @elseif($module['attendance_open']&&$module['already_confirmed'])
-                            <div class="rounded-xl border border-emerald-200 dark:border-emerald-700/50 bg-emerald-50 dark:bg-emerald-950/20 px-4 py-3 flex items-center gap-2.5">
-                                <span class="text-emerald-500 text-lg">✓</span>
-                        <p class="text-sm font-semibold text-emerald-700 dark:text-emerald-400">Attendance confirmed — you're marked as present.</p>
-                    </div>
-                @endif
-
-                {{-- Mentor feedback --}}
-                    @if(!empty($module['recommendation']))
-                    <div class="rounded-xl border border-violet-200 dark:border-violet-700/50 bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-950/20 dark:to-purple-950/10 p-4">
-                        <div class="flex items-center gap-2 mb-2">
-                            <p class="text-xs font-bold uppercase tracking-widest text-violet-600 dark:text-violet-400">💬 Mentor Feedback</p>
-                            @if($module['rec_written_at'])<span class="ml-auto text-xs text-gray-400">{{ $module['rec_written_at'] }}</span>@endif
-                        </div>
-                        <p class="text-sm text-violet-900 dark:text-violet-200 leading-relaxed whitespace-pre-line">{{ $module['recommendation'] }}</p>
-                    </div>
-                @endif
-
-                {{-- Sessions --}}
-                    @if(count($module['sessions'])>0)
-                    <div>
-                        <p class="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Sessions ({{ count($module['sessions']) }})</p>
-                        <div class="session-line space-y-2 ml-2">
-                            @foreach($module['sessions'] as $s)
-                                @php
-                                $dc = $s['status']==='completed' ? 'dot-done' : ($s['status']==='in_progress' ? 'dot-active' : '');
-                                $dur = $s['duration_minutes'];
-                                $dt = $dur ? ($dur>=60 ? intdiv($dur,60).'h '.($dur%60).'m' : $dur.' min') : null;
-                            @endphp
-                                <div class="session-dot {{ $dc }} rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 px-4 py-3">
-                                    <div class="flex items-start justify-between gap-2">
-                                        <div class="min-w-0">
-                                            <p class="text-sm font-semibold text-gray-900 dark:text-white">
-                                                <span class="text-xs text-gray-400 font-normal">{{ $s['session_number'] }}. </span>{{ $s['title'] }}
-                                            </p>
-                                        @if($s['description'])<p class="text-xs text-gray-500 mt-0.5 line-clamp-2">{{ $s['description'] }}</p>@endif
-                                            <div class="flex flex-wrap gap-x-3 gap-y-0.5 mt-1.5">
-                                            @if($dt)<span class="text-xs text-gray-400">⏱ {{ $dt }}</span>@endif
-                                            @if($s['scheduled_date'])<span class="text-xs text-gray-400">📅 {{ $s['scheduled_date'] }}@if($s['scheduled_time']) at {{ $s['scheduled_time'] }}@endif</span>@endif
-                                            @if($s['location'])<span class="text-xs text-gray-400">📍 {{ $s['location'] }}</span>@endif
-                                </div>
-                            </div>
-                                    @if(($s['status']??'scheduled')!=='scheduled')
-                                <span @class(['flex-shrink-0 text-xs rounded-full px-2 py-0.5 font-medium','bg-emerald-100 text-emerald-700'=>$s['status']==='completed','bg-teal-100 text-teal-700'=>$s['status']==='in_progress','bg-red-100 text-red-500'=>$s['status']==='cancelled'])>{{ ucfirst(str_replace('_',' ',$s['status'])) }}</span>
-                            @endif
-                        </div>
-                    </div>
-                @endforeach
-            </div>
-        </div>
-    @else
-        <p class="text-xs text-gray-400 italic">No sessions scheduled yet.</p>
-    @endif
-
-</div>
-</div>
-</div>
-        @empty
-<div class="px-6 py-10 text-center">
-    <p class="text-3xl mb-2">📋</p>
-    <p class="text-sm text-gray-400">No modules assigned yet.</p>
-</div>
-@endforelse
-</div>
-</div>
-@empty
-<div class="text-center py-20 rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700">
-    <p class="text-5xl mb-4">🎓</p>
-    <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2">No Active Mentorships</h3>
-    <p class="text-sm text-gray-500 max-w-sm mx-auto">You are not currently enrolled in any mentorship class.</p>
-</div>
-@endforelse
-
-    </div>
+{{-- ── Inline partial: class card ──────────────────────────────────────────── --}}
+@push('scripts')
+    <script>
+    function toggleModules(id) {
+        const el = document.getElementById('modules-' + id);
+        const btn = document.getElementById('toggle-' + id);
+        if (!el) return;
+        el.classList.toggle('open');
+                btn.textContent = el.classList.contains('open') ? '▲ Hide modules' : '▼ Show all modules';
+            }
+    </script>
+@endpush
 </x-filament-panels::page>

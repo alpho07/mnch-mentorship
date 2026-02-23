@@ -37,6 +37,13 @@ Route::get('/test-mail', function () {
     return 'Email sent!';
 });
 
+Route::middleware(['auth'])->prefix('admin/reports')->name('reports.')->group(function () {
+    Route::get('/class/{class}/html', [\App\Http\Controllers\ClassReportController::class, 'html'])->name('reports.class.html');
+    Route::get('/class/{class}/pdf', [\App\Http\Controllers\ClassReportController::class, 'pdf'])->name('reports.class.pdf');
+    Route::get('/class/{class}/certificate/{participant}', [\App\Http\Controllers\ClassReportController::class, 'certificate'])->name('reports.class.certificate');
+    Route::get('/class/{class}/certificate/{participant}/preview', [\App\Http\Controllers\ClassReportController::class, 'certificateHtml'])->name('reports.class.certificate.preview');
+});
+
 Route::get('/admin/set-password/{token}', App\Livewire\Auth\CustomResetPassword::class)
         ->middleware(['web', 'guest'])
         ->name('password.reset.custom');

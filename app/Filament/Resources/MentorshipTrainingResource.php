@@ -3,7 +3,6 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\MentorshipTrainingResource\Pages;
-use App\Models\Cadre;
 use App\Models\ClassParticipant;
 use App\Models\Facility;
 use App\Models\Training;
@@ -14,8 +13,6 @@ use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
@@ -23,8 +20,6 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 
 class MentorshipTrainingResource extends Resource {
 
@@ -61,6 +56,9 @@ class MentorshipTrainingResource extends Resource {
 
     public static function getEloquentQuery(): Builder {
         $query = parent::getEloquentQuery()
+                ->withoutGlobalScopes([
+                    \Illuminate\Database\Eloquent\SoftDeletingScope::class,
+                ])
                 ->where('type', 'facility_mentorship')
                 ->with(['facility', 'program', 'county', 'mentor']);
 
@@ -308,8 +306,9 @@ class MentorshipTrainingResource extends Resource {
             'module-sessions' => Pages\ManageModuleSessions::route('/{training}/classes/{class}/modules/{module}/sessions'),
             'module-mentees' => Pages\ManageModuleMentees::route('/{training}/classes/{class}/modules/{module}/mentees'),
             'module-summary' => Pages\ModuleSummary::route('/{training}/classes/{class}/modules/{module}/summary'),
-            'mentee-dashboard' => Pages\MenteeDashboard::route('/mentee-dashboard'),
+            //'mentee-dashboard' => Pages\MenteeDashboard::route('/mentee-dashboard'),
             'mentee-progress' => Pages\MenteeProgress::route('/{record}/participants/{participant}/progress'),
+            'attendance-report' => Pages\AttendanceReportPage::route('/attendance-report'),
         ];
     }
 

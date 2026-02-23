@@ -29,19 +29,15 @@ class MenteeSeeder extends Seeder
     {
         $menteeRole = Role::firstOrCreate(['name' => 'mentee', 'guard_name' => 'web']);
 
-        $file = base_path('mentee.csv');
-        if (!file_exists($file)) {
-            $this->command->error('mentee.csv not found at project root.');
-            return;
-        }
+      
 
-        $handle = fopen($file, 'r');
+        $handle = fopen('/var/www/html/mnch-master/public/mentee.csv', 'r');
 
         // Skip BOM if present
         $bom = fread($handle, 3);
         if ($bom !== "\xEF\xBB\xBF") {
             rewind($handle);
-        }
+        } 
 
         // Skip header row
         fgetcsv($handle);

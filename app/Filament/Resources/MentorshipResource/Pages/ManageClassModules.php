@@ -100,6 +100,12 @@ class ManageClassModules extends Page implements HasTable {
                         $sessionText = $createdSessions > 0 ? " with {$createdSessions} sessions auto-created" : '';
                         Notification::make()->success()->title("{$created} module(s) added{$sessionText}")->send();
                     }),
+                    Actions\Action::make('view_report')
+                    ->label('Class Report')
+                    ->icon('heroicon-o-document-chart-bar')
+                    ->color('info')
+                    ->url(fn() => route('reports.reports.class.html', $this->class->id))
+                    ->openUrlInNewTab(),
         ];
     }
 
@@ -214,12 +220,55 @@ class ManageClassModules extends Page implements HasTable {
                             ->button()
                             ->visible(fn(ClassModule $record) => $record->status === 'not_started')
                             ->requiresConfirmation()
-                            ->modalHeading(fn(ClassModule $record) => 'Start "' . ($record->programModule->name ?? 'Module') . '"?')
-                            ->modalDescription('This will open the attendance link for mentees.')
-                            ->modalSubmitActionLabel('Yes, Start')
+                            ->modalHeading(function (ClassModule $record) {
+                                $hasMentees = ClassParticipant::where('mentorship_class_id', $this->class->id)->exists();
+                                return $hasMentees ? 'Start "' . ($record->programModule->name ?? 'Module') . '"?' : '⚠️ No Mentees Enrolled';
+                            })
+                            ->modalDescription(function (ClassModule $record) {
+                                $menteeCount = ClassParticipant::where('mentorship_class_id', $this->class->id)->count();
+
+                                if ($menteeCount === 0) {
+                                    return new \Illuminate\Support\HtmlString('
+                <div style="display:flex;flex-direction:column;gap:12px;">
+                    <div style="background:#fef9c3;border:1px solid #fde047;border-radius:10px;padding:14px 16px;font-size:0.875rem;color:#713f12;line-height:1.6;">
+                        <strong>You cannot start a module without enrolled mentees.</strong><br>
+                        Attendance links and progress tracking only work when mentees are present in the class.
+                    </div>
+                    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px 16px;font-size:0.875rem;color:#14532d;line-height:1.7;">
+                        <strong>What to do next:</strong><br>
+                        Click <strong>"Add Mentees"</strong> below to go to the mentee management page where you can:<br>
+                        &bull; <strong>Add from List</strong> — enrol existing users already in the system<br>
+                        &bull; <strong>Add Mentee</strong> — create a new user account and enrol them
+                    </div>
+                </div>
+            ');
+                                }
+
+                                return "This will open the attendance link for {$menteeCount} mentee(s). The class will be activated if still in draft.";
+                            })
+                            ->modalSubmitActionLabel(function () {
+                                $hasMentees = ClassParticipant::where('mentorship_class_id', $this->class->id)->exists();
+                                return $hasMentees ? 'Yes, Start Module' : 'Add Mentees →';
+                            })
+                            ->modalCancelActionLabel('Cancel')
                             ->action(function (ClassModule $record) {
+                                $menteeCount = ClassParticipant::where('mentorship_class_id', $this->class->id)->count();
+
+                                // ── No mentees → redirect to mentee page ────────────────────────
+                                if ($menteeCount === 0) {
+                                    $url = MentorshipTrainingResource::getUrl('class-mentees', [
+                                        'training' => $this->training->id,
+                                        'class' => $this->class->id,
+                                    ]);
+
+                                    $this->redirect($url);
+                                    return;
+                                }
+
+                                // ── Has mentees → proceed with start ────────────────────────────
                                 try {
                                     $freshClass = MentorshipClass::find($this->class->id);
+
                                     if ($freshClass->status === 'draft') {
                                         $freshClass->update(['status' => 'active']);
                                     }
@@ -229,7 +278,7 @@ class ManageClassModules extends Page implements HasTable {
                                     Notification::make()
                                             ->success()
                                             ->title('Module Started')
-                                            ->body('Attendance link is now active for mentees.')
+                                            ->body("Attendance link is now active for {$menteeCount} mentee(s).")
                                             ->send();
                                 } catch (\LogicException $e) {
                                     Notification::make()

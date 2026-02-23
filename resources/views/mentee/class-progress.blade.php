@@ -95,7 +95,7 @@
         {{-- ── Sticky top bar ────────────────────────────────────────────────── --}}
         <header class="sticky top-0 z-20 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
             <div class="max-w-3xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
-                <a href="{{ \App\Filament\Resources\MentorshipTrainingResource::getUrl('mentee-dashboard') }}"
+                <a href="{{url('admin/mentee-dashboard') }}"
                        class="flex items-center gap-2 text-sm font-semibold text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 transition-colors">
                     <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>

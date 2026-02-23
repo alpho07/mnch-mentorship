@@ -13,6 +13,7 @@ use Illuminate\Validation\ValidationException;
 class CustomRequestPasswordReset extends SimplePage {
 
     protected static string $view = 'livewire.auth.custom-request-password-reset';
+    protected static string $layout = 'components.layouts.auth';
     public ?array $data = [];
     public bool $linkSent = false;
     public string $sentToEmail = '';

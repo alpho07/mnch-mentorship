@@ -16,6 +16,7 @@ use Illuminate\Validation\ValidationException;
 class CustomLogin extends SimplePage {
 
     protected static string $view = 'livewire.auth.custom-login';
+    protected static string $layout = 'components.layouts.auth';
     public ?array $data = [];
 
     public function mount(): void {

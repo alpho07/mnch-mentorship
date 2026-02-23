@@ -17,7 +17,7 @@ use Illuminate\Validation\ValidationException;
 class CustomResetPassword extends SimplePage {
 
     protected static string $view = 'livewire.auth.custom-reset-password';
-    // No #[Url] — we read these manually from route param + query string
+    protected static string $layout = 'components.layouts.auth';
     public string $token = '';
     public string $email = '';
     public ?array $data = [];
@@ -64,7 +64,7 @@ class CustomResetPassword extends SimplePage {
 
         if ($status !== Password::PASSWORD_RESET) {
             throw ValidationException::withMessages([
-                        'data.email' => __($status),
+                        'data.password' => __($status),
             ]);
         }
 
@@ -87,7 +87,6 @@ class CustomResetPassword extends SimplePage {
                             TextInput::make('password')
                             ->label('New Password')
                             ->password()
-                            ->revealable()
                             ->required()
                             ->minLength(8)
                             ->rules(['regex:/[A-Z]/', 'regex:/[0-9]/'])
@@ -95,19 +94,19 @@ class CustomResetPassword extends SimplePage {
                                 'regex' => 'Password must contain at least one uppercase letter and one number.',
                             ])
                             ->same('password_confirmation')
-                            ->autocomplete('new-password'),
+                            ->autocomplete('new-password')
+                            ->extraInputAttributes(['id' => 'pw-new', 'oninput' => 'pwStrength(this.value)']),
                             TextInput::make('password_confirmation')
                             ->label('Confirm New Password')
                             ->password()
-                            ->revealable()
                             ->required()
-                            ->dehydrated(false)
-                            ->autocomplete('new-password'),
+                            ->autocomplete('new-password')
+                            ->extraInputAttributes(['id' => 'pw-confirm']),
                         ])
                         ->statePath('data');
     }
 
-    public function getTitle(): string|Htmlable {
+    public function getTitle(): string {
         return '';
     }
 

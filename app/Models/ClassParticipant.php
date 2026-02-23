@@ -16,6 +16,7 @@ class ClassParticipant extends Model {
         'user_id',
         'status',
         'enrolled_at',
+        'invitation_sent_at',
         'completed_at',
         'dropped_at',
         'drop_reason',
@@ -24,6 +25,7 @@ class ClassParticipant extends Model {
         'enrolled_at' => 'datetime',
         'completed_at' => 'datetime',
         'dropped_at' => 'datetime',
+        'invitation_sent_at'=>'datetime'
     ];
 
     // Relationships
