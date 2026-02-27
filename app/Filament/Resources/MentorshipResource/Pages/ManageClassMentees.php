@@ -288,8 +288,9 @@ class ManageClassMentees extends Page implements HasTable {
                     ->icon('heroicon-o-arrow-left')
                     ->color('gray')
                     ->url(fn() => MentorshipTrainingResource::getUrl('classes', ['record' => $this->training->id])),
-                    //Actions\ActionGroup::make([
-                        // ─── ACTION A: Checkbox slide-over (UNCHANGED) ────────────────────
+            //
+            // ─── ACTION A: Checkbox slide-over (UNCHANGED) ────────────────────
+            Actions\ActionGroup::make([
                         Actions\Action::make('manage_from_list')
                         ->label('Add from List')
                         ->icon('heroicon-o-list-bullet')
@@ -299,17 +300,24 @@ class ManageClassMentees extends Page implements HasTable {
                         ->modalHeading('Manage Class Mentees')
                         ->modalDescription('Select mentees to enroll. Already-enrolled mentees are pre-checked. Uncheck to remove.')
                         ->form([
+                            Forms\Components\Hidden::make('page')->default(1),
                             Forms\Components\TextInput::make('search')
                             ->label('Search')
-                            ->placeholder('Search by name, phone, or email...')
-                            ->live(debounce: 300)
+                            ->placeholder('Search by name, phone, email, or facility...')
+                            ->live(debounce: 400)
+                            ->afterStateUpdated(fn(Forms\Set $set) => $set('page', 1))
                             ->prefixIcon('heroicon-o-magnifying-glass'),
                             Forms\Components\CheckboxList::make('selected_users')
                             ->label('Available Users')
                             ->options(function (Forms\Get $get) {
+
                                 $search = $get('search');
-                                $query = User::where('status', 'active')
-                                        ->with(['cadre', 'facility'])
+                                $page = (int) ($get('page') ?? 1);
+                                $perPage = 25;
+
+                                $query = User::query()
+                                        ->where('status', 'active')
+                                        ->with(['facility']) // eager load facility
                                         ->orderBy('first_name');
 
                                 if ($search) {
@@ -318,83 +326,94 @@ class ManageClassMentees extends Page implements HasTable {
                                                 ->orWhere('last_name', 'like', "%{$search}%")
                                                 ->orWhere('name', 'like', "%{$search}%")
                                                 ->orWhere('phone', 'like', "%{$search}%")
-                                                ->orWhere('email', 'like', "%{$search}%");
+                                                ->orWhere('email', 'like', "%{$search}%")
+                                                ->orWhereHas('facility', function ($facilityQuery) use ($search) {
+                                                    $facilityQuery->where('name', 'like', "%{$search}%")
+                                                            ->orWhere('mfl_code', 'like', "%{$search}%");
+                                                });
                                     });
                                 }
 
-                                $results = $query->get();
+                                $users = $query
+                                        ->skip(($page - 1) * $perPage)
+                                        ->take($perPage)
+                                        ->get();
 
-                                if ($results->isEmpty()) {
-                                    // When no results, we return empty — the hint is shown via helperText
-                                    return [];
-                                }
-
-                                return $results->mapWithKeys(fn($u) => [
-                                            $u->id => implode(' · ', array_filter([
-                                                $u->name ?? trim("{$u->first_name} {$u->last_name}"),
-                                                $u->phone,
-                                                $u->cadre?->name,
-                                                $u->facility?->name,
-                                            ])),
-                                ]);
+                                return $users->mapWithKeys(function ($u) {
+                                            return [
+                                                $u->id => implode(' · ', array_filter([
+                                                    $u->name,
+                                                    $u->phone,
+                                                    $u->email,
+                                                    $u->facility ? "{$u->facility->name}" .
+                                                    ($u->facility->mfl_code ? " (MFL {$u->facility->mfl_code})" : '') : null,
+                                                ])),
+                                            ];
+                                        })->toArray();
                             })
-                            ->default(fn() => ClassParticipant::where('mentorship_class_id', $this->class->id)
+                            ->default(fn() =>
+                                    ClassParticipant::where('mentorship_class_id', $this->class->id)
                                     ->pluck('user_id')
                                     ->toArray()
                             )
                             ->bulkToggleable()
                             ->columns(1)
-                            ->gridDirection('row')
-                            ->helperText(function (Forms\Get $get) {
-                                $search = $get('search');
-                                if (!$search) {
-                                    return 'Checked users are already enrolled. Uncheck to remove.';
-                                }
-                                // Check if query would be empty
-                                $exists = User::where('status', 'active')
-                                                ->where(function ($q) use ($search) {
-                                                    $q->where('first_name', 'like', "%{$search}%")
-                                                            ->orWhere('last_name', 'like', "%{$search}%")
-                                                            ->orWhere('name', 'like', "%{$search}%")
-                                                            ->orWhere('phone', 'like', "%{$search}%")
-                                                            ->orWhere('email', 'like', "%{$search}%");
-                                                })->exists();
-
-                                if (!$exists) {
-                                    return '⚠️ No users found for "' . $search . '". Close this panel and use the "Add Mentee" button to create and enroll a new user.';
-                                }
-                                return 'Checked users are already enrolled. Uncheck to remove.';
-                            })
                             ->columnSpanFull(),
+                            Forms\Components\Actions::make([
+                                Forms\Components\Actions\Action::make('previous')
+                                ->label('Previous')
+                                ->color('gray')
+                                ->action(function (Forms\Set $set, Forms\Get $get) {
+                                    $set('page', max(1, (int) $get('page') - 1));
+                                }),
+                                Forms\Components\Actions\Action::make('next')
+                                ->label('Next')
+                                ->color('gray')
+                                ->action(function (Forms\Set $set, Forms\Get $get) {
+                                    $set('page', (int) $get('page') + 1);
+                                }),
+                            ])->columnSpanFull(),
                         ])
                         ->action(function (array $data) {
+
                             $selected = $data['selected_users'] ?? [];
+
                             $currentIds = ClassParticipant::where('mentorship_class_id', $this->class->id)
-                                            ->pluck('user_id')->toArray();
+                                    ->pluck('user_id')
+                                    ->toArray();
 
                             $toAdd = array_diff($selected, $currentIds);
                             $toRemove = array_diff($currentIds, $selected);
+
                             $service = app(EnrollmentService::class);
 
                             DB::transaction(function () use ($toAdd, $toRemove, $service) {
+
                                 foreach ($toRemove as $userId) {
                                     $p = ClassParticipant::where('mentorship_class_id', $this->class->id)
-                                                    ->where('user_id', $userId)->first();
-                                    if ($p)
+                                            ->where('user_id', $userId)
+                                            ->first();
+
+                                    if ($p) {
                                         $service->removeFromClass($p);
+                                    }
                                 }
+
                                 foreach ($toAdd as $userId) {
                                     $u = User::find($userId);
-                                    if ($u)
+                                    if ($u) {
                                         $service->enrollInClass($u, $this->class, 'manual');
+                                    }
                                 }
                             });
 
                             $parts = [];
-                            if (count($toAdd))
+                            if (count($toAdd)) {
                                 $parts[] = count($toAdd) . ' enrolled';
-                            if (count($toRemove))
+                            }
+                            if (count($toRemove)) {
                                 $parts[] = count($toRemove) . ' removed';
+                            }
 
                             Notification::make()
                                     ->success()
@@ -627,180 +646,184 @@ class ManageClassMentees extends Page implements HasTable {
                                     )
                                     ->persistent()
                                     ->send();
-                        }),
-                        // ─── Enrollment link ──────────────────────────────────────────────
-                        Actions\Action::make('enrollment_link')
-                        ->label('Enrollment Link')
-                        ->icon('heroicon-o-link')
-                        ->color('info')
-                        ->visible(fn() => ClassParticipant::where('mentorship_class_id', $this->class->id)->exists())
-                        ->action(function () {
-                            $missing = ClassParticipant::where('mentorship_class_id', $this->class->id)
-                                    ->whereHas('user', fn($q) => $q->whereNull('email')->orWhere('email', ''))
-                                    ->with('user')
-                                    ->get();
+                        })
+                    ])->label('Register Mentee')
+                    ->icon('heroicon-o-ellipsis-vertical')
+                    ->color('gray')
+                    ->button(),
+            // ─── Enrollment link ──────────────────────────────────────────────
+            Actions\Action::make('enrollment_link')
+                    ->label('Enrollment Link')
+                    ->icon('heroicon-o-link')
+                    ->color('info')
+                    ->visible(fn() => ClassParticipant::where('mentorship_class_id', $this->class->id)->exists())
+                    ->action(function () {
+                        $missing = ClassParticipant::where('mentorship_class_id', $this->class->id)
+                                ->whereHas('user', fn($q) => $q->whereNull('email')->orWhere('email', ''))
+                                ->with('user')
+                                ->get();
 
-                            if ($missing->isNotEmpty()) {
-                                $names = $missing->map(fn($p) => $p->user?->name ?? 'Unknown')->implode(', ');
-                                Notification::make()
-                                        ->danger()
-                                        ->title('Missing Emails')
-                                        ->body("These mentees have no email: {$names}. Update emails first.")
-                                        ->persistent()
-                                        ->send();
-                                return;
-                            }
-
-                            // Generate token if missing, and always activate the link
-                            if (!$this->class->enrollment_token) {
-                                $this->class->update([
-                                    'enrollment_token' => \Illuminate\Support\Str::random(32),
-                                    'enrollment_link_active' => true,
-                                ]);
-                            } else {
-                                // Token exists but flag may still be 0 — ensure it's active
-                                $this->class->update(['enrollment_link_active' => true]);
-                            }
-
-                            $this->class->refresh();
-
-                            $link = route('mentee.enroll', ['token' => $this->class->enrollment_token]);
-
+                        if ($missing->isNotEmpty()) {
+                            $names = $missing->map(fn($p) => $p->user?->name ?? 'Unknown')->implode(', ');
                             Notification::make()
-                                    ->success()
-                                    ->title('Enrollment Link Active')
-                                    ->body("Share this link with mentees: {$link}")
+                                    ->danger()
+                                    ->title('Missing Emails')
+                                    ->body("These mentees have no email: {$names}. Update emails first.")
                                     ->persistent()
                                     ->send();
-                        }),
-                        Actions\Action::make('send_all_invitations')
-                        ->label('Send Invitations')
-                        ->icon('heroicon-o-paper-airplane')
-                        ->color('info')
-                        ->visible(fn() => ClassParticipant::where('mentorship_class_id', $this->class->id)
-                                ->whereHas('user', fn($q) => $q->whereNotNull('email')->where('email', '!=', ''))
-                                ->exists()
-                        )
-                        ->slideOver()
-                        ->modalWidth('md')
-                        ->modalHeading('Send Enrollment Invitations')
-                        ->modalDescription(new \Illuminate\Support\HtmlString(
-                                        '<p style="font-size:13.5px;color:#475569;line-height:1.7">
+                            return;
+                        }
+
+                        // Generate token if missing, and always activate the link
+                        if (!$this->class->enrollment_token) {
+                            $this->class->update([
+                                'enrollment_token' => \Illuminate\Support\Str::random(32),
+                                'enrollment_link_active' => true,
+                            ]);
+                        } else {
+                            // Token exists but flag may still be 0 — ensure it's active
+                            $this->class->update(['enrollment_link_active' => true]);
+                        }
+
+                        $this->class->refresh();
+
+                        $link = route('mentee.enroll', ['token' => $this->class->enrollment_token]);
+
+                        Notification::make()
+                                ->success()
+                                ->title('Enrollment Link Active')
+                                ->body("Share this link with mentees: {$link}")
+                                ->persistent()
+                                ->send();
+                    }),
+                    Actions\Action::make('send_all_invitations')
+                    ->label('Send Invitations')
+                    ->icon('heroicon-o-paper-airplane')
+                    ->color('info')
+                    ->visible(fn() => ClassParticipant::where('mentorship_class_id', $this->class->id)
+                            ->whereHas('user', fn($q) => $q->whereNotNull('email')->where('email', '!=', ''))
+                            ->exists()
+                    )
+                    ->slideOver()
+                    ->modalWidth('md')
+                    ->modalHeading('Send Enrollment Invitations')
+                    ->modalDescription(new \Illuminate\Support\HtmlString(
+                                    '<p style="font-size:13.5px;color:#475569;line-height:1.7">
             This will send enrollment invitation emails to your mentees.<br>
             Mentees who have already received an invite will get a <strong>reminder</strong> that
             says <em>"if you\'re already enrolled, ignore this."</em>
         </p>'
-                        ))
-                        ->form([
-                            \Filament\Forms\Components\Radio::make('recipients')
-                            ->label('Who should receive the email?')
-                            ->options([
-                                'all' => 'All mentees with email addresses',
-                                'not_sent' => 'Only those not yet invited',
-                                'resend' => 'Only those already invited (reminder)',
-                            ])
-                            ->default('all')
-                            ->required(),
-                            \Filament\Forms\Components\Placeholder::make('preview')
-                            ->label('')
-                            ->content(function () {
-                                $all = ClassParticipant::where('mentorship_class_id', $this->class->id)
-                                        ->whereHas('user', fn($q) => $q->whereNotNull('email')->where('email', '!=', ''))
-                                        ->count();
-                                $notSent = ClassParticipant::where('mentorship_class_id', $this->class->id)
-                                        ->whereNull('invitation_sent_at')
-                                        ->whereHas('user', fn($q) => $q->whereNotNull('email')->where('email', '!=', ''))
-                                        ->count();
-                                $resent = $all - $notSent;
-                                $noEmail = ClassParticipant::where('mentorship_class_id', $this->class->id)
-                                        ->whereHas('user', fn($q) => $q->whereNull('email')->orWhere('email', ''))
-                                        ->count();
-
-                                $html = '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px 16px;font-size:12.5px;color:#475569;line-height:1.8">';
-                                $html .= "📧 <strong>{$all}</strong> mentees have email addresses<br>";
-                                $html .= "✉️ <strong>{$notSent}</strong> have never received an invitation<br>";
-                                $html .= "🔔 <strong>{$resent}</strong> have already been invited<br>";
-                                if ($noEmail) {
-                                    $html .= "<span style='color:#dc2626'>⚠️ <strong>{$noEmail}</strong> mentee(s) have no email — they will be skipped</span>";
-                                }
-                                $html .= '</div>';
-
-                                return new \Illuminate\Support\HtmlString($html);
-                            }),
+                    ))
+                    ->form([
+                        \Filament\Forms\Components\Radio::make('recipients')
+                        ->label('Who should receive the email?')
+                        ->options([
+                            'all' => 'All mentees with email addresses',
+                            'not_sent' => 'Only those not yet invited',
+                            'resend' => 'Only those already invited (reminder)',
                         ])
-                        ->action(function (array $data) {
-                            $this->ensureEnrollmentToken();
-
-                            $query = ClassParticipant::where('mentorship_class_id', $this->class->id)
+                        ->default('all')
+                        ->required(),
+                        \Filament\Forms\Components\Placeholder::make('preview')
+                        ->label('')
+                        ->content(function () {
+                            $all = ClassParticipant::where('mentorship_class_id', $this->class->id)
                                     ->whereHas('user', fn($q) => $q->whereNotNull('email')->where('email', '!=', ''))
-                                    ->with('user');
+                                    ->count();
+                            $notSent = ClassParticipant::where('mentorship_class_id', $this->class->id)
+                                    ->whereNull('invitation_sent_at')
+                                    ->whereHas('user', fn($q) => $q->whereNotNull('email')->where('email', '!=', ''))
+                                    ->count();
+                            $resent = $all - $notSent;
+                            $noEmail = ClassParticipant::where('mentorship_class_id', $this->class->id)
+                                    ->whereHas('user', fn($q) => $q->whereNull('email')->orWhere('email', ''))
+                                    ->count();
 
-                            if ($data['recipients'] === 'not_sent') {
-                                $query->whereNull('invitation_sent_at');
-                            } elseif ($data['recipients'] === 'resend') {
-                                $query->whereNotNull('invitation_sent_at');
+                            $html = '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px 16px;font-size:12.5px;color:#475569;line-height:1.8">';
+                            $html .= "📧 <strong>{$all}</strong> mentees have email addresses<br>";
+                            $html .= "✉️ <strong>{$notSent}</strong> have never received an invitation<br>";
+                            $html .= "🔔 <strong>{$resent}</strong> have already been invited<br>";
+                            if ($noEmail) {
+                                $html .= "<span style='color:#dc2626'>⚠️ <strong>{$noEmail}</strong> mentee(s) have no email — they will be skipped</span>";
                             }
+                            $html .= '</div>';
 
-                            $participants = $query->get();
-                            $sent = 0;
-                            $resent = 0;
-                            $failed = [];
-
-                            foreach ($participants as $record) {
-                                $isResend = (bool) $record->invitation_sent_at;
-                                try {
-                                    Mail::to($record->user->email)
-                                            ->send(new MenteeEnrollmentInvitationMail(
-                                                            $record->user,
-                                                            $this->class,
-                                                            $record,
-                                                            $isResend
-                                            ));
-
-                                    $record->update(['invitation_sent_at' => now()]);
-                                    $isResend ? $resent++ : $sent++;
-                                } catch (\Exception $e) {
-                                    $failed[] = $record->user->full_name;
-                                }
-                            }
-
-                            $parts = [];
-                            if ($sent)
-                                $parts[] = "{$sent} new invitation(s) sent";
-                            if ($resent)
-                                $parts[] = "{$resent} reminder(s) sent";
-
-                            Notification::make()
-                                    ->success()
-                                    ->title('Done!')
-                                    ->body(implode(' · ', $parts) ?: 'No emails sent.')
-                                    ->send();
-
-                            if ($failed) {
-                                Notification::make()
-                                        ->warning()
-                                        ->title(count($failed) . ' email(s) failed')
-                                        ->body('Failed: ' . implode(', ', $failed))
-                                        ->persistent()
-                                        ->send();
-                            }
+                            return new \Illuminate\Support\HtmlString($html);
                         }),
-                        Actions\Action::make('start_class')
-                        ->label('Start Class')
-                        ->icon('heroicon-o-play')
-                        ->color('success')
-                        ->visible(fn() => $this->class->status === 'draft')
-                        ->requiresConfirmation()
-                        ->modalHeading(function () {
-                            $hasMentees = ClassParticipant::where('mentorship_class_id', $this->class->id)->exists();
-                            return $hasMentees ? 'Start This Class?' : '⚠️ Cannot Start — No Mentees';
-                        })
-                        ->modalDescription(function () {
-                            $menteeCount = ClassParticipant::where('mentorship_class_id', $this->class->id)->count();
-                            $moduleCount = $this->class->classModules()->count();
+                    ])
+                    ->action(function (array $data) {
+                        $this->ensureEnrollmentToken();
 
-                            if ($menteeCount === 0) {
-                                return new \Illuminate\Support\HtmlString('
+                        $query = ClassParticipant::where('mentorship_class_id', $this->class->id)
+                                ->whereHas('user', fn($q) => $q->whereNotNull('email')->where('email', '!=', ''))
+                                ->with('user');
+
+                        if ($data['recipients'] === 'not_sent') {
+                            $query->whereNull('invitation_sent_at');
+                        } elseif ($data['recipients'] === 'resend') {
+                            $query->whereNotNull('invitation_sent_at');
+                        }
+
+                        $participants = $query->get();
+                        $sent = 0;
+                        $resent = 0;
+                        $failed = [];
+
+                        foreach ($participants as $record) {
+                            $isResend = (bool) $record->invitation_sent_at;
+                            try {
+                                Mail::to($record->user->email)
+                                        ->send(new MenteeEnrollmentInvitationMail(
+                                                        $record->user,
+                                                        $this->class,
+                                                        $record,
+                                                        $isResend
+                                        ));
+
+                                $record->update(['invitation_sent_at' => now()]);
+                                $isResend ? $resent++ : $sent++;
+                            } catch (\Exception $e) {
+                                $failed[] = $record->user->full_name;
+                            }
+                        }
+
+                        $parts = [];
+                        if ($sent)
+                            $parts[] = "{$sent} new invitation(s) sent";
+                        if ($resent)
+                            $parts[] = "{$resent} reminder(s) sent";
+
+                        Notification::make()
+                                ->success()
+                                ->title('Done!')
+                                ->body(implode(' · ', $parts) ?: 'No emails sent.')
+                                ->send();
+
+                        if ($failed) {
+                            Notification::make()
+                                    ->warning()
+                                    ->title(count($failed) . ' email(s) failed')
+                                    ->body('Failed: ' . implode(', ', $failed))
+                                    ->persistent()
+                                    ->send();
+                        }
+                    }),
+                    Actions\Action::make('start_class')
+                    ->label('Start Class')
+                    ->icon('heroicon-o-play')
+                    ->color('success')
+                    ->visible(fn() => $this->class->status === 'draft')
+                    ->requiresConfirmation()
+                    ->modalHeading(function () {
+                        $hasMentees = ClassParticipant::where('mentorship_class_id', $this->class->id)->exists();
+                        return $hasMentees ? 'Start This Class?' : '⚠️ Cannot Start — No Mentees';
+                    })
+                    ->modalDescription(function () {
+                        $menteeCount = ClassParticipant::where('mentorship_class_id', $this->class->id)->count();
+                        $moduleCount = $this->class->classModules()->count();
+
+                        if ($menteeCount === 0) {
+                            return new \Illuminate\Support\HtmlString('
                 <div style="display:flex;flex-direction:column;gap:12px;">
                     <div style="background:#fef9c3;border:1px solid #fde047;border-radius:10px;padding:14px 16px;font-size:0.875rem;color:#713f12;line-height:1.6;">
                         <strong>This class has no enrolled mentees.</strong><br>
@@ -822,108 +845,108 @@ class ManageClassMentees extends Page implements HasTable {
                     </div>
                 </div>
             ');
-                            }
+                        }
 
-                            if ($moduleCount === 0) {
-                                return new \Illuminate\Support\HtmlString('
+                        if ($moduleCount === 0) {
+                            return new \Illuminate\Support\HtmlString('
                 <div style="background:#fef9c3;border:1px solid #fde047;border-radius:10px;padding:14px 16px;font-size:0.875rem;color:#713f12;line-height:1.6;">
                     <strong>This class has no modules assigned.</strong><br>
                     Go to the <strong>Modules</strong> tab to add modules before starting the class.
                 </div>
             ');
-                            }
+                        }
 
-                            return "This will activate the class and start all {$moduleCount} module(s) for {$menteeCount} mentee(s). "
-                                    . "Attendance links will open for each module. "
-                                    . "The enrollment link stays open so mentees can still join.";
-                        })
-                        ->modalSubmitActionLabel(function () {
-                            $hasMentees = ClassParticipant::where('mentorship_class_id', $this->class->id)->exists();
-                            $hasModules = $this->class->classModules()->exists();
-                            return ($hasMentees && $hasModules) ? 'Yes, Start Class' : 'Close';
-                        })
-                        ->action(function () {
-                            $menteeCount = ClassParticipant::where('mentorship_class_id', $this->class->id)->count();
-                            $moduleCount = $this->class->classModules()->count();
+                        return "This will activate the class and start all {$moduleCount} module(s) for {$menteeCount} mentee(s). "
+                                . "Attendance links will open for each module. "
+                                . "The enrollment link stays open so mentees can still join.";
+                    })
+                    ->modalSubmitActionLabel(function () {
+                        $hasMentees = ClassParticipant::where('mentorship_class_id', $this->class->id)->exists();
+                        $hasModules = $this->class->classModules()->exists();
+                        return ($hasMentees && $hasModules) ? 'Yes, Start Class' : 'Close';
+                    })
+                    ->action(function () {
+                        $menteeCount = ClassParticipant::where('mentorship_class_id', $this->class->id)->count();
+                        $moduleCount = $this->class->classModules()->count();
 
-                            // ── Block: no mentees ────────────────────────────────────────────
-                            if ($menteeCount === 0) {
-                                Notification::make()
-                                        ->warning()
-                                        ->title('Add Mentees First')
-                                        ->body('Use "Add from List" to enrol existing users, or "Add Mentee" to create a new account.')
-                                        ->persistent()
-                                        ->send();
-                                return;
-                            }
+                        // ── Block: no mentees ────────────────────────────────────────────
+                        if ($menteeCount === 0) {
+                            Notification::make()
+                                    ->warning()
+                                    ->title('Add Mentees First')
+                                    ->body('Use "Add from List" to enrol existing users, or "Add Mentee" to create a new account.')
+                                    ->persistent()
+                                    ->send();
+                            return;
+                        }
 
-                            // ── Block: no modules ────────────────────────────────────────────
-                            if ($moduleCount === 0) {
-                                Notification::make()
-                                        ->warning()
-                                        ->title('No Modules Assigned')
-                                        ->body('Go to the Modules page and assign at least one module before starting.')
-                                        ->persistent()
-                                        ->send();
-                                return;
-                            }
+                        // ── Block: no modules ────────────────────────────────────────────
+                        if ($moduleCount === 0) {
+                            Notification::make()
+                                    ->warning()
+                                    ->title('No Modules Assigned')
+                                    ->body('Go to the Modules page and assign at least one module before starting.')
+                                    ->persistent()
+                                    ->send();
+                            return;
+                        }
 
-                            // ── All clear → start ────────────────────────────────────────────
-                            try {
-                                $this->class->start();
-                                $this->class = $this->class->fresh();
+                        // ── All clear → start ────────────────────────────────────────────
+                        try {
+                            $this->class->start();
+                            $this->class = $this->class->fresh();
 
-                                Notification::make()
-                                        ->success()
-                                        ->title('Class Started')
-                                        ->body("All {$moduleCount} module(s) now in progress. Attendance active for {$menteeCount} mentee(s).")
-                                        ->send();
-                            } catch (\LogicException $e) {
-                                Notification::make()
-                                        ->danger()
-                                        ->title('Cannot Start Class')
-                                        ->body($e->getMessage())
-                                        ->send();
-                            }
-                        }),
-                        Actions\Action::make('end_class')
-                        ->label('End Class')
-                        ->icon('heroicon-o-stop')
-                        ->color('danger')
-                        ->visible(fn() => $this->class->status === 'active')
-                        ->requiresConfirmation()
-                        ->modalHeading('End This Class?')
-                        ->modalDescription(
-                                'This will permanently close the class. ' .
-                                'All modules will be marked complete, attendance links will stop working, ' .
-                                'and the enrollment link will be deactivated. ' .
-                                'This action cannot be undone.'
-                        )
-                        ->modalSubmitActionLabel('Yes, End Class')
-                        ->action(function () {
-                            try {
-                                $this->class->complete();
-                                $this->class = $this->class->fresh();
+                            Notification::make()
+                                    ->success()
+                                    ->title('Class Started')
+                                    ->body("All {$moduleCount} module(s) now in progress. Attendance active for {$menteeCount} mentee(s).")
+                                    ->send();
+                        } catch (\LogicException $e) {
+                            Notification::make()
+                                    ->danger()
+                                    ->title('Cannot Start Class')
+                                    ->body($e->getMessage())
+                                    ->send();
+                        }
+                    }),
+                    Actions\Action::make('end_class')
+                    ->label('End Class')
+                    ->icon('heroicon-o-stop')
+                    ->color('danger')
+                    ->visible(fn() => $this->class->status === 'active')
+                    ->requiresConfirmation()
+                    ->modalHeading('End This Class?')
+                    ->modalDescription(
+                            'This will permanently close the class. ' .
+                            'All modules will be marked complete, attendance links will stop working, ' .
+                            'and the enrollment link will be deactivated. ' .
+                            'This action cannot be undone.'
+                    )
+                    ->modalSubmitActionLabel('Yes, End Class')
+                    ->action(function () {
+                        try {
+                            $this->class->complete();
+                            $this->class = $this->class->fresh();
 
-                                Notification::make()
-                                        ->success()
-                                        ->title('Class Ended')
-                                        ->body('All modules completed. Enrollment and attendance links are now inactive.')
-                                        ->send();
-                            } catch (\LogicException $e) {
-                                Notification::make()
-                                        ->danger()
-                                        ->title('Cannot End Class')
-                                        ->body($e->getMessage())
-                                        ->send();
-                            }
-                        }),
-                        Actions\Action::make('view_report')
-                        ->label('Class Report')
-                        ->icon('heroicon-o-document-chart-bar')
-                        ->color('info')
-                        ->url(fn() => route('reports.reports.class.html', $this->class->id))
-                        ->openUrlInNewTab(),
+                            Notification::make()
+                                    ->success()
+                                    ->title('Class Ended')
+                                    ->body('All modules completed. Enrollment and attendance links are now inactive.')
+                                    ->send();
+                        } catch (\LogicException $e) {
+                            Notification::make()
+                                    ->danger()
+                                    ->title('Cannot End Class')
+                                    ->body($e->getMessage())
+                                    ->send();
+                        }
+                    }),
+                    Actions\Action::make('view_report')
+                    ->label('Class Report')
+                    ->icon('heroicon-o-document-chart-bar')
+                    ->color('info')
+                    ->url(fn() => route('reports.reports.class.html', $this->class->id))
+                    ->openUrlInNewTab(),
 //                    ])
 //                    ->label('Actions')
 //                    ->icon('heroicon-o-ellipsis-vertical')

@@ -44,6 +44,7 @@ class AdminPanelProvider extends PanelProvider {
                         ->navigationGroups([
                             'Dashboards',
                             'Training Management',
+                            'Indicator Catalog',
                             'knowledge Base',
                             'Reporting',
                             'Curriculum',
