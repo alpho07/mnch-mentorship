@@ -1,11 +1,9 @@
 <?php
 
-namespace App\Services\Indicators;
+namespace App\Services;
 
-use App\Models\Indicators\Indicator;
 use App\Models\Indicators\IndicatorFrequency;
 use App\Models\Indicators\IndicatorReportPeriod;
-use App\Models\Indicators\IndicatorReportType;
 use App\Models\Indicators\IndicatorValue;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;

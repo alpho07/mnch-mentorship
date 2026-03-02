@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\Indicators;
+namespace App\Services;
 
 use App\Models\Indicators\IndicatorReportPeriod;
 use App\Models\Indicators\IndicatorValue;

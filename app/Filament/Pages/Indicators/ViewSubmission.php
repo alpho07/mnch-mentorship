@@ -4,8 +4,8 @@ namespace App\Filament\Pages\Indicators;
 
 use App\Models\Indicators\IndicatorGroup;
 use App\Models\Indicators\IndicatorReportPeriod;
-use App\Services\Indicators\Dhis2SyncService;
-use App\Services\Indicators\IndicatorReportingService;
+use App\Services\Dhis2SyncService;
+use App\Services\IndicatorReportingService;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
@@ -47,14 +47,23 @@ class ViewSubmission extends Page {
     // Boot
     // ──────────────────────────────────────────────────────────────────────────
 
-    public function mount(IndicatorReportPeriod $period): void {
+    public function mount(): void {
+        $periodId = request()->query('period');
+
+        if (!$periodId) {
+            abort(404, 'No period specified.');
+        }
+
+        $period = IndicatorReportPeriod::find($periodId);
+
+        if (!$period) {
+            abort(404, 'Report period not found.');
+        }
+
         $user = auth()->user();
         $this->isValidator = $user->hasRole(['super_admin', 'admin', 'county_mentor', 'national_mentor']);
 
-        // Facility users can only view their own reports
-        if (
-                !$this->isValidator && $period->facility_id !== $user->facility_id
-        ) {
+        if (!$this->isValidator && $period->facility_id !== $user->facility_id) {
             abort(403);
         }
 
@@ -62,7 +71,6 @@ class ViewSubmission extends Page {
 
         $service = app(IndicatorReportingService::class);
 
-        // Load group structure
         $groups = IndicatorGroup::where('report_type_id', $period->report_type_id)
                 ->where('is_active', true)
                 ->orderBy('sort_order')
@@ -72,7 +80,6 @@ class ViewSubmission extends Page {
                 ])
                 ->get();
 
-        // Load existing values keyed by indicator_id
         $values = $period->values()->with('indicator')->get()->keyBy('indicator_id');
 
         $this->existingValues = $values->map(fn($v) => [
@@ -105,13 +112,14 @@ class ViewSubmission extends Page {
                             ])->toArray(),
                         ])->toArray();
 
-        $this->groupStats = $service->getGroupCompletionStats($period)->map(fn($s) => [
-                    'group_name' => $s['group']->name,
-                    'total' => $s['total'],
-                    'filled' => $s['filled'],
-                    'percentage' => $s['percentage'],
-                    'complete' => $s['complete'],
-                        ])->values()->toArray();
+        $this->groupStats = $service->getGroupCompletionStats($period)
+                        ->map(fn($s) => [
+                            'group_name' => $s['group']->name,
+                            'total' => $s['total'],
+                            'filled' => $s['filled'],
+                            'percentage' => $s['percentage'],
+                            'complete' => $s['complete'],
+                                ])->values()->toArray();
 
         $this->overallCompletion = $service->getOverallCompletion($period);
     }

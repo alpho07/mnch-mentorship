@@ -3,15 +3,13 @@
 namespace App\Filament\Pages\Indicators;
 
 use App\Models\Indicators\IndicatorReportPeriod;
-use App\Services\Indicators\IndicatorReportingService;
-use Filament\Actions\Action;
+use App\Services\IndicatorReportingService;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
 use Filament\Tables;
-use Illuminate\Database\Eloquent\Builder;
 
 class ValidationQueue extends Page implements HasTable {
 

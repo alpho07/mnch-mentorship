@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class IndicatorReportPeriod extends Model { 
+class IndicatorReportPeriod extends Model {
 
     protected $fillable = [
         'facility_id',
@@ -51,7 +51,7 @@ class IndicatorReportPeriod extends Model {
     // ──────────────────────────────────────────────────────────────────────────
 
     public function facility(): BelongsTo {
-        return $this->belongsTo(Facility::class);
+        return $this->belongsTo(Facility::class, 'facility_id');
     }
 
     public function reportType(): BelongsTo {
@@ -146,11 +146,10 @@ class IndicatorReportPeriod extends Model {
      * Human-readable period label.
      */
     public function getPeriodLabelAttribute(): string {
-        return $this->frequency->formatPeriodLabel(
-                        $this->period_year,
-                        $this->period_month,
-                        $this->period_quarter
-                );
+        $freq = $this->frequency;
+        if (!$freq)
+            return (string) $this->period_year;
+        return $freq->formatPeriodLabel($this->period_year, $this->period_month, $this->period_quarter);
     }
 
     /**

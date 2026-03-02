@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\Indicators;
+namespace App\Services;
 
 use App\Mail\Indicators\ReportRejectedMail;
 use App\Mail\Indicators\ReportSubmittedMail;

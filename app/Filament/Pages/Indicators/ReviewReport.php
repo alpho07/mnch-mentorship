@@ -3,9 +3,8 @@
 namespace App\Filament\Pages\Indicators;
 
 use App\Models\Indicators\IndicatorReportPeriod;
-use App\Services\Indicators\IndicatorReportingService;
+use App\Services\IndicatorReportingService;
 use Filament\Actions\Action;
-use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 
@@ -47,7 +46,19 @@ class ReviewReport extends Page {
     // Boot
     // ──────────────────────────────────────────────────────────────────────────
 
-    public function mount(IndicatorReportPeriod $period): void {
+    public function mount(): void {
+        $periodId = request()->query('period');
+
+        if (!$periodId) {
+            abort(404, 'No period specified.');
+        }
+
+        $period = IndicatorReportPeriod::find($periodId);
+
+        if (!$period) {
+            abort(404, 'Report period not found.');
+        }
+
         $user = auth()->user();
 
         if (
@@ -60,6 +71,7 @@ class ReviewReport extends Page {
         $this->notes = $period->notes ?? '';
 
         $service = app(IndicatorReportingService::class);
+
         $stats = $service->getGroupCompletionStats($period);
 
         $this->groupStats = $stats->map(fn($s) => [

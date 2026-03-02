@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class IndicatorFrequency extends Model { 
+class IndicatorFrequency extends Model {
 
     protected $fillable = [
         'code',
@@ -54,18 +54,6 @@ class IndicatorFrequency extends Model {
         };
     }
 
-    /**
-     * Return a human-readable label for a period.
-     * e.g., "January 2025", "Q1 2025", "2025"
-     */
-    public function formatPeriodLabel(int $year, ?int $month = null, ?int $quarter = null): string {
-        return match ($this->code) {
-            'monthly' => date('F', mktime(0, 0, 0, $month, 1)) . " {$year}",
-            'quarterly' => "Q{$quarter} {$year}",
-            'annually' => (string) $year,
-            default => (string) $year,
-        };
-    }
 
     /**
      * Returns which period fields are needed for this frequency.
@@ -76,5 +64,18 @@ class IndicatorFrequency extends Model {
 
     public function requiresQuarter(): bool {
         return $this->code === 'quarterly';
+    }
+
+    public function formatPeriodLabel(int $year, ?int $month, ?int $quarter): string {
+        if ($this->requiresMonth() && $month) {
+            return \Carbon\Carbon::createFromDate($year, $month, 1)->format('F Y');
+        }
+
+        if ($this->requiresQuarter() && $quarter) {
+            $labels = [1 => 'Q1', 2 => 'Q2', 3 => 'Q3', 4 => 'Q4'];
+            return ($labels[$quarter] ?? 'Q?') . ' ' . $year;
+        }
+
+        return (string) $year;
     }
 }

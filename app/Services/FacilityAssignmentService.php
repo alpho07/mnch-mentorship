@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\Indicators;
+namespace App\Services;
 
 use App\Models\Facility;
 use App\Models\Indicators\FacilityIndicatorAssignment;

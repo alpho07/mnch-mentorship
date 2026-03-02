@@ -5,11 +5,10 @@ namespace App\Filament\Pages\Indicators;
 use App\Models\Indicators\Indicator;
 use App\Models\Indicators\IndicatorGroup;
 use App\Models\Indicators\IndicatorReportPeriod;
-use App\Services\Indicators\IndicatorReportingService;
+use App\Services\IndicatorReportingService;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
-use Illuminate\Support\Collection;
 
 class FillReport extends Page {
 
@@ -68,19 +67,29 @@ class FillReport extends Page {
     // Boot
     // ──────────────────────────────────────────────────────────────────────────
 
-    public function mount(IndicatorReportPeriod $period): void {
-        // Guard: must be editable or viewable
+    public function mount(): void {
+        $periodId = request()->query('period');
+
+        if (!$periodId) {
+            abort(404, 'No period specified.');
+        }
+
+        $periodModel = IndicatorReportPeriod::find($periodId);
+
+        if (!$periodModel) {
+            abort(404, 'Report period not found.');
+        }
+
         $user = auth()->user();
 
         if (
-                $period->facility_id !== $user->facility_id && !$user->hasRole('super_admin') && !$user->hasRole('admin')
+                $periodModel->facility_id !== $user->facility_id && !$user->hasRole(['super_admin', 'admin'])
         ) {
-            abort(403, 'You do not have access to this report.');
+            abort(403);
         }
 
-        $this->period = $period->load(['reportType', 'frequency', 'facility']);
+        $this->period = $periodModel->load(['reportType', 'frequency', 'facility']);
 
-        // Load group structure with indicators and existing values
         $this->loadGroupStructure();
         $this->loadExistingValues();
         $this->refreshGroupStats();
@@ -169,11 +178,10 @@ class FillReport extends Page {
 
     private function isIndicatorFilled(int $indicatorId): bool {
         $v = $this->values[$indicatorId] ?? null;
-        if (!$v)
+        if (!$v || !is_array($v))
             return false;
 
-        // At least one value field is non-null
-        return !is_null($v['numerator']) || !is_null($v['denominator']) || !is_null($v['count']) || !is_null($v['yes_no']);
+        return !is_null($v['numerator'] ?? null) || !is_null($v['denominator'] ?? null) || !is_null($v['count'] ?? null) || !is_null($v['yes_no'] ?? null);
     }
 
     // ──────────────────────────────────────────────────────────────────────────
@@ -181,14 +189,18 @@ class FillReport extends Page {
     // ──────────────────────────────────────────────────────────────────────────
 
     public function updatedValues($value, $key): void {
-        // key format: "12.numerator" or "12.denominator"
-        [$indicatorId, $field] = explode('.', $key, 2);
+        $parts = explode('.', $key, 2);
+
+        if (count($parts) < 2) {
+            $this->refreshGroupStats();
+            return;
+        }
+
+        [$indicatorId, $field] = $parts;
         $indicatorId = (int) $indicatorId;
 
-        // Clear validation error for this indicator when user types
         unset($this->valueErrors[$indicatorId]);
 
-        // Live N > D validation
         if (in_array($field, ['numerator', 'denominator'])) {
             $v = $this->values[$indicatorId] ?? [];
             $n = (int) ($v['numerator'] ?? 0);
@@ -337,13 +349,13 @@ class FillReport extends Page {
     // ──────────────────────────────────────────────────────────────────────────
 
     public function getTitle(): string {
-        return $this->period->reportType->name;
+        return $this->period->reportType?->name ?? 'Fill Report';
     }
 
     public function getSubheading(): ?string {
-        return $this->period->facility->name
-                . ' · ' . $this->period->period_label
-                . ' · ' . ucfirst($this->period->status);
+        return ($this->period->facility?->name ?? 'Unknown Facility')
+                . ' · ' . ($this->period->period_label ?? '')
+                . ' · ' . ucfirst($this->period->status ?? '');
     }
 
     // ──────────────────────────────────────────────────────────────────────────

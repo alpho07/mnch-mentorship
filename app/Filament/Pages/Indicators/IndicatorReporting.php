@@ -6,8 +6,8 @@ use App\Models\Indicators\FacilityIndicatorAssignment;
 use App\Models\Indicators\IndicatorFrequency;
 use App\Models\Indicators\IndicatorReportPeriod;
 use App\Models\Indicators\IndicatorReportType;
-use App\Services\Indicators\FacilityAssignmentService;
-use App\Services\Indicators\IndicatorReportingService;
+use App\Services\FacilityAssignmentService;
+use App\Services\IndicatorReportingService;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Section;
@@ -31,13 +31,14 @@ class IndicatorReporting extends Page implements HasForms {
     protected static string $view = 'filament.pages.indicators.reporting';
 
     public static function shouldRegisterNavigation(): bool {
-        if (!auth()->check())
-            return false;
-        $facilityId = auth()->user()->facility_id;
-        if (!$facilityId)
-            return auth()->user()->hasRole('super_admin');
-        return FacilityIndicatorAssignment::where('facility_id', $facilityId)
-                        ->where('is_locked', true)->exists();
+        return true;
+//        if (!auth()->check())
+//            return false;
+//        $facilityId = auth()->user()->facility_id;
+//        if (!$facilityId)
+//            return auth()->user()->hasRole('super_admin');
+//        return FacilityIndicatorAssignment::where('facility_id', $facilityId)
+//                        ->where('is_locked', true)->exists();
     }
 
     public static function canAccess(): bool {
@@ -199,15 +200,28 @@ class IndicatorReporting extends Page implements HasForms {
     }
 
     public function proceed(): void {
+        $user = auth()->user();
+
+        // Resolve facility — check direct assignment first, then pivot
+        $facilityId = $user->facility_id;
+
+        if (!$facilityId) {
+            Notification::make()
+                    ->title('No facility assigned')
+                    ->body('Your account does not have a facility assigned.')
+                    ->danger()
+                    ->send();
+            return;
+        }
+
         $d = $this->form->getState();
 
         $freq = IndicatorFrequency::findOrFail($d['frequency_id']);
         $month = $freq->requiresMonth() ? ($d['period_month'] ?? null) : null;
         $quarter = $freq->requiresQuarter() ? ($d['period_quarter'] ?? null) : null;
 
-        // Create/find the period record
         $period = app(IndicatorReportingService::class)->findOrCreatePeriod(
-                facilityId: auth()->user()->facility_id,
+                facilityId: $facilityId,
                 reportTypeId: (int) $d['report_type_id'],
                 frequencyId: (int) $d['frequency_id'],
                 year: (int) $d['period_year'],
