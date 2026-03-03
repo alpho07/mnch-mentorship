@@ -201,6 +201,9 @@ class ViewSubmission extends Page {
     }
 
     public function getTitle(): string {
+        if (!isset($this->period)) {
+            return 'View Submission';
+        }
         return $this->period->reportType->name . ' — ' . $this->period->period_label;
     }
 

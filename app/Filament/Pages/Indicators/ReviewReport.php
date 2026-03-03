@@ -131,11 +131,14 @@ class ReviewReport extends Page {
                     ->modalDescription('Once submitted, this report will be sent for review. You will not be able to edit it unless it is rejected. Proceed?')
                     ->modalSubmitActionLabel('Yes, Submit')
                     ->action('confirmSubmit')
-                    ->visible(fn() => $this->period->canBeSubmitted()),
+                    ->visible(fn() => isset($this->period) && $this->period->canBeSubmitted()),
         ];
     }
 
     public function getTitle(): string {
+        if (!isset($this->period)) {
+            return 'Review Report';
+        }
         return 'Review: ' . $this->period->reportType->name;
     }
 

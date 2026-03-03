@@ -7,8 +7,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class Assessment extends Model
-{
+class Assessment extends Model {
+
     use SoftDeletes;
 
     protected $fillable = [
@@ -28,7 +28,6 @@ class Assessment extends Model
         'created_by',
         'updated_by',
     ];
-
     protected $casts = [
         'assessment_date' => 'date',
         'section_progress' => 'array',
@@ -36,13 +35,11 @@ class Assessment extends Model
         'overall_score' => 'decimal:2',
         'overall_percentage' => 'decimal:2',
     ];
-
     protected $with = ['facility.subcounty.county'];
 
-    protected static function boot()
-    {
+    protected static function boot() {
         parent::boot();
-        
+
         // Auto-populate from logged-in user
         static::creating(function ($assessment) {
             if (auth()->check()) {
@@ -52,16 +49,16 @@ class Assessment extends Model
                 $assessment->assessor_contact = $user->email ?? $user->phone;
                 $assessment->created_by = $user->id;
             }
-            
+
             if (empty($assessment->assessment_type)) {
                 $assessment->assessment_type = 'baseline';
             }
-            
+
             if (empty($assessment->assessment_date)) {
                 $assessment->assessment_date = now();
             }
         });
-        
+
         static::updating(function ($assessment) {
             if (auth()->check()) {
                 $assessment->updated_by = auth()->id();
@@ -73,57 +70,47 @@ class Assessment extends Model
     // RELATIONSHIPS
     // ==========================================
 
-    public function facility(): BelongsTo
-    {
+    public function facility(): BelongsTo {
         return $this->belongsTo(Facility::class);
     }
 
-    public function assessor(): BelongsTo
-    {
+    public function assessor(): BelongsTo {
         return $this->belongsTo(User::class, 'assessor_id');
     }
 
-    public function creator(): BelongsTo
-    {
+    public function creator(): BelongsTo {
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    public function updater(): BelongsTo
-    {
+    public function updater(): BelongsTo {
         return $this->belongsTo(User::class, 'updated_by');
     }
 
-    public function completedBy(): BelongsTo
-    {
+    public function completedBy(): BelongsTo {
         return $this->belongsTo(User::class, 'completed_by');
     }
 
     // Dynamic Question Responses (Infrastructure, Skills Lab, Info Systems, Quality)
-    public function questionResponses(): HasMany
-    {
+    public function questionResponses(): HasMany {
         return $this->hasMany(AssessmentQuestionResponse::class);
     }
 
     // Section Scores
-    public function sectionScores(): HasMany
-    {
+    public function sectionScores(): HasMany {
         return $this->hasMany(AssessmentSectionScore::class);
     }
 
     // Human Resources
-    public function humanResourceResponses(): HasMany
-    {
+    public function humanResourceResponses(): HasMany {
         return $this->hasMany(HumanResourceResponse::class);
     }
 
     // Health Products
-    public function commodityResponses(): HasMany
-    {
+    public function commodityResponses(): HasMany {
         return $this->hasMany(AssessmentCommodityResponse::class);
     }
 
-    public function departmentScores(): HasMany
-    {
+    public function departmentScores(): HasMany {
         return $this->hasMany(AssessmentDepartmentScore::class);
     }
 
@@ -131,33 +118,27 @@ class Assessment extends Model
     // SCOPES
     // ==========================================
 
-    public function scopeCompleted($query)
-    {
+    public function scopeCompleted($query) {
         return $query->where('status', 'completed');
     }
 
-    public function scopeInProgress($query)
-    {
+    public function scopeInProgress($query) {
         return $query->where('status', 'in_progress');
     }
 
-    public function scopeDraft($query)
-    {
+    public function scopeDraft($query) {
         return $query->where('status', 'draft');
     }
 
-    public function scopeByFacility($query, $facilityId)
-    {
+    public function scopeByFacility($query, $facilityId) {
         return $query->where('facility_id', $facilityId);
     }
 
-    public function scopeByAssessor($query, $userId)
-    {
+    public function scopeByAssessor($query, $userId) {
         return $query->where('assessor_id', $userId);
     }
 
-    public function scopeBaseline($query)
-    {
+    public function scopeBaseline($query) {
         return $query->where('assessment_type', 'baseline');
     }
 
@@ -168,8 +149,7 @@ class Assessment extends Model
     /**
      * Check if section is complete
      */
-    public function isSectionComplete(string $sectionCode): bool
-    {
+    public function isSectionComplete(string $sectionCode): bool {
         $progress = $this->section_progress ?? [];
         return isset($progress[$sectionCode]) && $progress[$sectionCode] === true;
     }
@@ -177,13 +157,12 @@ class Assessment extends Model
     /**
      * Mark section as complete
      */
-    public function markSectionComplete(string $sectionCode): void
-    {
+    public function markSectionComplete(string $sectionCode): void {
         $progress = $this->section_progress ?? [];
         $progress[$sectionCode] = true;
         $this->section_progress = $progress;
         $this->save();
-        
+
         // Auto-update status to in_progress
         if ($this->status === 'draft') {
             $this->update(['status' => 'in_progress']);
@@ -193,8 +172,7 @@ class Assessment extends Model
     /**
      * Get overall completion percentage
      */
-    public function getCompletionPercentageAttribute(): float
-    {
+    public function getCompletionPercentageAttribute(): float {
         $sections = AssessmentSection::active()->pluck('code')->toArray();
         $progress = $this->section_progress ?? [];
         $completed = count(array_filter($sections, fn($s) => isset($progress[$s]) && $progress[$s]));
@@ -205,16 +183,14 @@ class Assessment extends Model
     /**
      * Check if assessment is fully complete
      */
-    public function isFullyComplete(): bool
-    {
+    public function isFullyComplete(): bool {
         return $this->completion_percentage === 100.0;
     }
 
     /**
      * Complete the assessment
      */
-    public function complete(): void
-    {
+    public function complete(): void {
         $this->update([
             'status' => 'completed',
             'completed_at' => now(),
@@ -225,9 +201,8 @@ class Assessment extends Model
     /**
      * Get grade color
      */
-    public function getGradeColorAttribute(): string
-    {
-        return match($this->overall_grade) {
+    public function getGradeColorAttribute(): string {
+        return match ($this->overall_grade) {
             'green' => 'success',
             'yellow' => 'warning',
             'red' => 'danger',
@@ -238,9 +213,8 @@ class Assessment extends Model
     /**
      * Get grade label
      */
-    public function getGradeLabelAttribute(): string
-    {
-        return match($this->overall_grade) {
+    public function getGradeLabelAttribute(): string {
+        return match ($this->overall_grade) {
             'green' => 'Good (80-100%)',
             'yellow' => 'Fair (50-80%)',
             'red' => 'Poor (<50%)',
