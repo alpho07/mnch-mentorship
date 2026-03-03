@@ -613,3 +613,5 @@ Route::middleware(['web'])->prefix('analytics')->name('analytics.')->group(funct
     Route::get('/participant/{participantId}/profile', [TrainingExplorerController::class, 'participantProfile']);
 });
 
+include 'api.php';
+
