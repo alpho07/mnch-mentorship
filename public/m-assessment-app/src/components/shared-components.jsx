@@ -1,147 +1,157 @@
-import { T, GRADE_COLOR, GRADE_BG, GRADE_TEXT, GRADE_LABEL } from "../constants.js";
+import { T } from "../constants.js";
 
-// ─── Avatar ───────────────────────────────────────────────────────────────────
-export function Avatar({ initials, size = 40, color = "#064E3B" }) {
+// ── Phone shell ────────────────────────────────────────────────────────────────
+export function PhoneShell({ children }) {
   return (
     <div style={{
-      width: size, height: size, borderRadius: "50%",
-      background: `linear-gradient(135deg, ${color}, ${color}CC)`,
-      display: "flex", alignItems: "center", justifyContent: "center",
-      color: "white", fontWeight: 800, fontSize: size * 0.32, flexShrink: 0,
-    }}>{initials}</div>
-  );
-}
-
-// ─── GradeBadge ───────────────────────────────────────────────────────────────
-export function GradeBadge({ grade, pct }) {
-  if (!grade) return null;
-  return (
-    <span style={{
-      background: GRADE_BG[grade], color: GRADE_TEXT[grade],
-      borderRadius: 6, padding: "3px 9px", fontSize: 12, fontWeight: 700,
-      whiteSpace: "nowrap",
+      width: "100%", maxWidth: 390, height: "100dvh",
+      margin: "0 auto", background: T.bg,
+      position: "relative", overflow: "hidden",
+      boxShadow: "0 0 60px rgba(0,0,0,0.15)",
+      fontFamily: "'Plus Jakarta Sans', Inter, system-ui, sans-serif",
     }}>
-      {GRADE_LABEL[grade]} · {pct}%
-    </span>
-  );
-}
-
-// ─── StatusChip ───────────────────────────────────────────────────────────────
-export function StatusChip({ status }) {
-  const cfg = {
-    completed:   { bg: "#D1FAE5", color: "#065F46", label: "Completed" },
-    in_progress: { bg: "#DBEAFE", color: "#1E40AF", label: "In Progress" },
-    draft:       { bg: "#F3F4F6", color: "#374151", label: "Draft" },
-  }[status] || { bg: "#F3F4F6", color: "#374151", label: status };
-
-  return (
-    <span style={{
-      background: cfg.bg, color: cfg.color,
-      borderRadius: 6, padding: "3px 9px", fontSize: 11, fontWeight: 700,
-    }}>{cfg.label}</span>
-  );
-}
-
-// ─── BackButton ───────────────────────────────────────────────────────────────
-export function BackButton({ onBack, light }) {
-  return (
-    <button onClick={onBack} style={{
-      background: light ? "rgba(255,255,255,0.2)" : T.borderLight,
-      border: "none", borderRadius: T.radiusSm,
-      padding: "7px 13px", cursor: "pointer",
-      color: light ? "white" : T.textMid,
-      fontSize: 13, fontWeight: 600,
-      display: "flex", alignItems: "center", gap: 4,
-    }}>← Back</button>
-  );
-}
-
-// ─── ProgressBar ─────────────────────────────────────────────────────────────
-export function ProgressBar({ pct, color, height = 5 }) {
-  return (
-    <div style={{ height, background: "#E5E7EB", borderRadius: 999, overflow: "hidden" }}>
-      <div style={{
-        width: `${Math.min(pct, 100)}%`, height: "100%",
-        background: color || "#059669", borderRadius: 999,
-        transition: "width 0.4s",
-      }} />
+      {children}
     </div>
   );
 }
 
-// ─── BottomNav ────────────────────────────────────────────────────────────────
-export function BottomNav({ active, onChange }) {
+// ── Bottom navigation ──────────────────────────────────────────────────────────
+// hideNew: removes the "+" create button (assessments are pre-loaded by admin)
+export function BottomNav({ active, onChange, hideNew = false }) {
   const tabs = [
-    { id: "dashboard",   icon: "🏠",  label: "Home" },
-    { id: "assessments", icon: "📋",  label: "Assessments" },
-    { id: "new",         icon: "➕",  label: "New", special: true },
-    { id: "reports",     icon: "📊",  label: "Reports" },
-    { id: "profile",     icon: "👤",  label: "Profile" },
+    { key:"dashboard",   label:"Home",        icon:"🏠" },
+    { key:"assessments", label:"Assessments", icon:"📋" },
+    ...(!hideNew ? [{ key:"new", label:"New", icon:"➕" }] : []),
+    { key:"reports",     label:"Reports",     icon:"📊" },
+    { key:"profile",     label:"Profile",     icon:"👤" },
   ];
 
   return (
     <div style={{
-      position: "absolute", bottom: 0, left: 0, right: 0,
-      background: "white", borderTop: `1px solid ${T.border}`,
-      display: "flex", paddingBottom: 8,
-      boxShadow: "0 -4px 20px rgba(0,0,0,0.08)",
+      height: "100%",
+      background: T.card,
+      borderTop: `1px solid ${T.border}`,
+      display: "flex",
+      boxShadow: "0 -2px 12px rgba(0,0,0,0.06)",
     }}>
-      {tabs.map((t) => (
-        <button key={t.id} onClick={() => onChange(t.id)} style={{
-          flex: 1, border: "none", background: "none",
-          cursor: "pointer", padding: "10px 0 4px",
-          display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
-        }}>
-          {t.special ? (
-            <div style={{
-              width: 44, height: 44, borderRadius: "50%", marginTop: -22,
-              background: "linear-gradient(135deg, #064E3B, #059669)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 22, boxShadow: "0 4px 12px rgba(6,78,59,0.4)",
-              border: "3px solid white",
-            }}>{t.icon}</div>
-          ) : (
-            <>
-              <span style={{ fontSize: 20 }}>{t.icon}</span>
-              <span style={{
-                fontSize: 10, fontWeight: active === t.id ? 700 : 400,
-                color: active === t.id ? "#059669" : "#9CA3AF",
-              }}>{t.label}</span>
-            </>
-          )}
-        </button>
-      ))}
+      {tabs.map(t => {
+        const isActive = active === t.key;
+        return (
+          <button
+            key={t.key}
+            onClick={() => onChange(t.key)}
+            style={{
+              flex: 1, border: "none", background: "none",
+              cursor: "pointer", padding: "8px 4px",
+              display: "flex", flexDirection: "column",
+              alignItems: "center", justifyContent: "center", gap: 3,
+            }}
+          >
+            <span style={{ fontSize: 20 }}>{t.icon}</span>
+            <span style={{
+              fontSize: 10, fontWeight: isActive ? 700 : 500,
+              color: isActive ? T.primary : T.textMuted,
+            }}>
+              {t.label}
+            </span>
+            {isActive && (
+              <div style={{
+                width: 4, height: 4, borderRadius: "50%",
+                background: T.primary, marginTop: 1,
+              }} />
+            )}
+          </button>
+        );
+      })}
     </div>
   );
 }
 
-// ─── Phone Shell (wraps all screens) ─────────────────────────────────────────
-export function PhoneShell({ children }) {
+// ── Back button ────────────────────────────────────────────────────────────────
+export function BackButton({ onBack, light = false }) {
+  return (
+    <button
+      onClick={onBack}
+      style={{
+        background: light ? "rgba(255,255,255,0.15)" : T.borderLight,
+        border: "none", borderRadius: 10, padding: "8px 14px",
+        cursor: "pointer", fontSize: 13, fontWeight: 700,
+        color: light ? "white" : T.textMid,
+        display: "flex", alignItems: "center", gap: 6,
+      }}
+    >
+      ← Back
+    </button>
+  );
+}
+
+// ── Avatar ─────────────────────────────────────────────────────────────────────
+export function Avatar({ initials, size = 40, color }) {
   return (
     <div style={{
+      width: size, height: size, borderRadius: size / 3,
+      background: color || T.primary,
       display: "flex", alignItems: "center", justifyContent: "center",
-      minHeight: "100vh",
-      background: "radial-gradient(ellipse at 20% 50%, #D1FAE5 0%, #E0F2FE 40%, #EDE9FE 100%)",
-      fontFamily: "'Segoe UI', -apple-system, system-ui, sans-serif",
-      padding: 16,
+      color: "white", fontWeight: 800,
+      fontSize: Math.round(size * 0.35),
     }}>
+      {(initials || "??").slice(0, 2).toUpperCase()}
+    </div>
+  );
+}
+
+// ── Grade badge ────────────────────────────────────────────────────────────────
+const GRADE_COLOR = { green: "#10B981", yellow: "#F59E0B", red: "#EF4444" };
+const GRADE_BG    = { green: "#D1FAE5", yellow: "#FEF3C7", red: "#FEE2E2" };
+const GRADE_TEXT  = { green: "#065F46", yellow: "#92400E", red: "#991B1B" };
+const GRADE_LABEL = { green: "Good",    yellow: "Fair",    red: "Poor"    };
+
+export function GradeBadge({ grade, pct }) {
+  if (!grade) return null;
+  return (
+    <div style={{
+      background: GRADE_BG[grade]   ?? "#F3F4F6",
+      color:      GRADE_TEXT[grade] ?? "#374151",
+      borderRadius: 8, padding: "4px 10px",
+      fontSize: 12, fontWeight: 700, flexShrink: 0,
+      display: "flex", alignItems: "center", gap: 5,
+    }}>
+      <span style={{ width: 7, height: 7, borderRadius: "50%", background: GRADE_COLOR[grade] ?? "#9CA3AF", display: "inline-block" }} />
+      {pct != null ? `${pct}%` : (GRADE_LABEL[grade] ?? grade)}
+    </div>
+  );
+}
+
+// ── Status chip ────────────────────────────────────────────────────────────────
+const STATUS_STYLE = {
+  completed:   { bg:"#D1FAE5", color:"#065F46", label:"Completed"   },
+  in_progress: { bg:"#FEF3C7", color:"#92400E", label:"In Progress" },
+  draft:       { bg:"#F3F4F6", color:"#374151", label:"Draft"       },
+};
+
+export function StatusChip({ status }) {
+  const s = STATUS_STYLE[status] ?? { bg:"#F3F4F6", color:"#374151", label: status ?? "Unknown" };
+  return (
+    <div style={{
+      background: s.bg, color: s.color,
+      borderRadius: 8, padding: "4px 10px",
+      fontSize: 12, fontWeight: 700, flexShrink: 0,
+    }}>
+      {s.label}
+    </div>
+  );
+}
+
+// ── Progress bar ───────────────────────────────────────────────────────────────
+export function ProgressBar({ pct = 0, color = T.primary, height = 6 }) {
+  const safePct = Math.min(Math.max(pct ?? 0, 0), 100);
+  return (
+    <div style={{ height, background: T.borderLight, borderRadius: 999, overflow: "hidden", width: "100%" }}>
       <div style={{
-        width: 390, height: 820, borderRadius: 50, overflow: "hidden",
-        position: "relative", background: "#F0F4F8",
-        boxShadow: "0 50px 100px rgba(0,0,0,0.25), 0 0 0 1px rgba(0,0,0,0.06), inset 0 0 0 2px rgba(255,255,255,0.6)",
-      }}>
-        {/* Dynamic island */}
-        <div style={{
-          position: "absolute", top: 10, left: "50%", transform: "translateX(-50%)",
-          width: 120, height: 34, background: "#0A0A0A", borderRadius: 20, zIndex: 200,
-        }} />
-        {children}
-        {/* Home indicator */}
-        <div style={{
-          position: "absolute", bottom: 6, left: "50%", transform: "translateX(-50%)",
-          width: 130, height: 5, background: "rgba(0,0,0,0.15)", borderRadius: 999, zIndex: 300,
-        }} />
-      </div>
+        height: "100%", width: `${safePct}%`,
+        background: color, borderRadius: 999,
+        transition: "width 0.3s",
+      }} />
     </div>
   );
 }

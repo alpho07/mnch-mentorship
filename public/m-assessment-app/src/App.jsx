@@ -1,228 +1,275 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 // ── Shared ────────────────────────────────────────────────────────────────────
-import { SECTION_META, calcGrade } from "./constants.js";
+import { SECTION_META } from "./constants.js";
 import { PhoneShell, BottomNav } from "./components/shared-components.jsx";
 
 // ── Screens ───────────────────────────────────────────────────────────────────
-import { LoginScreen }            from "./screens/screen-login.jsx";
-import { DashboardScreen }        from "./screens/screen-dashboard.jsx";
-import { AssessmentsListScreen }  from "./screens/screen-assessments-list.jsx";
+import { LoginScreen } from "./screens/screen-login.jsx";
+import { DashboardScreen } from "./screens/screen-dashboard.jsx";
+import { AssessmentsListScreen } from "./screens/screen-assessments-list.jsx";
 import { AssessmentDetailScreen } from "./screens/screen-assessment-detail.jsx";
-import { AssessmentFormScreen }   from "./screens/screen-assessment-form.jsx";
-import { ReportsScreen }          from "./screens/screen-reports.jsx";
-import { ProfileScreen }          from "./screens/screen-profile.jsx";
+import { AssessmentFormScreen } from "./screens/screen-assessment-form.jsx";
+import { ReportsScreen } from "./screens/screen-reports.jsx";
+import { ProfileScreen } from "./screens/screen-profile.jsx";
 
-// ── API service (swap mock below for real calls) ───────────────────────────────
- import api from "./services/api.service.js";
-
-// ─────────────────────────────────────────────────────────────────────────────
-// MOCK DATA — remove once API is live
-// ─────────────────────────────────────────────────────────────────────────────
-const MOCK_SECTIONS = [
-  { id:1, code:"infrastructure",      name:"Infrastructure",      description:"Physical infrastructure and bed capacity",   icon:"🏗️", color:"#8B5CF6", gradient:["#8B5CF6","#7C3AED"], order:1, questions:[] },
-  { id:2, code:"skills_lab",          name:"Skills Lab",          description:"Simulation and skills training resources",    icon:"🔬", color:"#10B981", gradient:["#10B981","#059669"], order:2, questions:[] },
-  { id:3, code:"human_resources",     name:"Human Resources",     description:"Staffing levels and competency",              icon:"👥", color:"#F59E0B", gradient:["#F59E0B","#D97706"], order:3, questions:[] },
-  { id:4, code:"health_products",     name:"Health Products",     description:"Medicines, commodities and supply chain",     icon:"💊", color:"#EF4444", gradient:["#EF4444","#DC2626"], order:4, questions:[] },
-  { id:5, code:"information_systems", name:"Information Systems", description:"Data quality and HMIS",                       icon:"💻", color:"#06B6D4", gradient:["#06B6D4","#0891B2"], order:5, questions:[] },
-  { id:6, code:"quality_of_care",     name:"Quality of Care",     description:"Clinical practice and patient outcomes",      icon:"⭐", color:"#EC4899", gradient:["#EC4899","#DB2777"], order:6, questions:[] },
-];
-
-const MOCK_ASSESSMENTS = [
-  {
-    id:1, facility_name:"Kenyatta National Hospital", mfl_code:"10001",
-    county:"Nairobi", subcounty:"Starehe",
-    assessment_type:"Baseline", assessment_date:"2025-11-12",
-    assessor_name:"Dr. Alphonce Ochieng", assessor_contact:"alphonce@mnch.go.ke",
-    status:"completed", overall_percentage:82, overall_grade:"green",
-    completed_at:"2025-11-12",
-    section_scores:{
-      infrastructure:      { percentage:90, grade:"green",  answered_questions:8, total_questions:8 },
-      skills_lab:          { percentage:75, grade:"yellow", answered_questions:5, total_questions:6 },
-      human_resources:     { percentage:83, grade:"green",  answered_questions:6, total_questions:6 },
-      health_products:     { percentage:80, grade:"green",  answered_questions:6, total_questions:6 },
-      information_systems: { percentage:80, grade:"green",  answered_questions:5, total_questions:5 },
-      quality_of_care:     { percentage:83, grade:"green",  answered_questions:6, total_questions:6 },
-    },
-    responses: { INFRA_NBU:"Yes", INFRA_TRAINING:"Yes", INFRA_WATER:"Yes", INFRA_POWER:"Partial", SKILLS_MASTER:"Yes", HR_MENTOR:"Yes", HP_MEDS:"Yes", IS_RECORDS:"Yes", QC_PROTOCOLS:"Yes" },
-  },
-  {
-    id:2, facility_name:"Pumwani Maternity Hospital", mfl_code:"10056",
-    county:"Nairobi", subcounty:"Pumwani",
-    assessment_type:"Midline", assessment_date:"2025-12-03",
-    assessor_name:"Dr. Alphonce Ochieng", assessor_contact:"alphonce@mnch.go.ke",
-    status:"completed", overall_percentage:61, overall_grade:"yellow",
-    completed_at:"2025-12-03",
-    section_scores:{
-      infrastructure:      { percentage:60, grade:"yellow", answered_questions:6, total_questions:8 },
-      skills_lab:          { percentage:50, grade:"yellow", answered_questions:4, total_questions:6 },
-      human_resources:     { percentage:67, grade:"yellow", answered_questions:5, total_questions:6 },
-      health_products:     { percentage:67, grade:"yellow", answered_questions:5, total_questions:6 },
-      information_systems: { percentage:60, grade:"yellow", answered_questions:4, total_questions:5 },
-      quality_of_care:     { percentage:58, grade:"yellow", answered_questions:4, total_questions:6 },
-    },
-    responses: { INFRA_NBU:"Yes", INFRA_TRAINING:"Partial", INFRA_WATER:"Yes", SKILLS_MASTER:"Yes", HR_MENTOR:"Yes", HP_MEDS:"Partial", IS_RECORDS:"Yes", QC_PROTOCOLS:"Partial" },
-  },
-  {
-    id:3, facility_name:"Mbagathi District Hospital", mfl_code:"10102",
-    county:"Nairobi", subcounty:"Langata",
-    assessment_type:"Baseline", assessment_date:"2026-01-15",
-    status:"in_progress", overall_percentage:0, overall_grade:null,
-    section_scores:{}, responses:{},
-  },
-];
+import api from "./services/api.service.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ROOT APP
+// Pure helpers — outside component so identity never changes between renders
+// ─────────────────────────────────────────────────────────────────────────────
+
+function normaliseUser(u) {
+    if (!u) return u;
+    const fac = typeof u.facility === "object" && u.facility !== null ? u.facility : null;
+    return {
+        ...u,
+        facility: fac?.name ?? (typeof u.facility === "string" ? u.facility : ""),
+        county: fac?.county ?? u.county ?? "",
+        subcounty: fac?.subcounty ?? u.subcounty ?? "",
+        mfl_code: fac?.mfl_code ?? u.mfl_code ?? "",
+        initials: u.initials || ((u.name || "??").split(" ").map(p => p[0]).join("").slice(0, 2).toUpperCase()),
+    };
+}
+
+function enrichAssessment(a) {
+    if (!a) return a;
+    return {
+        ...a,
+        section_scores: a.section_scores ?? {},
+        responses: a.responses ?? {},
+        facility_name: a.facility_name ?? "",
+        mfl_code: a.mfl_code ?? "",
+        county: a.county ?? "",
+        subcounty: a.subcounty ?? "",
+    };
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 export default function App() {
-  const [user,        setUser]        = useState(null);
-  const [tab,         setTab]         = useState("dashboard");
-  const [modal,       setModal]       = useState(null); // { type: "detail"|"form", data }
-  const [assessments, setAssessments] = useState(null);
-  const [sections,    setSections]    = useState(null);
-  const [loading,     setLoading]     = useState(false);
+    const [user, setUser] = useState(null);
+    const [tab, setTab] = useState("dashboard");
+    const [modal, setModal] = useState(null);
+    const [assessments, setAssessments] = useState(null);  // null = not yet loaded
+    const [sections, setSections] = useState(null);  // null = not yet loaded
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
 
-  // ── Load schema + assessments after login ────────────────────────────────
-  useEffect(() => {
-    if (!user) return;
-    loadData();
-  }, [user]);
+    // Prevents loadData re-firing when user object identity changes on re-renders
+    const dataLoadedRef = useRef(false);
 
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      // ── PRODUCTION: replace mock data with real API calls ──────────────
-       const [schemaRes, assessRes] = await Promise.all([
-         api.sections.fullSchema(),
-         api.assessments.list(),
-       ]);
-       const sectionsWithMeta = schemaRes.data.map(s => ({
-         ...s,
-         gradient: SECTION_META[s.code]?.gradient || [s.color, s.color],
-       }));
-       setSections(sectionsWithMeta);
-       setAssessments(assessRes.data);
-      // ─────────────────────────────────────────────────────────────────
-    } catch (e) {
-      console.error("Load error", e);
-    } finally {
-      setLoading(false);
-    }
-  };
+    // ── Session restore on mount (runs once) ─────────────────────────────────
+    useEffect(() => {
+        const token = api.getToken();
+        if (!token) return;
+        api.auth.me()
+            .then(data => {
+                const u = data?.user ?? data;
+                if (u?.id) setUser(normaliseUser(u));
+            })
+            .catch(() => api.clearToken());
+    }, []);
 
-  const handleLogin   = (u) => { setUser(u); setTab("dashboard"); };
-  const handleLogout  = () => { setUser(null); setModal(null); setTab("dashboard"); /* api.clearToken() */ };
+    // ── Load data when user.id becomes available (stable primitive dep) ───────
+    useEffect(() => {
+        if (!user?.id) {
+            dataLoadedRef.current = false;
+            return;
+        }
+        if (dataLoadedRef.current) return;
+        dataLoadedRef.current = true;
+        runLoadData();
+    }, [user?.id]);  // eslint-disable-line react-hooks/exhaustive-deps
 
-  const openDetail    = (a)  => setModal({ type:"detail", data:a });
-  const openNew       = ()   => setModal({ type:"form",   data:null });
-  const openContinue  = (a)  => setModal({ type:"form",   data:a });
-  const closeModal    = ()   => setModal(null);
+    const runLoadData = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const [schemaRes, assessRes] = await Promise.all([
+                api.sections.fullSchema(),
+                api.assessments.list(),
+            ]);
 
-  const handleTabChange = (t) => {
-    if (t === "new") { openNew(); return; }
-    setTab(t);
-    setModal(null);
-  };
+            const rawSections = Array.isArray(schemaRes)
+                ? schemaRes
+                : Array.isArray(schemaRes?.data) ? schemaRes.data : [];
 
-  const handleAssessmentComplete = (completed) => {
-    setAssessments(prev => {
-      const idx = prev.findIndex(a => a.id === completed.id);
-      if (idx >= 0) {
-        const next = [...prev];
-        next[idx] = completed;
-        return next;
-      }
-      return [completed, ...prev];
+            const rawAssessments = Array.isArray(assessRes)
+                ? assessRes
+                : Array.isArray(assessRes?.data) ? assessRes.data : [];
+
+            console.log(`[MNCH] ${rawSections.length} sections, ${rawAssessments.length} assessments`);
+
+            setSections(rawSections.map(s => ({
+                ...s,
+                icon: SECTION_META[s.code]?.icon ?? s.icon ?? "📋",
+                gradient: SECTION_META[s.code]?.gradient ?? [s.color ?? "#6B7280", s.color ?? "#374151"],
+            })));
+            setAssessments(rawAssessments);
+        } catch (e) {
+            console.error("[MNCH] loadData error:", e);
+            setError(e.message || "Failed to load. Please retry.");
+            setSections(s => s ?? []);
+            setAssessments(a => a ?? []);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // ── Retry ─────────────────────────────────────────────────────────────────
+    const handleRetry = () => {
+        dataLoadedRef.current = false;
+        setAssessments(null);
+        setSections(null);
+        setError(null);
+        dataLoadedRef.current = true;
+        runLoadData();
+    };
+
+    // ── Auth ──────────────────────────────────────────────────────────────────
+    const handleLogin = (u) => {
+        dataLoadedRef.current = false;
+        setAssessments(null);
+        setSections(null);
+        setError(null);
+        setModal(null);
+        setUser(normaliseUser(u));
+        setTab("dashboard");
+    };
+
+    const handleLogout = async () => {
+        try { await api.auth.logout(); } catch (_) { }
+        api.clearToken();
+        api.sections.clearSchemaCache();
+        dataLoadedRef.current = false;
+        setUser(null);
+        setAssessments(null);
+        setSections(null);
+        setModal(null);
+        setTab("dashboard");
+        setError(null);
+    };
+
+    // ── Navigation ────────────────────────────────────────────────────────────
+    const handleTabChange = (t) => {
+        if (t === "new") return;
+        setTab(t);
+        setModal(null);
+    };
+
+    // ── Assessment modals ─────────────────────────────────────────────────────
+    const openDetail = (a) => setModal({ type: "detail", data: a });
+    const openContinue = (a) => setModal({ type: "form", data: a });
+    const closeModal = () => setModal(null);
+
+    const handleAssessmentComplete = async (assessmentOrId) => {
+        const id = assessmentOrId?.id ?? assessmentOrId;
+        try {
+            const res = await api.assessments.find(id);
+            const updated = res?.data ?? res;
+            if (!updated?.id) return;
+            const enriched = enrichAssessment(updated);
+            setAssessments(prev => {
+                const list = prev ?? [];
+                const idx = list.findIndex(a => a.id === enriched.id);
+                if (idx >= 0) { const n = [...list]; n[idx] = enriched; return n; }
+                return [enriched, ...list];
+            });
+            setModal({ type: "detail", data: enriched });
+        } catch (e) {
+            console.error("Refresh failed", e);
+            if (assessmentOrId?.id) setModal({ type: "detail", data: assessmentOrId });
+        }
+    };
+
+    // ── Derived ───────────────────────────────────────────────────────────────
+    const userAssessments = (assessments ?? []).map(enrichAssessment);
+    const sectionsResolved = sections ?? [];
+    // Show spinner while: explicit load in flight OR user exists but data not yet set
+    const isLoading = loading || (!!user?.id && assessments === null && !error);
+
+    const sectionAverages = sectionsResolved.map(s => {
+        const scores = userAssessments
+            .filter(a => a.status === "completed")
+            .map(a => a.section_scores?.[s.code]?.percentage ?? 0);
+        return { ...s, average_pct: scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0 };
     });
-    setModal({ type:"detail", data:completed });
-  };
 
-  // ── Layout ────────────────────────────────────────────────────────────────
-  const userAssessments = assessments; // filter by user.id in production
-
-  const sectionAverages = sections.map(s => {
-    const scores = assessments.filter(a => a.status === "completed").map(a => a.section_scores[s.code]?.percentage || 0);
-    return { ...s, average_pct: scores.length ? Math.round(scores.reduce((a,b) => a+b, 0) / scores.length) : 0 };
-  });
-
-  return (
-    <PhoneShell>
-      {/* ── Not logged in ── */}
-      {!user && (
-        <div style={{ position:"absolute", inset:0 }}>
-          <LoginScreen onLogin={handleLogin} />
-        </div>
-      )}
-
-      {/* ── Logged in, no modal ── */}
-      {user && !modal && (
-        <>
-          <div style={{ position:"absolute", inset:0, bottom:56, overflow:"hidden" }}>
-            {tab === "dashboard" && (
-              <DashboardScreen
-                user={user}
-                assessments={userAssessments}
-                onViewAssessment={openDetail}
-                onNewAssessment={openNew}
-                loading={loading}
-              />
+    // ── Render ────────────────────────────────────────────────────────────────
+    return (
+        <PhoneShell>
+            {!user && (
+                <div style={{ position: "absolute", inset: 0 }}>
+                    <LoginScreen onLogin={handleLogin} />
+                </div>
             )}
-            {tab === "assessments" && (
-              <AssessmentsListScreen
-                assessments={userAssessments}
-                sections={sections}
-                onView={openDetail}
-                loading={loading}
-              />
-            )}
-            {tab === "reports" && (
-              <ReportsScreen
-                user={user}
-                assessments={userAssessments}
-                sectionAverages={sectionAverages}
-                loading={loading}
-              />
-            )}
-            {tab === "profile" && (
-              <ProfileScreen
-                user={user}
-                assessments={userAssessments}
-                onUpdateUser={setUser}
-                onLogout={handleLogout}
-              />
-            )}
-          </div>
-          <div style={{ position:"absolute", bottom:0, left:0, right:0, height:56, zIndex:100 }}>
-            <BottomNav active={tab} onChange={handleTabChange} />
-          </div>
-        </>
-      )}
 
-      {/* ── Assessment detail modal ── */}
-      {user && modal?.type === "detail" && (
-        <div style={{ position:"absolute", inset:0 }}>
-          <AssessmentDetailScreen
-            assessment={modal.data}
-            sections={sections}
-            onBack={closeModal}
-            onContinue={openContinue}
-          />
-        </div>
-      )}
+            {user && !modal && (
+                <>
+                    <div style={{ position: "absolute", inset: 0, bottom: 56, overflow: "hidden" }}>
+                        {tab === "dashboard" && (
+                            <DashboardScreen
+                                user={user}
+                                assessments={userAssessments}
+                                onViewAssessment={openDetail}
+                                loading={isLoading}
+                                error={error}
+                                onRetry={handleRetry}
+                            />
+                        )}
+                        {tab === "assessments" && (
+                            <AssessmentsListScreen
+                                assessments={userAssessments}
+                                sections={sectionsResolved}
+                                onView={openDetail}
+                                loading={isLoading}
+                            />
+                        )}
+                        {tab === "reports" && (
+                            <ReportsScreen
+                                user={user}
+                                assessments={userAssessments}
+                                sectionAverages={sectionAverages}
+                                loading={isLoading}
+                            />
+                        )}
+                        {tab === "profile" && (
+                            <ProfileScreen
+                                user={user}
+                                assessments={userAssessments}
+                                onUpdateUser={u => setUser(normaliseUser(u))}
+                                onLogout={handleLogout}
+                            />
+                        )}
+                    </div>
+                    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 56, zIndex: 100 }}>
+                        <BottomNav active={tab} onChange={handleTabChange} hideNew />
+                    </div>
+                </>
+            )}
 
-      {/* ── New / continue form modal ── */}
-      {user && modal?.type === "form" && (
-        <div style={{ position:"absolute", inset:0 }}>
-          <AssessmentFormScreen
-            user={user}
-            sections={sections}
-            editAssessment={modal.data}
-            onBack={closeModal}
-            onComplete={handleAssessmentComplete}
-          />
-        </div>
-      )}
-    </PhoneShell>
-  );
+            {user && modal?.type === "detail" && (
+                <div style={{ position: "absolute", inset: 0 }}>
+                    <AssessmentDetailScreen
+                        assessment={modal.data}
+                        sections={sectionsResolved}
+                        onBack={closeModal}
+                        onContinue={openContinue}
+                    />
+                </div>
+            )}
+
+            {user && modal?.type === "form" && modal.data && (
+                <div style={{ position: "absolute", inset: 0 }}>
+                    <AssessmentFormScreen
+                        user={user}
+                        sections={sectionsResolved}
+                        editAssessment={modal.data}
+                        onBack={closeModal}
+                        onComplete={handleAssessmentComplete}
+                    />
+                </div>
+            )}
+        </PhoneShell>
+    );
 }

@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Filament\Pages\Indicators;
+
 ;
 
 use App\Models\Indicators\Indicator;
@@ -25,7 +26,18 @@ class IndicatorsReference extends Page implements HasForms {
     protected static string $view = 'filament.pages.indicators.reference';
 
     public static function shouldRegisterNavigation(): bool {
-        return auth()->check();
+        //return true;
+        if (!auth()->check())
+            return false;
+        $facilityId = auth()->user()->facility_id;
+        if (!$facilityId)
+            return auth()->user()->hasRole('super_admin');
+        return FacilityIndicatorAssignment::where('facility_id', $facilityId)
+                        ->where('is_locked', true)->exists();
+    }
+
+    public static function canAccess(): bool {
+        return static::shouldRegisterNavigation();
     }
 
     // ──────────────────────────────────────────────────────────────────────────

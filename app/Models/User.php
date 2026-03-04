@@ -13,6 +13,7 @@ use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
 use Illuminate\Notifications\Notification;
 use Illuminate\Notifications\Messages\MailMessage;
+use Laravel\Sanctum\HasApiTokens;   
 
 class User extends Authenticatable {
 
@@ -20,7 +21,7 @@ class User extends Authenticatable {
         Notifiable,
         HasRoles,
         SoftDeletes;
-    use Notifiable;
+    use Notifiable,HasApiTokens;
 
     // HasResourceInteractions; // Add the resource interactions trait
 

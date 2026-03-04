@@ -31,14 +31,14 @@ class IndicatorReporting extends Page implements HasForms {
     protected static string $view = 'filament.pages.indicators.reporting';
 
     public static function shouldRegisterNavigation(): bool {
-        return true;
-//        if (!auth()->check())
-//            return false;
-//        $facilityId = auth()->user()->facility_id;
-//        if (!$facilityId)
-//            return auth()->user()->hasRole('super_admin');
-//        return FacilityIndicatorAssignment::where('facility_id', $facilityId)
-//                        ->where('is_locked', true)->exists();
+        //return true;
+        if (!auth()->check())
+            return false;
+        $facilityId = auth()->user()->facility_id;
+        if (!$facilityId)
+            return auth()->user()->hasRole('super_admin');
+        return FacilityIndicatorAssignment::where('facility_id', $facilityId)
+                        ->where('is_locked', true)->exists();
     }
 
     public static function canAccess(): bool {

@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\Analytics\ProgressiveDashboardController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\AssessmentSectionController;
@@ -8,8 +7,8 @@ use App\Http\Controllers\Api\AssessmentController;
 use App\Http\Controllers\Api\AssessmentResponseController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\FacilityController;
-
-
+use App\Http\Controllers\Api\HumanResourceController;
+use App\Http\Controllers\Api\HealthProductsController;
 
 /*
   |--------------------------------------------------------------------------
@@ -22,7 +21,7 @@ use App\Http\Controllers\Api\FacilityController;
   |
  */
 
-Route::prefix('api/v1')->name('api.v1.')->group(function () {
+Route::prefix('v1')->name('api.v1.')->group(function () {
 
     // =========================================================================
     // PUBLIC — No authentication required
@@ -87,6 +86,13 @@ Route::prefix('api/v1')->name('api.v1.')->group(function () {
             Route::put('{assessment}', [AssessmentController::class, 'update'])->name('update');
             Route::delete('{assessment}', [AssessmentController::class, 'destroy'])->name('destroy');
             Route::post('{assessment}/submit', [AssessmentController::class, 'submit'])->name('submit');
+
+            Route::get('{assessment}/human-resources', [HumanResourceController::class, 'index'])->name('human-resources.index');
+            Route::post('{assessment}/human-resources', [HumanResourceController::class, 'store'])->name('human-resources.store');
+
+// ── Health Products ───────────────────────────────────────────────────────────
+            Route::get('{assessment}/health-products', [HealthProductsController::class, 'index'])->name('health-products.index');
+            Route::post('{assessment}/health-products', [HealthProductsController::class, 'store'])->name('health-products.store');
 
             // Section progress (mark section done)
             Route::put('{assessment}/sections/{sectionCode}/progress',

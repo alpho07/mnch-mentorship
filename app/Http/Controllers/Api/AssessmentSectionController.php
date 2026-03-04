@@ -11,10 +11,13 @@ use Illuminate\Support\Facades\Cache;
 class AssessmentSectionController extends Controller {
 
     /**
+     * Sections excluded from mobile assessment forms.
+     * facility_profile (id:1) and bed_capacity (id:3) are informational only.
+     */
+    private const EXCLUDED_FROM_ASSESSMENT = ['facility_profile', 'bed_capacity'];
+
+    /**
      * GET /api/v1/sections
-     *
-     * Returns a lightweight list of all active sections (no questions).
-     * Used for progress dashboards.
      */
     public function index(): JsonResponse {
         $sections = Cache::remember('api.sections.index', now()->addHours(6), function () {
@@ -31,8 +34,6 @@ class AssessmentSectionController extends Controller {
 
     /**
      * GET /api/v1/sections/{section}
-     *
-     * Returns a single section with its questions.
      */
     public function show(AssessmentSection $section): JsonResponse {
         $section->load(['questions' => fn($q) => $q->where('is_active', true)->orderBy('order')]);
@@ -45,21 +46,15 @@ class AssessmentSectionController extends Controller {
     /**
      * GET /api/v1/sections/schema/full
      *
-     * THE CRITICAL ENDPOINT — returns everything the mobile app needs
-     * to render the full dynamic assessment form:
-     *
-     * - All active sections (ordered)
-     * - All active questions per section (ordered)
-     * - question_type, options, display_conditions, scoring_map,
-     *   is_required, validation_rules, skip_logic, etc.
-     *
-     * The mobile app calls this ONCE at startup and caches locally.
-     * Cache is busted when any section/question is updated via Filament admin.
+     * Returns all assessable sections with their questions.
+     * Excludes facility_profile and bed_capacity — these are informational
+     * sections not part of the scored assessment form.
      */
     public function fullSchema(): JsonResponse {
         $schema = Cache::remember('api.sections.full_schema', now()->addHours(12), function () {
             $sections = AssessmentSection::active()
                     ->ordered()
+                    ->whereNotIn('code', self::EXCLUDED_FROM_ASSESSMENT)
                     ->with(['questions' => fn($q) => $q
                         ->where('is_active', true)
                         ->orderBy('order')
