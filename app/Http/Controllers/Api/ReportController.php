@@ -11,6 +11,9 @@ use Illuminate\Http\Request;
 
 class ReportController extends Controller {
 
+    /** Sections that are informational only — never shown in the mobile report. */
+    private const EXCLUDED_FROM_REPORT = ['facility_profile', 'bed_capacity'];
+
     public function __construct(
             private readonly AssessmentPdfReportService $pdfService
     ) {
@@ -19,8 +22,18 @@ class ReportController extends Controller {
 
     public function show(Request $request, Assessment $assessment): JsonResponse {
         $this->authorize('view', $assessment);
-        $assessment->load(['facility.subcounty.county', 'sectionScores.section', 'questionResponses.question.section']);
-        $sections = AssessmentSection::active()->ordered()->get();
+
+        $assessment->load([
+            'facility.subcounty.county',
+            'sectionScores.section',
+            'questionResponses.question.section',
+        ]);
+
+        $sections = AssessmentSection::active()
+                ->ordered()
+                ->whereNotIn('code', self::EXCLUDED_FROM_REPORT)
+                ->get();
+
         $sectionScores = $assessment->sectionScores->keyBy('section.code');
 
         $sectionReports = $sections->map(function ($section) use ($assessment, $sectionScores) {
@@ -35,6 +48,7 @@ class ReportController extends Controller {
                                         'explanation' => $r->explanation,
                                         'score' => $r->score,
                                             ])->values();
+
                     return [
                         'code' => $section->code,
                         'name' => $section->name,
@@ -70,42 +84,62 @@ class ReportController extends Controller {
 
     public function summary(Request $request, Assessment $assessment): JsonResponse {
         $this->authorize('view', $assessment);
+
         $assessment->load(['facility', 'sectionScores.section']);
+
         return response()->json([
-                    'overall' => ['percentage' => $assessment->overall_percentage, 'grade' => $assessment->overall_grade],
-                    'sections' => $assessment->sectionScores->map(fn($s) => [
-                        'code' => $s->section->code,
-                        'name' => $s->section->name,
-                        'percentage' => $s->percentage,
-                        'grade' => $s->grade,
-                        'answered' => $s->answered_questions,
-                        'total' => $s->total_questions,
-                            ])->values(),
+                    'overall' => [
+                        'percentage' => $assessment->overall_percentage,
+                        'grade' => $assessment->overall_grade,
+                    ],
+                    'sections' => $assessment->sectionScores
+                            ->filter(fn($s) => !in_array($s->section->code, self::EXCLUDED_FROM_REPORT))
+                            ->map(fn($s) => [
+                                'code' => $s->section->code,
+                                'name' => $s->section->name,
+                                'percentage' => $s->percentage,
+                                'grade' => $s->grade,
+                                'answered' => $s->answered_questions,
+                                'total' => $s->total_questions,
+                                    ])->values(),
         ]);
     }
 
     public function downloadPdf(Request $request, Assessment $assessment): JsonResponse {
         $this->authorize('view', $assessment);
+
         if ($assessment->status !== 'completed') {
             return response()->json(['message' => 'PDF only available for completed assessments.'], 422);
         }
+
         $data = $this->pdfService->generateReportData($assessment);
         $filename = "assessment_{$assessment->id}_report.pdf";
         $path = "reports/{$filename}";
+
         $this->pdfService->generatePdf($data, storage_path("app/public/{$path}"));
-        return response()->json(['download_url' => asset("storage/{$path}"), 'filename' => $filename]);
+
+        return response()->json([
+                    'download_url' => asset("storage/{$path}"),
+                    'filename' => $filename,
+        ]);
     }
 
     public function dashboard(Request $request): JsonResponse {
         $userId = $request->user()->id;
-        $assessments = Assessment::where('assessor_id', $userId)->with('sectionScores.section')->get();
+        $assessments = Assessment::where('assessor_id', $userId)
+                ->with('sectionScores.section')
+                ->get();
+
         $completed = $assessments->where('status', 'completed');
         $avgScore = $completed->count() ? round($completed->avg('overall_percentage'), 1) : 0;
-        $sections = AssessmentSection::active()->ordered()->get();
+
+        $sections = AssessmentSection::active()->ordered()
+                ->whereNotIn('code', self::EXCLUDED_FROM_REPORT)
+                ->get();
 
         $sectionAvgs = $sections->map(function ($section) use ($completed) {
-                    $scores = $completed->flatMap(fn($a) =>
-                            $a->sectionScores->where('section.code', $section->code)->pluck('percentage')
+                    $scores = $completed->flatMap(
+                            fn($a) => $a->sectionScores->where('section.code', $section->code)->pluck('percentage')
                     );
                     return [
                         'code' => $section->code,
@@ -142,13 +176,19 @@ class ReportController extends Controller {
 
     public function sectionAverages(Request $request): JsonResponse {
         $userId = $request->user()->id;
-        $completed = Assessment::where('assessor_id', $userId)->where('status', 'completed')->with('sectionScores.section')->get();
-        $sections = AssessmentSection::active()->ordered()->get();
+        $completed = Assessment::where('assessor_id', $userId)
+                ->where('status', 'completed')
+                ->with('sectionScores.section')
+                ->get();
+
+        $sections = AssessmentSection::active()->ordered()
+                ->whereNotIn('code', self::EXCLUDED_FROM_REPORT)
+                ->get();
 
         return response()->json([
                     'data' => $sections->map(function ($section) use ($completed) {
-                        $scores = $completed->flatMap(fn($a) =>
-                                $a->sectionScores->where('section.code', $section->code)->pluck('percentage')
+                        $scores = $completed->flatMap(
+                                fn($a) => $a->sectionScores->where('section.code', $section->code)->pluck('percentage')
                         );
                         return [
                             'code' => $section->code,

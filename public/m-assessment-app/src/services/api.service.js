@@ -2,11 +2,15 @@
  * MNCH Assessment API Service
  * src/services/api.service.js
  *
- * Single source of truth for all HTTP calls.
- * Token is stored in localStorage under 'mnch_token'.
+ * BASE_URL is set per environment via .env files:
+ *   .env.development  → used by `npm run dev`
+ *   .env.production   → used by `npm run build` (Capacitor APK/IPA)
+ *
+ * Vite replaces import.meta.env.VITE_API_BASE_URL at build time,
+ * so the correct URL is hardcoded into the final JS bundle.
+ * On a real device there is no proxy, no localhost — just the absolute URL.
  */
-
-const BASE_URL = 'https://mnchkenyamentorship.org/api/v1';
+const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'https://mnchkenyamentorship.org/api/v1';
 
 const TokenStore = {
     get: () => { try { return localStorage.getItem('mnch_token'); } catch { return null; } },
@@ -16,36 +20,33 @@ const TokenStore = {
 
 async function request(method, path, body = null) {
     const token = TokenStore.get();
-    const headers = {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        ...(token ? { Authorization: 'Bearer ' + token } : {}),
-    };
     const res = await fetch(BASE_URL + path, {
         method,
-        headers,
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            ...(token ? { Authorization: 'Bearer ' + token } : {}),
+        },
         ...(body !== null ? { body: JSON.stringify(body) } : {}),
     });
 
-    // 204 No Content
     if (res.status === 204) return null;
 
     let data;
     try { data = await res.json(); } catch { data = {}; }
 
     if (!res.ok) {
-        const error = new Error(data.message || `HTTP ${res.status}`);
-        error.status = res.status;
-        error.errors = data.errors ?? {};
-        throw error;
+        const err = new Error(data.message || `HTTP ${res.status}`);
+        err.status = res.status;
+        err.errors = data.errors ?? {};
+        throw err;
     }
     return data;
 }
 
 const get = (path, params) => {
     const qs = params && Object.keys(params).length > 0
-        ? '?' + new URLSearchParams(params).toString()
-        : '';
+        ? '?' + new URLSearchParams(params).toString() : '';
     return request('GET', path + qs);
 };
 const post = (path, body) => request('POST', path, body);
@@ -89,71 +90,41 @@ const api = {
     sections: {
         list: () => get('/sections'),
         find: (id) => get('/sections/' + id),
-
-        fullSchema: () => get('/sections/schema/full'), // no caching — always fetches fresh
-
-        clearSchemaCache: () => { }, // no-op — kept so call sites don't break
+        fullSchema: () => get('/sections/schema/full'),
+        clearSchemaCache: () => { },
     },
 
     // ── Assessments ───────────────────────────────────────────────────────────
     assessments: {
         list: (params) => get('/assessments', params),
         find: (id) => get('/assessments/' + id),
-
-        // create() intentionally omitted — assessments are pre-loaded by admin on mobile.
-
         update: (id, data) => put('/assessments/' + id, data),
         delete: (id) => del('/assessments/' + id),
-
         submit: (id) => post('/assessments/' + id + '/submit'),
-
         updateSectionProgress: (assessmentId, sectionCode, done) =>
             put('/assessments/' + assessmentId + '/sections/' + sectionCode + '/progress', { done }),
     },
 
-    // ── Human Resources ──────────────────────────────────────────────────────────
+    // ── Human Resources ───────────────────────────────────────────────────────
     humanResources: {
-        /**
-         * GET /api/v1/assessments/{id}/human-resources
-         * Returns cadre schema + saved responses merged: [{ cadre_id, cadre_name, etat_plus, ... }]
-         */
         get: (assessmentId) => get('/assessments/' + assessmentId + '/human-resources'),
-
-        /**
-         * POST /api/v1/assessments/{id}/human-resources
-         * Bulk-saves all cadre rows.
-         * Body: { responses: [{ cadre_id, etat_plus, comprehensive_newborn_care, imnci, type_1_diabetes, essential_newborn_care }] }
-         */
-        save: (assessmentId, responses) => post('/assessments/' + assessmentId + '/human-resources', { responses }),
+        save: (assessmentId, responses) =>
+            post('/assessments/' + assessmentId + '/human-resources', { responses }),
     },
 
-    // ── Health Products ───────────────────────────────────────────────────────────
+    // ── Health Products ───────────────────────────────────────────────────────
     healthProducts: {
-        /**
-         * GET /api/v1/assessments/{id}/health-products
-         * Returns department → category → commodity schema with saved availability merged.
-         */
         get: (assessmentId) => get('/assessments/' + assessmentId + '/health-products'),
-
-        /**
-         * POST /api/v1/assessments/{id}/health-products
-         * Body: { responses: [{ department_id, commodity_id, available: true|false }] }
-         */
-        save: (assessmentId, responses) => post('/assessments/' + assessmentId + '/health-products', { responses }),
+        save: (assessmentId, responses, departmentId = null) =>
+            post('/assessments/' + assessmentId + '/health-products', {
+                responses,
+                ...(departmentId !== null ? { department_id: departmentId } : {}),
+            }),
     },
 
     // ── Responses ─────────────────────────────────────────────────────────────
     responses: {
-        /**
-         * GET /api/v1/assessments/{id}/responses
-         * Returns { responses: { question_code: value, ... } }
-         */
         list: (assessmentId) => get('/assessments/' + assessmentId + '/responses'),
-
-        /**
-         * POST /api/v1/assessments/{id}/responses
-         * Bulk-saves all responses for a single section.
-         */
         bulkSave: (assessmentId, sectionCode, responses, explanations) =>
             post('/assessments/' + assessmentId + '/responses', {
                 section_code: sectionCode,
@@ -164,6 +135,7 @@ const api = {
 
     // ── Reports ───────────────────────────────────────────────────────────────
     reports: {
+        show: (assessmentId) => get('/assessments/' + assessmentId + '/report'),
         full: (assessmentId) => get('/assessments/' + assessmentId + '/report'),
         summary: (assessmentId) => get('/assessments/' + assessmentId + '/report/summary'),
         downloadPdf: (assessmentId) => get('/assessments/' + assessmentId + '/report/pdf'),

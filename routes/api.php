@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\FacilityController;
 use App\Http\Controllers\Api\HumanResourceController;
 use App\Http\Controllers\Api\HealthProductsController;
+use App\Http\Middleware\MobileApiCors;
 
 /*
   |--------------------------------------------------------------------------
@@ -21,7 +22,11 @@ use App\Http\Controllers\Api\HealthProductsController;
   |
  */
 
-Route::prefix('v1')->name('api.v1.')->group(function () {
+// MobileApiCors is the outermost middleware — it runs on every request
+// including OPTIONS preflight, and unconditionally sets CORS headers.
+// This covers: emulator (https://localhost), real device over WiFi (no Origin
+// header), iOS (capacitor://localhost), and browser dev (localhost:5173).
+Route::prefix('v1')->name('api.v1.')->middleware(MobileApiCors::class)->group(function () {
 
     // =========================================================================
     // PUBLIC — No authentication required
@@ -32,7 +37,6 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('reset-password', [AuthController::class, 'resetPassword'])->name('reset-password');
     });
 
-    // Health check
     Route::get('health', fn() => response()->json([
                 'status' => 'ok',
                 'service' => 'MNCH Assessment API',
@@ -62,7 +66,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
             Route::get('stats', [ProfileController::class, 'stats'])->name('stats');
         });
 
-        // ── Facilities (lookup/search for facility picker) ────────────────────
+        // ── Facilities ────────────────────────────────────────────────────────
         Route::prefix('facilities')->name('facilities.')->group(function () {
             Route::get('/', [FacilityController::class, 'index'])->name('index');
             Route::get('{facility}', [FacilityController::class, 'show'])->name('show');
@@ -70,12 +74,10 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         });
 
         // ── Assessment Sections & Questions (form schema) ─────────────────────
-        // These endpoints drive the dynamic form in the mobile app.
         Route::prefix('sections')->name('sections.')->group(function () {
             Route::get('/', [AssessmentSectionController::class, 'index'])->name('index');
-            Route::get('{section}', [AssessmentSectionController::class, 'show'])->name('show');
-            // Returns all active sections with their questions — the app bootstraps from this
             Route::get('schema/full', [AssessmentSectionController::class, 'fullSchema'])->name('schema');
+            Route::get('{section}', [AssessmentSectionController::class, 'show'])->name('show');
         });
 
         // ── Assessments ───────────────────────────────────────────────────────
@@ -87,18 +89,19 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
             Route::delete('{assessment}', [AssessmentController::class, 'destroy'])->name('destroy');
             Route::post('{assessment}/submit', [AssessmentController::class, 'submit'])->name('submit');
 
+            // ── Human Resources ───────────────────────────────────────────────
             Route::get('{assessment}/human-resources', [HumanResourceController::class, 'index'])->name('human-resources.index');
             Route::post('{assessment}/human-resources', [HumanResourceController::class, 'store'])->name('human-resources.store');
 
-// ── Health Products ───────────────────────────────────────────────────────────
+            // ── Health Products ───────────────────────────────────────────────
             Route::get('{assessment}/health-products', [HealthProductsController::class, 'index'])->name('health-products.index');
             Route::post('{assessment}/health-products', [HealthProductsController::class, 'store'])->name('health-products.store');
 
-            // Section progress (mark section done)
+            // ── Section progress ──────────────────────────────────────────────
             Route::put('{assessment}/sections/{sectionCode}/progress',
                     [AssessmentController::class, 'updateSectionProgress'])->name('section-progress');
 
-            // ── Responses (bulk save per section) ─────────────────────────────
+            // ── Responses ─────────────────────────────────────────────────────
             Route::prefix('{assessment}/responses')->name('responses.')->group(function () {
                 Route::get('/', [AssessmentResponseController::class, 'index'])->name('index');
                 Route::post('/', [AssessmentResponseController::class, 'bulkStore'])->name('bulk-store');
@@ -120,4 +123,3 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         });
     });
 });
-

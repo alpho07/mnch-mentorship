@@ -76,7 +76,7 @@ class HumanResourceController extends Controller {
 
         $request->validate([
             'responses' => 'required|array',
-            'responses.*.cadre_id' => 'required|integer|exists:main_cadres,id',
+            'responses.*.cadre_id' => 'required|integer|exists:assessment_cadres,id',
             'responses.*.etat_plus' => 'nullable|integer|min:0',
             'responses.*.comprehensive_newborn_care' => 'nullable|integer|min:0',
             'responses.*.imnci' => 'nullable|integer|min:0',

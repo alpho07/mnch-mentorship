@@ -10,6 +10,7 @@ import { DashboardScreen } from "./screens/screen-dashboard.jsx";
 import { AssessmentsListScreen } from "./screens/screen-assessments-list.jsx";
 import { AssessmentDetailScreen } from "./screens/screen-assessment-detail.jsx";
 import { AssessmentFormScreen } from "./screens/screen-assessment-form.jsx";
+import { AssessmentReportScreen } from "./screens/screen-assessment-report.jsx";
 import { ReportsScreen } from "./screens/screen-reports.jsx";
 import { ProfileScreen } from "./screens/screen-profile.jsx";
 
@@ -37,6 +38,7 @@ function enrichAssessment(a) {
     return {
         ...a,
         section_scores: a.section_scores ?? {},
+        section_progress: a.section_progress ?? {},
         responses: a.responses ?? {},
         facility_name: a.facility_name ?? "",
         mfl_code: a.mfl_code ?? "",
@@ -50,8 +52,8 @@ export default function App() {
     const [user, setUser] = useState(null);
     const [tab, setTab] = useState("dashboard");
     const [modal, setModal] = useState(null);
-    const [assessments, setAssessments] = useState(null);  // null = not yet loaded
-    const [sections, setSections] = useState(null);  // null = not yet loaded
+    const [assessments, setAssessments] = useState(null); // null = not yet loaded
+    const [sections, setSections] = useState(null); // null = not yet loaded
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
@@ -70,16 +72,13 @@ export default function App() {
             .catch(() => api.clearToken());
     }, []);
 
-    // ── Load data when user.id becomes available (stable primitive dep) ───────
+    // ── Load data when user.id becomes available ──────────────────────────────
     useEffect(() => {
-        if (!user?.id) {
-            dataLoadedRef.current = false;
-            return;
-        }
+        if (!user?.id) { dataLoadedRef.current = false; return; }
         if (dataLoadedRef.current) return;
         dataLoadedRef.current = true;
         runLoadData();
-    }, [user?.id]);  // eslint-disable-line react-hooks/exhaustive-deps
+    }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const runLoadData = async () => {
         setLoading(true);
@@ -90,12 +89,9 @@ export default function App() {
                 api.assessments.list(),
             ]);
 
-            const rawSections = Array.isArray(schemaRes)
-                ? schemaRes
+            const rawSections = Array.isArray(schemaRes) ? schemaRes
                 : Array.isArray(schemaRes?.data) ? schemaRes.data : [];
-
-            const rawAssessments = Array.isArray(assessRes)
-                ? assessRes
+            const rawAssessments = Array.isArray(assessRes) ? assessRes
                 : Array.isArray(assessRes?.data) ? assessRes.data : [];
 
             console.log(`[MNCH] ${rawSections.length} sections, ${rawAssessments.length} assessments`);
@@ -157,10 +153,17 @@ export default function App() {
         setModal(null);
     };
 
-    // ── Assessment modals ─────────────────────────────────────────────────────
+    // ── Assessment navigation ─────────────────────────────────────────────────
     const openDetail = (a) => setModal({ type: "detail", data: a });
     const openContinue = (a) => setModal({ type: "form", data: a });
+    const openReport = (a) => setModal({ type: "report", data: a });
     const closeModal = () => setModal(null);
+
+    // Go back from report → detail
+    const backFromReport = () => {
+        if (modal?.prevData) setModal({ type: "detail", data: modal.prevData });
+        else closeModal();
+    };
 
     const handleAssessmentComplete = async (assessmentOrId) => {
         const id = assessmentOrId?.id ?? assessmentOrId;
@@ -175,9 +178,11 @@ export default function App() {
                 if (idx >= 0) { const n = [...list]; n[idx] = enriched; return n; }
                 return [enriched, ...list];
             });
-            setModal({ type: "detail", data: enriched });
+            // After completion, go straight to the report
+            setModal({ type: "report", data: enriched, prevData: enriched });
         } catch (e) {
             console.error("Refresh failed", e);
+            // Fallback: show detail screen
             if (assessmentOrId?.id) setModal({ type: "detail", data: assessmentOrId });
         }
     };
@@ -185,25 +190,31 @@ export default function App() {
     // ── Derived ───────────────────────────────────────────────────────────────
     const userAssessments = (assessments ?? []).map(enrichAssessment);
     const sectionsResolved = sections ?? [];
-    // Show spinner while: explicit load in flight OR user exists but data not yet set
     const isLoading = loading || (!!user?.id && assessments === null && !error);
 
     const sectionAverages = sectionsResolved.map(s => {
         const scores = userAssessments
             .filter(a => a.status === "completed")
             .map(a => a.section_scores?.[s.code]?.percentage ?? 0);
-        return { ...s, average_pct: scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0 };
+        return {
+            ...s,
+            average_pct: scores.length
+                ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
+                : 0,
+        };
     });
 
     // ── Render ────────────────────────────────────────────────────────────────
     return (
         <PhoneShell>
+            {/* ── Login ── */}
             {!user && (
                 <div style={{ position: "absolute", inset: 0 }}>
                     <LoginScreen onLogin={handleLogin} />
                 </div>
             )}
 
+            {/* ── Tab screens (no modal) ── */}
             {user && !modal && (
                 <>
                     <div style={{ position: "absolute", inset: 0, bottom: 56, overflow: "hidden" }}>
@@ -231,6 +242,7 @@ export default function App() {
                                 assessments={userAssessments}
                                 sectionAverages={sectionAverages}
                                 loading={isLoading}
+                                onViewAssessment={openDetail}
                             />
                         )}
                         {tab === "profile" && (
@@ -248,6 +260,7 @@ export default function App() {
                 </>
             )}
 
+            {/* ── Detail modal ── */}
             {user && modal?.type === "detail" && (
                 <div style={{ position: "absolute", inset: 0 }}>
                     <AssessmentDetailScreen
@@ -255,10 +268,12 @@ export default function App() {
                         sections={sectionsResolved}
                         onBack={closeModal}
                         onContinue={openContinue}
+                        onViewReport={() => openReport(modal.data)}
                     />
                 </div>
             )}
 
+            {/* ── Form (continue) modal ── */}
             {user && modal?.type === "form" && modal.data && (
                 <div style={{ position: "absolute", inset: 0 }}>
                     <AssessmentFormScreen
@@ -267,6 +282,16 @@ export default function App() {
                         editAssessment={modal.data}
                         onBack={closeModal}
                         onComplete={handleAssessmentComplete}
+                    />
+                </div>
+            )}
+
+            {/* ── Full report modal ── */}
+            {user && modal?.type === "report" && modal.data && (
+                <div style={{ position: "absolute", inset: 0 }}>
+                    <AssessmentReportScreen
+                        assessment={modal.data}
+                        onBack={backFromReport}
                     />
                 </div>
             )}

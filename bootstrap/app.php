@@ -3,8 +3,8 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
-use Illuminate\Http\Middleware\HandleCors;
 use Illuminate\Http\Request;
+
 
 return Application::configure(basePath: dirname(__DIR__))
                 ->withRouting(
@@ -15,9 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 )
                 ->withMiddleware(function (Middleware $middleware): void {
 
-                    // CORS — must run before auth/throttle on every API request
-                    $middleware->prepend(HandleCors::class);
-
+                 
                     // Trust proxies — your existing config, unchanged
                     $middleware->trustProxies(
                             at: '*',
@@ -41,4 +39,3 @@ return Application::configure(basePath: dirname(__DIR__))
                     });
                 })
                 ->create();
- 

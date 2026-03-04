@@ -17,10 +17,11 @@ return [
     'paths' => ['api/*', 'api/v1/*', 'sanctum/csrf-cookie'],
     'allowed_methods' => ['*'],
     'allowed_origins' => [ 
-        'https://mnchkenyamentorship.org',
+        'https://mnchkenyamentorship.org/api/v1',
         'http://localhost:5173', // Vite dev server
         'http://localhost:3000', // alternative local dev
         'http://127.0.0.1:5173',
+        'https://localhost'
     ],
     'allowed_origins_patterns' => [],
     'allowed_headers' => ['*'],
