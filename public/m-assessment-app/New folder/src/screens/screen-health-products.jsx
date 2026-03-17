@@ -2,8 +2,6 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { T } from "../constants.js";
 import { BackButton } from "../components/shared-components.jsx";
 import api from "../services/api.service.js";
-import offlineStore from "../services/offline-store.js";
-import syncQueue from "../services/sync-queue.js";
 
 const AUTO_SAVE_DELAY = 25000; // 25s
 
@@ -46,67 +44,26 @@ function CategorySection({ category, deptId, responses, onChange }) {
     const [open, setOpen] = useState(true);
     const answered = category.commodities.filter(c => responses[`${deptId}_${c.commodity_id}`] !== undefined).length;
     const available = category.commodities.filter(c => responses[`${deptId}_${c.commodity_id}`] === true).length;
-    const total = category.commodities.length;
-    const allAvailable = answered === total && available === total;
-    const allUnavailable = answered === total && available === 0;
-
-    const handleSetAll = (e, val) => {
-        e.stopPropagation();
-        category.commodities.forEach(c => onChange(`${deptId}_${c.commodity_id}`, val));
-    };
 
     return (
         <div style={{ marginBottom: 8, borderRadius: 12, overflow: "hidden", border: `1px solid ${T.border}`, background: T.card }}>
-            <div style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 8 }}>
-                {/* Expand toggle */}
-                <button onClick={() => setOpen(o => !o)} style={{
-                    flex: 1, display: "flex", alignItems: "center", gap: 8,
-                    background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: 0,
-                }}>
-                    <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: T.text }}>{category.category_name}</div>
-                        <div style={{ fontSize: 10, color: T.textMuted, marginTop: 1 }}>
-                            {answered}/{total} answered
-                            {answered > 0 && ` · ${available} available`}
-                        </div>
+            <button onClick={() => setOpen(o => !o)} style={{
+                width: "100%", padding: "11px 14px", display: "flex", alignItems: "center",
+                gap: 10, background: "none", border: "none", cursor: "pointer", textAlign: "left",
+            }}>
+                <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: T.text }}>{category.category_name}</div>
+                    <div style={{ fontSize: 10, color: T.textMuted, marginTop: 1 }}>
+                        {answered}/{category.commodities.length} answered
+                        {answered > 0 && ` · ${available} available`}
                     </div>
-                    {/* Mini progress bar */}
-                    <div style={{ width: 40, height: 4, background: T.borderLight, borderRadius: 999, overflow: "hidden", flexShrink: 0 }}>
-                        <div style={{ height: "100%", width: `${total > 0 ? (answered / total) * 100 : 0}%`, background: "#10B981", borderRadius: 999, transition: "width 0.3s" }} />
-                    </div>
-                    <span style={{ color: T.textMuted, fontSize: 13, transform: open ? "rotate(180deg)" : "none", transition: "transform 0.2s", flexShrink: 0 }}>▾</span>
-                </button>
-
-                {/* Bulk action buttons */}
-                <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
-                    <button
-                        onClick={e => handleSetAll(e, true)}
-                        title="Mark all commodities as available"
-                        style={{
-                            padding: "4px 8px", borderRadius: 7, border: `1.5px solid ${allAvailable ? "#6EE7B7" : "#D1FAE5"}`,
-                            background: allAvailable ? "#D1FAE5" : "rgba(16,185,129,0.06)",
-                            color: allAvailable ? "#065F46" : "#10B981",
-                            fontSize: 10, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap",
-                            transition: "all 0.15s",
-                        }}
-                    >
-                        All ✓
-                    </button>
-                    <button
-                        onClick={e => handleSetAll(e, false)}
-                        title="Mark all commodities as not available"
-                        style={{
-                            padding: "4px 8px", borderRadius: 7, border: `1.5px solid ${allUnavailable ? "#FCA5A5" : "#FEE2E2"}`,
-                            background: allUnavailable ? "#FEE2E2" : "rgba(239,68,68,0.06)",
-                            color: allUnavailable ? "#991B1B" : "#EF4444",
-                            fontSize: 10, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap",
-                            transition: "all 0.15s",
-                        }}
-                    >
-                        All ✗
-                    </button>
                 </div>
-            </div>
+                {/* Mini progress bar */}
+                <div style={{ width: 50, height: 4, background: T.borderLight, borderRadius: 999, overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: `${category.commodities.length > 0 ? (answered / category.commodities.length) * 100 : 0}%`, background: "#10B981", borderRadius: 999, transition: "width 0.3s" }} />
+                </div>
+                <span style={{ color: T.textMuted, fontSize: 14, transform: open ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▾</span>
+            </button>
 
             {open && (
                 <div style={{ borderTop: `1px solid ${T.borderLight}` }}>
@@ -159,31 +116,15 @@ export function HealthProductsScreen({ assessment, onBack, onComplete }) {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [deptSaveStatus, setDeptSaveStatus] = useState({}); // { deptId: "idle"|"saving"|"saved"|"error" }
-    const [isOffline, setIsOffline] = useState(!navigator.onLine);
-    const [syncStatus, setSyncStatus] = useState(syncQueue.getStatus());
     const autoSaveTimer = useRef(null);
-    const pendingTimer = useRef(null);
-
-    // Track connectivity
-    useEffect(() => {
-        const up = () => setIsOffline(false);
-        const down = () => setIsOffline(true);
-        window.addEventListener("online", up);
-        window.addEventListener("offline", down);
-        return () => { window.removeEventListener("online", up); window.removeEventListener("offline", down); };
-    }, []);
-
-    // Track sync queue
-    useEffect(() => syncQueue.subscribe(s => setSyncStatus(s)), []);
 
     // ── Load data ──────────────────────────────────────────────────────────────
     useEffect(() => {
         api.healthProducts.get(assessment.id)
-            .then(async res => {
+            .then(res => {
                 const depts = Array.isArray(res?.data) ? res.data : [];
                 setDepartments(depts);
-
-                // Hydrate from structure (api layer already merges saved offline values)
+                // Hydrate saved responses
                 const init = {};
                 depts.forEach(dept => {
                     dept.categories.forEach(cat => {
@@ -194,13 +135,6 @@ export function HealthProductsScreen({ assessment, onBack, onComplete }) {
                         });
                     });
                 });
-
-                // Also overlay any pendingFlat saved between changes (pre-save-button)
-                const cached = await offlineStore.getHP(assessment.id);
-                if (cached?.pendingFlat && typeof cached.pendingFlat === "object") {
-                    Object.assign(init, cached.pendingFlat);
-                }
-
                 setResponses(init);
             })
             .catch(e => setError(e.message || "Failed to load"))
@@ -215,21 +149,6 @@ export function HealthProductsScreen({ assessment, onBack, onComplete }) {
             return next;
         });
     };
-
-    // ── Persist every change to offline store (debounced 800ms) ───────────────
-    // Ensures refresh before clicking Save still shows responses.
-    useEffect(() => {
-        if (Object.keys(responses).length === 0) return;
-        if (pendingTimer.current) clearTimeout(pendingTimer.current);
-        pendingTimer.current = setTimeout(async () => {
-            const existing = await offlineStore.getHP(assessment.id);
-            await offlineStore.saveHP(assessment.id, {
-                ...(existing ?? {}),
-                pendingFlat: responses,
-            });
-        }, 800);
-        return () => clearTimeout(pendingTimer.current);
-    }, [responses, assessment.id]);
 
     // ── Save a single department's responses ───────────────────────────────────
     const saveDepartment = useCallback(async (dept, silent = false) => {
@@ -316,7 +235,7 @@ export function HealthProductsScreen({ assessment, onBack, onComplete }) {
     if (loading) {
         return (
             <div style={{ display: "flex", flexDirection: "column", height: "100%", background: T.bg }}>
-                <div style={{ background: T.gradientDark, padding: "20px 20px 24px", borderRadius: "24px 24px 28px 28px" }}>
+                <div style={{ background: "linear-gradient(135deg,#7F1D1D,#EF4444)", padding: "20px 20px 24px" }}>
                     <BackButton onBack={onBack} light />
                     <div style={{ color: "white", fontSize: 18, fontWeight: 800, marginTop: 12 }}>Health Products</div>
                 </div>
@@ -333,7 +252,7 @@ export function HealthProductsScreen({ assessment, onBack, onComplete }) {
     return (
         <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
             {/* Header */}
-            <div style={{ background: T.gradientDark, padding: "18px 20px 0", borderRadius: "24px 24px 28px 28px", overflow: "hidden" }}>
+            <div style={{ background: "linear-gradient(135deg,#7F1D1D,#EF4444)", padding: "18px 20px 0" }}>
                 <BackButton onBack={onBack} light />
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 10, marginBottom: 10 }}>
                     <div>
@@ -342,19 +261,7 @@ export function HealthProductsScreen({ assessment, onBack, onComplete }) {
                             {assessment.facility_name} · Department {activeDeptIdx + 1} of {departments.length}
                         </div>
                     </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        {(isOffline || syncStatus.pendingCount > 0) && (
-                            <div style={{
-                                padding: "3px 8px", borderRadius: 8, fontSize: 9, fontWeight: 700,
-                                background: isOffline ? "rgba(251,191,36,0.2)" : "rgba(14,165,233,0.2)",
-                                color: isOffline ? "#FDE68A" : "#7DD3FC",
-                                border: `1px solid ${isOffline ? "rgba(251,191,36,0.3)" : "rgba(14,165,233,0.3)"}`,
-                            }}>
-                                {isOffline ? "✈ Offline" : `⏳ ${syncStatus.pendingCount}`}
-                            </div>
-                        )}
-                        {activeDept && <SavePill status={deptSaveStatus[activeDept.department_id] ?? "idle"} />}
-                    </div>
+                    {activeDept && <SavePill status={deptSaveStatus[activeDept.department_id] ?? "idle"} />}
                 </div>
 
                 {/* Overall progress bar */}
@@ -424,7 +331,7 @@ export function HealthProductsScreen({ assessment, onBack, onComplete }) {
                                 })()}
                             </div>
                             <div style={{ height: 4, background: T.borderLight, borderRadius: 999, overflow: "hidden", marginTop: 8 }}>
-                                <div style={{ height: "100%", width: `${getDeptProgress(activeDept).pct}%`, background: T.gradientPrimary, borderRadius: 999, transition: "width 0.4s" }} />
+                                <div style={{ height: "100%", width: `${getDeptProgress(activeDept).pct}%`, background: "linear-gradient(90deg,#7F1D1D,#EF4444)", borderRadius: 999, transition: "width 0.4s" }} />
                             </div>
                         </div>
 
@@ -445,17 +352,7 @@ export function HealthProductsScreen({ assessment, onBack, onComplete }) {
 
             {/* Save bar */}
             {departments.length > 0 && (
-                <div style={{ padding: "11px 16px", paddingBottom: "calc(18px + env(safe-area-inset-bottom, 0px))", background: T.card, borderTop: `1px solid ${T.border}`, boxShadow: "0 -4px 20px rgba(0,0,0,0.06)" }}>
-                    {isOffline && (
-                        <div style={{
-                            padding: "7px 12px", borderRadius: 10, marginBottom: 8,
-                            background: "#FEF3C7", border: "1px solid #FDE68A",
-                            fontSize: 11, color: "#92400E", display: "flex", alignItems: "center", gap: 6,
-                        }}>
-                            <span>✈</span>
-                            <span>Offline — changes saved locally and will sync when back online.</span>
-                        </div>
-                    )}
+                <div style={{ padding: "11px 16px 18px", background: T.card, borderTop: `1px solid ${T.border}`, boxShadow: "0 -4px 20px rgba(0,0,0,0.06)" }}>
                     {/* Navigation row */}
                     <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
                         <button
@@ -476,7 +373,7 @@ export function HealthProductsScreen({ assessment, onBack, onComplete }) {
                                 return (
                                     <div key={i} onClick={() => setActiveDeptIdx(i)} style={{
                                         width: i === activeDeptIdx ? 20 : 7, height: 7, borderRadius: 999,
-                                        background: i === activeDeptIdx ? T.primary : prog.pct === 100 ? "#10B981" : prog.answered > 0 ? "#F59E0B" : T.border,
+                                        background: i === activeDeptIdx ? "#EF4444" : prog.pct === 100 ? "#10B981" : prog.answered > 0 ? "#F59E0B" : T.border,
                                         transition: "all 0.2s", cursor: "pointer",
                                     }} />
                                 );
@@ -500,20 +397,18 @@ export function HealthProductsScreen({ assessment, onBack, onComplete }) {
                         background: deptSaveStatus[activeDept?.department_id] === "saving"
                             ? T.border
                             : isLast
-                                ? T.gradientPrimary
-                                : T.gradientPrimary,
+                                ? "linear-gradient(135deg,#7F1D1D,#EF4444)"
+                                : "linear-gradient(135deg,#7F1D1D,#DC2626)",
                         color: deptSaveStatus[activeDept?.department_id] === "saving" ? T.textMuted : "white",
                         fontSize: 15, fontWeight: 800,
                         cursor: deptSaveStatus[activeDept?.department_id] === "saving" ? "default" : "pointer",
-                        boxShadow: `0 5px 18px ${T.primaryGlow}`, transition: "all 0.2s",
+                        boxShadow: "0 5px 18px rgba(127,29,29,0.35)", transition: "all 0.2s",
                     }}>
                         {deptSaveStatus[activeDept?.department_id] === "saving"
                             ? "⏳ Saving…"
                             : isLast
-                                ? isOffline ? "💾 Save Offline & Complete →" : "💾 Save & Complete Section"
-                                : isOffline
-                                    ? `💾 Save Offline & Next: ${departments[activeDeptIdx + 1]?.department_name ?? ""} →`
-                                    : `💾 Save & Next: ${departments[activeDeptIdx + 1]?.department_name ?? ""} →`}
+                                ? "💾 Save & Complete Section"
+                                : `💾 Save & Next: ${departments[activeDeptIdx + 1]?.department_name ?? ""} →`}
                     </button>
                 </div>
             )}

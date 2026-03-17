@@ -1,9 +1,7 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { T } from "../constants.js";
 import { BackButton } from "../components/shared-components.jsx";
 import api from "../services/api.service.js";
-import offlineStore from "../services/offline-store.js";
-import syncQueue from "../services/sync-queue.js";
 
 const FIELDS = [
     { key: "etat_plus", label: "ETAT+" },
@@ -43,43 +41,29 @@ function Stepper({ value, onChange }) {
 }
 
 // ── Cadre row ──────────────────────────────────────────────────────────────────
-function CadreRow({ cadre, values, onChange, isDirty }) {
+function CadreRow({ cadre, values, onChange }) {
     const [open, setOpen] = useState(false);
     const total = FIELDS.reduce((s, f) => s + (parseInt(values[f.key], 10) || 0), 0);
-    const hasAny = total > 0;
 
     return (
-        <div style={{
-            background: T.card, borderRadius: T.radius, marginBottom: 10, overflow: "hidden",
-            boxShadow: T.shadow,
-            border: isDirty
-                ? `1.5px solid ${T.primaryLight}`
-                : `1px solid ${T.borderLight}`,
-        }}>
+        <div style={{ background: T.card, borderRadius: T.radius, marginBottom: 10, overflow: "hidden", boxShadow: T.shadow }}>
             <button onClick={() => setOpen(o => !o)} style={{
                 width: "100%", padding: "14px 16px", border: "none", background: "none",
                 cursor: "pointer", display: "flex", alignItems: "center", gap: 10, textAlign: "left",
             }}>
                 <div style={{
-                    width: 36, height: 36, borderRadius: 10,
-                    background: hasAny ? "#EDE9FE" : T.borderLight,
+                    width: 36, height: 36, borderRadius: 10, background: "#EDE9FE",
                     display: "flex", alignItems: "center", justifyContent: "center",
                     fontSize: 18, flexShrink: 0,
                 }}>👤</div>
                 <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 700, fontSize: 14, color: T.text }}>{cadre.cadre_name}</div>
-                    {hasAny
-                        ? <div style={{ fontSize: 11, color: "#7C3AED", marginTop: 2, fontWeight: 600 }}>{total} trained</div>
-                        : <div style={{ fontSize: 11, color: T.textMuted, marginTop: 2 }}>Not filled yet</div>
-                    }
+                    {total > 0 && (
+                        <div style={{ fontSize: 11, color: "#7C3AED", marginTop: 2 }}>
+                            {total} trained
+                        </div>
+                    )}
                 </div>
-                {isDirty && (
-                    <span style={{
-                        padding: "2px 7px", borderRadius: 6, fontSize: 9, fontWeight: 700,
-                        background: T.primaryGhost, color: T.primary,
-                        border: `1px solid ${T.primaryLight}`, flexShrink: 0,
-                    }}>unsaved</span>
-                )}
                 <span style={{ color: T.textMuted, fontSize: 16, transform: open ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▾</span>
             </button>
 
@@ -101,35 +85,16 @@ function CadreRow({ cadre, values, onChange, isDirty }) {
 export function HumanResourcesScreen({ assessment, onBack, onComplete }) {
     const [cadres, setCadres] = useState([]);
     const [values, setValues] = useState({});   // { cadreId: { etat_plus: 0, ... } }
-    const [dirtyIds, setDirtyIds] = useState(new Set()); // cadreIds changed since last save
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState(null);
-    const [isOffline, setIsOffline] = useState(!navigator.onLine);
-    const [syncStatus, setSyncStatus] = useState(syncQueue.getStatus());
-    const pendingTimer = useRef(null);
 
-    // Track connectivity
     useEffect(() => {
-        const up = () => setIsOffline(false);
-        const down = () => setIsOffline(true);
-        window.addEventListener("online", up);
-        window.addEventListener("offline", down);
-        return () => { window.removeEventListener("online", up); window.removeEventListener("offline", down); };
-    }, []);
-
-    // Track sync queue
-    useEffect(() => syncQueue.subscribe(s => setSyncStatus(s)), []);
-
-    // ── Load ───────────────────────────────────────────────────────────────────
-    useEffect(() => {
-        setLoading(true);
         api.humanResources.get(assessment.id)
-            .then(async res => {
+            .then(res => {
                 const rows = Array.isArray(res?.data) ? res.data : [];
                 setCadres(rows);
-
-                // Build values from structure (may already be merged with saved offline data by api layer)
+                // Build initial values map
                 const init = {};
                 rows.forEach(c => {
                     init[c.cadre_id] = {
@@ -140,43 +105,17 @@ export function HumanResourcesScreen({ assessment, onBack, onComplete }) {
                         essential_newborn_care: c.essential_newborn_care ?? 0,
                     };
                 });
-
-                // Also overlay any pendingValues saved between changes (pre-save-button)
-                const cached = await offlineStore.getHR(assessment.id);
-                if (cached?.pendingValues && typeof cached.pendingValues === "object") {
-                    Object.entries(cached.pendingValues).forEach(([cadreId, fields]) => {
-                        const id = Number(cadreId);
-                        if (init[id]) init[id] = { ...init[id], ...fields };
-                    });
-                }
-
                 setValues(init);
             })
             .catch(e => setError(e.message || "Failed to load"))
             .finally(() => setLoading(false));
     }, [assessment.id]);
 
-    // ── Persist changes to offline store automatically (debounced 800ms) ───────
-    // Ensures that if user refreshes without clicking Save, their work is still there.
-    useEffect(() => {
-        if (!Object.keys(values).length) return;
-        if (pendingTimer.current) clearTimeout(pendingTimer.current);
-        pendingTimer.current = setTimeout(async () => {
-            const existing = await offlineStore.getHR(assessment.id);
-            await offlineStore.saveHR(assessment.id, {
-                ...(existing ?? {}),
-                pendingValues: values,
-            });
-        }, 800);
-        return () => clearTimeout(pendingTimer.current);
-    }, [values, assessment.id]);
-
     const handleChange = (cadreId, field, val) => {
         setValues(prev => ({
             ...prev,
             [cadreId]: { ...(prev[cadreId] ?? {}), [field]: val },
         }));
-        setDirtyIds(prev => new Set([...prev, cadreId]));
     };
 
     const handleSave = async () => {
@@ -188,7 +127,6 @@ export function HumanResourcesScreen({ assessment, onBack, onComplete }) {
                 ...FIELDS.reduce((acc, f) => ({ ...acc, [f.key]: values[c.cadre_id]?.[f.key] ?? 0 }), {}),
             }));
             await api.humanResources.save(assessment.id, responses);
-            setDirtyIds(new Set());
             onComplete?.(assessment.id);
         } catch (e) {
             setError(e.message || "Save failed");
@@ -201,36 +139,15 @@ export function HumanResourcesScreen({ assessment, onBack, onComplete }) {
         <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
             {/* Header */}
             <div style={{
-                background: T.gradientDark, padding: "20px 20px 24px",
-                position: "relative", overflow: "hidden",
-                borderRadius: "24px 24px 28px 28px",
+                background: "linear-gradient(135deg, #4C1D95 0%, #7C3AED 100%)",
+                padding: "20px 20px 24px",
             }}>
-                <div style={{ position: "absolute", width: 120, height: 120, borderRadius: "50%", background: "radial-gradient(circle, rgba(16,185,129,0.1) 0%, transparent 70%)", top: -30, right: -30 }} />
                 <BackButton onBack={onBack} light />
-
-                {/* Status badge */}
-                {(isOffline || syncStatus.pendingCount > 0) && (
-                    <div style={{
-                        position: "absolute", top: 18, right: 16,
-                        padding: "3px 10px", borderRadius: 10, fontSize: 10, fontWeight: 700,
-                        background: isOffline ? "rgba(251,191,36,0.2)" : "rgba(14,165,233,0.2)",
-                        color: isOffline ? "#FDE68A" : "#7DD3FC",
-                        border: `1px solid ${isOffline ? "rgba(251,191,36,0.3)" : "rgba(14,165,233,0.3)"}`,
-                    }}>
-                        {isOffline ? "✈ Offline" : `⏳ ${syncStatus.pendingCount} pending`}
-                    </div>
-                )}
-
                 <div style={{ marginTop: 12, color: "white", fontSize: 18, fontWeight: 800 }}>
                     Human Resources
                 </div>
                 <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 13, marginTop: 2 }}>
                     {assessment.facility_name} · Staff training counts
-                    {dirtyIds.size > 0 && (
-                        <span style={{ color: T.accentLight, marginLeft: 8 }}>
-                            · {dirtyIds.size} unsaved change{dirtyIds.size !== 1 ? "s" : ""}
-                        </span>
-                    )}
                 </div>
             </div>
 
@@ -258,35 +175,20 @@ export function HumanResourcesScreen({ assessment, onBack, onComplete }) {
                         cadre={c}
                         values={values[c.cadre_id] ?? {}}
                         onChange={(field, val) => handleChange(c.cadre_id, field, val)}
-                        isDirty={dirtyIds.has(c.cadre_id)}
                     />
                 ))}
             </div>
 
-            {/* Save bar */}
+            {/* Save */}
             {!loading && cadres.length > 0 && (
-                <div style={{ padding: "12px 16px", paddingBottom: "calc(12px + env(safe-area-inset-bottom, 0px))", background: T.card, borderTop: `1px solid ${T.border}` }}>
-                    {isOffline && (
-                        <div style={{
-                            padding: "8px 12px", borderRadius: 10, marginBottom: 10,
-                            background: "#FEF3C7", border: "1px solid #FDE68A",
-                            fontSize: 12, color: "#92400E", display: "flex", alignItems: "center", gap: 6,
-                        }}>
-                            <span>✈</span>
-                            <span>Offline — changes saved locally and will sync when back online.</span>
-                        </div>
-                    )}
+                <div style={{ padding: "12px 16px", background: T.card, borderTop: `1px solid ${T.border}` }}>
                     <button onClick={handleSave} disabled={saving} style={{
                         width: "100%", padding: 15, borderRadius: T.radius, border: "none",
-                        background: saving ? "#D1D5DB" : T.gradientPrimary,
+                        background: saving ? "#D1D5DB" : "linear-gradient(135deg, #4C1D95, #7C3AED)",
                         color: "white", fontSize: 15, fontWeight: 700,
                         cursor: saving ? "not-allowed" : "pointer",
                     }}>
-                        {saving
-                            ? "Saving…"
-                            : isOffline
-                                ? "💾 Save Offline (will sync later) →"
-                                : "Save Human Resources →"}
+                        {saving ? "Saving…" : "Save Human Resources →"}
                     </button>
                 </div>
             )}

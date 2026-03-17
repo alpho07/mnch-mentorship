@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\FacilityController;
 use App\Http\Controllers\Api\HumanResourceController;
 use App\Http\Controllers\Api\HealthProductsController;
+use App\Http\Controllers\Api\ChatController;
 use App\Http\Middleware\MobileApiCors;
 
 /*
@@ -121,5 +122,8 @@ Route::prefix('v1')->name('api.v1.')->middleware(MobileApiCors::class)->group(fu
             Route::get('dashboard', [ReportController::class, 'dashboard'])->name('dashboard');
             Route::get('section-averages', [ReportController::class, 'sectionAverages'])->name('section-averages');
         });
+
+        // ── Chat Assistant ──────────────────────────────────────────────────
+        Route::post('chat/assistant', [ChatController::class, 'assistant'])->name('chat.assistant');
     });
 });

@@ -6,7 +6,6 @@ import { ChatbotPanel } from "../components/chatbot-widget.jsx";
 import { HumanResourcesScreen } from "./screen-human-resources.jsx";
 import { HealthProductsScreen } from "./screen-health-products.jsx";
 import api from "../services/api.service.js";
-import offlineStore from "../services/offline-store.js";
 
 const SPECIAL_SECTIONS = {
     human_resources: HumanResourcesScreen,
@@ -14,41 +13,6 @@ const SPECIAL_SECTIONS = {
 };
 
 const AUTO_SAVE_DELAY = 30000; // 30 seconds
-
-// HR field keys used to determine whether a cadre has any data entered
-const HR_FIELDS = ["etat_plus", "comprehensive_newborn_care", "imnci", "type_1_diabetes", "essential_newborn_care"];
-
-// ── Compute HR/HP progress from cached offline store data ─────────────────────
-async function computeSpecialProgress(assessmentId) {
-    const [hrCached, hpCached] = await Promise.all([
-        offlineStore.getHR(assessmentId),
-        offlineStore.getHP(assessmentId),
-    ]);
-
-    // HR: count cadres that have at least one training field > 0
-    const hrStructure = hrCached?.structure ?? [];
-    const hrTotal = hrStructure.length;
-    const hrAnswered = hrStructure.filter(c =>
-        HR_FIELDS.some(f => (c[f] ?? 0) > 0)
-    ).length;
-
-    // HP: count commodities that have been explicitly answered (available set)
-    const hpStructure = hpCached?.structure ?? [];
-    let hpTotal = 0, hpAnswered = 0;
-    hpStructure.forEach(dept => {
-        (dept.categories ?? []).forEach(cat => {
-            (cat.commodities ?? []).forEach(c => {
-                hpTotal++;
-                if (c.available !== null && c.available !== undefined) hpAnswered++;
-            });
-        });
-    });
-
-    return {
-        hr: { answered: hrAnswered, total: hrTotal },
-        hp: { answered: hpAnswered, total: hpTotal },
-    };
-}
 
 // ── Circular ring ─────────────────────────────────────────────────────────────
 function CircleRing({ pct, size = 56, stroke = 5, color = "#10B981", bg = "rgba(255,255,255,0.15)", children }) {
@@ -94,20 +58,9 @@ function AutoSavePill({ status }) {
 }
 
 // ── Section card ──────────────────────────────────────────────────────────────
-function SectionCard({ section, completedSections, responses, onOpen, index, specialProgress }) {
+function SectionCard({ section, completedSections, responses, onOpen, index }) {
     const isCompleted = completedSections.has(section.code);
-    const isHr = section.code === "human_resources";
-    const isHp = section.code === "health_products";
-
-    let completion;
-    if (isHr && specialProgress?.hr) {
-        completion = specialProgress.hr;
-    } else if (isHp && specialProgress?.hp) {
-        completion = specialProgress.hp;
-    } else {
-        completion = getSectionCompletion(section.questions || [], responses);
-    }
-
+    const completion = getSectionCompletion(section.questions || [], responses);
     const pct = completion.total > 0 ? Math.round((completion.answered / completion.total) * 100) : 0;
     const [g1, g2] = section.gradient ?? [section.color ?? "#6B7280", section.color ?? "#374151"];
 
@@ -131,15 +84,7 @@ function SectionCard({ section, completedSections, responses, onOpen, index, spe
                 <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 14, fontWeight: 700, color: T.text, marginBottom: 2 }}>{section.name}</div>
                     <div style={{ fontSize: 11, color: T.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {isHr
-                            ? completion.total > 0
-                                ? `${completion.answered}/${completion.total} cadres responded`
-                                : "Staff training counts"
-                            : isHp
-                                ? completion.total > 0
-                                    ? `${completion.answered}/${completion.total} commodities answered`
-                                    : "Commodity availability"
-                                : section.description || `${(section.questions || []).length} questions`}
+                        {section.description || `${(section.questions || []).length} questions`}
                     </div>
                     <div style={{ height: 3, background: T.borderLight, borderRadius: 999, overflow: "hidden", marginTop: 6 }}>
                         <div style={{ height: "100%", width: `${pct}%`, background: `linear-gradient(90deg,${g1},${g2})`, borderRadius: 999, transition: "width 0.5s" }} />
@@ -212,32 +157,19 @@ function RecommendationsPanel({ sections, responses }) {
 }
 
 // ── Progress header ───────────────────────────────────────────────────────────
-function ProgressHeader({ sections, completedSections, responses, onBack, specialProgress }) {
+function ProgressHeader({ sections, completedSections, responses, onBack }) {
     const overallPct = sections.length > 0 ? Math.round((completedSections.size / sections.length) * 100) : 0;
-
-    // Sum answered/total across all sections, using special progress for HR/HP
-    let totalAnswered = 0, totalRequired = 0;
-    sections.forEach(s => {
-        if (s.code === "human_resources" && specialProgress?.hr) {
-            totalAnswered += specialProgress.hr.answered;
-            totalRequired += specialProgress.hr.total;
-        } else if (s.code === "health_products" && specialProgress?.hp) {
-            totalAnswered += specialProgress.hp.answered;
-            totalRequired += specialProgress.hp.total;
-        } else {
-            const c = getSectionCompletion(s.questions || [], responses);
-            totalAnswered += c.answered;
-            totalRequired += c.total;
-        }
-    });
+    const totalAnswered = sections.reduce((acc, s) => acc + getSectionCompletion(s.questions || [], responses).answered, 0);
+    const totalRequired = sections.reduce((acc, s) => acc + getSectionCompletion(s.questions || [], responses).total, 0);
     const yesCount = Object.values(responses).filter(v => v === "Yes").length;
     const scoredCount = Object.values(responses).filter(v => ["Yes", "No", "Partial"].includes(v)).length;
     const scoreEst = scoredCount > 0 ? Math.round((yesCount / scoredCount) * 100) : null;
 
     return (
-        <div style={{ background: T.gradientDark, padding: "20px 20px 22px", position: "relative", overflow: "hidden", borderRadius: "24px 24px 28px 28px" }}>
-            <div style={{ position: "absolute", width: 160, height: 160, borderRadius: "50%", background: "radial-gradient(circle, rgba(16,185,129,0.1) 0%, transparent 70%)", top: -50, right: -40 }} />
-            <div style={{ position: "absolute", width: 80, height: 80, borderRadius: "50%", background: "radial-gradient(circle, rgba(52,211,153,0.07) 0%, transparent 70%)", bottom: -20, left: 10 }} />
+        <div style={{ background: "linear-gradient(160deg,#064E3B 0%,#065F46 60%,#047857 100%)", padding: "20px 20px 22px", position: "relative", overflow: "hidden" }}>
+            {[{ s: 140, t: -40, r: -30, o: 0.06 }, { s: 80, b: -20, l: 10, o: 0.05 }].map((c, i) => (
+                <div key={i} style={{ position: "absolute", width: c.s, height: c.s, borderRadius: "50%", background: "white", opacity: c.o, top: c.t, right: c.r, bottom: c.b, left: c.l }} />
+            ))}
             <BackButton onBack={onBack} light />
             <div style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 12 }}>
                 <CircleRing pct={overallPct} size={58} stroke={5} color="white" bg="rgba(255,255,255,0.2)">
@@ -318,7 +250,7 @@ function SectionForm({ section, responses, explanations, onAnswer, onExplain, on
     return (
         <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
             {/* Header */}
-            <div style={{ background: `linear-gradient(135deg,${g1},${g2})`, padding: "20px 20px 22px", position: "relative", overflow: "hidden", borderRadius: "24px 24px 28px 28px" }}>
+            <div style={{ background: `linear-gradient(135deg,${g1},${g2})`, padding: "20px 20px 22px", position: "relative", overflow: "hidden" }}>
                 <div style={{ position: "absolute", width: 120, height: 120, borderRadius: "50%", background: "rgba(255,255,255,0.07)", top: -30, right: -30 }} />
                 <BackButton onBack={onBack} light />
                 <AutoSavePill status={autoSaveStatus} />
@@ -388,7 +320,7 @@ function SectionForm({ section, responses, explanations, onAnswer, onExplain, on
             </div>
 
             {/* Save bar */}
-            <div style={{ padding: "11px 16px", paddingBottom: "calc(18px + env(safe-area-inset-bottom, 0px))", background: T.card, borderTop: `1px solid ${T.border}`, boxShadow: "0 -4px 20px rgba(0,0,0,0.06)" }}>
+            <div style={{ padding: "11px 16px 18px", background: T.card, borderTop: `1px solid ${T.border}`, boxShadow: "0 -4px 20px rgba(0,0,0,0.06)" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, padding: "7px 12px", background: pct === 100 ? "#D1FAE5" : T.borderLight, borderRadius: 10, border: `1px solid ${pct === 100 ? "#6EE7B7" : T.border}`, transition: "all 0.3s" }}>
                     <span style={{ fontSize: 14 }}>{pct === 100 ? "🎉" : "📝"}</span>
                     <span style={{ fontSize: 12, fontWeight: 600, color: pct === 100 ? "#065F46" : T.textMid }}>
@@ -397,10 +329,10 @@ function SectionForm({ section, responses, explanations, onAnswer, onExplain, on
                 </div>
                 <button onClick={() => onSave()} disabled={saving} style={{
                     width: "100%", padding: "13px", borderRadius: 13, border: "none",
-                    background: saving ? T.border : T.gradientPrimary,
+                    background: saving ? T.border : "linear-gradient(135deg,#064E3B,#059669)",
                     color: saving ? T.textMuted : "white", fontSize: 15, fontWeight: 800,
                     cursor: saving ? "default" : "pointer",
-                    boxShadow: saving ? "none" : `0 5px 18px ${T.primaryGlow}`, transition: "all 0.2s",
+                    boxShadow: saving ? "none" : "0 5px 18px rgba(6,78,59,0.35)", transition: "all 0.2s",
                 }}>
                     {saving ? "⏳ Saving…" : isLast ? "💾 Save & Finish" : "💾 Save & Continue →"}
                 </button>
@@ -426,24 +358,16 @@ export function AssessmentFormScreen({ user, sections, editAssessment, onBack, o
     const [explanations, setExplanations] = useState({});
     const [completedSections, setCompletedSections] = useState(new Set());
     const [assessmentId, setAssessmentId] = useState(null);
-    const [specialProgress, setSpecialProgress] = useState({ hr: null, hp: null });
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState(null);
     const [loadingResp, setLoadingResp] = useState(false);
     const [dashBotOpen, setDashBotOpen] = useState(false);
-
-    // ── Reload HR/HP progress from offline store ──────────────────────────────
-    const refreshSpecialProgress = useCallback(async (id) => {
-        const prog = await computeSpecialProgress(id);
-        setSpecialProgress(prog);
-    }, []);
 
     // ── Bootstrap: load saved responses from API ───────────────────────────────
     useEffect(() => {
         if (!editAssessment) return;
         const id = editAssessment.id;
         setAssessmentId(id);
-        refreshSpecialProgress(id);
 
         // Seed completed sections — only keys that exist in the sections list
         // (section_progress may contain extra keys like 'facility_assessor' not in schema)
@@ -468,15 +392,6 @@ export function AssessmentFormScreen({ user, sections, editAssessment, onBack, o
             .catch(err => console.error("Failed to load responses:", err))
             .finally(() => setLoadingResp(false));
     }, [editAssessment?.id]); // depend on id only — avoids re-fire when enrichAssessment recreates the object
-
-    // Auto-save responses to IndexedDB as user types (1s debounce)
-    useEffect(() => {
-        if (!assessmentId || !Object.keys(responses).length) return;
-        const timer = setTimeout(() => {
-            offlineStore.saveResponses(assessmentId, { responses, explanations });
-        }, 1000);
-        return () => clearTimeout(timer);
-    }, [responses, explanations, assessmentId]);
 
     const handleAnswer = (code, val) => setResponses(p => ({ ...p, [code]: val }));
     const handleExplain = (code, val) => setExplanations(p => ({ ...p, [code]: val }));
@@ -539,7 +454,6 @@ export function AssessmentFormScreen({ user, sections, editAssessment, onBack, o
                     onComplete={async () => {
                         await api.assessments.updateSectionProgress(assessmentId, activeSection.code, true).catch(() => { });
                         setCompletedSections(p => new Set([...p, activeSection.code]));
-                        await refreshSpecialProgress(assessmentId);
                         setView("dashboard");
                     }}
                 />
@@ -566,7 +480,7 @@ export function AssessmentFormScreen({ user, sections, editAssessment, onBack, o
 
     return (
         <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
-            <ProgressHeader sections={sections} completedSections={completedSections} responses={responses} onBack={onBack} specialProgress={specialProgress} />
+            <ProgressHeader sections={sections} completedSections={completedSections} responses={responses} onBack={onBack} />
 
             {loadingResp && (
                 <div style={{ padding: "10px 16px", background: "#EFF6FF", borderBottom: "1px solid #BFDBFE", fontSize: 12, color: "#1D4ED8", display: "flex", alignItems: "center", gap: 8 }}>
@@ -586,7 +500,7 @@ export function AssessmentFormScreen({ user, sections, editAssessment, onBack, o
                 <RecommendationsPanel sections={sections} responses={responses} />
 
                 {sections.map((s, i) => (
-                    <SectionCard key={s.id ?? s.code} section={s} completedSections={completedSections} responses={responses} onOpen={openSection} index={i} specialProgress={specialProgress} />
+                    <SectionCard key={s.id ?? s.code} section={s} completedSections={completedSections} responses={responses} onOpen={openSection} index={i} />
                 ))}
 
                 {allDone && (
@@ -597,10 +511,10 @@ export function AssessmentFormScreen({ user, sections, editAssessment, onBack, o
                         <div style={{ fontSize: 12, color: "#065F46", marginBottom: 16 }}>Review your responses before final submission.</div>
                         <button onClick={handleSubmit} disabled={saving} style={{
                             width: "100%", padding: "14px", borderRadius: 14, border: "none",
-                            background: saving ? T.border : T.gradientPrimary,
+                            background: saving ? T.border : "linear-gradient(135deg,#064E3B,#059669)",
                             color: saving ? T.textMuted : "white", fontSize: 15, fontWeight: 800,
                             cursor: saving ? "default" : "pointer",
-                            boxShadow: saving ? "none" : `0 6px 20px ${T.primaryGlow}`,
+                            boxShadow: saving ? "none" : "0 6px 20px rgba(6,78,59,0.4)",
                         }}>
                             {saving ? "⏳ Submitting…" : "🚀 Submit Assessment"}
                         </button>
@@ -609,14 +523,14 @@ export function AssessmentFormScreen({ user, sections, editAssessment, onBack, o
             </div>
 
             <button onClick={() => setDashBotOpen(true)} style={{
-                position: "absolute", bottom: "calc(24px + env(safe-area-inset-bottom, 0px))", right: 16, width: 50, height: 50, borderRadius: 16,
-                background: "linear-gradient(135deg,#6C5CE7,#A29BFE)", border: "none",
+                position: "absolute", bottom: 80, right: 16, width: 50, height: 50, borderRadius: 16,
+                background: "linear-gradient(135deg,#064E3B,#059669)", border: "none",
                 cursor: "pointer", fontSize: 22, display: "flex", alignItems: "center", justifyContent: "center",
-                boxShadow: `0 5px 18px ${T.primaryGlow}`, zIndex: 50,
+                boxShadow: "0 5px 18px rgba(6,78,59,0.4)", zIndex: 50,
                 animation: "pulseGlow 2.5s ease-in-out infinite",
             }}>
                 🩺
-                <style>{`@keyframes pulseGlow{0%,100%{box-shadow:0 5px 18px rgba(108,92,231,0.3)}50%{box-shadow:0 5px 28px rgba(108,92,231,0.55)}}`}</style>
+                <style>{`@keyframes pulseGlow{0%,100%{box-shadow:0 5px 18px rgba(6,78,59,0.4)}50%{box-shadow:0 5px 28px rgba(6,78,59,0.65)}}`}</style>
             </button>
 
             {dashBotOpen && (

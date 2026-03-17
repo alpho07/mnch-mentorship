@@ -23,11 +23,11 @@ class AssessmentResource extends Resource {
     protected static ?int $navigationSort = 1;
 
     public static function shouldRegisterNavigation(): bool {
-        return auth()->user()->hasRole(['super_admin', 'admin', 'Assessor']);
+        return auth()->check();//->hasRole(['super_admin', 'admin', 'assessor']);
     }
 
     public static function canAccess(): bool {
-        return auth()->user()->hasRole(['super_admin', 'admin', 'Assessor']);
+        return  auth()->check();//->hasRole(['super_admin', 'admin', 'assessor']);
     }
 
     public static function canCreate(): bool {

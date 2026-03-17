@@ -28,6 +28,7 @@ class MobileApiCors {
         'https://localhost',
         'http://localhost',
         'http://localhost:5173',
+        'http://localhost:5174',
         'capacitor://localhost',
         'ionic://localhost',
         'https://mnchkenyamentorship.org',

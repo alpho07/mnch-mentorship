@@ -18,31 +18,19 @@ When asked about an assessment question:
 Keep responses concise (under 200 words). Use emojis sparingly. Be warm, professional, and helpful.
 If given section context, reference it. Respond in English.`;
 
-const CHAT_API_URL = (import.meta.env.VITE_API_BASE_URL ?? 'https://mnchkenyamentorship.org/api/v1') + '/chat/assistant';
-
 async function callClaudeAPI(messages) {
-    const token = localStorage.getItem('mnch_token');
-    const res = await fetch(CHAT_API_URL, {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-            ...(token ? { Authorization: "Bearer " + token } : {}),
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+            model: "claude-sonnet-4-20250514",
+            max_tokens: 1000,
             system: SYSTEM_PROMPT,
             messages,
         }),
     });
-    if (!res.ok) {
-        throw new Error(`Chat API error: ${res.status}`);
-    }
     const data = await res.json();
-    // Support both Anthropic format and simple { reply } format
-    const text = data.reply
-        || data.content?.map(b => b.text || "").join("")
-        || data.message
-        || "Sorry, I couldn't get a response.";
+    const text = data.content?.map(b => b.text || "").join("") || "Sorry, I couldn't get a response.";
     return text;
 }
 
@@ -59,7 +47,7 @@ function Bubble({ msg }) {
         }}>
             <div style={{
                 width: 28, height: 28, borderRadius: 10,
-                background: isBot ? T.gradientPrimary : "linear-gradient(135deg,#0EA5E9,#7DD3FC)",
+                background: isBot ? "linear-gradient(135deg,#064E3B,#059669)" : "linear-gradient(135deg,#3730A3,#6366F1)",
                 display: "flex", alignItems: "center", justifyContent: "center",
                 fontSize: 14, flexShrink: 0, boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
             }}>
@@ -70,12 +58,12 @@ function Bubble({ msg }) {
                 padding: "10px 13px",
                 borderRadius: isBot ? "4px 14px 14px 14px" : "14px 4px 14px 14px",
                 background: isBot
-                    ? "linear-gradient(135deg,rgba(108,92,231,0.06),rgba(108,92,231,0.03))"
-                    : "linear-gradient(135deg,rgba(14,165,233,0.06),rgba(14,165,233,0.03))",
-                border: isBot ? `1px solid ${T.primary}18` : "1px solid rgba(14,165,233,0.15)",
+                    ? "linear-gradient(135deg,#F0FDF4,#ECFDF5)"
+                    : "linear-gradient(135deg,#EEF2FF,#E0E7FF)",
+                border: isBot ? "1px solid #BBF7D0" : "1px solid #C7D2FE",
                 fontSize: 13,
                 lineHeight: 1.55,
-                color: isBot ? T.textMid : T.textMid,
+                color: isBot ? "#064E3B" : "#312E81",
                 fontWeight: 400,
                 whiteSpace: "pre-wrap",
                 boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
@@ -92,20 +80,20 @@ function TypingIndicator() {
         <div style={{ display: "flex", gap: 8, alignItems: "flex-end", marginBottom: 12 }}>
             <div style={{
                 width: 28, height: 28, borderRadius: 10,
-                background: T.gradientPrimary,
+                background: "linear-gradient(135deg,#064E3B,#059669)",
                 display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14,
             }}>🩺</div>
             <div style={{
                 padding: "10px 14px",
                 borderRadius: "4px 14px 14px 14px",
-                background: `rgba(108,92,231,0.05)`,
-                border: `1px solid ${T.primary}15`,
+                background: "linear-gradient(135deg,#F0FDF4,#ECFDF5)",
+                border: "1px solid #BBF7D0",
                 display: "flex", gap: 4, alignItems: "center",
             }}>
                 {[0, 1, 2].map(i => (
                     <div key={i} style={{
                         width: 7, height: 7, borderRadius: "50%",
-                        background: T.primary,
+                        background: "#059669",
                         animation: `bounce 1.2s ease-in-out ${i * 0.2}s infinite`,
                     }} />
                 ))}
@@ -185,12 +173,12 @@ export function ChatbotPanel({ question, sectionName, onClose }) {
         >
             {/* Panel */}
             <div style={{
-                background: "#FAFAFF",
+                background: "#FAFFFE",
                 borderRadius: "24px 24px 0 0",
                 maxHeight: "80%",
                 display: "flex",
                 flexDirection: "column",
-                boxShadow: `0 -8px 40px ${T.primaryGlow}`,
+                boxShadow: "0 -8px 40px rgba(6,78,59,0.15)",
                 animation: "slideUp 0.3s cubic-bezier(0.34,1.56,0.64,1)",
             }}>
                 <style>{`@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}`}</style>
@@ -199,17 +187,17 @@ export function ChatbotPanel({ question, sectionName, onClose }) {
                 <div style={{ padding: "12px 20px 0" }}>
                     <div style={{
                         width: 40, height: 4, borderRadius: 2,
-                        background: T.primaryGhost, margin: "0 auto 14px",
+                        background: "#D1FAE5", margin: "0 auto 14px",
                     }} />
-                    <div style={{ display: "flex", alignItems: "center", gap: 10, paddingBottom: 12, borderBottom: `1px solid ${T.borderLight}` }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, paddingBottom: 12, borderBottom: "1px solid #ECFDF5" }}>
                         <div style={{
                             width: 38, height: 38, borderRadius: 12,
-                            background: T.gradientPrimary,
+                            background: "linear-gradient(135deg,#064E3B,#059669)",
                             display: "flex", alignItems: "center", justifyContent: "center",
-                            fontSize: 20, boxShadow: `0 4px 12px ${T.primaryGlow}`,
+                            fontSize: 20, boxShadow: "0 4px 12px rgba(6,78,59,0.3)",
                         }}>🩺</div>
                         <div>
-                            <div style={{ fontSize: 15, fontWeight: 800, color: T.primary }}>Assessment Assistant</div>
+                            <div style={{ fontSize: 15, fontWeight: 800, color: "#064E3B" }}>Assessment Assistant</div>
                             <div style={{ fontSize: 11, color: "#6B7280" }}>
                                 {question ? `Explaining: ${sectionName}` : sectionName}
                             </div>
@@ -258,8 +246,8 @@ export function ChatbotPanel({ question, sectionName, onClose }) {
                             <button key={chip} onClick={() => { setInput(chip); setTimeout(sendMessage, 50); }}
                                 style={{
                                     padding: "5px 10px", borderRadius: 20,
-                                    border: `1px solid ${T.primary}20`, background: T.primaryGhost,
-                                    fontSize: 11, color: T.primary, cursor: "pointer",
+                                    border: "1px solid #BBF7D0", background: "#F0FDF4",
+                                    fontSize: 11, color: "#065F46", cursor: "pointer",
                                     fontWeight: 600,
                                 }}>
                                 {chip}
@@ -270,8 +258,8 @@ export function ChatbotPanel({ question, sectionName, onClose }) {
 
                 {/* Input area */}
                 <div style={{
-                    padding: "8px 16px", paddingBottom: "calc(20px + env(safe-area-inset-bottom, 0px))",
-                    borderTop: `1px solid ${T.borderLight}`,
+                    padding: "8px 16px 20px",
+                    borderTop: "1px solid #ECFDF5",
                     display: "flex", gap: 8, alignItems: "flex-end",
                 }}>
                     <textarea
@@ -284,14 +272,14 @@ export function ChatbotPanel({ question, sectionName, onClose }) {
                         disabled={loading}
                         style={{
                             flex: 1, padding: "10px 14px", borderRadius: 14,
-                            border: `2px solid ${T.primary}25`, fontSize: 13, color: T.text,
+                            border: "2px solid #BBF7D0", fontSize: 13, color: "#111827",
                             outline: "none", resize: "none", fontFamily: "inherit",
                             background: loading ? "#F9FAFB" : "white",
                             lineHeight: 1.5, boxSizing: "border-box",
                             transition: "border-color 0.2s",
                         }}
-                        onFocus={e => e.target.style.borderColor = T.primary}
-                        onBlur={e => e.target.style.borderColor = `${T.primary}25`}
+                        onFocus={e => e.target.style.borderColor = "#059669"}
+                        onBlur={e => e.target.style.borderColor = "#BBF7D0"}
                     />
                     <button
                         onClick={sendMessage}
@@ -299,12 +287,12 @@ export function ChatbotPanel({ question, sectionName, onClose }) {
                         style={{
                             width: 42, height: 42, borderRadius: 13, border: "none",
                             background: input.trim() && !loading
-                                ? T.gradientPrimary
+                                ? "linear-gradient(135deg,#064E3B,#059669)"
                                 : "#E5E7EB",
                             cursor: input.trim() && !loading ? "pointer" : "default",
                             display: "flex", alignItems: "center", justifyContent: "center",
                             fontSize: 18, flexShrink: 0,
-                            boxShadow: input.trim() && !loading ? `0 4px 12px ${T.primaryGlow}` : "none",
+                            boxShadow: input.trim() && !loading ? "0 4px 12px rgba(6,78,59,0.35)" : "none",
                             transition: "all 0.2s",
                         }}>
                         ↑
@@ -325,9 +313,9 @@ export function ChatbotFAB({ onClick, pulse = false }) {
                 bottom: 80, right: 16,
                 width: 52, height: 52,
                 borderRadius: 17,
-                background: T.gradientPrimary,
+                background: "linear-gradient(135deg,#064E3B,#059669)",
                 border: "none",
-                boxShadow: `0 6px 20px ${T.primaryGlow}`,
+                boxShadow: "0 6px 20px rgba(6,78,59,0.4)",
                 cursor: "pointer",
                 display: "flex", alignItems: "center", justifyContent: "center",
                 fontSize: 24, zIndex: 100,
@@ -336,8 +324,8 @@ export function ChatbotFAB({ onClick, pulse = false }) {
             🩺
             <style>{`
         @keyframes pulseGlow {
-          0%,100% { box-shadow: 0 6px 20px rgba(108,92,231,0.3); transform: scale(1); }
-          50% { box-shadow: 0 6px 32px rgba(108,92,231,0.55); transform: scale(1.05); }
+          0%,100% { box-shadow: 0 6px 20px rgba(6,78,59,0.4); transform: scale(1); }
+          50% { box-shadow: 0 6px 32px rgba(6,78,59,0.65); transform: scale(1.05); }
         }
       `}</style>
         </button>
