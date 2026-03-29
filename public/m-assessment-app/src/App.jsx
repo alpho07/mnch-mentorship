@@ -130,18 +130,15 @@ export default function App() {
         setLoading(true);
         setError(null);
         try {
-            const [schemaRes, assessRes, facilitiesRes] = await Promise.all([
+            const [schemaRes, assessRes] = await Promise.all([
                 api.sections.fullSchema(),
                 api.assessments.list(),
-                api.facilities.list(),
             ]);
 
             const rawSections = Array.isArray(schemaRes) ? schemaRes
                     : Array.isArray(schemaRes?.data) ? schemaRes.data : [];
             const rawAssessments = Array.isArray(assessRes) ? assessRes
                     : Array.isArray(assessRes?.data) ? assessRes.data : [];
-            const rawFacilities = Array.isArray(facilitiesRes) ? facilitiesRes
-                    : Array.isArray(facilitiesRes?.data) ? facilitiesRes.data : [];
 
             console.log(`[MNCH] ${rawSections.length} sections, ${rawAssessments.length} assessments`);
 
@@ -151,7 +148,6 @@ export default function App() {
                     gradient: SECTION_META[s.code]?.gradient ?? [s.color ?? "#6B7280", s.color ?? "#374151"],
                 })));
             setAssessments(rawAssessments);
-            setFacilities(rawFacilities || []);
 
             // Pre-cache HR, HP, and response data for offline use (non-blocking)
             api.prefetchForOffline(rawAssessments).catch(() => {
@@ -164,6 +160,15 @@ export default function App() {
         } finally {
             setLoading(false);
         }
+
+        // Facilities are only needed for the creation sheet — fetch separately
+        // so a 403/500 here never blocks the main load.
+        api.facilities.list()
+            .then(data => {
+                const arr = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : [];
+                setFacilities(arr);
+            })
+            .catch(() => { /* non-critical — facilities will load from cache or show warning */ });
     };
 
     // ── Retry ─────────────────────────────────────────────────────────────────
