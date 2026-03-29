@@ -63,10 +63,8 @@ function extractSectionCodes(schemaSections) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 export function NewAssessmentSheet({ facilities, sections, user, onSubmit, onClose }) {
-    void user; // prop accepted for parent's optimistic record construction
     // Extract section codes for section_progress initialisation
     const sectionCodes = extractSectionCodes(sections);
-    void sectionCodes; // consumed by parent via onSubmit data; kept for future use
     // ── Slide-up animation ─────────────────────────────────────────────────────
     const [mounted, setMounted] = useState(false);
     useEffect(() => {
@@ -139,10 +137,19 @@ export function NewAssessmentSheet({ facilities, sections, user, onSubmit, onClo
         setFieldErrors({});
 
         try {
+            const facilityMeta = {
+                name: selectedFacility.name,
+                mfl_code: selectedFacility.mfl_code,
+                subcounty: selectedFacility.subcounty,
+                county: selectedFacility.county,
+            };
             const data = await api.assessments.create(
                 selectedFacility.id,
                 assessmentType,
                 assessmentDate,
+                facilityMeta,
+                user,
+                sectionCodes,
             );
             const assessment = data?.assessment ?? data?.data ?? data;
             onSubmit(assessment);
