@@ -142,6 +142,11 @@ export function NewAssessmentSheet({ facilities, sections, user, onSubmit, onClo
 
     async function handleSubmit() {
         if (!canSubmit) return;
+        // Final guard — reject past dates regardless of how the value was set
+        if (assessmentDate < today) {
+            setAssessmentDate(today);
+            return;
+        }
         setSubmitting(true);
         setError(null);
         setConflictData(null);
@@ -416,7 +421,11 @@ export function NewAssessmentSheet({ facilities, sections, user, onSubmit, onClo
                             type="date"
                             value={assessmentDate}
                             min={today}
-                            onChange={(e) => setAssessmentDate(e.target.value)}
+                            onChange={(e) => {
+                                const val = e.target.value;
+                                // Reject past dates — min attr not enforced on all Android WebViews
+                                setAssessmentDate(val && val < today ? today : val);
+                            }}
                             style={{
                                 width: "100%",
                                 boxSizing: "border-box",
