@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { T, GRADE_COLOR, GRADE_BG } from "../constants.js";
+import { T, GRADE_COLOR, GRADE_BG, GRADE_TEXT } from "../constants.js";
 import { GradeBadge, StatusChip, ProgressBar } from "../components/shared-components.jsx";
 import { NewAssessmentSheet } from "./screen-new-assessment.jsx";
 
@@ -99,15 +99,15 @@ export function AssessmentsListScreen({ assessments, sections, onView, loading, 
                                 display: "inline-flex",
                                 alignItems: "center",
                                 gap: 4,
-                                background: "#FEF3C7",
-                                color: "#92400E",
+                                background: GRADE_BG.yellow,
+                                color: GRADE_TEXT.yellow,
                                 fontSize: 11,
                                 fontWeight: 600,
                                 borderRadius: 6,
                                 padding: "3px 8px",
                                 marginBottom: 6,
                             }}>
-                                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#F59E0B", display: "inline-block" }} />
+                                <span style={{ width: 6, height: 6, borderRadius: "50%", background: GRADE_COLOR.yellow, display: "inline-block" }} />
                                 Pending sync
                             </div>
                         )}
@@ -174,7 +174,7 @@ export function AssessmentsListScreen({ assessments, sections, onView, loading, 
                 onClick={() => setShowSheet(true)}
                 aria-label="New assessment"
                 style={{
-                    position: "absolute",
+                    position: "fixed",
                     bottom: 80,
                     right: 20,
                     width: 52,
