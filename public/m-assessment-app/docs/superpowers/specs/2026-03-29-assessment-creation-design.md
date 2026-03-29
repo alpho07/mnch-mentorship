@@ -24,11 +24,11 @@ FAB (Floating Action Button) on the Assessments list screen opens a bottom-sheet
 ### Modified Files
 | File | Change |
 |---|---|
-| `src/services/api.service.js` | Add `assessments.create` to `_rawApi` and offline-aware `api`; add `facilities` offline cache; extend `prefetchForOffline` |
-| `src/services/sync-queue.js` | Add handler for `assessments.create` op type including temp→real ID migration |
-| `src/services/offline-store.js` | Add `facilities` store (DB version bump to 3) |
-| `src/screens/screen-assessments-list.jsx` | Add FAB button; accept and wire `onCreate` + `facilities` props |
-| `src/App.jsx` | Pass `facilities` state + `onCreate` callback; handle new assessment in state |
+| `src/services/api.service.js` | Patch `request()` to attach `err.data = data` on non-ok responses; add `assessments.create` to `_rawApi` and offline-aware `api`; upgrade `facilities.list` to offline-aware with cache; extend `prefetchForOffline` to fetch facilities unconditionally |
+| `src/services/sync-queue.js` | Add `assessments.create` op type; the `executeOp` handler must catch 409 internally (checking `e.status === 409`) before it bubbles to the generic flush error handler, which would otherwise silently discard the op without running ID migration |
+| `src/services/offline-store.js` | Add `facilities` store (DB version bump 2 → 3); add `deleteAssessment(id)` method |
+| `src/screens/screen-assessments-list.jsx` | Add FAB button; accept `onCreate`, `facilities`, and `user` props; wire to `NewAssessmentSheet` |
+| `src/App.jsx` | Manage `facilities` state; pass `user` + `facilities` + `onCreate` down; handle new assessment in state; add `window.addEventListener("assessment:id-resolved", …)` in a `useEffect` (with cleanup on unmount) to swap tempId → realId in assessments state and active modal |
 
 ---
 
@@ -101,11 +101,30 @@ Bottom-sheet overlay (absolutely positioned, slides up via CSS transform animati
 - New IndexedDB store: `facilities` (DB version 3)
 - `offlineStore.getFacilities()` / `saveFacilities(list)`
 - `api.facilities.list()` becomes offline-aware: try network → cache on success → return cache on network failure
-- Added to `api.prefetchForOffline` so facilities are available before going into the field
+- Added to `api.prefetchForOffline` — fetched **unconditionally** (not gated on `inProgress.length > 0`) since facilities are needed before any assessment is opened
 
 ### Provisional Assessment (offline create)
-- `tempId = "offline_" + Date.now()`
-- Provisional object fields: `{ id: tempId, facility_id, facility_name, mfl_code, county, subcounty, assessment_type, assessment_date, assessor_id, status: "in_progress", section_progress, _isOffline: true }`
+- `tempId = "offline_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8)` — random suffix prevents collisions; follows the same pattern as `offlineStore.addToQueue`
+- `facilityMeta` shape (passed by `NewAssessmentSheet` from the selected facility object): `{ name, mfl_code, subcounty, county }` — required to populate the provisional object for display while offline
+- `assessor_id` / `assessor_name` sourced from the `user` prop (requires adding `user` prop to `AssessmentsListScreen` and threading to `NewAssessmentSheet`)
+- Provisional object fields:
+  ```js
+  {
+    id: tempId,
+    facility_id,
+    facility_name: facilityMeta.name,
+    mfl_code: facilityMeta.mfl_code,
+    county: facilityMeta.county,
+    subcounty: facilityMeta.subcounty,
+    assessment_type,
+    assessment_date,
+    assessor_id: user.id,
+    assessor_name: user.name,
+    status: "in_progress",
+    section_progress,    // all section codes → false, from cached schema
+    _isOffline: true,    // used to show "Pending sync" badge in AssessmentsListScreen
+  }
+  ```
 - `section_progress` derived from cached schema (all section codes → `false`)
 - Saved to `offlineStore.saveAssessment(provisional)`
 - Enqueued in sync queue as `assessments.create`
@@ -114,26 +133,35 @@ Bottom-sheet overlay (absolutely positioned, slides up via CSS transform animati
 ```
 op shape: {
   type: "assessments.create",
-  tempId,           // "offline_<timestamp>"
+  tempId,           // "offline_<timestamp>_<random>"
   facility_id,
   assessment_type,
   assessment_date
 }
 ```
 
-Replay logic:
-1. `POST /api/v1/assessments` via `_rawApi.assessments.create`
-2. On **201**: get `realId` from response
-   - Copy IndexedDB records: responses, hr, hp from `tempId` → `realId`
-   - Delete `tempId` records
-   - `dispatch(new CustomEvent("assessment:id-resolved", { detail: { tempId, realId } }))`
-3. On **409**: extract `assessment` from response body → use its ID as `realId`, same migration
-4. On other errors: leave in queue, retry next flush
+Replay logic (inside `executeOp` in `sync-queue.js`):
+1. Call `_rawApi.assessments.create(facility_id, assessment_type, assessment_date)`
+2. On **201**: get `realId` from `response.assessment.id`
+   - `await offlineStore.copyAssessmentData(tempId, realId)` — copies responses, hr, hp records
+   - `await offlineStore.deleteAssessment(tempId)` — removes provisional record
+   - `window.dispatchEvent(new CustomEvent("assessment:id-resolved", { detail: { tempId, realId } }))`
+   - Return without throwing — op is removed from queue by the flush loop
+3. On **409**: extract `assessment` from `e.data?.assessment`; use its `id` as `realId`; run same migration as step 2. **Do not re-throw** — treat as success so the op is dequeued.
+   - **Critical:** The `executeOp` handler must catch the 409 (`e.status === 409`) before it bubbles to the generic `flush()` error handler, which would otherwise discard the op silently without running migration.
+   - **Required `api.service.js` change:** The `request()` function (line 66) currently builds thrown errors with only `err.status` and `err.errors`. The 409 body includes `{ message, assessment }` — the full parsed `data` must also be attached: `err.data = data`. This makes `e.data.assessment.id` accessible in `executeOp`. This change is additive and does not affect existing error handling elsewhere.
+4. On other errors: re-throw so `flush()` keeps the op in the queue for the next retry
 
 ### App.jsx: ID Resolution
-- Listens for `assessment:id-resolved` CustomEvent
-- Swaps `tempId → realId` in `assessments` state array
-- If form modal is open with `tempId`, updates `modal.data.id` to `realId`
+- `useEffect` with `window.addEventListener("assessment:id-resolved", handler)` registered on mount, cleaned up on unmount (not conditional on `user` — registered always so it fires even if the user state changes during a long session)
+- `handler`: swaps `tempId → realId` in `assessments` state array; if form modal is currently open with `modal.data.id === tempId`, updates `modal.data.id` to `realId`
+
+### `offlineStore` additions
+- `deleteAssessment: (id) => dbDelete(STORES.assessments, id)`
+- `copyAssessmentData: async (fromId, toId)` — for each of responses, hr, hp stores: `dbGet(store, fromId)` → if found, `dbPut(store, toId, data)` then `dbDelete(store, fromId)`; no-ops gracefully if source records don't exist. This ensures no orphaned entries remain under `tempId` after migration.
+- Facility cache key: `"all"` (consistent with schema using `"full"`)
+- `getFacilities: () => dbGet(STORES.facilities, "all")`
+- `saveFacilities: (list) => dbPut(STORES.facilities, "all", list)`
 
 ---
 
@@ -184,7 +212,7 @@ Body: { facility_id, assessment_type, assessment_date }
 | Scenario | Handling |
 |---|---|
 | No facility selected | Submit button disabled |
-| No facilities in cache (offline) | Warning banner; submit still allowed if user knows facility_id (edge case — acceptable to block with clear message) |
+| No facilities in cache (offline) | Warning banner + submit blocked with "Facilities not available offline. Please connect to continue." message |
 | Network error on create | Offline flow: provisional assessment, queue |
 | 409 duplicate | Inline error + "Open Existing" CTA |
 | 422 validation | Show field-level errors inline |
@@ -192,7 +220,13 @@ Body: { facility_id, assessment_type, assessment_date }
 
 ---
 
+## Required Copy Change
+- `screen-assessments-list.jsx` empty state currently reads "Your assessments will appear here once assigned by an administrator." — must be updated to "No assessments yet. Tap + to start one." since users can now create their own.
+
+---
+
 ## Out of Scope
 - Editing an existing assessment's header fields (facility, type, date) post-creation — handled by existing `PUT /assessments/:id`
 - Deleting assessments from the app — endpoint exists but no UI needed now
 - Role-based creation restrictions — backend `store` authenticates by token only; any logged-in user may create
+- Data preservation on logout with pending offline creates — `offlineStore.clearAll()` on logout will wipe provisional assessments and their queued create ops. This is an intentional trade-off: logout implies intent to end the session. Acceptable.
