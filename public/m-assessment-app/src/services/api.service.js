@@ -217,16 +217,36 @@ const api = {
     // ── Profile ──────────────────────────────────────────────────────────────
     profile: _rawApi.profile,
 
-    // ── Facilities (cached reads) ─────────────────────────────────────────────
+    // ── Facilities (cached reads — fetches ALL pages) ─────────────────────────
     facilities: {
-        list: async (params) => {
+        list: async () => {
             try {
-                const data = await _rawApi.facilities.list(params);
-                const arr = Array.isArray(data) ? data
-                    : Array.isArray(data?.data) ? data.data : [];
-                if (arr.length > 0)
-                    await offlineStore.saveFacilities(arr);
-                return data;
+                // Fetch first page with a large per_page to minimise round-trips.
+                // The API paginates at 50 by default; most deployments have < 10 000
+                // active facilities so a single request with per_page=10000 usually
+                // returns everything at once.
+                const first = await _rawApi.facilities.list({ per_page: 10000, page: 1 });
+                const extractArr = (d) =>
+                    Array.isArray(d?.data) ? d.data : Array.isArray(d) ? d : [];
+
+                let all = extractArr(first);
+                const lastPage = first?.meta?.last_page ?? 1;
+
+                // If the server still has more pages, fetch them in parallel.
+                if (lastPage > 1) {
+                    const pages = await Promise.all(
+                        Array.from({ length: lastPage - 1 }, (_, i) =>
+                            _rawApi.facilities.list({ per_page: 10000, page: i + 2 })
+                        )
+                    );
+                    for (const page of pages) all = all.concat(extractArr(page));
+                }
+
+                if (all.length > 0) {
+                    await offlineStore.saveFacilities(all);
+                    console.log(`[API] Cached ${all.length} facilities for offline use`);
+                }
+                return all;
             } catch (e) {
                 if (isNetworkError(e)) {
                     const cached = await offlineStore.getFacilities();
