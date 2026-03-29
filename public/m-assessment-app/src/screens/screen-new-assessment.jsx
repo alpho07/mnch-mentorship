@@ -98,20 +98,19 @@ export function NewAssessmentSheet({ facilities, sections, user, onSubmit, onClo
     const filteredFacilities = noCache
         ? []
         : facilities.filter((f) => {
-              if (!facilityQuery.trim()) return false;
-              const q = facilityQuery.toLowerCase();
+              const q = facilityQuery.trim().toLowerCase();
+              if (!q) return true;   // empty query → show all (browseable list)
               return (
                   (f.name      ?? "").toLowerCase().includes(q) ||
-                  (f.mfl_code  ?? "").toLowerCase().includes(q) ||
+                  (f.mfl_code  ?? "").toString().toLowerCase().includes(q) ||
+                  (f.county    ?? "").toLowerCase().includes(q) ||
                   (f.subcounty ?? "").toLowerCase().includes(q)
               );
           });
 
     const showDropdown =
         inputFocused &&
-        !selectedFacility &&
-        facilityQuery.trim().length > 0 &&
-        filteredFacilities.length > 0;
+        !selectedFacility;
 
     function handleSelectFacility(facility) {
         setSelectedFacility(facility);
@@ -323,33 +322,39 @@ export function NewAssessmentSheet({ facilities, sections, user, onSubmit, onClo
                                         border: `1px solid ${T.border}`,
                                         borderRadius: 10,
                                         boxShadow: T.shadowMd,
-                                        maxHeight: 180,
+                                        maxHeight: 220,
                                         overflowY: "auto",
                                         zIndex: 10,
                                     }}>
-                                        {filteredFacilities.map((facility) => (
-                                            <button
-                                                key={facility.id}
-                                                onMouseDown={() => handleSelectFacility(facility)}
-                                                style={{
-                                                    display: "block",
-                                                    width: "100%",
-                                                    textAlign: "left",
-                                                    background: "none",
-                                                    border: "none",
-                                                    padding: "10px 14px",
-                                                    cursor: "pointer",
-                                                    borderBottom: `1px solid ${T.borderLight}`,
-                                                }}
-                                            >
-                                                <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>
-                                                    {facility.name}
-                                                </div>
-                                                <div style={{ fontSize: 12, color: T.textMuted, marginTop: 2 }}>
-                                                    {facility.mfl_code} · {facility.subcounty}
-                                                </div>
-                                            </button>
-                                        ))}
+                                        {filteredFacilities.length === 0 ? (
+                                            <div style={{ padding: "12px 14px", fontSize: 13, color: T.textMuted }}>
+                                                No facilities found for &ldquo;{facilityQuery}&rdquo;
+                                            </div>
+                                        ) : (
+                                            filteredFacilities.slice(0, 60).map((facility) => (
+                                                <button
+                                                    key={facility.id ?? facility.mfl_code}
+                                                    onMouseDown={() => handleSelectFacility(facility)}
+                                                    style={{
+                                                        display: "block",
+                                                        width: "100%",
+                                                        textAlign: "left",
+                                                        background: "none",
+                                                        border: "none",
+                                                        padding: "10px 14px",
+                                                        cursor: "pointer",
+                                                        borderBottom: `1px solid ${T.borderLight}`,
+                                                    }}
+                                                >
+                                                    <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>
+                                                        {facility.name}
+                                                    </div>
+                                                    <div style={{ fontSize: 12, color: T.textMuted, marginTop: 2 }}>
+                                                        MFL {facility.mfl_code ?? "—"} · {facility.subcounty ?? "—"} · {facility.county ?? "—"}
+                                                    </div>
+                                                </button>
+                                            ))
+                                        )}
                                     </div>
                                 )}
                             </div>
