@@ -26,14 +26,12 @@ const TokenStore = {
     set: (t) => {
         try {
             localStorage.setItem('mnch_token', t);
-        } catch {
-        }
+        } catch { /* localStorage unavailable */ }
     },
     clear: () => {
         try {
             localStorage.removeItem('mnch_token');
-        } catch {
-        }
+        } catch { /* localStorage unavailable */ }
     },
 };
 
@@ -189,8 +187,7 @@ const api = {
         logout: async () => {
             try {
                 await _rawApi.auth.logout();
-            } catch {
-            }
+            } catch { /* ignore server-side logout errors */ }
             TokenStore.clear();
             await offlineStore.clearAll();
         },
