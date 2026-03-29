@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { T } from "../constants.js";
 import api from "../services/api.service.js";
 
@@ -64,13 +64,27 @@ function extractSectionCodes(schemaSections) {
 // ─────────────────────────────────────────────────────────────────────────────
 export function NewAssessmentSheet({ facilities, sections, user, onSubmit, onClose }) {
     // Extract section codes for section_progress initialisation
-    const sectionCodes = extractSectionCodes(sections);
+    const sectionCodes = useMemo(() => extractSectionCodes(sections), [sections]);
+
     // ── Slide-up animation ─────────────────────────────────────────────────────
     const [mounted, setMounted] = useState(false);
+    const [animDone, setAnimDone] = useState(false);
     useEffect(() => {
         // Trigger on next tick so CSS transition fires
-        const id = requestAnimationFrame(() => setMounted(true));
-        return () => cancelAnimationFrame(id);
+        const frame = requestAnimationFrame(() => setMounted(true));
+        // Guard backdrop dismissal until animation finishes (slightly > 300ms transition)
+        const timer = setTimeout(() => setAnimDone(true), 350);
+        return () => { cancelAnimationFrame(frame); clearTimeout(timer); };
+    }, []);
+
+    // ── Inject spinner styles once into <head> ─────────────────────────────────
+    useEffect(() => {
+        if (!document.getElementById('mnch-spinner-style')) {
+            const el = document.createElement('style');
+            el.id = 'mnch-spinner-style';
+            el.textContent = SPINNER_STYLE;
+            document.head.appendChild(el);
+        }
     }, []);
 
     // ── Facility search ────────────────────────────────────────────────────────
@@ -143,6 +157,9 @@ export function NewAssessmentSheet({ facilities, sections, user, onSubmit, onClo
                 subcounty: selectedFacility.subcounty,
                 county: selectedFacility.county,
             };
+            // facilityMeta, user, sectionCodes are offline-only — used by api.service.js
+            // to build a provisional assessment when there's no network connection.
+            // Only facility_id, assessment_type, and assessment_date are sent to the server.
             const data = await api.assessments.create(
                 selectedFacility.id,
                 assessmentType,
@@ -170,17 +187,19 @@ export function NewAssessmentSheet({ facilities, sections, user, onSubmit, onClo
     function handleOpenExisting() {
         if (!conflictData) return;
         const existing = conflictData?.assessment ?? conflictData?.data ?? conflictData;
+        if (!existing?.id) {
+            setError("Could not open the existing assessment. Please search for it manually.");
+            return;
+        }
         onSubmit(existing);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
     return (
         <>
-            <style>{SPINNER_STYLE}</style>
-
             {/* Backdrop */}
             <div
-                onClick={onClose}
+                onClick={animDone ? onClose : undefined}
                 style={{
                     position: "fixed",
                     inset: 0,
@@ -392,7 +411,7 @@ export function NewAssessmentSheet({ facilities, sections, user, onSubmit, onClo
                         </label>
                         <input
                             type="date"
-                            defaultValue={today}
+                            value={assessmentDate}
                             max={today}
                             onChange={(e) => setAssessmentDate(e.target.value)}
                             style={{
