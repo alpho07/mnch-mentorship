@@ -42,8 +42,6 @@ function todayStr() {
 // ── Assessment type pills ──────────────────────────────────────────────────────
 const TYPES = [
     { value: "baseline", label: "Baseline" },
-    { value: "midline",  label: "Midline"  },
-    { value: "endline",  label: "Endline"  },
 ];
 
 // ── Extract unique section codes from schema ──────────────────────────────────
@@ -417,7 +415,7 @@ export function NewAssessmentSheet({ facilities, sections, user, onSubmit, onClo
                         <input
                             type="date"
                             value={assessmentDate}
-                            max={today}
+                            min={today}
                             onChange={(e) => setAssessmentDate(e.target.value)}
                             style={{
                                 width: "100%",
