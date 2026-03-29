@@ -22,6 +22,7 @@ function notify() {
         try {
             fn(state);
         } catch {
+            // Swallow listener errors to prevent one bad subscriber from breaking others
         }
     });
 }
@@ -46,6 +47,7 @@ async function refreshCount() {
 //   "assessments.submit"       → { assessmentId }
 //   "humanResources.save"      → { assessmentId, responses }
 //   "healthProducts.save"      → { assessmentId, responses, departmentId? }
+//   "assessments.create"       → { tempId, facility_id, assessment_type, assessment_date }
 
 async function enqueue(op) {
     await offlineStore.addToQueue(op);
@@ -154,29 +156,33 @@ async function executeOp(rawApi, op) {
                     );
 
         case "assessments.create": {
+            const migrateId = async (fromId, toId) => {
+                await offlineStore.copyAssessmentData(fromId, toId);
+                await offlineStore.deleteAssessment(fromId);
+                window.dispatchEvent(new CustomEvent("assessment:id-resolved", {
+                    detail: { tempId: fromId, realId: toId },
+                }));
+            };
+
+            // Inner try/catch: 409 must be handled here, not by flush()'s 4xx discard handler,
+            // because we need to run ID migration before the op is dequeued.
             try {
                 const response = await rawApi.assessments.create(
                     op.facility_id, op.assessment_type, op.assessment_date
                 );
                 const realId = response?.assessment?.id;
-                if (realId) {
-                    await offlineStore.copyAssessmentData(op.tempId, realId);
-                    await offlineStore.deleteAssessment(op.tempId);
-                    window.dispatchEvent(new CustomEvent("assessment:id-resolved", {
-                        detail: { tempId: op.tempId, realId },
-                    }));
+                if (!realId) {
+                    throw new Error("[SyncQueue] assessments.create: server returned no assessment.id");
                 }
+                await migrateId(op.tempId, realId);
                 return response;
             } catch (e) {
                 if (e.status === 409) {
                     const realId = e.data?.assessment?.id;
                     if (realId) {
-                        await offlineStore.copyAssessmentData(op.tempId, realId);
-                        await offlineStore.deleteAssessment(op.tempId);
-                        window.dispatchEvent(new CustomEvent("assessment:id-resolved", {
-                            detail: { tempId: op.tempId, realId },
-                        }));
+                        await migrateId(op.tempId, realId);
                     } else {
+                        console.warn("[SyncQueue] assessments.create: 409 with no realId — deleting orphan", op.tempId);
                         await offlineStore.deleteAssessment(op.tempId);
                     }
                     // Treat as success — op should be dequeued
