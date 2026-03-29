@@ -76,6 +76,7 @@ export default function App() {
     const [assessments, setAssessments] = useState(null); // null = not yet loaded
     const [sections, setSections] = useState(null); // null = not yet loaded
     const [facilities, setFacilities] = useState([]);
+    const [showCreateSheet, setShowCreateSheet] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
@@ -211,8 +212,12 @@ export default function App() {
 
     // ── Navigation ────────────────────────────────────────────────────────────
     const handleTabChange = (t) => {
-        if (t === "new")
+        if (t === "new") {
+            setTab("assessments");
+            setShowCreateSheet(true);
+            setModal(null);
             return;
+        }
         setTab(t);
         setModal(null);
     };
@@ -317,6 +322,8 @@ export default function App() {
                                                     onCreate={handleCreate}
                                                     facilities={facilities}
                                                     user={user}
+                                                    openSheet={showCreateSheet}
+                                                    onSheetClose={() => setShowCreateSheet(false)}
                                                     />
                                         )}
                                     {tab === "reports" && (
@@ -338,7 +345,7 @@ export default function App() {
                                         )}
                                 </div>
                                 <div style={{flexShrink: 0, zIndex: 100}}>
-                                    <BottomNav active={tab} onChange={handleTabChange} hideNew />
+                                    <BottomNav active={tab} onChange={handleTabChange} />
                                 </div>
                             </div>
                         )}

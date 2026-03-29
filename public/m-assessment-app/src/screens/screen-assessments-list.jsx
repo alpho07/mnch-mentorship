@@ -1,11 +1,16 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { T, GRADE_COLOR, GRADE_BG, GRADE_TEXT } from "../constants.js";
 import { GradeBadge, StatusChip, ProgressBar } from "../components/shared-components.jsx";
 import { NewAssessmentSheet } from "./screen-new-assessment.jsx";
 
-export function AssessmentsListScreen({ assessments, sections, onView, loading, onCreate, facilities, user }) {
+export function AssessmentsListScreen({ assessments, sections, onView, loading, onCreate, facilities, user, openSheet, onSheetClose }) {
     const [filter, setFilter] = useState("all");
     const [showSheet, setShowSheet] = useState(false);
+
+    // Allow App.jsx (e.g. bottom-nav "New" tap) to open the sheet externally
+    useEffect(() => {
+        if (openSheet) setShowSheet(true);
+    }, [openSheet]);
 
     const list = filter === "all"
         ? (assessments || [])
@@ -203,9 +208,10 @@ export function AssessmentsListScreen({ assessments, sections, onView, loading, 
                     user={user}
                     onSubmit={(assessment) => {
                         setShowSheet(false);
+                        onSheetClose?.();
                         onCreate(assessment);
                     }}
-                    onClose={() => setShowSheet(false)}
+                    onClose={() => { setShowSheet(false); onSheetClose?.(); }}
                 />
             )}
         </div>
