@@ -30,7 +30,7 @@ class IndicatorReporting extends Page implements HasForms {
     protected static ?string $slug = 'indicators/reporting';
     protected static string $view = 'filament.pages.indicators.reporting';
 
-    public static function shouldRegisterNavigation(): bool {
+    /*public static function shouldRegisterNavigation(): bool {
         //return true;
         if (!auth()->check())
             return false;
@@ -43,7 +43,7 @@ class IndicatorReporting extends Page implements HasForms {
 
     public static function canAccess(): bool {
         return static::shouldRegisterNavigation();
-    }
+    }*/
 
     // ──────────────────────────────────────────────────────────────────────────
     // State

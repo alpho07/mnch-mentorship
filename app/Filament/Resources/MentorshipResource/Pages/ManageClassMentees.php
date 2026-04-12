@@ -82,6 +82,12 @@ class ManageClassMentees extends Page implements HasTable {
                             ->searchable(['users.first_name', 'users.last_name', 'users.name'])
                             ->sortable()
                             ->description(fn($record) => $record->user?->email ?? '—'),
+                            Tables\Columns\TextColumn::make('user.email')
+                            ->label('Email')
+                            ->searchable()
+                            ->copyable()
+                            ->placeholder('No email')
+                            ->toggleable(),
                             Tables\Columns\TextColumn::make('user.phone')
                             ->label('Phone')
                             ->searchable()

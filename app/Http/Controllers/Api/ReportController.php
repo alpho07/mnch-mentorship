@@ -3,11 +3,14 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\SendAssessmentReportEmail;
 use App\Models\Assessment;
+use App\Models\AssessmentEmailJob;
 use App\Models\AssessmentSection;
 use App\Services\AssessmentPdfReportService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class ReportController extends Controller {
 
@@ -112,16 +115,92 @@ class ReportController extends Controller {
             return response()->json(['message' => 'PDF only available for completed assessments.'], 422);
         }
 
-        $data = $this->pdfService->generateReportData($assessment);
-        $filename = "assessment_{$assessment->id}_report.pdf";
-        $path = "reports/{$filename}";
+        $pdf = $this->pdfService->generateExecutiveReport($assessment);
 
-        $this->pdfService->generatePdf($data, storage_path("app/public/{$path}"));
+        $safeName = preg_replace('/[^a-zA-Z0-9\-_]/', '-', $assessment->facility->name ?? 'report');
+        $date     = $assessment->assessment_date instanceof \Carbon\Carbon
+            ? $assessment->assessment_date->format('Y-m-d')
+            : (string) $assessment->assessment_date;
+
+        $filename = "MNCH-Assessment-{$safeName}-{$date}.pdf";
+        $path     = "reports/{$filename}";
+
+        Storage::disk('public')->put($path, $pdf->output());
 
         return response()->json([
-                    'download_url' => asset("storage/{$path}"),
-                    'filename' => $filename,
+            'download_url' => Storage::disk('public')->url($path),
+            'filename'     => $filename,
         ]);
+    }
+
+    public function emailReport(Request $request, Assessment $assessment): JsonResponse {
+        $this->authorize('view', $assessment);
+
+        if ($assessment->status !== 'completed') {
+            return response()->json(['message' => 'Email report only available for completed assessments.'], 422);
+        }
+
+        $validated = $request->validate([
+            'emails'   => 'required|array|min:1|max:10',
+            'emails.*' => 'required|email',
+        ]);
+
+        $emailJob = AssessmentEmailJob::create([
+            'assessment_id' => $assessment->id,
+            'user_id'       => $request->user()->id,
+            'emails'        => $validated['emails'],
+            'status'        => 'queued',
+        ]);
+
+        SendAssessmentReportEmail::dispatch($emailJob);
+
+        return response()->json([
+            'id'         => $emailJob->id,
+            'status'     => 'queued',
+            'emails'     => $emailJob->emails,
+            'queued_at'  => $emailJob->created_at->toIso8601String(),
+        ], 201);
+    }
+
+    public function emailJobStatus(Request $request, Assessment $assessment, AssessmentEmailJob $emailJob): JsonResponse {
+        $this->authorize('view', $assessment);
+
+        if ($emailJob->user_id !== $request->user()->id || $emailJob->assessment_id !== $assessment->id) {
+            return response()->json(['message' => 'Not found.'], 404);
+        }
+
+        return response()->json([
+            'id'         => $emailJob->id,
+            'status'     => $emailJob->status,
+            'emails'     => $emailJob->emails,
+            'error'      => $emailJob->error,
+            'sent_at'    => $emailJob->sent_at?->toIso8601String(),
+            'created_at' => $emailJob->created_at->toIso8601String(),
+        ]);
+    }
+
+    public function emailJobs(Request $request): JsonResponse {
+        $jobs = AssessmentEmailJob::where('user_id', $request->user()->id)
+            ->with('assessment:id,assessment_date,assessment_type,facility_id')
+            ->latest()
+            ->take(100)
+            ->get()
+            ->map(fn ($j) => [
+                'id'              => $j->id,
+                'assessment_id'   => $j->assessment_id,
+                'facility_name'   => $j->assessment->facility->name ?? null,
+                'assessment_date' => $j->assessment->assessment_date instanceof \Carbon\Carbon
+                    ? $j->assessment->assessment_date->format('Y-m-d')
+                    : (string) ($j->assessment->assessment_date ?? ''),
+                'assessment_type' => $j->assessment->assessment_type ?? null,
+                'emails'          => $j->emails,
+                'status'          => $j->status,
+                'error'           => $j->error,
+                'sent_at'         => $j->sent_at?->toIso8601String(),
+                'created_at'      => $j->created_at->toIso8601String(),
+            ]);
+
+        return response()->json(['data' => $jobs]);
     }
 
     public function dashboard(Request $request): JsonResponse {

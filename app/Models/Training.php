@@ -416,23 +416,26 @@ class Training extends Model {
     }
 
     /**
-     * [TDD] Get IDs of modules already used across all classes in this mentorship.
+     * Get distinct module IDs assigned across classes in this mentorship.
      */
     public function getUsedModuleIdsAttribute(): array {
-        return MentorshipModuleUsage::where('mentorship_id', $this->id)
-                        ->pluck('module_id')
+        return ClassModule::whereHas('mentorshipClass', fn($query) => $query->where('training_id', $this->id))
+                        ->distinct()
+                        ->pluck('program_module_id')
                         ->toArray();
     }
 
     /**
-     * [TDD] Get count of remaining available modules for this mentorship.
+     * Get count of program modules not yet assigned to any class in this mentorship.
      */
     public function getAvailableModulesCountAttribute(): int {
         $totalProgramModules = ProgramModule::whereHas('program', function ($query) {
                     $query->where('id', $this->program_id);
                 })->where('is_active', true)->count();
 
-        $usedCount = MentorshipModuleUsage::where('mentorship_id', $this->id)->count();
+        $usedCount = ClassModule::whereHas('mentorshipClass', fn($query) => $query->where('training_id', $this->id))
+                ->distinct('program_module_id')
+                ->count('program_module_id');
 
         return max(0, $totalProgramModules - $usedCount);
     }

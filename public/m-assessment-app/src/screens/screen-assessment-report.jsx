@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { T, GRADE_COLOR, GRADE_BG, GRADE_TEXT, calcGrade } from "../constants.js";
 import { BackButton, GradeBadge, ProgressBar } from "../components/shared-components.jsx";
 import api from "../services/api.service.js";
@@ -175,8 +175,8 @@ function HrSection({ assessment }) {
     if (loading) return <div style={{ padding: "20px", textAlign: "center", color: T.textMuted, fontSize: 12 }}>Loading…</div>;
     if (!data || data.length === 0) return <div style={{ padding: "16px", fontSize: 12, color: T.textMuted }}>No HR data recorded.</div>;
 
-    const cols = ["etat_plus", "comprehensive_newborn_care", "imnci", "type_1_diabetes", "essential_newborn_care"];
-    const labels = { etat_plus: "ETAT+", comprehensive_newborn_care: "Comp.\nNB", imnci: "IMNCI", type_1_diabetes: "T1\nDM", essential_newborn_care: "ENC" };
+    const cols = ["total_in_facility", "etat_plus", "comprehensive_newborn_care", "imnci", "type_1_diabetes", "essential_newborn_care"];
+    const labels = { total_in_facility: "Total\nStaff", etat_plus: "ETAT+", comprehensive_newborn_care: "Comp.\nNB", imnci: "IMNCI", type_1_diabetes: "T1\nDM", essential_newborn_care: "ENC" };
 
     // Compute totals
     const totals = cols.reduce((acc, c) => {
@@ -186,7 +186,7 @@ function HrSection({ assessment }) {
 
     return (
         <div style={{ overflowX: "auto", margin: "0 -16px" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, minWidth: 320 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, minWidth: 380 }}>
                 <thead>
                     <tr style={{ background: "linear-gradient(135deg, #F0FDF4, #ECFDF5)" }}>
                         <th style={{ padding: "10px 14px", textAlign: "left", color: T.textMid, fontWeight: 700, borderBottom: `2px solid #D1FAE5` }}>Cadre</th>
@@ -203,10 +203,11 @@ function HrSection({ assessment }) {
                             <td style={{ padding: "10px 14px", color: T.textMid, fontWeight: 600 }}>{row.cadre_name ?? "—"}</td>
                             {cols.map(c => {
                                 const val = Number(row[c]) || 0;
+                                const isTotalCol = c === "total_in_facility";
                                 return (
                                     <td key={c} style={{ padding: "10px 8px", textAlign: "center" }}>
                                         {val > 0 ? (
-                                            <span style={{ display: "inline-block", minWidth: 24, padding: "2px 6px", borderRadius: 6, background: "#D1FAE5", color: "#065F46", fontWeight: 700, fontSize: 11 }}>{val}</span>
+                                            <span style={{ display: "inline-block", minWidth: 24, padding: "2px 6px", borderRadius: 6, background: isTotalCol ? "#EDE9FE" : "#D1FAE5", color: isTotalCol ? "#5B21B6" : "#065F46", fontWeight: 700, fontSize: 11 }}>{val}</span>
                                         ) : (
                                             <span style={{ color: T.border, fontSize: 13 }}>—</span>
                                         )}
@@ -380,6 +381,131 @@ function RecommendationsCard({ sectionReports }) {
     );
 }
 
+// ── Email share modal ──────────────────────────────────────────────────────────
+function EmailShareModal({ assessment, onClose, onSent }) {
+    const [input, setInput] = useState("");
+    const [emails, setEmails] = useState([]);
+    const [inputError, setInputError] = useState(null);
+    const [submitting, setSubmitting] = useState(false);
+    const [result, setResult] = useState(null); // { type: "success"|"queued"|"error", text }
+
+    const isValidEmail = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim());
+
+    function addEmails() {
+        const parts = input.split(/[\s,;\n]+/).map(s => s.trim()).filter(Boolean);
+        const invalid = parts.filter(p => !isValidEmail(p));
+        if (invalid.length > 0) {
+            setInputError(`Invalid email${invalid.length > 1 ? "s" : ""}: ${invalid.join(", ")}`);
+            return;
+        }
+        const merged = [...new Set([...emails, ...parts])];
+        if (merged.length > 10) { setInputError("Maximum 10 recipients."); return; }
+        setEmails(merged);
+        setInput("");
+        setInputError(null);
+    }
+
+    function removeEmail(e) {
+        setEmails(prev => prev.filter(x => x !== e));
+    }
+
+    function handleKeyDown(e) {
+        if (e.key === "Enter" || e.key === ",") { e.preventDefault(); addEmails(); }
+    }
+
+    async function handleSend() {
+        if (emails.length === 0) { setInputError("Add at least one email address."); return; }
+        setSubmitting(true);
+        setResult(null);
+        try {
+            const res = await api.reports.emailReport(assessment.id, emails);
+            if (res?.queued) {
+                setResult({ type: "queued", text: `Queued — will send when back online (${emails.length} recipient${emails.length > 1 ? "s" : ""}).` });
+            } else {
+                setResult({ type: "success", text: `Report queued for delivery to ${emails.length} recipient${emails.length > 1 ? "s" : ""}.` });
+            }
+            onSent?.();
+        } catch (e) {
+            setResult({ type: "error", text: e.message || "Failed to queue email. Please try again." });
+        } finally {
+            setSubmitting(false);
+        }
+    }
+
+    const sent = result?.type === "success" || result?.type === "queued";
+
+    return (
+        <>
+            <div onClick={sent ? onClose : undefined} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 2000, backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)" }} />
+            <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 2001, background: "#fff", borderRadius: "20px 20px 0 0", padding: "20px 20px 32px", boxShadow: "0 -8px 40px rgba(0,0,0,0.18)" }}>
+                {/* Handle */}
+                <div style={{ width: 36, height: 4, background: "#E5E7EB", borderRadius: 99, margin: "0 auto 16px" }} />
+
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: T.text }}>Share Report via Email</div>
+                    <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 22, color: T.textMuted, cursor: "pointer", lineHeight: 1, padding: "2px 6px" }}>×</button>
+                </div>
+
+                <div style={{ fontSize: 12, color: T.textSub, marginBottom: 14, lineHeight: 1.5 }}>
+                    The PDF report for <strong style={{ color: T.textMid }}>{assessment.facility_name}</strong> will be attached and emailed to the recipients below.
+                </div>
+
+                {/* Email chips */}
+                {emails.length > 0 && (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
+                        {emails.map(e => (
+                            <div key={e} style={{ display: "flex", alignItems: "center", gap: 5, background: T.primaryGhost, border: `1px solid ${T.primary}22`, borderRadius: 20, padding: "4px 10px 4px 12px", fontSize: 12, fontWeight: 600, color: T.primary }}>
+                                {e}
+                                <button onClick={() => removeEmail(e)} disabled={submitting} style={{ background: "none", border: "none", color: T.primary, cursor: "pointer", fontSize: 14, lineHeight: 1, padding: 0, opacity: submitting ? 0.5 : 1 }}>×</button>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {!sent && (
+                    <>
+                        <div style={{ display: "flex", gap: 8 }}>
+                            <input
+                                type="email"
+                                value={input}
+                                onChange={e => { setInput(e.target.value); setInputError(null); }}
+                                onKeyDown={handleKeyDown}
+                                onBlur={() => { if (input.trim()) addEmails(); }}
+                                placeholder="email@example.com, another@example.com"
+                                disabled={submitting}
+                                style={{ flex: 1, borderRadius: 10, border: `1px solid ${inputError ? "#EF4444" : T.border}`, padding: "10px 12px", fontSize: 13, color: T.text, outline: "none", background: "#fff" }}
+                            />
+                            <button onClick={addEmails} disabled={!input.trim() || submitting} style={{ background: T.gradientPrimary, color: "#fff", border: "none", borderRadius: 10, padding: "0 16px", fontWeight: 700, fontSize: 13, cursor: "pointer", opacity: !input.trim() ? 0.5 : 1 }}>Add</button>
+                        </div>
+                        {inputError && <div style={{ fontSize: 12, color: "#EF4444", marginTop: 6 }}>{inputError}</div>}
+                        <div style={{ fontSize: 11, color: T.textMuted, marginTop: 6 }}>Press Enter or comma to add. Up to 10 recipients.</div>
+                    </>
+                )}
+
+                {result && (
+                    <div style={{ marginTop: 14, padding: "12px 14px", borderRadius: 10, fontSize: 13, fontWeight: 600, background: result.type === "error" ? "#FEE2E2" : result.type === "queued" ? "#FEF3C7" : "#D1FAE5", color: result.type === "error" ? "#991B1B" : result.type === "queued" ? "#92400E" : "#065F46" }}>
+                        {result.type === "queued" && "📵 "}
+                        {result.type === "success" && "✓ "}
+                        {result.type === "error" && "⚠ "}
+                        {result.text}
+                    </div>
+                )}
+
+                {!sent && (
+                    <button onClick={handleSend} disabled={submitting || emails.length === 0} style={{ width: "100%", marginTop: 16, padding: 14, background: T.gradientPrimary, color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: submitting || emails.length === 0 ? "not-allowed" : "pointer", opacity: emails.length === 0 ? 0.5 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                        {submitting ? "Sending…" : `Send Report${emails.length > 0 ? ` to ${emails.length} Recipient${emails.length > 1 ? "s" : ""}` : ""}`}
+                    </button>
+                )}
+                {sent && (
+                    <button onClick={onClose} style={{ width: "100%", marginTop: 14, padding: 14, background: "#fff", color: T.primary, border: `1.5px solid ${T.primary}`, borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+                        Done
+                    </button>
+                )}
+            </div>
+        </>
+    );
+}
+
 // ── Main screen ────────────────────────────────────────────────────────────────
 export function AssessmentReportScreen({ assessment, onBack }) {
     const [report, setReport] = useState(null);
@@ -387,6 +513,7 @@ export function AssessmentReportScreen({ assessment, onBack }) {
     const [error, setError] = useState(null);
     const [downloading, setDownloading] = useState(false);
     const [shareMsg, setShareMsg] = useState(null);
+    const [showEmailModal, setShowEmailModal] = useState(false);
 
     useEffect(() => {
         api.reports.show(assessment.id)
@@ -411,16 +538,6 @@ export function AssessmentReportScreen({ assessment, onBack }) {
         }
     };
 
-    const handleShare = async () => {
-        const text = `MNCH Assessment Report\n${assessment.facility_name}\n${assessment.assessment_date}\nScore: ${Number(pct).toFixed(1)}% (${grade?.toUpperCase()})\n${window.location.href}`;
-        if (navigator.share) { try { await navigator.share({ title: "MNCH Assessment Report", text }); } catch {} }
-        else if (navigator.clipboard) {
-            await navigator.clipboard.writeText(text);
-            setShareMsg({ type: "success", text: "Summary copied to clipboard." });
-            setTimeout(() => setShareMsg(null), 3000);
-        }
-    };
-
     const sectionScores = assessment.section_scores ?? {};
     const _calcPct = calcOverallScore(sectionScores);
     const pct = _calcPct ?? assessment.overall_percentage ?? report?.assessment?.overall_percentage ?? 0;
@@ -441,6 +558,13 @@ export function AssessmentReportScreen({ assessment, onBack }) {
 
     return (
         <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+            {showEmailModal && (
+                <EmailShareModal
+                    assessment={assessment}
+                    onClose={() => setShowEmailModal(false)}
+                    onSent={() => {}}
+                />
+            )}
             {/* ── Hero Header ─────────────────────────────────────────────── */}
             <div style={{
                 background: gradeGradient,
@@ -498,8 +622,8 @@ export function AssessmentReportScreen({ assessment, onBack }) {
                     <button onClick={handleDownload} disabled={downloading} style={{ flex: 1, padding: "10px 12px", borderRadius: 14, border: "1.5px solid rgba(255,255,255,0.3)", background: "rgba(255,255,255,0.12)", color: "white", fontSize: 12, fontWeight: 700, cursor: downloading ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
                         {downloading ? "⏳" : "📥"} {downloading ? "Generating…" : "Download PDF"}
                     </button>
-                    <button onClick={handleShare} style={{ flex: 1, padding: "10px 12px", borderRadius: 14, border: "1.5px solid rgba(255,255,255,0.3)", background: "rgba(255,255,255,0.12)", color: "white", fontSize: 12, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-                        📤 Share
+                    <button onClick={() => setShowEmailModal(true)} style={{ flex: 1, padding: "10px 12px", borderRadius: 14, border: "1.5px solid rgba(255,255,255,0.3)", background: "rgba(255,255,255,0.12)", color: "white", fontSize: 12, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                        📧 Share via Email
                     </button>
                 </div>
 

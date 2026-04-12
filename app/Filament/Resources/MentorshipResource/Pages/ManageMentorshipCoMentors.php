@@ -35,7 +35,7 @@ class ManageMentorshipCoMentors extends Page implements HasTable {
     public function mount(int|string $record): void {
         $this->record = Training::where('type', 'facility_mentorship')
                 ->with(['mentor', 'coMentors', 'facility', 'program'])
-                ->findOrFail($this->record->id);
+                ->findOrFail($record);
     }
 
     public function getTitle(): string {

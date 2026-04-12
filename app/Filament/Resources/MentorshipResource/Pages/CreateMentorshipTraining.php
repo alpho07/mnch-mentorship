@@ -4,6 +4,8 @@ namespace App\Filament\Resources\MentorshipTrainingResource\Pages;
 
 use App\Filament\Resources\MentorshipTrainingResource;
 use App\Models\FacilityAssessment;
+use App\Models\Facility;
+use App\Models\Program;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Notifications\Notification;
 
@@ -20,6 +22,18 @@ class CreateMentorshipTraining extends CreateRecord {
 
         // Auto-generate unique identifier
         $data['identifier'] = 'MT-' . strtoupper(\Illuminate\Support\Str::random(6));
+
+        if (empty($data['title'])) {
+            $program = isset($data['program_id']) ? Program::find($data['program_id']) : null;
+            $facility = isset($data['facility_id']) ? Facility::find($data['facility_id']) : null;
+            $date = !empty($data['start_date']) ? \Carbon\Carbon::parse($data['start_date'])->format('M Y') : now()->format('M Y');
+
+            $data['title'] = trim(implode(' - ', array_filter([
+                $program?->name ?? 'MNCH Mentorship',
+                $facility?->name,
+                $date,
+            ])));
+        }
 
         // Check facility assessment
         if (isset($data['facility_id'])) {

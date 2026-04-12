@@ -114,7 +114,11 @@ class UserResource extends Resource {
                                 ->live(),
                                 Forms\Components\Select::make('roles')
                                 ->label('System Roles')
-                                ->relationship('roles', 'name')
+                                ->options(fn() => Role::query()
+                                                ->where('guard_name', 'web')
+                                                ->orderBy('name')
+                                                ->pluck('name', 'name')
+                                                ->toArray())
                                 ->multiple()
                                 ->preload()
                                 ->searchable()

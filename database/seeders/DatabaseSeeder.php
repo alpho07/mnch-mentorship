@@ -7,6 +7,8 @@ use App\Models\User;
 use Illuminate\Database\Seeder;
 use Database\Seeders\RolePermissionSeeder;
 use Database\Seeders\SuperAdminSeeder;
+use Database\Seeders\AssessmentQuestionConfigSeeder;
+use Database\Seeders\AmbuBagCommoditySeeder;
 
 class DatabaseSeeder extends Seeder
 {
@@ -21,6 +23,9 @@ class DatabaseSeeder extends Seeder
            // RolePermissionSeeder::class,
             //NationalMentorsSeeder::class, // Run after roles are created
             MenteeSeeder::class,
+            // Assessment configuration seeders — safe to re-run at any time:
+            // AssessmentQuestionConfigSeeder::class,  // Sets explanation fields + mortality question type
+            // AmbuBagCommoditySeeder::class,           // Splits generic Ambu Bag into 250ml/500ml/1500ml
         ]);
     }
 } 

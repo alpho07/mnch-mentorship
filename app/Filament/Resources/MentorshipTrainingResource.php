@@ -88,6 +88,31 @@ class MentorshipTrainingResource extends Resource {
                     // Auto-set hidden fields — mentor is always the logged-in user
                     Forms\Components\Hidden::make('type')->default('facility_mentorship'),
                     Forms\Components\Hidden::make('mentor_id')->default(fn() => auth()->id()),
+                    Section::make('Mentorship Preparation')
+                            ->description('Use these steps before starting classes or sending attendance links.')
+                            ->icon('heroicon-o-light-bulb')
+                            ->schema([
+                                Forms\Components\Placeholder::make('preparation_note')
+                                ->label('')
+                                ->content(new \Illuminate\Support\HtmlString('
+                                    <div class="space-y-3 text-sm text-gray-700 dark:text-gray-300">
+                                        <ol class="list-decimal space-y-1 pl-5">
+                                            <li>Identify facility gaps first and decide what this mentorship should address.</li>
+                                            <li>Review the mentorship manuals before choosing modules and sessions.</li>
+                                            <li>Confirm every mentee has a name, email, phone, cadre, and department.</li>
+                                        </ol>
+                                        <div class="flex flex-wrap gap-2 pt-1">
+                                            <a class="text-primary-600 hover:underline" href="' . url('/resources/infant-child-mentorship-manual') . '" target="_blank" rel="noopener noreferrer">Infant and Child Mentorship Manual</a>
+                                            <span class="text-gray-400">|</span>
+                                            <a class="text-primary-600 hover:underline" href="https://mnchkenyamentorship.org/resources/newborn-mentorship-mentors-manual" target="_blank" rel="noopener noreferrer">Newborn Mentorship Mentor\'s Manual</a>
+                                            <span class="text-gray-400">|</span>
+                                            <a class="text-primary-600 hover:underline" href="' . route('resources.search', ['q' => 'mentorship manual']) . '" target="_blank" rel="noopener noreferrer">Search mentorship manuals</a>
+                                            <span class="text-gray-400">|</span>
+                                            <a class="text-primary-600 hover:underline" href="' . route('resources.search', ['q' => 'MNCH guidelines']) . '" target="_blank" rel="noopener noreferrer">MNCH guidelines</a>
+                                        </div>
+                                    </div>
+                                ')),
+                            ]),
                     // ── Section 1: Location ───────────────────────────────────────
                     Section::make('Location')
                             ->description('Where is this mentorship being conducted?')
@@ -142,7 +167,7 @@ class MentorshipTrainingResource extends Resource {
                                     ->label('Start Date')
                                     ->required()
                                     ->native(false)
-                                    ->minDate(now())           // ← cannot be before today
+                                    ->minDate(today())
                                     ->displayFormat('M j, Y')
                                     ->prefixIcon('heroicon-o-play'),
                                     DatePicker::make('end_date')
@@ -154,14 +179,12 @@ class MentorshipTrainingResource extends Resource {
                                     ->displayFormat('M j, Y')
                                     ->prefixIcon('heroicon-o-stop'),
                                     TextInput::make('max_participants')
-                                    ->label('Maximum Mentees')
+                                    ->label('Number of Mentees')
                                     ->numeric()
-                                    ->minValue(1)
-                                    ->maxValue(200)
                                     ->default(20)
                                     ->suffix('mentees')
                                     ->prefixIcon('heroicon-o-users')
-                                    ->helperText('Recommended: 15–30'),
+                                    ->helperText('Recommended minimum: 2. No maximum limit is enforced.'),
                                 ]),
                             ]),
         ]);
@@ -275,6 +298,11 @@ class MentorshipTrainingResource extends Resource {
                                 ->icon('heroicon-o-user-group')
                                 ->color('info')
                                 ->url(fn(Training $r) => static::getUrl('co-mentors', ['record' => $r->id])),
+                                Tables\Actions\Action::make('mentees')
+                                ->label('Mentees')
+                                ->icon('heroicon-o-users')
+                                ->color('success')
+                                ->url(fn(Training $r) => static::getUrl('mentees', ['record' => $r->id])),
                                 Tables\Actions\EditAction::make(),
                                 Tables\Actions\ViewAction::make(),
                             ]),

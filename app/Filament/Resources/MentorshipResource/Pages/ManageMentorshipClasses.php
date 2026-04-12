@@ -66,6 +66,10 @@ class ManageMentorshipClasses extends Page implements HasTable {
         ];
     }
 
+    public function getHeaderWidgetsColumns(): int|array {
+        return 1;
+    }
+
     private function getClassHeaderActions(): array {
         return [
                     Actions\Action::make('create_class')
@@ -98,7 +102,8 @@ class ManageMentorshipClasses extends Page implements HasTable {
                         Forms\Components\Textarea::make('description')
                         ->label('Description')
                         ->rows(3)
-                        ->placeholder('Details about this class cohort'),
+                        ->placeholder('Describe the gap identified and how this class will be delivered.')
+                        ->helperText('Make this detailed: describe the gap identified, the mentorship focus, and how the class will be done.'),
                     ])
                     ->action(fn(array $data) => $this->createClass($data)),
                     Actions\Action::make('back_to_training')
@@ -239,7 +244,9 @@ class ManageMentorshipClasses extends Page implements HasTable {
                                         ->afterOrEqual('start_date'),
                                     ]),
                                     Forms\Components\Textarea::make('description')
-                                    ->rows(3),
+                                    ->rows(3)
+                                    ->placeholder('Describe the gap identified and how this class will be delivered.')
+                                    ->helperText('Make this detailed: describe the gap identified, the mentorship focus, and how the class will be done.'),
                                 ]),
                                 Tables\Actions\DeleteAction::make()
                                 ->requiresConfirmation(),

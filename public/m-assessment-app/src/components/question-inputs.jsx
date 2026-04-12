@@ -204,15 +204,79 @@ function RecommendationChip({ value }) {
     );
 }
 
+// ─── Mortality three-month input ───────────────────────────────────────────────
+// Stores value as JSON string: '{"aug_2025":5,"sep_2025":3,"oct_2025":7}'
+export function MortalityThreeMonthInput({ value, onChange }) {
+    let parsed = {};
+    try { parsed = JSON.parse(value || "{}"); } catch { /* ignore */ }
+
+    const MONTHS = [
+        { key: "aug_2025", label: "August 2025" },
+        { key: "sep_2025", label: "September 2025" },
+        { key: "oct_2025", label: "October 2025" },
+    ];
+
+    const update = (key, val) => {
+        const next = { ...parsed, [key]: Math.max(0, val) };
+        onChange(JSON.stringify(next));
+    };
+
+    return (
+        <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+            {MONTHS.map(m => {
+                const n = parseInt(parsed[m.key] ?? 0, 10) || 0;
+                return (
+                    <div key={m.key} style={{
+                        display: "flex", justifyContent: "space-between", alignItems: "center",
+                        padding: "10px 12px", background: T.borderLight, borderRadius: 10,
+                        border: `1.5px solid ${n > 0 ? "#FCA5A5" : T.border}`,
+                    }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: T.textMid }}>{m.label}</div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <button onClick={() => update(m.key, n - 1)}
+                                style={{ width: 30, height: 30, borderRadius: 8, border: `1.5px solid ${T.border}`, background: "white", fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: T.textMid }}>−</button>
+                            <input
+                                type="number" min="0" value={n || ""}
+                                onChange={e => update(m.key, parseInt(e.target.value, 10) || 0)}
+                                placeholder="0"
+                                style={{
+                                    width: 58, textAlign: "center", padding: "5px 0",
+                                    border: `1.5px solid ${T.border}`, borderRadius: 8,
+                                    fontSize: 15, fontWeight: 700, color: T.text,
+                                    background: "white", outline: "none",
+                                }}
+                            />
+                            <button onClick={() => update(m.key, n + 1)}
+                                style={{ width: 30, height: 30, borderRadius: 8, border: `1.5px solid ${T.border}`, background: "white", fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: T.textMid }}>+</button>
+                        </div>
+                    </div>
+                );
+            })}
+            {Object.values(parsed).some(v => v > 0) && (
+                <div style={{ fontSize: 11, color: T.textMuted, textAlign: "right", paddingRight: 4 }}>
+                    Total: {Object.values(parsed).reduce((a, b) => a + (parseInt(b) || 0), 0)} mortalities
+                </div>
+            )}
+        </div>
+    );
+}
+
 // ─── QuestionCard ─────────────────────────────────────────────────────────────
 // onAskBot(question) — parent owns the ChatbotPanel so it renders above all overflow
-export function QuestionCard({ question, value, explanation, onAnswer, onExplain, index, onAskBot }) {
+// explainOnNo — if true, show explanation textarea whenever answer is "No"
+// forceMortality — if true, override input with MortalityThreeMonthInput
+export function QuestionCard({ question, value, explanation, onAnswer, onExplain, index, onAskBot, explainOnNo, forceMortality }) {
     const hasValue = value !== undefined && value !== "" && value !== null;
     // requires_explanation_on is an array from the API, e.g. ["No"] or ["No","Partial"]
-    const needsExplain = Array.isArray(question.requires_explanation_on) &&
-        question.requires_explanation_on.includes(value);
+    const needsExplain =
+        (Array.isArray(question.requires_explanation_on) && question.requires_explanation_on.includes(value)) ||
+        (explainOnNo && (value === "No" || value === "Partial"));
 
     const renderInput = () => {
+        // forceMortality is a prop-based override; question_type check covers schema-cached type
+        if (forceMortality || question.question_type === "mortality_three_month") {
+            return <MortalityThreeMonthInput value={value} onChange={onAnswer} />;
+        }
         switch (question.question_type) {
             case "yes_no":
             case "yes_no_partial":

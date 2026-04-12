@@ -28,6 +28,7 @@ class EditHumanResources extends EditRecord {
 
         foreach ($responses as $response) {
             $prefix = "hr_{$response->cadre_id}_";
+            $data["{$prefix}total_in_facility"] = $response->total_in_facility;
             $data["{$prefix}etat_plus"] = $response->etat_plus;
             $data["{$prefix}comprehensive_newborn_care"] = $response->comprehensive_newborn_care;
             $data["{$prefix}imnci"] = $response->imnci;
@@ -50,6 +51,20 @@ class EditHumanResources extends EditRecord {
                                     $cadres->map(function ($cadre) {
                                         return Forms\Components\Section::make($cadre->name)
                                                         ->schema([
+                                                            // Total staff row — spans full width, visually distinct
+                                                            Forms\Components\TextInput::make("hr_{$cadre->id}_total_in_facility")
+                                                                ->label('Total Staff in Facility')
+                                                                ->helperText('Total number of this cadre working at the facility')
+                                                                ->numeric()
+                                                                ->integer()
+                                                                ->minValue(0)
+                                                                ->default(0)
+                                                                ->required()
+                                                                ->columnSpanFull(),
+                                                            Forms\Components\Placeholder::make("hr_{$cadre->id}_divider")
+                                                                ->label('Trained in 5 Areas')
+                                                                ->content('Enter how many of the total staff above are trained in each programme:')
+                                                                ->columnSpanFull(),
                                                             Forms\Components\Grid::make(5)
                                                             ->schema([
                                                                 Forms\Components\TextInput::make("hr_{$cadre->id}_etat_plus")
@@ -59,7 +74,7 @@ class EditHumanResources extends EditRecord {
                                                                 ->minValue(0)
                                                                 ->default(0)
                                                                 ->required(),
-                                                                
+
                                                                 Forms\Components\TextInput::make("hr_{$cadre->id}_comprehensive_newborn_care")
                                                                 ->label('Comprehensive Newborn Care')
                                                                 ->numeric()
@@ -67,7 +82,7 @@ class EditHumanResources extends EditRecord {
                                                                 ->minValue(0)
                                                                 ->default(0)
                                                                 ->required(),
-                                                                
+
                                                                 Forms\Components\TextInput::make("hr_{$cadre->id}_imnci")
                                                                 ->label('IMNCI')
                                                                 ->numeric()
@@ -75,7 +90,7 @@ class EditHumanResources extends EditRecord {
                                                                 ->minValue(0)
                                                                 ->default(0)
                                                                 ->required(),
-                                                                
+
                                                                 Forms\Components\TextInput::make("hr_{$cadre->id}_type_1_diabetes")
                                                                 ->label('Type 1 Diabetes')
                                                                 ->numeric()
@@ -83,7 +98,7 @@ class EditHumanResources extends EditRecord {
                                                                 ->minValue(0)
                                                                 ->default(0)
                                                                 ->required(),
-                                                                
+
                                                                 Forms\Components\TextInput::make("hr_{$cadre->id}_essential_newborn_care")
                                                                 ->label('Essential Newborn Care')
                                                                 ->numeric()
@@ -118,7 +133,7 @@ class EditHumanResources extends EditRecord {
                         'cadre_id' => $cadre->id,
                     ],
                     [
-                        'total_in_facility' => 0, // Set to 0, not used anymore
+                        'total_in_facility' => (int) ($data["{$prefix}total_in_facility"] ?? 0),
                         'etat_plus' => (int) ($data["{$prefix}etat_plus"] ?? 0),
                         'comprehensive_newborn_care' => (int) ($data["{$prefix}comprehensive_newborn_care"] ?? 0),
                         'imnci' => (int) ($data["{$prefix}imnci"] ?? 0),

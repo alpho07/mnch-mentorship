@@ -37,9 +37,13 @@ class ListMentorshipTrainings extends ListRecords {
     // REMOVE the getHeaderWidgets method entirely or fix it like this:
     protected function getHeaderWidgets(): array {
         return [
-            // Return the widget class name, not an instance
+            \App\Filament\Widgets\MentorshipGuidanceNotice::class,
             \App\Filament\Widgets\MentorshipStatsOverview::class,
         ];
+    }
+
+    public function getHeaderWidgetsColumns(): int|array {
+        return 1;
     }
 
     public function getTabs1(): array {

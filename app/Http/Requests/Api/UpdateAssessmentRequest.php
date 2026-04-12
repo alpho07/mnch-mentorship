@@ -13,7 +13,7 @@ class UpdateAssessmentRequest extends FormRequest {
     public function rules(): array {
         return [
             'assessment_type' => 'sometimes|required|in:baseline,midline,endline',
-            'assessment_date' => 'sometimes|required|date|before_or_equal:today',
+            'assessment_date' => 'sometimes|required|date|after_or_equal:today',
         ];
     }
 }

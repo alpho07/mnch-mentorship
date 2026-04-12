@@ -114,6 +114,8 @@ Route::prefix('v1')->name('api.v1.')->middleware(MobileApiCors::class)->group(fu
                 Route::get('/', [ReportController::class, 'show'])->name('show');
                 Route::get('pdf', [ReportController::class, 'downloadPdf'])->name('pdf');
                 Route::get('summary', [ReportController::class, 'summary'])->name('summary');
+                Route::post('email', [ReportController::class, 'emailReport'])->name('email');
+                Route::get('email/{emailJob}', [ReportController::class, 'emailJobStatus'])->name('email-status');
             });
         });
 
@@ -121,6 +123,7 @@ Route::prefix('v1')->name('api.v1.')->middleware(MobileApiCors::class)->group(fu
         Route::prefix('reports')->name('reports.')->group(function () {
             Route::get('dashboard', [ReportController::class, 'dashboard'])->name('dashboard');
             Route::get('section-averages', [ReportController::class, 'sectionAverages'])->name('section-averages');
+            Route::get('email-jobs', [ReportController::class, 'emailJobs'])->name('email-jobs');
         });
 
         // ── Chat Assistant ──────────────────────────────────────────────────

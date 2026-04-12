@@ -50,6 +50,16 @@ class ManageClassModules extends Page implements HasTable {
     // Header Actions
     // ─────────────────────────────────────────────────────────────────────────
 
+    protected function getHeaderWidgets(): array {
+        return [
+            \App\Filament\Widgets\MentorshipSetupNotice::class,
+        ];
+    }
+
+    public function getHeaderWidgetsColumns(): int|array {
+        return 1;
+    }
+
     protected function getHeaderActions(): array {
         $service = app(ModuleUsageService::class);
         $availableModules = $this->getModuleOptions($service);
@@ -68,7 +78,7 @@ class ManageClassModules extends Page implements HasTable {
                     ->slideOver()
                     ->modalWidth('2xl')
                     ->modalHeading('Add Modules to Class')
-                    ->modalDescription('Each module can only be taught once per mentorship.')
+                    ->modalDescription('A module can only be added once to this class, but it can be used in other classes.')
                     ->form([
                         Forms\Components\CheckboxList::make('module_ids')
                         ->label('Available Program Modules')
@@ -76,7 +86,7 @@ class ManageClassModules extends Page implements HasTable {
                         ->searchable()
                         ->bulkToggleable()
                         ->required()
-                        ->helperText('Modules already used in other classes are excluded.'),
+                        ->helperText('Modules already added to this class are excluded. Modules used in other classes remain available.'),
                         Forms\Components\Toggle::make('auto_create_sessions')
                         ->label('Auto-populate sessions from program template')
                         ->default(true),

@@ -14,7 +14,7 @@ class StoreAssessmentRequest extends FormRequest {
         return [
             'facility_id' => 'required|exists:facilities,id',
             'assessment_type' => 'required|in:baseline,midline,endline',
-            'assessment_date' => 'required|date|before_or_equal:today',
+            'assessment_date' => 'required|date|after_or_equal:today',
         ];
     }
 }

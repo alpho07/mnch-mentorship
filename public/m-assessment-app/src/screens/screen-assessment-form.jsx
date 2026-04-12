@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { T, calcGrade, isQuestionVisible, getSectionCompletion, GRADE_COLOR, GRADE_BG } from "../constants.js";
 import { BackButton, ProgressBar } from "../components/shared-components.jsx";
-import { QuestionCard } from "../components/question-inputs.jsx";
+import { QuestionCard, MortalityThreeMonthInput } from "../components/question-inputs.jsx";
 import { ChatbotPanel } from "../components/chatbot-widget.jsx";
 import { HumanResourcesScreen } from "./screen-human-resources.jsx";
 import { HealthProductsScreen } from "./screen-health-products.jsx";
@@ -266,6 +266,16 @@ function ProgressHeader({ sections, completedSections, responses, onBack, specia
     );
 }
 
+// Questions in these sections show a comment field when answered "No" or "Partial"
+const EXPLAIN_ON_NO_SECTIONS = ["infrastructure", "information_systems"];
+
+// Detect the mortality question by question code or text
+function isMortalityQuestion(q) {
+    const code = (q.question_code ?? "").toLowerCase();
+    const text = (q.question_text ?? "").toLowerCase();
+    return code.includes("mortalit") || text.includes("mortalit");
+}
+
 // ── Section form with auto-save ───────────────────────────────────────────────
 function SectionForm({ section, responses, explanations, onAnswer, onExplain, onBack, onSave, isLast, saving, assessmentId }) {
     const questions = (section.questions || []).filter(q => isQuestionVisible(q, responses));
@@ -369,6 +379,10 @@ function SectionForm({ section, responses, explanations, onAnswer, onExplain, on
                             )}
                             {groupQs.map((q) => {
                                 const idx = globalIdx++;
+                                const explainOnNo = EXPLAIN_ON_NO_SECTIONS.includes(section.code);
+                                // Check schema type (from cached API) or keyword match as fallback
+                                const forceMortality = q.question_type === "mortality_three_month" ||
+                                    (section.code === "information_systems" && isMortalityQuestion(q));
                                 return (
                                     <QuestionCard
                                         key={q.id ?? q.question_code}
@@ -379,6 +393,8 @@ function SectionForm({ section, responses, explanations, onAnswer, onExplain, on
                                         onExplain={(v) => onExplain(q.question_code, v)}
                                         index={idx}
                                         onAskBot={(question) => setBotTarget(question)}
+                                        explainOnNo={explainOnNo}
+                                        forceMortality={forceMortality}
                                     />
                                 );
                             })}

@@ -37,6 +37,7 @@ class HumanResourceController extends Controller {
             return [
                 'cadre_id' => $cadre['id'],
                 'cadre_name' => $cadre['name'],
+                'total_in_facility' => $r?->total_in_facility ?? 0,
                 'etat_plus' => $r?->etat_plus ?? 0,
                 'comprehensive_newborn_care' => $r?->comprehensive_newborn_care ?? 0,
                 'imnci' => $r?->imnci ?? 0,
@@ -77,12 +78,37 @@ class HumanResourceController extends Controller {
         $request->validate([
             'responses' => 'required|array',
             'responses.*.cadre_id' => 'required|integer|exists:assessment_cadres,id',
+            'responses.*.total_in_facility' => 'nullable|integer|min:0',
             'responses.*.etat_plus' => 'nullable|integer|min:0',
             'responses.*.comprehensive_newborn_care' => 'nullable|integer|min:0',
             'responses.*.imnci' => 'nullable|integer|min:0',
             'responses.*.type_1_diabetes' => 'nullable|integer|min:0',
             'responses.*.essential_newborn_care' => 'nullable|integer|min:0',
         ]);
+
+        // Validate: sum of training fields must not exceed total_in_facility per cadre
+        $trainingFields = ['etat_plus', 'comprehensive_newborn_care', 'imnci', 'type_1_diabetes', 'essential_newborn_care'];
+        $violations = [];
+
+        foreach ($request->responses as $entry) {
+            $total = (int) ($entry['total_in_facility'] ?? 0);
+            if ($total === 0) continue;
+
+            $trainedSum = array_sum(array_map(fn ($f) => (int) ($entry[$f] ?? 0), $trainingFields));
+
+            if ($trainedSum > $total) {
+                $cadre = MainCadre::find($entry['cadre_id']);
+                $name = $cadre?->name ?? "Cadre #{$entry['cadre_id']}";
+                $violations[] = "{$name}: trained {$trainedSum} exceeds total {$total}";
+            }
+        }
+
+        if (!empty($violations)) {
+            return response()->json([
+                'message' => 'Trained count exceeds total staff in facility for one or more cadres.',
+                'errors' => ['responses' => $violations],
+            ], 422);
+        }
 
         foreach ($request->responses as $entry) {
             HumanResourceResponse::updateOrCreate(
@@ -91,7 +117,7 @@ class HumanResourceController extends Controller {
                         'cadre_id' => $entry['cadre_id'],
                     ],
                     [
-                        'total_in_facility' => 0,
+                        'total_in_facility' => (int) ($entry['total_in_facility'] ?? 0),
                         'etat_plus' => (int) ($entry['etat_plus'] ?? 0),
                         'comprehensive_newborn_care' => (int) ($entry['comprehensive_newborn_care'] ?? 0),
                         'imnci' => (int) ($entry['imnci'] ?? 0),

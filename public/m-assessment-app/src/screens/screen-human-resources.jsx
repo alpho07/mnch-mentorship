@@ -5,7 +5,8 @@ import api from "../services/api.service.js";
 import offlineStore from "../services/offline-store.js";
 import syncQueue from "../services/sync-queue.js";
 
-const FIELDS = [
+// Training area fields only (not total — handled separately)
+const TRAINING_FIELDS = [
     { key: "etat_plus", label: "ETAT+" },
     { key: "comprehensive_newborn_care", label: "Comprehensive NB Care" },
     { key: "imnci", label: "IMNCI" },
@@ -14,8 +15,9 @@ const FIELDS = [
 ];
 
 // ── Number stepper ─────────────────────────────────────────────────────────────
-function Stepper({ value, onChange }) {
+function Stepper({ value, onChange, max }) {
     const n = parseInt(value, 10) || 0;
+    const atMax = max !== undefined && n >= max;
     return (
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <button onClick={() => onChange(Math.max(0, n - 1))} style={{
@@ -24,20 +26,27 @@ function Stepper({ value, onChange }) {
                 display: "flex", alignItems: "center", justifyContent: "center",
             }}>−</button>
             <input
-                type="number" min="0" value={n}
-                onChange={e => onChange(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                type="number" min="0" max={max} value={n}
+                onChange={e => {
+                    const v = Math.max(0, parseInt(e.target.value, 10) || 0);
+                    onChange(max !== undefined ? Math.min(v, max) : v);
+                }}
                 style={{
                     width: 48, textAlign: "center", padding: "4px 0",
-                    border: `1px solid ${T.border}`, borderRadius: 8,
+                    border: `1px solid ${atMax ? "#FCA5A5" : T.border}`, borderRadius: 8,
                     fontSize: 14, fontWeight: 700, color: T.text, fontFamily: "inherit",
                     background: T.borderLight,
                 }}
             />
-            <button onClick={() => onChange(n + 1)} style={{
-                width: 28, height: 28, borderRadius: 8, border: `1px solid ${T.border}`,
-                background: T.borderLight, fontSize: 16, cursor: "pointer",
-                display: "flex", alignItems: "center", justifyContent: "center",
-            }}>+</button>
+            <button
+                onClick={() => !atMax && onChange(n + 1)}
+                disabled={atMax}
+                style={{
+                    width: 28, height: 28, borderRadius: 8, border: `1px solid ${atMax ? "#FCA5A5" : T.border}`,
+                    background: atMax ? "#FEE2E2" : T.borderLight, fontSize: 16,
+                    cursor: atMax ? "not-allowed" : "pointer", opacity: atMax ? 0.5 : 1,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                }}>+</button>
         </div>
     );
 }
@@ -45,8 +54,9 @@ function Stepper({ value, onChange }) {
 // ── Cadre row ──────────────────────────────────────────────────────────────────
 function CadreRow({ cadre, values, onChange, isDirty }) {
     const [open, setOpen] = useState(false);
-    const total = FIELDS.reduce((s, f) => s + (parseInt(values[f.key], 10) || 0), 0);
-    const hasAny = total > 0;
+    const totalInFacility = parseInt(values.total_in_facility, 10) || 0;
+    const trainedSum = TRAINING_FIELDS.reduce((s, f) => s + (parseInt(values[f.key], 10) || 0), 0);
+    const hasAny = totalInFacility > 0 || trainedSum > 0;
 
     return (
         <div style={{
@@ -68,10 +78,13 @@ function CadreRow({ cadre, values, onChange, isDirty }) {
                 }}>👤</div>
                 <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 700, fontSize: 14, color: T.text }}>{cadre.cadre_name}</div>
-                    {hasAny
-                        ? <div style={{ fontSize: 11, color: "#7C3AED", marginTop: 2, fontWeight: 600 }}>{total} trained</div>
-                        : <div style={{ fontSize: 11, color: T.textMuted, marginTop: 2 }}>Not filled yet</div>
-                    }
+                    {hasAny ? (
+                        <div style={{ fontSize: 11, color: "#7C3AED", marginTop: 2, fontWeight: 600 }}>
+                            {totalInFacility} total · {trainedSum} trained
+                        </div>
+                    ) : (
+                        <div style={{ fontSize: 11, color: T.textMuted, marginTop: 2 }}>Not filled yet</div>
+                    )}
                 </div>
                 {isDirty && (
                     <span style={{
@@ -85,12 +98,51 @@ function CadreRow({ cadre, values, onChange, isDirty }) {
 
             {open && (
                 <div style={{ padding: "0 16px 16px", borderTop: `1px solid ${T.border}` }}>
-                    {FIELDS.map(f => (
-                        <div key={f.key} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 12 }}>
-                            <div style={{ fontSize: 13, color: T.textMid, flex: 1 }}>{f.label}</div>
-                            <Stepper value={values[f.key] ?? 0} onChange={v => onChange(f.key, v)} />
+                    {/* Total staff count — always first */}
+                    <div style={{ paddingTop: 12, marginBottom: 4 }}>
+                        <div style={{
+                            display: "flex", justifyContent: "space-between", alignItems: "center",
+                            padding: "10px 12px", background: "#F0F4FF", borderRadius: 10,
+                            border: `1.5px solid ${T.primaryLight}`,
+                        }}>
+                            <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: 13, fontWeight: 700, color: T.primary }}>Total Staff in Facility</div>
+                                <div style={{ fontSize: 10, color: T.textMuted, marginTop: 1 }}>Total number of this cadre at the facility</div>
+                            </div>
+                            <Stepper value={values.total_in_facility ?? 0} onChange={v => onChange("total_in_facility", v)} />
                         </div>
-                    ))}
+                    </div>
+
+                    {/* Divider */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "12px 0 4px" }}>
+                        <div style={{ height: 1, flex: 1, background: T.border }} />
+                        <span style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, textTransform: "uppercase", letterSpacing: 0.8 }}>Trained in 5 Areas</span>
+                        <div style={{ height: 1, flex: 1, background: T.border }} />
+                    </div>
+
+                    {TRAINING_FIELDS.map(f => {
+                        const fieldVal = parseInt(values[f.key], 10) || 0;
+                        const otherSum = trainedSum - fieldVal;
+                        // Max for this field = remaining slots after other fields are filled
+                        const fieldMax = totalInFacility > 0 ? Math.max(0, totalInFacility - otherSum) : undefined;
+                        return (
+                            <div key={f.key} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 10 }}>
+                                <div style={{ fontSize: 13, color: T.textMid, flex: 1 }}>{f.label}</div>
+                                <Stepper value={values[f.key] ?? 0} onChange={v => onChange(f.key, v)} max={fieldMax} />
+                            </div>
+                        );
+                    })}
+
+                    {/* Training vs total indicator */}
+                    {totalInFacility > 0 && (
+                        <div style={{ marginTop: 12, padding: "8px 12px", borderRadius: 8, background: trainedSum > totalInFacility ? "#FEE2E2" : "#D1FAE5", border: `1px solid ${trainedSum > totalInFacility ? "#FCA5A5" : "#6EE7B7"}` }}>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: trainedSum > totalInFacility ? "#991B1B" : "#065F46" }}>
+                                {trainedSum > totalInFacility
+                                    ? `⚠ Trained (${trainedSum}) exceeds total staff (${totalInFacility}) — reduce before saving`
+                                    : `✓ ${trainedSum} of ${totalInFacility} trained (${totalInFacility - trainedSum} remaining)`}
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
         </div>
@@ -133,6 +185,7 @@ export function HumanResourcesScreen({ assessment, onBack, onComplete }) {
                 const init = {};
                 rows.forEach(c => {
                     init[c.cadre_id] = {
+                        total_in_facility: c.total_in_facility ?? 0,
                         etat_plus: c.etat_plus ?? 0,
                         comprehensive_newborn_care: c.comprehensive_newborn_care ?? 0,
                         imnci: c.imnci ?? 0,
@@ -180,12 +233,28 @@ export function HumanResourcesScreen({ assessment, onBack, onComplete }) {
     };
 
     const handleSave = async () => {
-        setSaving(true);
         setError(null);
+
+        // Validate: sum of training counts must not exceed total_in_facility
+        const violations = cadres.filter(c => {
+            const v = values[c.cadre_id] ?? {};
+            const total = parseInt(v.total_in_facility, 10) || 0;
+            if (total === 0) return false;
+            const sum = TRAINING_FIELDS.reduce((s, f) => s + (parseInt(v[f.key], 10) || 0), 0);
+            return sum > total;
+        });
+
+        if (violations.length > 0) {
+            setError(`Trained count exceeds total staff for: ${violations.map(c => c.cadre_name).join(", ")}. Please correct before saving.`);
+            return;
+        }
+
+        setSaving(true);
         try {
             const responses = cadres.map(c => ({
                 cadre_id: c.cadre_id,
-                ...FIELDS.reduce((acc, f) => ({ ...acc, [f.key]: values[c.cadre_id]?.[f.key] ?? 0 }), {}),
+                total_in_facility: values[c.cadre_id]?.total_in_facility ?? 0,
+                ...TRAINING_FIELDS.reduce((acc, f) => ({ ...acc, [f.key]: values[c.cadre_id]?.[f.key] ?? 0 }), {}),
             }));
             await api.humanResources.save(assessment.id, responses);
             setDirtyIds(new Set());

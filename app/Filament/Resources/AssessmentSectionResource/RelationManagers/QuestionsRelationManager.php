@@ -84,6 +84,7 @@ class QuestionsRelationManager extends RelationManager {
                                             'proportion' => 'Proportion (x/n)',
                                             'select' => 'Dropdown Select',
                                             'radio' => 'Radio Buttons',
+                                            'mortality_three_month' => 'Mortality (3-Month: Aug/Sep/Oct)',
                                         ])
                                         ->required()
                                         ->live()
@@ -368,6 +369,7 @@ class QuestionsRelationManager extends RelationManager {
                                 'info' => 'yes_no_partial',
                                 'warning' => 'number',
                                 'primary' => 'proportion',
+                                'danger' => 'mortality_three_month',
                                 'gray' => fn($state) => in_array($state, ['text', 'select', 'radio']),
                             ])
                             ->formatStateUsing(fn(string $state): string => match ($state) {
@@ -378,6 +380,7 @@ class QuestionsRelationManager extends RelationManager {
                                         'proportion' => 'Proportion',
                                         'select' => 'Select',
                                         'radio' => 'Radio',
+                                        'mortality_three_month' => 'Mortality 3M',
                                         default => $state,
                                     }),
                             Tables\Columns\IconColumn::make('has_conditional')
@@ -415,6 +418,7 @@ class QuestionsRelationManager extends RelationManager {
                                 'proportion' => 'Proportion',
                                 'select' => 'Select',
                                 'radio' => 'Radio',
+                                'mortality_three_month' => 'Mortality (3-Month)',
                             ]),
                             Tables\Filters\SelectFilter::make('group')
                             ->label('Group')
@@ -476,6 +480,7 @@ class QuestionsRelationManager extends RelationManager {
                                     'text' => 'Free Text',
                                     'select' => 'Dropdown',
                                     'radio' => 'Radio',
+                                    'mortality_three_month' => 'Mortality (3-Month: Aug/Sep/Oct)',
                                 ])
                                 ->default('yes_no')
                                 ->required(),

@@ -63,6 +63,7 @@ async function request(method, path, body = null) {
     if (!res.ok) {
         const err = new Error(data.message || `HTTP ${res.status}`);
         err.status = res.status;
+        err.data = data;                // ← add this line
         err.errors = data.errors ?? {};
         throw err;
     }
@@ -132,6 +133,8 @@ export const _rawApi = {
         submit: (id) => post('/assessments/' + id + '/submit'),
         updateSectionProgress: (assessmentId, sectionCode, done) =>
             put('/assessments/' + assessmentId + '/sections/' + sectionCode + '/progress', {done}),
+        create: (facility_id, assessment_type, assessment_date) =>
+            post('/assessments', {facility_id, assessment_type, assessment_date}),
     },
     humanResources: {
         get: (assessmentId) => get('/assessments/' + assessmentId + '/human-resources'),
@@ -217,8 +220,30 @@ const api = {
     // ── Profile ──────────────────────────────────────────────────────────────
     profile: _rawApi.profile,
 
-    // ── Facilities ───────────────────────────────────────────────────────────
-    facilities: _rawApi.facilities,
+    // ── Facilities (cached reads) ─────────────────────────────────────────────
+    facilities: {
+        list: async (params) => {
+            try {
+                const data = await _rawApi.facilities.list(params);
+                const arr = Array.isArray(data) ? data
+                    : Array.isArray(data?.data) ? data.data : [];
+                if (arr.length > 0)
+                    await offlineStore.saveFacilities(arr);
+                return data;
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    const cached = await offlineStore.getFacilities();
+                    if (cached && cached.length > 0) {
+                        console.log(`[API] Offline — returning ${cached.length} cached facilities`);
+                        return cached;
+                    }
+                }
+                throw e;
+            }
+        },
+        byCounty: _rawApi.facilities.byCounty,
+        find: _rawApi.facilities.find,
+    },
 
     // ── Sections / Schema (cached) ───────────────────────────────────────────
     sections: {
@@ -312,6 +337,53 @@ const api = {
                         assessmentId, sectionCode, done,
                     });
                     return {queued: true};
+                }
+                throw e;
+            }
+        },
+
+        create: async (facility_id, assessment_type, assessment_date, facilityMeta, user, sectionCodes) => {
+            try {
+                const data = await _rawApi.assessments.create(facility_id, assessment_type, assessment_date);
+                const a = data?.assessment ?? data?.data ?? data;
+                if (a?.id) await offlineStore.saveAssessment(a);
+                return data;
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    console.log('[API] Offline — creating provisional assessment');
+                    const tempId = 'offline_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+                    // Build section_progress from cached schema codes
+                    const sectionProgress = {};
+                    (sectionCodes ?? []).forEach(code => { sectionProgress[code] = false; });
+                    const provisional = {
+                        id: tempId,
+                        facility_id,
+                        facility_name: facilityMeta?.name ?? '',
+                        mfl_code: facilityMeta?.mfl_code ?? '',
+                        county: facilityMeta?.county ?? '',
+                        subcounty: facilityMeta?.subcounty ?? '',
+                        assessment_type,
+                        assessment_date,
+                        assessor_id: user?.id ?? null,
+                        assessor_name: user?.name ?? '',
+                        status: 'in_progress',
+                        section_progress: sectionProgress,
+                        section_scores: {},
+                        section_progress_detail: {},
+                        responses: {},
+                        overall_percentage: null,
+                        overall_grade: null,
+                        _isOffline: true,
+                    };
+                    await offlineStore.saveAssessment(provisional);
+                    await syncQueue.enqueue({
+                        type: 'assessments.create',
+                        tempId,
+                        facility_id,
+                        assessment_type,
+                        assessment_date,
+                    });
+                    return {_provisional: true, assessment: provisional};
                 }
                 throw e;
             }
@@ -539,6 +611,12 @@ const api = {
     prefetchForOffline: async (assessments) => {
         if (!navigator.onLine)
             return;
+        // Facilities are fetched unconditionally — needed before any assessment opens
+        try {
+            await api.facilities.list();
+        } catch {
+            // Non-critical
+        }
         const inProgress = (assessments ?? []).filter(a => a.status === "in_progress");
         if (inProgress.length === 0)
             return;

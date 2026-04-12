@@ -2,8 +2,7 @@
 
 namespace App\Filament\Pages\Indicators;
 
-;
-
+use App\Models\Indicators\FacilityIndicatorAssignment;
 use App\Models\Indicators\Indicator;
 use App\Models\Indicators\IndicatorGroup;
 use App\Models\Indicators\IndicatorReportType;

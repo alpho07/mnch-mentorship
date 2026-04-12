@@ -33,7 +33,7 @@ class AssessmentController extends Controller {
                     'sectionScores.section',
                 ])
                 ->where('assessor_id', $request->user()->id)
-                ->whereNotIn('id', [1, 3])
+                //->whereNotIn('id', [1, 3])
                 ->latest('assessment_date');
 
         if ($request->filled('status')) {

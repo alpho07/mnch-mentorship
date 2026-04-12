@@ -172,6 +172,7 @@ class AssessmentPdfReportService {
                     'question' => $response->question->question_text,
                     'response' => $response->response_value ?? 'N/A',
                     'score' => $response->score ?? 0,
+                    'explanation' => $response->explanation,
                 ];
             })->toArray(),
             // Detailed structure for PDF
@@ -208,6 +209,7 @@ class AssessmentPdfReportService {
                     'question' => $response->question->question_text,
                     'response' => $response->response_value ?? 'N/A',
                     'score' => $response->score ?? 0,
+                    'explanation' => $response->explanation,
                 ];
             })->toArray(),
             // Detailed structure for PDF
@@ -339,10 +341,28 @@ class AssessmentPdfReportService {
         return [
             // Simple structure for HTML
             'responses' => $responses->map(function ($response) {
+                $isMortality = $response->question->question_type === 'mortality_three_month';
+                $displayValue = $response->response_value ?? 'N/A';
+
+                if ($isMortality && $displayValue !== 'N/A') {
+                    $counts = json_decode($displayValue, true);
+                    if (is_array($counts)) {
+                        $parts = [];
+                        foreach ($counts as $month => $count) {
+                            // Convert slug "aug_2025" → "Aug 2025"
+                            $label = ucfirst(str_replace('_', ' ', $month));
+                            $parts[] = "{$label}: {$count}";
+                        }
+                        $displayValue = implode(', ', $parts);
+                    }
+                }
+
                 return [
                     'question' => $response->question->question_text,
-                    'response' => $response->response_value ?? 'N/A',
+                    'response' => $displayValue,
                     'score' => $response->score ?? 0,
+                    'explanation' => $response->explanation,
+                    'is_mortality' => $isMortality,
                 ];
             })->toArray(),
             // For PDF (all responses)
@@ -397,6 +417,7 @@ class AssessmentPdfReportService {
                         'question' => $response->question->question_text,
                         'response' => $response->response_value ?? 'N/A',
                         'score' => $response->score ?? 0,
+                        'explanation' => $response->explanation,
                     ];
                 })->values()->toArray();
 
@@ -405,6 +426,7 @@ class AssessmentPdfReportService {
                         'question' => $response->question->question_text,
                         'response' => $response->response_value ?? 'N/A',
                         'score' => $response->score ?? 0,
+                        'explanation' => $response->explanation,
                     ];
                 })->values()->toArray();
 

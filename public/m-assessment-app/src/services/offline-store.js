@@ -10,7 +10,7 @@
  */
 
 const DB_NAME = "mnch_offline";
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 const STORES = {
     schema: "schema", // full section schema (keyed by "full")
@@ -21,6 +21,7 @@ const STORES = {
     user: "user", // cached user profile (keyed by "me")
     syncQueue: "syncQueue", // pending write operations
     meta: "meta", // timestamps, version info
+    facilities: "facilities", // facilities list
 };
 
 // ── Open / upgrade database ─────────────────────────────────────────────────
@@ -186,6 +187,32 @@ const offlineStore = {
     // ── Meta ─────────────────────────────────────────────────────────────────
     getMeta: (key) => dbGet(STORES.meta, key),
     setMeta: (key, value) => dbPut(STORES.meta, key, value),
+
+    // ── Facilities ────────────────────────────────────────────────────────────
+    getFacilities: () => dbGet(STORES.facilities, "all"),
+    saveFacilities: (list) => dbPut(STORES.facilities, "all", list),
+
+    // ── Assessment lifecycle helpers ──────────────────────────────────────────
+    deleteAssessment: (id) => dbDelete(STORES.assessments, id),
+
+    /**
+     * Migrate data stored under fromId to toId across responses, hr, and hp stores.
+     * Used when a provisional offline assessment gets a real server ID.
+     * Deletes the fromId records after copying to avoid orphaned entries.
+     */
+    copyAssessmentData: async (fromId, toId) => {
+        for (const storeName of [STORES.responses, STORES.hr, STORES.hp]) {
+            try {
+                const data = await dbGet(storeName, fromId);
+                if (data !== null) {
+                    await dbPut(storeName, toId, data);
+                    await dbDelete(storeName, fromId);
+                }
+            } catch {
+                // Non-critical — best effort migration
+            }
+        }
+    },
 
     // ── Full wipe (logout) ───────────────────────────────────────────────────
     clearAll: async () => {

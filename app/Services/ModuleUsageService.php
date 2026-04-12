@@ -16,8 +16,8 @@ use Illuminate\Support\Facades\Log;
 /**
  * ModuleUsageService
  *
- * Enforces the domain invariant: a module can only be taught ONCE
- * per mentorship across all classes (UNIQUE mentorship_id + module_id).
+ * Enforces the domain invariant: a module can only be assigned once
+ * per class. The same module may be assigned to different classes.
  *
  * Also owns the auto-roster cascade: whenever a module is added to a class,
  * every currently enrolled mentee automatically gets a MenteeModuleProgress
@@ -29,23 +29,15 @@ class ModuleUsageService {
     // ─────────────────────────────────────────────────────────────────────────
 
     /**
-     * Modules from the program that have NOT yet been used in any class
-     * of this mentorship AND are not already in the current class.
+     * Modules from the program that are not already in the current class.
+     * The same module may still be used in another class.
      */
     public function getAvailableModules(Training $training, MentorshipClass $class): Collection {
-        // IDs already used across the whole mentorship
-        $usedIds = MentorshipModuleUsage::where('mentorship_id', $training->id)
-                ->pluck('module_id')
-                ->toArray();
-
-        // IDs already in this specific class (guards against duplication before usage is recorded)
         $classIds = $class->classModules()->pluck('program_module_id')->toArray();
-
-        $excludeIds = array_unique(array_merge($usedIds, $classIds));
 
         return ProgramModule::where('program_id', $training->program_id)
                         ->where('is_active', true)
-                        ->whereNotIn('id', $excludeIds)
+                        ->whereNotIn('id', $classIds)
                         ->orderBy('order_sequence')
                         ->get();
     }
@@ -58,7 +50,11 @@ class ModuleUsageService {
                 ->where('is_active', true)
                 ->count();
 
-        $usedCount = MentorshipModuleUsage::where('mentorship_id', $training->id)->count();
+        $usedCount = ClassModule::whereHas('mentorshipClass',
+                        fn($query) => $query->where('training_id', $training->id)
+                )
+                ->distinct('program_module_id')
+                ->count('program_module_id');
 
         return [
             'total_modules' => $totalModules,
@@ -76,9 +72,10 @@ class ModuleUsageService {
      * Assign program modules to a class.
      *
      * For each module:
-     *  1. Records usage in mentorship_module_usages (enforces unique-per-mentorship)
+     *  1. Skips modules already assigned to this class
      *  2. Creates ClassModule record
-     *  3. *** AUTO-ROSTER CASCADE ***
+     *  3. Records usage for reporting when possible
+     *  4. *** AUTO-ROSTER CASCADE ***
      *     If the class is already active, creates MenteeModuleProgress rows for
      *     every currently enrolled mentee — so the mentor never has to add mentees
      *     to modules manually.
@@ -109,22 +106,15 @@ class ModuleUsageService {
             }
 
             foreach ($programModuleIds as $programModuleId) {
-                // Skip if already used in this mentorship
-                $alreadyUsed = MentorshipModuleUsage::where('mentorship_id', $training->id)
-                        ->where('module_id', $programModuleId)
+                // Skip if already assigned to this class.
+                $alreadyInClass = $class->classModules()
+                        ->where('program_module_id', $programModuleId)
                         ->exists();
 
-                if ($alreadyUsed) {
-                    Log::warning("ModuleUsageService: module {$programModuleId} already used in mentorship {$training->id}, skipping.");
+                if ($alreadyInClass) {
+                    Log::warning("ModuleUsageService: module {$programModuleId} already assigned to class {$class->id}, skipping.");
                     continue;
                 }
-
-                // 1. Record usage
-                MentorshipModuleUsage::create([
-                    'mentorship_id' => $training->id,
-                    'module_id' => $programModuleId,
-                    'first_class_id' => $class->id,
-                ]);
 
                 // 2. Create ClassModule
                 $maxSequence++;
@@ -136,6 +126,14 @@ class ModuleUsageService {
                     'min_attendance_percentage' => 75,
                     'requires_assessment' => false,
                     'attendance_link_active' => false,
+                ]);
+
+                // 3. Keep legacy usage tracking populated without enforcing availability.
+                MentorshipModuleUsage::firstOrCreate([
+                    'mentorship_id' => $training->id,
+                    'module_id' => $programModuleId,
+                ], [
+                    'first_class_id' => $class->id,
                 ]);
 
                 // 3. AUTO-ROSTER CASCADE
@@ -159,8 +157,8 @@ class ModuleUsageService {
     /**
      * Remove a module from a class.
      *
-     * Releases the usage record so the module becomes available for
-     * other classes. Blocked if the module has started or has sessions.
+     * Removes the module from this class. Blocked if the module has started
+     * or has sessions.
      */
     public function removeModuleFromClass(
             Training $training,
@@ -174,11 +172,6 @@ class ModuleUsageService {
         DB::transaction(function () use ($training, $classModule) {
             // Delete progress rows for this module
             MenteeModuleProgress::where('class_module_id', $classModule->id)->delete();
-
-            // Release the usage record
-            MentorshipModuleUsage::where('mentorship_id', $training->id)
-                    ->where('module_id', $classModule->program_module_id)
-                    ->delete();
 
             // Delete the class module (cascades to sessions via FK)
             $classModule->delete();
