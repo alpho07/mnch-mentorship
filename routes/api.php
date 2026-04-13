@@ -1,160 +1,139 @@
 <?php
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Analytics\ProgressiveDashboardController;
 
-// ==========================================
-// API ROUTES (routes/api.php)
-// For all data endpoints called by JavaScript
-// ==========================================
+use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\ProfileController;
+use App\Http\Controllers\Api\AssessmentSectionController;
+use App\Http\Controllers\Api\AssessmentController;
+use App\Http\Controllers\Api\AssessmentResponseController;
+use App\Http\Controllers\Api\ReportController;
+use App\Http\Controllers\Api\FacilityController;
+use App\Http\Controllers\Api\HumanResourceController;
+use App\Http\Controllers\Api\HealthProductsController;
+use App\Http\Controllers\Api\ChatController;
+use App\Http\Controllers\Api\MentorshipController;
+use App\Http\Middleware\MobileApiCors;
 
-// Progressive Dashboard API Routes
-Route::prefix('progressive-dashboard')->name('progressive-dashboard.')->group(function () {
-    
-    // ===== CORE ANALYTICS ENDPOINTS =====
-    
-    // Level 0: National Overview
-    Route::get('national', [ProgressiveDashboardController::class, 'getNationalOverview'])->name('national');
-    
-    // Level 1: County Analysis  
-    Route::get('county/{countyId}', [ProgressiveDashboardController::class, 'getCountyAnalysis'])->name('county');
-    
-    // Level 2: Facility Type Analysis
-    Route::get('county/{countyId}/facility-type/{facilityTypeId}', [ProgressiveDashboardController::class, 'getFacilityTypeAnalysis'])->name('facility-type');
-    
-    // Level 3: Individual Facility Analysis
-    Route::get('facility/{facilityId}', [ProgressiveDashboardController::class, 'getFacilityAnalysis'])->name('facility');
-    
-    // Level 4: Individual Participant Profile
-    Route::get('participant/{participantId}', [ProgressiveDashboardController::class, 'getParticipantProfile'])->name('participant');
-    
-    // ===== UTILITY DATA ENDPOINTS =====
-    
-    // Filter options
-    Route::get('years', [ProgressiveDashboardController::class, 'getAvailableYears'])->name('years');
-    Route::get('facility-types', [ProgressiveDashboardController::class, 'getFacilityTypes'])->name('facility-types');
-    Route::get('departments', [ProgressiveDashboardController::class, 'getDepartments'])->name('departments');
-    Route::get('cadres', [ProgressiveDashboardController::class, 'getCadres'])->name('cadres');
-    
-    // Dashboard statistics
-    Route::get('stats', [ProgressiveDashboardController::class, 'getDashboardStats'])->name('stats');
-    
-    // ===== SEARCH AND COMPARISON =====
-    
-    Route::get('search/facilities', [ProgressiveDashboardController::class, 'searchFacilities'])->name('search.facilities');
-    Route::get('compare/counties', [ProgressiveDashboardController::class, 'getCountyComparison'])->name('compare.counties');
-    
-    // ===== GEOGRAPHIC DATA =====
-    
-    Route::get('county/{countyId}/facilities-geojson', function($countyId) {
-        $county = \App\Models\County::findOrFail($countyId);
-        $facilities = $county->facilities()->with('facilityType')->get();
-        
-        $features = $facilities->map(function($facility) {
-            return [
-                'type' => 'Feature',
-                'properties' => [
-                    'id' => $facility->id,
-                    'name' => $facility->name,
-                    'type' => $facility->facilityType->name ?? 'Unknown',
-                    'mfl_code' => $facility->mfl_code,
-                ],
-                'geometry' => [
-                    'type' => 'Point',
-                    'coordinates' => [$facility->long ?? 36.8219, $facility->lat ?? -1.2921]
-                ]
-            ];
+/*
+  |--------------------------------------------------------------------------
+  | MNCH Mobile API Routes
+  |--------------------------------------------------------------------------
+  |
+  | All routes are versioned under /api/v1/
+  | Authentication uses Laravel Sanctum token-based auth.
+  | Unauthenticated requests to protected routes return 401.
+  |
+ */
+
+// MobileApiCors is the outermost middleware — it runs on every request
+// including OPTIONS preflight, and unconditionally sets CORS headers.
+// This covers: emulator (https://localhost), real device over WiFi (no Origin
+// header), iOS (capacitor://localhost), and browser dev (localhost:5173).
+Route::prefix('v1')->name('api.v1.')->middleware(MobileApiCors::class)->group(function () {
+
+    // =========================================================================
+    // PUBLIC — No authentication required
+    // =========================================================================
+    Route::prefix('auth')->name('auth.')->group(function () {
+        Route::post('login', [AuthController::class, 'login'])->name('login');
+        Route::post('forgot-password', [AuthController::class, 'forgotPassword'])->name('forgot-password');
+        Route::post('reset-password', [AuthController::class, 'resetPassword'])->name('reset-password');
+    });
+
+    Route::get('health', fn() => response()->json([
+                'status' => 'ok',
+                'service' => 'MNCH Assessment API',
+                'version' => '1.0.0',
+                'timestamp' => now()->toIso8601String(),
+            ]))->name('health');
+
+    // =========================================================================
+    // PROTECTED — Requires Sanctum token (Authorization: Bearer {token})
+    // =========================================================================
+    Route::middleware(['auth:sanctum', 'api.active'])->group(function () {
+
+        // ── Auth ──────────────────────────────────────────────────────────────
+        Route::prefix('auth')->name('auth.')->group(function () {
+            Route::post('logout', [AuthController::class, 'logout'])->name('logout');
+            Route::post('logout-all', [AuthController::class, 'logoutAll'])->name('logout-all');
+            Route::get('me', [AuthController::class, 'me'])->name('me');
+            Route::post('refresh', [AuthController::class, 'refresh'])->name('refresh');
         });
-        
-        return response()->json([
-            'type' => 'FeatureCollection',
-            'features' => $features,
-            'metadata' => [
-                'county_name' => $county->name,
-                'total_facilities' => $facilities->count(),
-            ]
-        ]);
-    })->name('county.geojson');
-    
-    // ===== EXPORT ENDPOINTS =====
-    
-    // Export current view
-    Route::post('export', [ProgressiveDashboardController::class, 'exportCurrentView'])->name('export.current');
-    
-    // Export county data
-    Route::get('export/county/{countyId}', [ProgressiveDashboardController::class, 'exportCountyData'])->name('export.county');
-    
-    // Export facility list
-    Route::post('export-facility-list', [ProgressiveDashboardController::class, 'exportFacilityList'])->name('export.facility-list');
-    
-    // Export participants
-    Route::get('facility/{facilityId}/participants/export', [ProgressiveDashboardController::class, 'exportParticipants'])->name('export.participants');
-    
-    // ===== ALERTS AND MONITORING =====
-    
-    Route::get('alerts', [ProgressiveDashboardController::class, 'getActiveAlerts'])->name('alerts');
-    Route::get('status', [ProgressiveDashboardController::class, 'getApiStatus'])->name('status');
-    
-    // ===== CACHE MANAGEMENT =====
-    
-    Route::post('cache/clear', [ProgressiveDashboardController::class, 'clearCache'])->name('cache.clear');
-    
-    // Bulk cache refresh
-    Route::post('cache/refresh', function() {
-        \Illuminate\Support\Facades\Cache::flush();
-        return response()->json(['message' => 'Cache refreshed successfully']);
-    })->name('cache.refresh');
-}); 
 
+        // ── Profile ───────────────────────────────────────────────────────────
+        Route::prefix('profile')->name('profile.')->group(function () {
+            Route::get('/', [ProfileController::class, 'show'])->name('show');
+            Route::put('/', [ProfileController::class, 'update'])->name('update');
+            Route::put('password', [ProfileController::class, 'changePassword'])->name('change-password');
+            Route::post('avatar', [ProfileController::class, 'uploadAvatar'])->name('avatar');
+            Route::get('stats', [ProfileController::class, 'stats'])->name('stats');
+        });
 
-// ==========================================
-// ADMIN API ROUTES (routes/api.php) 
-// For admin-only functions with middleware
-// ==========================================
+        // ── Facilities ────────────────────────────────────────────────────────
+        Route::prefix('facilities')->name('facilities.')->group(function () {
+            Route::get('/', [FacilityController::class, 'index'])->name('index');
+            Route::get('{facility}', [FacilityController::class, 'show'])->name('show');
+            Route::get('county/{countyId}', [FacilityController::class, 'byCounty'])->name('by-county');
+        });
 
-Route::prefix('admin/progressive-dashboard')->middleware(['auth:sanctum', 'admin'])->name('admin.progressive-dashboard.')->group(function () {
-    
-    Route::get('system-info', function() {
-        return response()->json([
-            'php_version' => PHP_VERSION,
-            'laravel_version' => app()->version(),
-            'cache_driver' => config('cache.default'),
-            'database_connection' => config('database.default'),
-            'memory_usage' => memory_get_usage(true),
-            'peak_memory' => memory_get_peak_usage(true),
-            'disk_space' => disk_free_space('/'),
-        ]);
-    })->name('system-info');
-    
-    Route::post('rebuild-cache', function() {
-        // Rebuild all dashboard caches
-        \Illuminate\Support\Facades\Cache::flush();
-        return response()->json(['message' => 'All caches rebuilt successfully']);
-    })->name('rebuild-cache');
-    
-    Route::get('performance-metrics', function() {
-        return response()->json([
-            'cache_hit_rate' => 85.4, // Calculate from actual metrics
-            'average_response_time' => 245, // milliseconds
-            'active_users' => 23,
-            'total_requests_today' => 1247,
-        ]);
-    })->name('performance-metrics');
-    
-    Route::post('bulk-export', function(\Illuminate\Http\Request $request) {
-        $entities = $request->get('entities', []);
-        $type = $request->get('type', 'global_training');
-        $year = $request->get('year', 'all');
-        
-        return response()->json([
-            'message' => 'Bulk export queued',
-            'job_id' => uniqid(),
-            'entities_count' => count($entities),
-            'estimated_completion' => now()->addMinutes(5)
-        ]);
-    })->name('bulk-export');
+        // ── Assessment Sections & Questions (form schema) ─────────────────────
+        Route::prefix('sections')->name('sections.')->group(function () {
+            Route::get('/', [AssessmentSectionController::class, 'index'])->name('index');
+            Route::get('schema/full', [AssessmentSectionController::class, 'fullSchema'])->name('schema');
+            Route::get('{section}', [AssessmentSectionController::class, 'show'])->name('show');
+        });
+
+        // ── Assessments ───────────────────────────────────────────────────────
+        Route::prefix('assessments')->name('assessments.')->group(function () {
+            Route::get('/', [AssessmentController::class, 'index'])->name('index');
+            Route::post('/', [AssessmentController::class, 'store'])->name('store');
+            Route::get('{assessment}', [AssessmentController::class, 'show'])->name('show');
+            Route::put('{assessment}', [AssessmentController::class, 'update'])->name('update');
+            Route::delete('{assessment}', [AssessmentController::class, 'destroy'])->name('destroy');
+            Route::post('{assessment}/submit', [AssessmentController::class, 'submit'])->name('submit');
+
+            // ── Human Resources ───────────────────────────────────────────────
+            Route::get('{assessment}/human-resources', [HumanResourceController::class, 'index'])->name('human-resources.index');
+            Route::post('{assessment}/human-resources', [HumanResourceController::class, 'store'])->name('human-resources.store');
+
+            // ── Health Products ───────────────────────────────────────────────
+            Route::get('{assessment}/health-products', [HealthProductsController::class, 'index'])->name('health-products.index');
+            Route::post('{assessment}/health-products', [HealthProductsController::class, 'store'])->name('health-products.store');
+
+            // ── Section progress ──────────────────────────────────────────────
+            Route::put('{assessment}/sections/{sectionCode}/progress',
+                    [AssessmentController::class, 'updateSectionProgress'])->name('section-progress');
+
+            // ── Responses ─────────────────────────────────────────────────────
+            Route::prefix('{assessment}/responses')->name('responses.')->group(function () {
+                Route::get('/', [AssessmentResponseController::class, 'index'])->name('index');
+                Route::post('/', [AssessmentResponseController::class, 'bulkStore'])->name('bulk-store');
+                Route::get('{questionCode}', [AssessmentResponseController::class, 'show'])->name('show');
+            });
+
+            // ── Reports ───────────────────────────────────────────────────────
+            Route::prefix('{assessment}/report')->name('report.')->group(function () {
+                Route::get('/', [ReportController::class, 'show'])->name('show');
+                Route::get('pdf', [ReportController::class, 'downloadPdf'])->name('pdf');
+                Route::get('summary', [ReportController::class, 'summary'])->name('summary');
+                Route::post('email', [ReportController::class, 'emailReport'])->name('email');
+                Route::get('email/{emailJob}', [ReportController::class, 'emailJobStatus'])->name('email-status');
+            });
+        });
+
+        // ── Aggregate Reports ─────────────────────────────────────────────────
+        Route::prefix('reports')->name('reports.')->group(function () {
+            Route::get('dashboard', [ReportController::class, 'dashboard'])->name('dashboard');
+            Route::get('section-averages', [ReportController::class, 'sectionAverages'])->name('section-averages');
+            Route::get('email-jobs', [ReportController::class, 'emailJobs'])->name('email-jobs');
+        });
+
+        // ── Mentorships ───────────────────────────────────────────────────────
+        Route::prefix('mentorships')->name('mentorships.')->group(function () {
+            Route::get('/', [MentorshipController::class, 'index'])->name('index');
+            Route::get('{mentorship}', [MentorshipController::class, 'show'])->name('show');
+        });
+
+        // ── Chat Assistant ──────────────────────────────────────────────────
+        Route::post('chat/assistant', [ChatController::class, 'assistant'])->name('chat.assistant');
+    });
 });
-
-
-
-
