@@ -161,8 +161,45 @@ export const _rawApi = {
         full: (assessmentId) => get('/assessments/' + assessmentId + '/report'),
         summary: (assessmentId) => get('/assessments/' + assessmentId + '/report/summary'),
         downloadPdf: (assessmentId) => get('/assessments/' + assessmentId + '/report/pdf'),
+        emailReport: (assessmentId, emails) => post('/assessments/' + assessmentId + '/report/email', { emails }),
+        emailJobStatus: (assessmentId, jobId) => get('/assessments/' + assessmentId + '/report/email/' + jobId),
+        emailJobs: () => get('/reports/email-jobs'),
         dashboard: () => get('/reports/dashboard'),
         sectionAverages: () => get('/reports/section-averages'),
+    },
+    mentorships: {
+        list: () => get('/mentorships'),
+        find: (id) => get('/mentorships/' + id),
+        classes: (id) => get('/mentorships/' + id + '/classes'),
+        classDetail: (id, classId) => get('/mentorships/' + id + '/classes/' + classId),
+    },
+    modules: {
+        list: (classId) => get('/classes/' + classId + '/modules'),
+        start: (moduleId) => post('/modules/' + moduleId + '/start'),
+        complete: (moduleId) => post('/modules/' + moduleId + '/complete'),
+        sessions: (moduleId) => get('/modules/' + moduleId + '/sessions'),
+    },
+    attendance: {
+        roster: (moduleId) => get('/modules/' + moduleId + '/attendance'),
+        mark: (moduleId, participantId, status) =>
+            post('/modules/' + moduleId + '/attendance/' + participantId, { status }),
+        bulk: (moduleId, attendances) =>
+            post('/modules/' + moduleId + '/attendance/bulk', { attendances }),
+    },
+    me: {
+        classes: () => get('/me/classes'),
+        classDetail: (classId) => get('/me/classes/' + classId),
+        attend: (classId, moduleId) =>
+            post('/me/classes/' + classId + '/modules/' + moduleId + '/attend'),
+    },
+    trainings: {
+        list: () => get('/trainings'),
+        find: (id) => get('/trainings/' + id),
+        participants: (id) => get('/trainings/' + id + '/participants'),
+    },
+    participants: {
+        list: (classId) => get('/classes/' + classId + '/participants'),
+        progress: (participantId) => get('/participants/' + participantId + '/progress'),
     },
 };
 
@@ -618,8 +655,280 @@ const api = {
         },
     },
 
-    // ── Reports (no offline cache — requires server) ─────────────────────────
-    reports: _rawApi.reports,
+    // ── Reports ──────────────────────────────────────────────────────────────
+    reports: {
+        ..._rawApi.reports,
+
+        // Email report — queues locally when offline, dispatches job when online
+        emailReport: async (assessmentId, emails) => {
+            // Always save a local pending job immediately so the UI can show it
+            const localId = "local_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7);
+            const localJob = {
+                id: localId,
+                assessment_id: assessmentId,
+                emails,
+                status: "local_pending",
+                created_at: new Date().toISOString(),
+            };
+            await offlineStore.saveEmailJob(localJob);
+
+            try {
+                const data = await _rawApi.reports.emailReport(assessmentId, emails);
+                // Replace local job with server job
+                await offlineStore.deleteEmailJob(localId);
+                await offlineStore.saveEmailJob({ ...data, assessment_id: assessmentId, emails });
+                return { ...data, _localId: localId };
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    console.log(`[API] Offline — queuing email report for assessment ${assessmentId}`);
+                    await syncQueue.enqueue({
+                        type: "report.email",
+                        assessmentId,
+                        emails,
+                        localJobId: localId,
+                    });
+                    return { queued: true, localJobId: localId, status: "local_pending" };
+                }
+                // On hard error, remove the local placeholder
+                await offlineStore.deleteEmailJob(localId);
+                throw e;
+            }
+        },
+
+        // Fetch all email jobs — server first, fall back to local cache
+        emailJobs: async () => {
+            try {
+                const data = await _rawApi.reports.emailJobs();
+                const jobs = data?.data ?? [];
+                await offlineStore.saveEmailJobs(jobs);
+                return jobs;
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    const cached = await offlineStore.getAllEmailJobs();
+                    return Object.values(cached ?? {}).sort(
+                        (a, b) => new Date(b.created_at) - new Date(a.created_at)
+                    );
+                }
+                throw e;
+            }
+        },
+
+        emailJobStatus: _rawApi.reports.emailJobStatus,
+    },
+
+    // ── Mentorships (cached reads) ───────────────────────────────────────────
+    mentorships: {
+        list: async () => {
+            try {
+                const data = await _rawApi.mentorships.list();
+                const arr = Array.isArray(data?.data) ? data.data : [];
+                if (arr.length > 0) await offlineStore.saveMentorships(arr);
+                return data;
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    const cached = await offlineStore.getMentorships();
+                    if (cached) return { data: cached };
+                }
+                throw e;
+            }
+        },
+        find: async (id) => {
+            try {
+                const data = await _rawApi.mentorships.find(id);
+                if (data?.data) await offlineStore.saveMentorship(data.data);
+                return data;
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    const cached = await offlineStore.getMentorship(id);
+                    if (cached) return { data: cached };
+                }
+                throw e;
+            }
+        },
+        classes: async (id) => {
+            try {
+                const data = await _rawApi.mentorships.classes(id);
+                const arr = Array.isArray(data?.data) ? data.data : [];
+                await offlineStore.saveMentorshipClasses(id, arr);
+                return data;
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    const cached = await offlineStore.getMentorshipClasses(id);
+                    if (cached) return { data: cached };
+                }
+                throw e;
+            }
+        },
+        classDetail: _rawApi.mentorships.classDetail,
+    },
+
+    // ── Modules (write ops queued when offline) ──────────────────────────────
+    modules: {
+        list: async (classId) => {
+            try {
+                return await _rawApi.modules.list(classId);
+            } catch (e) {
+                if (isNetworkError(e)) return { data: [] };
+                throw e;
+            }
+        },
+        start: async (moduleId) => {
+            try {
+                return await _rawApi.modules.start(moduleId);
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    await syncQueue.enqueue({ type: 'mentorship.module.start', moduleId });
+                    return { queued: true };
+                }
+                throw e;
+            }
+        },
+        complete: async (moduleId) => {
+            try {
+                return await _rawApi.modules.complete(moduleId);
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    await syncQueue.enqueue({ type: 'mentorship.module.complete', moduleId });
+                    return { queued: true };
+                }
+                throw e;
+            }
+        },
+        sessions: _rawApi.modules.sessions,
+    },
+
+    // ── Attendance ────────────────────────────────────────────────────────────
+    attendance: {
+        roster: async (moduleId) => {
+            try {
+                const data = await _rawApi.attendance.roster(moduleId);
+                if (data?.data) await offlineStore.saveAttendance(moduleId, data.data);
+                return data;
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    const cached = await offlineStore.getAttendance(moduleId);
+                    if (cached) return { data: cached };
+                }
+                throw e;
+            }
+        },
+        mark: async (moduleId, participantId, status) => {
+            try {
+                return await _rawApi.attendance.mark(moduleId, participantId, status);
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    await syncQueue.enqueue({ type: 'mentorship.attendance.mark', moduleId, participantId, status });
+                    return { queued: true };
+                }
+                throw e;
+            }
+        },
+        bulk: async (moduleId, attendances) => {
+            try {
+                return await _rawApi.attendance.bulk(moduleId, attendances);
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    for (const a of attendances) {
+                        await syncQueue.enqueue({ type: 'mentorship.attendance.mark', moduleId, participantId: a.participant_id, status: a.status });
+                    }
+                    return { queued: true };
+                }
+                throw e;
+            }
+        },
+    },
+
+    // ── Me / Mentee classes ───────────────────────────────────────────────────
+    me: {
+        classes: async () => {
+            try {
+                const data = await _rawApi.me.classes();
+                const arr = Array.isArray(data?.data) ? data.data : [];
+                if (arr.length > 0) await offlineStore.saveMyClasses(arr);
+                return data;
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    const cached = await offlineStore.getMyClasses();
+                    if (cached) return { data: cached };
+                }
+                throw e;
+            }
+        },
+        classDetail: async (classId) => {
+            try {
+                const data = await _rawApi.me.classDetail(classId);
+                if (data?.data) await offlineStore.saveMyClass(classId, data.data);
+                return data;
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    const cached = await offlineStore.getMyClass(classId);
+                    if (cached) return { data: cached };
+                }
+                throw e;
+            }
+        },
+        attend: async (classId, moduleId) => {
+            try {
+                return await _rawApi.me.attend(classId, moduleId);
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    await syncQueue.enqueue({ type: 'mentee.attendance.confirm', classId, moduleId });
+                    return { queued: true };
+                }
+                throw e;
+            }
+        },
+    },
+
+    // ── Global trainings ─────────────────────────────────────────────────────
+    trainings: {
+        list: async () => {
+            try {
+                const data = await _rawApi.trainings.list();
+                const arr = Array.isArray(data?.data) ? data.data : [];
+                if (arr.length > 0) await offlineStore.saveTrainings(arr);
+                return data;
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    const cached = await offlineStore.getTrainings();
+                    if (cached) return { data: cached };
+                }
+                throw e;
+            }
+        },
+        find: async (id) => {
+            try {
+                const data = await _rawApi.trainings.find(id);
+                if (data?.data) await offlineStore.saveTraining(data.data);
+                return data;
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    const cached = await offlineStore.getTraining(id);
+                    if (cached) return { data: cached };
+                }
+                throw e;
+            }
+        },
+        participants: _rawApi.trainings.participants,
+    },
+
+    // ── Participants ──────────────────────────────────────────────────────────
+    participants: {
+        list: async (classId) => {
+            try {
+                const data = await _rawApi.participants.list(classId);
+                if (data?.data) await offlineStore.saveParticipants(classId, data.data);
+                return data;
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    const cached = await offlineStore.getParticipants(classId);
+                    if (cached) return { data: cached };
+                }
+                throw e;
+            }
+        },
+        progress: _rawApi.participants.progress,
+    },
 
     // ── Prefetch for offline ─────────────────────────────────────────────────
     // Call after initial data load while online. Pre-caches HR structure,
