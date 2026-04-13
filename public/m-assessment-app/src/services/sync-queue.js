@@ -192,6 +192,55 @@ async function executeOp(rawApi, op) {
             }
         }
 
+        case "report.email": {
+            try {
+                const data = await rawApi.reports.emailReport(op.assessmentId, op.emails);
+                // Swap the local placeholder with the real server job
+                if (op.localJobId) {
+                    await offlineStore.deleteEmailJob(op.localJobId);
+                }
+                if (data?.id) {
+                    await offlineStore.saveEmailJob({
+                        ...data,
+                        assessment_id: op.assessmentId,
+                        emails: op.emails,
+                    });
+                }
+                window.dispatchEvent(new CustomEvent("emailJob:synced", {
+                    detail: { localJobId: op.localJobId, serverJob: data },
+                }));
+                return data;
+            } catch (e) {
+                // 4xx means a permanent error — update local job status and remove from queue
+                if (e.status >= 400 && e.status < 500) {
+                    if (op.localJobId) {
+                        const existing = await offlineStore.getEmailJob(op.localJobId);
+                        if (existing) {
+                            await offlineStore.saveEmailJob({
+                                ...existing,
+                                status: "failed",
+                                error: e.message ?? "Request rejected by server",
+                            });
+                        }
+                    }
+                    return null; // dequeue
+                }
+                throw e;
+            }
+        }
+
+        case 'mentorship.module.start':
+            return rawApi.modules.start(op.moduleId);
+
+        case 'mentorship.module.complete':
+            return rawApi.modules.complete(op.moduleId);
+
+        case 'mentorship.attendance.mark':
+            return rawApi.attendance.mark(op.moduleId, op.participantId, op.status);
+
+        case 'mentee.attendance.confirm':
+            return rawApi.me.attend(op.classId, op.moduleId);
+
         default:
             console.warn(`[SyncQueue] Unknown op type: ${op.type}`);
             return null;
