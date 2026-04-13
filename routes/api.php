@@ -130,7 +130,40 @@ Route::prefix('v1')->name('api.v1.')->middleware(MobileApiCors::class)->group(fu
         // ── Mentorships ───────────────────────────────────────────────────────
         Route::prefix('mentorships')->name('mentorships.')->group(function () {
             Route::get('/', [MentorshipController::class, 'index'])->name('index');
-            Route::get('{mentorship}', [MentorshipController::class, 'show'])->name('show');
+            Route::get('{training}', [MentorshipController::class, 'show'])->name('show');
+            Route::get('{training}/classes', [MentorshipController::class, 'classes'])->name('classes');
+            Route::get('{training}/classes/{class}', [MentorshipController::class, 'classDetail'])->name('class-detail');
+        });
+
+        // ── Class modules ─────────────────────────────────────────────────────────
+        Route::prefix('classes/{class}/modules')->name('class.modules.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\ClassModuleController::class, 'index'])->name('index');
+        });
+        Route::prefix('modules/{module}')->name('module.')->group(function () {
+            Route::post('start', [\App\Http\Controllers\Api\ClassModuleController::class, 'start'])->name('start');
+            Route::post('complete', [\App\Http\Controllers\Api\ClassModuleController::class, 'complete'])->name('complete');
+            Route::get('sessions', [\App\Http\Controllers\Api\ClassModuleController::class, 'sessions'])->name('sessions');
+            Route::get('attendance', [\App\Http\Controllers\Api\AttendanceApiController::class, 'roster'])->name('attendance.roster');
+            Route::post('attendance/bulk', [\App\Http\Controllers\Api\AttendanceApiController::class, 'bulk'])->name('attendance.bulk');
+            Route::post('attendance/{participant}', [\App\Http\Controllers\Api\AttendanceApiController::class, 'mark'])->name('attendance.mark');
+        });
+
+        // ── Classes / participants ─────────────────────────────────────────────────
+        Route::get('classes/{class}/participants', [\App\Http\Controllers\Api\ParticipantController::class, 'index'])->name('classes.participants');
+        Route::get('participants/{participant}/progress', [\App\Http\Controllers\Api\ParticipantController::class, 'progress'])->name('participants.progress');
+
+        // ── Mentee (self) ─────────────────────────────────────────────────────────
+        Route::prefix('me/classes')->name('me.classes.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\MenteeApiController::class, 'index'])->name('index');
+            Route::get('{class}', [\App\Http\Controllers\Api\MenteeApiController::class, 'show'])->name('show');
+            Route::post('{class}/modules/{module}/attend', [\App\Http\Controllers\Api\MenteeApiController::class, 'attend'])->name('attend');
+        });
+
+        // ── Global trainings ──────────────────────────────────────────────────────
+        Route::prefix('trainings')->name('trainings.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\GlobalTrainingController::class, 'index'])->name('index');
+            Route::get('{training}', [\App\Http\Controllers\Api\GlobalTrainingController::class, 'show'])->name('show');
+            Route::get('{training}/participants', [\App\Http\Controllers\Api\GlobalTrainingController::class, 'participants'])->name('participants');
         });
 
         // ── Chat Assistant ──────────────────────────────────────────────────
