@@ -10,7 +10,7 @@
  */
 
 const DB_NAME = "mnch_offline";
-const DB_VERSION = 3;
+const DB_VERSION = 5;
 
 const STORES = {
     schema: "schema", // full section schema (keyed by "full")
@@ -22,6 +22,13 @@ const STORES = {
     syncQueue: "syncQueue", // pending write operations
     meta: "meta", // timestamps, version info
     facilities: "facilities", // facilities list
+    emailJobs: "emailJobs", // pending / completed report email jobs (keyed by job id)
+    // v5 — mentorship/training modules
+    mentorships: "mentorships",   // keyed by training_id
+    participants: "participants",  // keyed by class_id
+    myClasses: "myClasses",       // keyed by class_id (mentee view)
+    trainings: "trainings",        // keyed by training_id (global)
+    attendance: "attendance",      // keyed by module_id
 };
 
 // ── Open / upgrade database ─────────────────────────────────────────────────
@@ -191,6 +198,46 @@ const offlineStore = {
     // ── Facilities ────────────────────────────────────────────────────────────
     getFacilities: () => dbGet(STORES.facilities, "all"),
     saveFacilities: (list) => dbPut(STORES.facilities, "all", list),
+
+    // ── Email Jobs ────────────────────────────────────────────────────────────
+    // Each job is stored under its id (string). Local-only jobs use "local_" prefix.
+    saveEmailJob: (job) => dbPut(STORES.emailJobs, String(job.id), job),
+    getEmailJob: (id) => dbGet(STORES.emailJobs, String(id)),
+    getAllEmailJobs: () => dbGetAll(STORES.emailJobs),
+    deleteEmailJob: (id) => dbDelete(STORES.emailJobs, String(id)),
+    saveEmailJobs: async (jobs) => {
+        for (const job of jobs) {
+            await dbPut(STORES.emailJobs, String(job.id), job);
+        }
+    },
+
+    // ── Mentorships (mentor view) ─────────────────────────────────────────────
+    getMentorships: () => dbGet(STORES.mentorships, "list"),
+    saveMentorships: (list) => dbPut(STORES.mentorships, "list", list),
+    getMentorship: (id) => dbGet(STORES.mentorships, "detail_" + id),
+    saveMentorship: (training) => dbPut(STORES.mentorships, "detail_" + training.id, training),
+    getMentorshipClasses: (trainingId) => dbGet(STORES.mentorships, "classes_" + trainingId),
+    saveMentorshipClasses: (trainingId, classes) => dbPut(STORES.mentorships, "classes_" + trainingId, classes),
+
+    // ── Participants (per class) ───────────────────────────────────────────────
+    getParticipants: (classId) => dbGet(STORES.participants, classId),
+    saveParticipants: (classId, list) => dbPut(STORES.participants, classId, list),
+
+    // ── Module attendance (offline state per module) ──────────────────────────
+    getAttendance: (moduleId) => dbGet(STORES.attendance, moduleId),
+    saveAttendance: (moduleId, data) => dbPut(STORES.attendance, moduleId, data),
+
+    // ── My Classes (mentee view) ──────────────────────────────────────────────
+    getMyClasses: () => dbGet(STORES.myClasses, "list"),
+    saveMyClasses: (list) => dbPut(STORES.myClasses, "list", list),
+    getMyClass: (classId) => dbGet(STORES.myClasses, classId),
+    saveMyClass: (classId, data) => dbPut(STORES.myClasses, classId, data),
+
+    // ── Global Trainings ──────────────────────────────────────────────────────
+    getTrainings: () => dbGet(STORES.trainings, "list"),
+    saveTrainings: (list) => dbPut(STORES.trainings, "list", list),
+    getTraining: (id) => dbGet(STORES.trainings, "detail_" + id),
+    saveTraining: (t) => dbPut(STORES.trainings, "detail_" + t.id, t),
 
     // ── Assessment lifecycle helpers ──────────────────────────────────────────
     deleteAssessment: (id) => dbDelete(STORES.assessments, id),
