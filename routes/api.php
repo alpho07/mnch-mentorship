@@ -163,6 +163,14 @@ Route::prefix('v1')->name('api.v1.')->middleware(MobileApiCors::class)->group(fu
         Route::get('classes/{class}/participants', [\App\Http\Controllers\Api\ParticipantController::class, 'index'])->name('classes.participants');
         Route::get('participants/{participant}/progress', [\App\Http\Controllers\Api\ParticipantController::class, 'progress'])->name('participants.progress');
 
+        // ── Class lifecycle + mentee enrollment ───────────────────────────────────
+        Route::prefix('classes/{class}')->name('class.')->group(function () {
+            Route::post('start', [\App\Http\Controllers\Api\ClassLifecycleController::class, 'start'])->name('start');
+            Route::post('end', [\App\Http\Controllers\Api\ClassLifecycleController::class, 'end'])->name('end');
+            Route::post('mentees', [\App\Http\Controllers\Api\ClassLifecycleController::class, 'enrollMentee'])->name('mentees.store');
+            Route::delete('mentees/{participant}', [\App\Http\Controllers\Api\ClassLifecycleController::class, 'removeMentee'])->name('mentees.destroy');
+        });
+
         // ── Mentee (self) ─────────────────────────────────────────────────────────
         Route::prefix('me/classes')->name('me.classes.')->group(function () {
             Route::get('/', [\App\Http\Controllers\Api\MenteeApiController::class, 'index'])->name('index');
