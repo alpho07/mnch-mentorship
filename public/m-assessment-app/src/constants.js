@@ -190,7 +190,7 @@ export function computeTabs(roles = []) {
     if (isMentee) {
         tabs.push({ key: 'myClasses', label: 'My Classes', iconKey: 'myClasses' });
     }
-    if (isAdmin) {
+    if (isAdmin || isMentee) {
         tabs.push({ key: 'trainings', label: 'Trainings', iconKey: 'trainings' });
     }
     if (isAssessor || isMentor) {
