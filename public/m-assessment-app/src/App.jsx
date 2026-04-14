@@ -25,6 +25,7 @@ import { ClassProgressScreen } from "./screens/screen-class-progress.jsx";
 import { TrainingsListScreen } from "./screens/screen-trainings-list.jsx";
 import { TrainingDetailScreen } from "./screens/screen-training-detail.jsx";
 import { MentorshipFormScreen } from "./screens/screen-mentorship-form.jsx";
+import { SessionNotesScreen } from "./screens/screen-session-notes.jsx";
 
 import api from "./services/api.service.js";
 
@@ -483,6 +484,16 @@ export default function App() {
                             user={user}
                             onBack={() => setModal({ type: "classDetail", data: modal.prev })}
                             onOpenAttendance={(mod) => setModal({ type: "attendanceRoster", data: mod, prev: modal.prev })}
+                            onOpenSession={(session) => setModal({ type: "sessionNotes", data: session, prev: modal.data, prevClass: modal.prev })}
+                        />
+                    </div>
+                )}
+                {user && modal?.type === "sessionNotes" && (
+                    <div style={{ position: "absolute", inset: 0 }}>
+                        <SessionNotesScreen
+                            session={modal.data}
+                            onBack={() => setModal({ type: "moduleDetail", data: modal.prev, prev: modal.prevClass })}
+                            onSaved={() => setModal({ type: "moduleDetail", data: modal.prev, prev: modal.prevClass })}
                         />
                     </div>
                 )}

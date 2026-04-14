@@ -1,12 +1,21 @@
 // src/screens/screen-module-detail.jsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { T } from "../constants.js";
 import api from "../services/api.service.js";
 
-export function ModuleDetailScreen({ module: mod, user, onBack, onOpenAttendance }) {
+export function ModuleDetailScreen({ module: mod, user, onBack, onOpenAttendance, onOpenSession }) {
     const [busy, setBusy] = useState(false);
     const [localStatus, setLocalStatus] = useState(mod.status);
     const [error, setError] = useState(null);
+    const [sessions, setSessions] = useState([]);
+
+    useEffect(() => {
+        if (mod?.id) {
+            api.modules.sessions(mod.id)
+                .then(d => setSessions(d?.data ?? d ?? []))
+                .catch(() => {});
+        }
+    }, [mod?.id]);
 
     const handleStart = async () => {
         setBusy(true);
@@ -103,6 +112,28 @@ export function ModuleDetailScreen({ module: mod, user, onBack, onOpenAttendance
                 {localStatus === "completed" && (
                     <div style={{ textAlign: "center", color: "#10B981", fontWeight: 700, fontSize: 15 }}>
                         ✓ Module completed
+                    </div>
+                )}
+
+                {sessions.length > 0 && (
+                    <div style={{ marginTop: 16 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: T.textSecondary, marginBottom: 8 }}>SESSIONS</div>
+                        {sessions.map(s => (
+                            <div key={s.id} onClick={() => onOpenSession?.(s)}
+                                style={{ padding: "12px 14px", background: T.surface, borderRadius: T.radius, border: `1px solid ${T.border}`, marginBottom: 8, cursor: "pointer" }}>
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                    <div>
+                                        <div style={{ fontSize: 14, fontWeight: 500, color: T.text }}>{s.title ?? "Session " + s.session_number}</div>
+                                        <div style={{ fontSize: 12, color: T.textMuted, marginTop: 2 }}>
+                                            {s.actual_date ?? s.scheduled_date ?? "Not scheduled"}
+                                        </div>
+                                    </div>
+                                    <span style={{ fontSize: 12, padding: "3px 8px", borderRadius: 10, background: s.status === "completed" ? "#D1FAE5" : "#F3F4F6", color: s.status === "completed" ? "#065F46" : T.textSecondary }}>
+                                        {s.status ?? "scheduled"}
+                                    </span>
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 )}
             </div>
