@@ -1,6 +1,7 @@
 <?php
 namespace Database\Factories;
 
+use App\Models\Program;
 use App\Models\ProgramModule;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -11,6 +12,7 @@ class ProgramModuleFactory extends Factory
     public function definition(): array
     {
         return [
+            'program_id'     => Program::factory(),
             'name'           => fake()->words(4, true),
             'description'    => fake()->sentence(),
             'order_sequence' => fake()->numberBetween(1, 10),

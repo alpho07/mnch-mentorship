@@ -171,6 +171,9 @@ Route::prefix('v1')->name('api.v1.')->middleware(MobileApiCors::class)->group(fu
             Route::delete('mentees/{participant}', [\App\Http\Controllers\Api\ClassLifecycleController::class, 'removeMentee'])->name('mentees.destroy');
         });
 
+        // ── Session notes ─────────────────────────────────────────────────────────
+        Route::put('sessions/{session}', [\App\Http\Controllers\Api\ClassSessionController::class, 'update'])->name('sessions.update');
+
         // ── Mentee (self) ─────────────────────────────────────────────────────────
         Route::prefix('me/classes')->name('me.classes.')->group(function () {
             Route::get('/', [\App\Http\Controllers\Api\MenteeApiController::class, 'index'])->name('index');
