@@ -127,6 +127,14 @@ Route::prefix('v1')->name('api.v1.')->middleware(MobileApiCors::class)->group(fu
             Route::get('email-jobs', [ReportController::class, 'emailJobs'])->name('email-jobs');
         });
 
+        // ── Lookup ────────────────────────────────────────────────────────────────
+        Route::prefix('programs')->name('programs.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\LookupController::class, 'programs'])->name('index');
+            Route::get('{program}/modules', [\App\Http\Controllers\Api\LookupController::class, 'programModules'])->name('modules');
+        });
+        Route::get('counties', [\App\Http\Controllers\Api\LookupController::class, 'counties'])->name('counties');
+        Route::get('users/search', [\App\Http\Controllers\Api\LookupController::class, 'userSearch'])->name('users.search');
+
         // ── Mentorships ───────────────────────────────────────────────────────
         Route::prefix('mentorships')->name('mentorships.')->group(function () {
             Route::get('/', [MentorshipController::class, 'index'])->name('index');
