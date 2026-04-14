@@ -10,7 +10,7 @@
  */
 
 const DB_NAME = "mnch_offline";
-const DB_VERSION = 5;
+const DB_VERSION = 6;
 
 const STORES = {
     schema: "schema", // full section schema (keyed by "full")
@@ -29,6 +29,10 @@ const STORES = {
     myClasses: "myClasses",       // keyed by class_id (mentee view)
     trainings: "trainings",        // keyed by training_id (global)
     attendance: "attendance",      // keyed by module_id
+    // v6 — mentorship creation, session notes, conflicts
+    mentorshipMentees: "mentorshipMentees",  // keyed by class_id
+    mentorshipSessions: "mentorshipSessions", // keyed by "class_${classId}" or "module_${moduleId}"
+    conflicts: "conflicts",                   // keyed by conflict id (auto-generated)
 };
 
 // ── Open / upgrade database ─────────────────────────────────────────────────
@@ -227,6 +231,25 @@ const offlineStore = {
     getAttendance: (moduleId) => dbGet(STORES.attendance, moduleId),
     saveAttendance: (moduleId, data) => dbPut(STORES.attendance, moduleId, data),
 
+    // ── Mentorship (add deleteMentorship for ID reconciliation) ──────────────
+    deleteMentorship: (id) => dbDelete(STORES.mentorships, 'detail_' + id),
+
+    // ── Mentorship mentees (enrolled participants per class) ──────────────────
+    getMentees: (classId) => dbGet(STORES.mentorshipMentees, 'class_' + classId),
+    saveMentees: (classId, list) => dbPut(STORES.mentorshipMentees, 'class_' + classId, list),
+
+    // ── Session notes ─────────────────────────────────────────────────────────
+    getSession: (sessionId) => dbGet(STORES.mentorshipSessions, 'session_' + sessionId),
+    saveSession: (session) => dbPut(STORES.mentorshipSessions, 'session_' + session.id, session),
+    getSessionsByModule: (moduleId) => dbGet(STORES.mentorshipSessions, 'module_' + moduleId),
+    saveSessionsByModule: (moduleId, list) => dbPut(STORES.mentorshipSessions, 'module_' + moduleId, list),
+
+    // ── Conflicts (failed sync ops needing user review) ───────────────────────
+    getConflicts: () => dbGetAll(STORES.conflicts),
+    saveConflict: (conflict) => dbPut(STORES.conflicts, conflict.id, conflict),
+    resolveConflict: (id) => dbDelete(STORES.conflicts, id),
+    getConflictCount: async () => (await dbGetAllKeys(STORES.conflicts)).length,
+
     // ── My Classes (mentee view) ──────────────────────────────────────────────
     getMyClasses: () => dbGet(STORES.myClasses, "list"),
     saveMyClasses: (list) => dbPut(STORES.myClasses, "list", list),
@@ -238,6 +261,12 @@ const offlineStore = {
     saveTrainings: (list) => dbPut(STORES.trainings, "list", list),
     getTraining: (id) => dbGet(STORES.trainings, "detail_" + id),
     saveTraining: (t) => dbPut(STORES.trainings, "detail_" + t.id, t),
+
+    // ── Resources ─────────────────────────────────────────────────────────────
+    getResources: () => dbGet(STORES.meta, 'resources_list'),
+    saveResources: (list) => dbPut(STORES.meta, 'resources_list', list),
+    getResourcesCachedAt: () => dbGet(STORES.meta, 'resources_cached_at'),
+    setResourcesCachedAt: (ts) => dbPut(STORES.meta, 'resources_cached_at', ts),
 
     // ── Assessment lifecycle helpers ──────────────────────────────────────────
     deleteAssessment: (id) => dbDelete(STORES.assessments, id),
