@@ -78,6 +78,42 @@ class GlobalTrainingController extends Controller
     }
 
     /**
+     * POST /api/v1/trainings/{training}/enroll
+     */
+    public function enroll(Request $request, Training $training): JsonResponse
+    {
+        abort_if($training->type !== 'global_training', 404);
+        abort_if(!in_array($training->status, ['upcoming', 'active']), 422, 'Enrollment is not open for this training.');
+
+        $already = $training->participants()->where('user_id', $request->user()->id)->exists();
+        abort_if($already, 409, 'You are already enrolled in this training.');
+
+        $participant = $training->participants()->create([
+            'user_id'           => $request->user()->id,
+            'completion_status' => 'registered',
+        ]);
+
+        return response()->json([
+            'data' => ['participant_id' => $participant->id, 'status' => $participant->completion_status],
+        ], 201);
+    }
+
+    /**
+     * POST /api/v1/trainings/{training}/attendance
+     */
+    public function attendance(Request $request, Training $training): JsonResponse
+    {
+        abort_if($training->type !== 'global_training', 404);
+
+        $participant = $training->participants()->where('user_id', $request->user()->id)->first();
+        abort_if(!$participant, 403, 'You are not enrolled in this training.');
+
+        $participant->update(['completion_status' => 'in_progress']);
+
+        return response()->json(['message' => 'Attendance recorded.']);
+    }
+
+    /**
      * GET /api/v1/trainings/{training}/participants
      */
     public function participants(Request $request, Training $training): JsonResponse
@@ -91,8 +127,7 @@ class GlobalTrainingController extends Controller
             ->map(fn($p) => [
                 'id'                => $p->id,
                 'name'              => $p->user?->name,
-                'completion_status' => $p->completion_status ?? 'pending',
-                'attendance_status' => $p->attendance_status ?? 'not_marked',
+                'completion_status' => $p->completion_status ?? 'registered',
             ]);
 
         return response()->json(['data' => $participants]);

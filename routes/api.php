@@ -186,7 +186,12 @@ Route::prefix('v1')->name('api.v1.')->middleware(MobileApiCors::class)->group(fu
             Route::get('/', [\App\Http\Controllers\Api\GlobalTrainingController::class, 'index'])->name('index');
             Route::get('{training}', [\App\Http\Controllers\Api\GlobalTrainingController::class, 'show'])->name('show');
             Route::get('{training}/participants', [\App\Http\Controllers\Api\GlobalTrainingController::class, 'participants'])->name('participants');
+            Route::post('{training}/enroll', [\App\Http\Controllers\Api\GlobalTrainingController::class, 'enroll'])->name('enroll');
+            Route::post('{training}/attendance', [\App\Http\Controllers\Api\GlobalTrainingController::class, 'attendance'])->name('attendance');
         });
+
+        // ── Resources ─────────────────────────────────────────────────────────────
+        Route::get('resources', [\App\Http\Controllers\Api\ResourceController::class, 'index'])->name('resources.index');
 
         // ── Chat Assistant ──────────────────────────────────────────────────
         Route::post('chat/assistant', [ChatController::class, 'assistant'])->name('chat.assistant');
