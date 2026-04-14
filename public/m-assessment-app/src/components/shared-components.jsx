@@ -54,17 +54,45 @@ const NavIcons = {
             <circle cx="12" cy="7" r="4" fill={active ? T.primaryGhost : "none"} />
         </svg>
     ),
+    mentorship: (active) => (
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? T.primary : T.textMuted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="8" r="4" fill={active ? T.primaryGhost : "none"} />
+            <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+            <path d="M17 11l2 2 4-4" stroke={active ? T.success : T.textMuted} />
+        </svg>
+    ),
+    myClasses: (active) => (
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? T.primary : T.textMuted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" fill={active ? T.primaryGhost : "none"} />
+            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+        </svg>
+    ),
+    trainings: (active) => (
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? T.primary : T.textMuted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="4" width="18" height="16" rx="2" fill={active ? T.primaryGhost : "none"} />
+            <path d="M8 9h8M8 13h5" />
+        </svg>
+    ),
 };
 
 // ── Bottom navigation ──────────────────────────────────────────────────────────
-export function BottomNav({ active, onChange, hideNew = false }) {
-    const tabs = [
+export function BottomNav({ active, onChange, tabs, showFab = false }) {
+    const resolvedTabs = tabs ?? [
         { key: "dashboard", label: "Home", iconKey: "dashboard" },
         { key: "assessments", label: "Assessments", iconKey: "assessments" },
-        ...(!hideNew ? [{ key: "new", label: "New", iconKey: null }] : []),
         { key: "reports", label: "Reports", iconKey: "reports" },
         { key: "profile", label: "Profile", iconKey: "profile" },
     ];
+
+    // Insert FAB tab in the center position if showFab
+    const mid = Math.floor(resolvedTabs.length / 2);
+    const displayTabs = showFab
+        ? [
+            ...resolvedTabs.slice(0, mid),
+            { key: "new", label: "New", iconKey: null },
+            ...resolvedTabs.slice(mid),
+          ]
+        : resolvedTabs;
 
     return (
         <div style={{
@@ -80,7 +108,7 @@ export function BottomNav({ active, onChange, hideNew = false }) {
                 display: "flex",
                 alignItems: "stretch",
             }}>
-                {tabs.map(t => {
+                {displayTabs.map(t => {
                     const isActive = active === t.key;
                     const iconFn = NavIcons[t.iconKey];
                     return t.key === "new" ? (
