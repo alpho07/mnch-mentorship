@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 
 // ── Shared ────────────────────────────────────────────────────────────────────
-import { SECTION_META, calcGrade } from "./constants.js";
+import { SECTION_META, calcGrade, computeTabs } from "./constants.js";
 import { PhoneShell, BottomNav } from "./components/shared-components.jsx";
 import { SyncIndicator } from "./components/sync-indicator.jsx";
 
@@ -14,6 +14,16 @@ import { AssessmentFormScreen } from "./screens/screen-assessment-form.jsx";
 import { AssessmentReportScreen } from "./screens/screen-assessment-report.jsx";
 import { ReportsScreen } from "./screens/screen-reports.jsx";
 import { ProfileScreen } from "./screens/screen-profile.jsx";
+import { EmailJobsScreen } from "./screens/screen-email-jobs.jsx";
+import { MentorshipsListScreen } from "./screens/screen-mentorships-list.jsx";
+import { MentorshipDetailScreen } from "./screens/screen-mentorship-detail.jsx";
+import { ClassDetailScreen } from "./screens/screen-class-detail.jsx";
+import { ModuleDetailScreen } from "./screens/screen-module-detail.jsx";
+import { AttendanceRosterScreen } from "./screens/screen-attendance-roster.jsx";
+import { MyClassesScreen } from "./screens/screen-my-classes.jsx";
+import { ClassProgressScreen } from "./screens/screen-class-progress.jsx";
+import { TrainingsListScreen } from "./screens/screen-trainings-list.jsx";
+import { TrainingDetailScreen } from "./screens/screen-training-detail.jsx";
 
 import api from "./services/api.service.js";
 
@@ -73,6 +83,7 @@ export default function App() {
     const [user, setUser] = useState(null);
     const [tab, setTab] = useState("dashboard");
     const [modal, setModal] = useState(null);
+    const [navConfig, setNavConfig] = useState({ tabs: null, showFab: false });
     const [assessments, setAssessments] = useState(null); // null = not yet loaded
     const [sections, setSections] = useState(null); // null = not yet loaded
     const [facilities, setFacilities] = useState([]);
@@ -91,8 +102,11 @@ export default function App() {
         api.auth.me()
                 .then(data => {
                     const u = data?.user ?? data;
-                    if (u?.id)
-                        setUser(normaliseUser(u));
+                    if (u?.id) {
+                        const normalised = normaliseUser(u);
+                        setUser(normalised);
+                        setNavConfig(computeTabs(normalised.roles ?? []));
+                    }
                 })
                 .catch(() => api.clearToken());
     }, []);
@@ -190,7 +204,10 @@ export default function App() {
         setSections(null);
         setError(null);
         setModal(null);
-        setUser(normaliseUser(u));
+        const normalised = normaliseUser(u);
+        setUser(normalised);
+        const config = computeTabs(normalised.roles ?? []);
+        setNavConfig(config);
         setTab("dashboard");
     };
 
@@ -231,6 +248,11 @@ export default function App() {
     const handleCreate = (assessment) => {
         setAssessments(prev => [assessment, ...(prev ?? [])]);
         setModal({ type: "form", data: assessment });
+    };
+
+    const handleDelete = (id) => {
+        setAssessments(prev => (prev ?? []).filter(a => a.id !== id));
+        setModal(null);
     };
 
     // Go back from report → detail
@@ -333,6 +355,7 @@ export default function App() {
                                                                 sectionAverages={sectionAverages}
                                                                 loading={isLoading}
                                                                 onViewAssessment={openDetail}
+                                                                onViewEmailJobs={() => setModal({ type: "emailJobs" })}
                                                                 />
                                         )}
                                     {tab === "profile" && (
@@ -343,9 +366,32 @@ export default function App() {
                                                     onLogout={handleLogout}
                                                     />
                                         )}
+                                    {tab === "mentorship" && (
+                                        <MentorshipsListScreen
+                                            user={user}
+                                            onOpen={(training) => setModal({ type: "mentorshipDetail", data: training })}
+                                        />
+                                    )}
+                                    {tab === "myClasses" && (
+                                        <MyClassesScreen
+                                            user={user}
+                                            onOpen={(cls) => setModal({ type: "classProgress", data: cls })}
+                                        />
+                                    )}
+                                    {tab === "trainings" && (
+                                        <TrainingsListScreen
+                                            user={user}
+                                            onOpen={(t) => setModal({ type: "trainingDetail", data: t })}
+                                        />
+                                    )}
                                 </div>
                                 <div style={{flexShrink: 0, zIndex: 100}}>
-                                    <BottomNav active={tab} onChange={handleTabChange} />
+                                    <BottomNav
+                                        active={tab}
+                                        onChange={handleTabChange}
+                                        tabs={navConfig.tabs}
+                                        showFab={navConfig.showFab}
+                                    />
                                 </div>
                             </div>
                         )}
@@ -359,6 +405,7 @@ export default function App() {
                                     onBack={closeModal}
                                     onContinue={openContinue}
                                     onViewReport={() => openReport(modal.data)}
+                                    onDelete={handleDelete}
                                     />
                             </div>
                         )}
@@ -385,6 +432,68 @@ export default function App() {
                                     />
                             </div>
                         )}
+
+                {/* ── Email jobs modal ── */}
+                {user && modal?.type === "emailJobs" && (
+                            <div style={{position: "absolute", inset: 0}}>
+                                <EmailJobsScreen onBack={closeModal} />
+                            </div>
+                        )}
+
+                {user && modal?.type === "mentorshipDetail" && (
+                    <div style={{ position: "absolute", inset: 0 }}>
+                        <MentorshipDetailScreen
+                            training={modal.data}
+                            onBack={closeModal}
+                            onOpenClass={(cls) => setModal({ type: "classDetail", data: cls, prev: modal.data })}
+                        />
+                    </div>
+                )}
+                {user && modal?.type === "classDetail" && (
+                    <div style={{ position: "absolute", inset: 0 }}>
+                        <ClassDetailScreen
+                            cls={modal.data}
+                            onBack={() => setModal({ type: "mentorshipDetail", data: modal.prev })}
+                            onOpenModule={(mod) => setModal({ type: "moduleDetail", data: mod, prev: modal.data })}
+                        />
+                    </div>
+                )}
+                {user && modal?.type === "moduleDetail" && (
+                    <div style={{ position: "absolute", inset: 0 }}>
+                        <ModuleDetailScreen
+                            module={modal.data}
+                            user={user}
+                            onBack={() => setModal({ type: "classDetail", data: modal.prev })}
+                            onOpenAttendance={(mod) => setModal({ type: "attendanceRoster", data: mod, prev: modal.prev })}
+                        />
+                    </div>
+                )}
+                {user && modal?.type === "attendanceRoster" && (
+                    <div style={{ position: "absolute", inset: 0 }}>
+                        <AttendanceRosterScreen
+                            module={modal.data}
+                            user={user}
+                            onBack={() => setModal({ type: "moduleDetail", data: modal.data, prev: modal.prev })}
+                        />
+                    </div>
+                )}
+                {user && modal?.type === "classProgress" && (
+                    <div style={{ position: "absolute", inset: 0 }}>
+                        <ClassProgressScreen
+                            cls={modal.data}
+                            user={user}
+                            onBack={closeModal}
+                        />
+                    </div>
+                )}
+                {user && modal?.type === "trainingDetail" && (
+                    <div style={{ position: "absolute", inset: 0 }}>
+                        <TrainingDetailScreen
+                            training={modal.data}
+                            onBack={closeModal}
+                        />
+                    </div>
+                )}
             </PhoneShell>
             );
 }
