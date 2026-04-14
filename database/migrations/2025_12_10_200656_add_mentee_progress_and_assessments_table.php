@@ -63,10 +63,14 @@ return new class extends Migration {
             $table->index(['module_assessment_id', 'status']);
         });
 
-        // Add fields to class_modules to track assessment requirement
+        // Add fields to class_modules to track assessment requirement (guard against duplicates)
         Schema::table('class_modules', function (Blueprint $table) {
-            $table->boolean('requires_assessment')->default(false)->after('status');
-            $table->decimal('min_attendance_percentage', 5, 2)->default(75.00)->after('requires_assessment');
+            if (!Schema::hasColumn('class_modules', 'requires_assessment')) {
+                $table->boolean('requires_assessment')->default(false)->after('status');
+            }
+            if (!Schema::hasColumn('class_modules', 'min_attendance_percentage')) {
+                $table->decimal('min_attendance_percentage', 5, 2)->default(75.00)->after('requires_assessment');
+            }
         });
     }
 

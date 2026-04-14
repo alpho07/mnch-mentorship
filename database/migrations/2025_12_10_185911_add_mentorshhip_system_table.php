@@ -19,7 +19,7 @@ return new class extends Migration
                 $table->string('name');
                 $table->date('start_date')->nullable();
                 $table->date('end_date')->nullable();
-                $table->enum('status', ['active', 'completed', 'cancelled'])->default('active');
+                $table->enum('status', ['draft', 'active', 'completed', 'cancelled'])->default('draft');
                 $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
                 $table->text('notes')->nullable();
                 $table->string('enrollment_token')->nullable()->unique();
@@ -79,6 +79,12 @@ return new class extends Migration
                 $table->foreignId('program_module_id')->constrained('program_modules')->cascadeOnDelete();
                 $table->enum('status', ['not_started', 'in_progress', 'completed'])->default('not_started');
                 $table->integer('order_sequence')->default(0);
+                $table->timestamp('started_at')->nullable();
+                $table->timestamp('completed_at')->nullable();
+                $table->boolean('requires_assessment')->default(false);
+                $table->decimal('min_attendance_percentage', 5, 2)->default(75);
+                $table->string('attendance_token')->nullable()->unique();
+                $table->boolean('attendance_link_active')->default(false);
                 $table->date('start_date')->nullable();
                 $table->date('end_date')->nullable();
                 $table->text('notes')->nullable();

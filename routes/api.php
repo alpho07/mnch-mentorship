@@ -141,6 +141,9 @@ Route::prefix('v1')->name('api.v1.')->middleware(MobileApiCors::class)->group(fu
             Route::get('{training}', [MentorshipController::class, 'show'])->name('show');
             Route::get('{training}/classes', [MentorshipController::class, 'classes'])->name('classes');
             Route::get('{training}/classes/{class}', [MentorshipController::class, 'classDetail'])->name('class-detail');
+            Route::post('/', [\App\Http\Controllers\Api\MentorshipCreateController::class, 'store'])->name('store');
+            Route::put('{training}', [\App\Http\Controllers\Api\MentorshipCreateController::class, 'update'])->name('update');
+            Route::post('{training}/submit', [\App\Http\Controllers\Api\MentorshipCreateController::class, 'submit'])->name('submit');
         });
 
         // ── Class modules ─────────────────────────────────────────────────────────
