@@ -24,6 +24,7 @@ import { MyClassesScreen } from "./screens/screen-my-classes.jsx";
 import { ClassProgressScreen } from "./screens/screen-class-progress.jsx";
 import { TrainingsListScreen } from "./screens/screen-trainings-list.jsx";
 import { TrainingDetailScreen } from "./screens/screen-training-detail.jsx";
+import { MentorshipFormScreen } from "./screens/screen-mentorship-form.jsx";
 
 import api from "./services/api.service.js";
 
@@ -88,6 +89,7 @@ export default function App() {
     const [sections, setSections] = useState(null); // null = not yet loaded
     const [facilities, setFacilities] = useState([]);
     const [showCreateSheet, setShowCreateSheet] = useState(false);
+    const [showMentorshipWizard, setShowMentorshipWizard] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
@@ -127,6 +129,21 @@ export default function App() {
         };
         window.addEventListener("assessment:id-resolved", handler);
         return () => window.removeEventListener("assessment:id-resolved", handler);
+    }, []);
+
+    // ── mentorship:id-resolved — swap temp offline ID with real server ID ──────
+    useEffect(() => {
+        const handler = (e) => {
+            const { tempId, realId } = e.detail;
+            setModal(prev => {
+                if (prev?.type === "mentorshipDetail" && prev?.data?.id === tempId) {
+                    return { ...prev, data: { ...prev.data, id: realId, _isOffline: false } };
+                }
+                return prev;
+            });
+        };
+        window.addEventListener("mentorship:id-resolved", handler);
+        return () => window.removeEventListener("mentorship:id-resolved", handler);
     }, []);
 
     // ── Load data when user.id becomes available ──────────────────────────────
@@ -370,6 +387,7 @@ export default function App() {
                                         <MentorshipsListScreen
                                             user={user}
                                             onOpen={(training) => setModal({ type: "mentorshipDetail", data: training })}
+                                            onNew={() => setShowMentorshipWizard(true)}
                                         />
                                     )}
                                     {tab === "myClasses" && (
@@ -491,6 +509,18 @@ export default function App() {
                         <TrainingDetailScreen
                             training={modal.data}
                             onBack={closeModal}
+                        />
+                    </div>
+                )}
+                {user && showMentorshipWizard && (
+                    <div style={{ position: "absolute", inset: 0, zIndex: 200 }}>
+                        <MentorshipFormScreen
+                            user={user}
+                            onBack={() => setShowMentorshipWizard(false)}
+                            onCreated={(training) => {
+                                setShowMentorshipWizard(false);
+                                setModal({ type: "mentorshipDetail", data: training });
+                            }}
                         />
                     </div>
                 )}

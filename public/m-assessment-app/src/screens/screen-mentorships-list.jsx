@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { T, MENTOR_META } from "../constants.js";
 import api from "../services/api.service.js";
 
-export function MentorshipsListScreen({ user, onOpen }) {
+export function MentorshipsListScreen({ user, onOpen, onNew }) {
     const [mentorships, setMentorships] = useState(null);
     const [loading, setLoading]         = useState(true);
     const [error, setError]             = useState(null);
@@ -15,7 +15,7 @@ export function MentorshipsListScreen({ user, onOpen }) {
     }, []);
 
     return (
-        <div style={{ display: "flex", flexDirection: "column", height: "100%", background: T.bg }}>
+        <div style={{ display: "flex", flexDirection: "column", height: "100%", background: T.bg, position: "relative" }}>
             {/* Header */}
             <div style={{ padding: "20px 20px 8px", background: T.card, borderBottom: `1px solid ${T.border}` }}>
                 <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>
@@ -61,6 +61,14 @@ export function MentorshipsListScreen({ user, onOpen }) {
                     </button>
                 ))}
             </div>
+            {onNew && (
+                <button onClick={onNew} style={{
+                    position: "absolute", bottom: 80, right: 16, zIndex: 10,
+                    width: 48, height: 48, borderRadius: "50%", background: T.primary,
+                    border: "none", color: "#fff", fontSize: 24, cursor: "pointer",
+                    boxShadow: T.shadow,
+                }}>+</button>
+            )}
         </div>
     );
 }
