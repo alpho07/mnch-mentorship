@@ -39,11 +39,27 @@ class GlobalTrainingController extends Controller
     }
 
     /**
+     * Abort 403 if the user is not permitted to view this training.
+     * Above-site roles see all. Others must be registered participants.
+     */
+    private function authorizeTrainingAccess(Request $request, Training $training): void
+    {
+        if ($request->user()->isAboveSite()) return;
+
+        $enrolled = $training->participants()
+            ->where('user_id', $request->user()->id)
+            ->exists();
+
+        abort_if(!$enrolled, 403, 'You are not enrolled in this training.');
+    }
+
+    /**
      * GET /api/v1/trainings/{training}
      */
-    public function show(Training $training): JsonResponse
+    public function show(Request $request, Training $training): JsonResponse
     {
         abort_if($training->type !== 'global_training', 404);
+        $this->authorizeTrainingAccess($request, $training);
         $training->load(['county', 'facility', 'program']);
 
         return response()->json([
@@ -64,9 +80,10 @@ class GlobalTrainingController extends Controller
     /**
      * GET /api/v1/trainings/{training}/participants
      */
-    public function participants(Training $training): JsonResponse
+    public function participants(Request $request, Training $training): JsonResponse
     {
         abort_if($training->type !== 'global_training', 404);
+        $this->authorizeTrainingAccess($request, $training);
 
         $participants = $training->participants()
             ->with('user')

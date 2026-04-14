@@ -36,18 +36,28 @@ class MentorshipController extends Controller {
      * Show a single mentorship training.
      */
     public function show(Request $request, Training $training): JsonResponse {
-        abort_unless($training->type === 'facility_mentorship', 404);
+        $this->authoriseMentorship($request, $training);
 
-        $this->authorize('view', $training);
+        $training->load(['mentorshipClasses' => fn($q) => $q
+            ->withCount(['classModules as module_count', 'participants as participant_count'])
+        ]);
 
-        $training->loadCount('mentorshipClasses as class_count');
+        $classes = $training->mentorshipClasses->map(fn(MentorshipClass $c) => [
+            'id'                  => $c->id,
+            'name'                => $c->name,
+            'status'              => $c->status,
+            'module_count'        => $c->module_count ?? 0,
+            'participant_count'   => $c->participant_count ?? 0,
+            'progress_percentage' => $c->progress_percentage,
+        ]);
 
         return response()->json([
             'data' => [
                 'id'          => $training->id,
                 'title'       => $training->title,
                 'status'      => $training->status,
-                'class_count' => (int) $training->class_count,
+                'class_count' => $training->mentorshipClasses->count(),
+                'classes'     => $classes,
             ],
         ]);
     }

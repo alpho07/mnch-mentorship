@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Api\Concerns\AuthorizesClassAccess;
 use App\Http\Controllers\Controller;
 use App\Models\ClassAttendance;
 use App\Models\ClassModule;
@@ -12,6 +13,7 @@ use Illuminate\Http\Request;
 
 class AttendanceApiController extends Controller
 {
+    use AuthorizesClassAccess;
     public function __construct(private readonly AttendanceService $attendanceService) {}
 
     /**
@@ -19,6 +21,8 @@ class AttendanceApiController extends Controller
      */
     public function roster(ClassModule $module): JsonResponse
     {
+        $this->authorizeModuleAccess($module);
+
         $participants = ClassParticipant::with('user')
             ->where('mentorship_class_id', $module->mentorship_class_id)
             ->get();
@@ -45,6 +49,15 @@ class AttendanceApiController extends Controller
      */
     public function mark(Request $request, ClassModule $module, ClassParticipant $participant): JsonResponse
     {
+        $this->authorizeModuleAccess($module);
+
+        // Verify participant belongs to this module's class
+        abort_if(
+            $participant->mentorship_class_id !== $module->mentorship_class_id,
+            422,
+            'Participant is not enrolled in this class.'
+        );
+
         $request->validate(['status' => 'required|in:present,absent']);
 
         $mentee = $participant->user;
@@ -66,6 +79,8 @@ class AttendanceApiController extends Controller
      */
     public function bulk(Request $request, ClassModule $module): JsonResponse
     {
+        $this->authorizeModuleAccess($module);
+
         $request->validate([
             'attendances'                  => 'required|array',
             'attendances.*.participant_id' => 'required|integer',

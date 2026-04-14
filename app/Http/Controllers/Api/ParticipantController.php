@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Api\Concerns\AuthorizesClassAccess;
 use App\Http\Controllers\Controller;
 use App\Models\ClassParticipant;
 use App\Models\MenteeModuleProgress;
@@ -10,11 +11,14 @@ use Illuminate\Http\JsonResponse;
 
 class ParticipantController extends Controller
 {
+    use AuthorizesClassAccess;
     /**
      * GET /api/v1/classes/{class}/participants
      */
     public function index(MentorshipClass $class): JsonResponse
     {
+        $this->authorizeClassAccess($class);
+
         $participants = $class->participants()
             ->with(['user', 'moduleProgress'])
             ->get()
@@ -36,6 +40,8 @@ class ParticipantController extends Controller
      */
     public function progress(ClassParticipant $participant): JsonResponse
     {
+        $this->authorizeParticipantAccess($participant);
+
         $progress = $participant->moduleProgress()
             ->with('classModule.programModule')
             ->get()

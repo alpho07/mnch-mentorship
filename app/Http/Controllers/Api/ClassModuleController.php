@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Api\Concerns\AuthorizesClassAccess;
 use App\Http\Controllers\Controller;
 use App\Models\ClassModule;
 use App\Models\MentorshipClass;
@@ -9,11 +10,14 @@ use Illuminate\Http\JsonResponse;
 
 class ClassModuleController extends Controller
 {
+    use AuthorizesClassAccess;
     /**
      * GET /api/v1/classes/{class}/modules
      */
     public function index(MentorshipClass $class): JsonResponse
     {
+        $this->authorizeClassAccess($class);
+
         $modules = $class->classModules()
             ->with(['programModule', 'sessions'])
             ->orderBy('order_sequence')
@@ -37,6 +41,8 @@ class ClassModuleController extends Controller
      */
     public function start(ClassModule $module): JsonResponse
     {
+        $this->authorizeModuleAccess($module);
+
         if (!$module->canStart()) {
             return response()->json([
                 'message' => "Module cannot be started. Current status: {$module->status}.",
@@ -61,6 +67,8 @@ class ClassModuleController extends Controller
      */
     public function complete(ClassModule $module): JsonResponse
     {
+        $this->authorizeModuleAccess($module);
+
         if (!$module->canComplete()) {
             return response()->json([
                 'message' => "Module cannot be completed. Current status: {$module->status}.",
@@ -85,6 +93,8 @@ class ClassModuleController extends Controller
      */
     public function sessions(ClassModule $module): JsonResponse
     {
+        $this->authorizeModuleAccess($module);
+
         $sessions = $module->sessions()
             ->get()
             ->map(fn($s) => [
