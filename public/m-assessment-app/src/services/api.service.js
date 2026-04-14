@@ -201,6 +201,33 @@ export const _rawApi = {
         list: (classId) => get('/classes/' + classId + '/participants'),
         progress: (participantId) => get('/participants/' + participantId + '/progress'),
     },
+    lookups: {
+        programs: () => get('/programs'),
+        programModules: (programId) => get('/programs/' + programId + '/modules'),
+        counties: () => get('/counties'),
+        userSearch: (q, facilityId) => get('/users/search?q=' + encodeURIComponent(q) + (facilityId ? '&facility_id=' + facilityId : '')),
+    },
+    mentorshipCreate: {
+        create: (payload) => post('/mentorships', payload),
+        update: (id, payload) => put('/mentorships/' + id, payload),
+        submit: (id) => post('/mentorships/' + id + '/submit'),
+    },
+    classLifecycle: {
+        start: (classId) => post('/classes/' + classId + '/start'),
+        end: (classId) => post('/classes/' + classId + '/end'),
+        enrollMentee: (classId, userId) => post('/classes/' + classId + '/mentees', { user_id: userId }),
+        removeMentee: (classId, participantId) => del('/classes/' + classId + '/mentees/' + participantId),
+    },
+    sessions: {
+        update: (sessionId, payload) => put('/sessions/' + sessionId, payload),
+    },
+    trainingActions: {
+        enroll: (trainingId) => post('/trainings/' + trainingId + '/enroll'),
+        attendance: (trainingId) => post('/trainings/' + trainingId + '/attendance'),
+    },
+    resources: {
+        list: (type) => get('/resources' + (type ? '?type=' + type : '')),
+    },
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -910,6 +937,188 @@ const api = {
             }
         },
         participants: _rawApi.trainings.participants,
+    },
+
+    // ── Lookup (cache-first, no writes) ─────────────────────────────────────
+    lookups: {
+        programs: async () => {
+            try {
+                const data = await _rawApi.lookups.programs();
+                const list = data?.data ?? data;
+                await offlineStore.setMeta('programs', list);
+                return list;
+            } catch {
+                return (await offlineStore.getMeta('programs')) ?? [];
+            }
+        },
+        programModules: async (programId) => {
+            try {
+                const data = await _rawApi.lookups.programModules(programId);
+                const list = data?.data ?? data;
+                await offlineStore.setMeta('program_modules_' + programId, list);
+                return list;
+            } catch {
+                return (await offlineStore.getMeta('program_modules_' + programId)) ?? [];
+            }
+        },
+        counties: async () => {
+            try {
+                const data = await _rawApi.lookups.counties();
+                const list = data?.data ?? data;
+                await offlineStore.setMeta('counties', list);
+                return list;
+            } catch {
+                return (await offlineStore.getMeta('counties')) ?? [];
+            }
+        },
+        userSearch: _rawApi.lookups.userSearch,
+    },
+
+    // ── Mentorship creation (online→queue) ───────────────────────────────────
+    mentorshipCreate: {
+        create: async (payload) => {
+            try {
+                const data = await _rawApi.mentorshipCreate.create(payload);
+                return data;
+            } catch (e) {
+                if (!navigator.onLine) {
+                    const tempId = 'local_' + Date.now();
+                    const local = { ...payload, id: tempId, _isOffline: true, status: 'draft' };
+                    await offlineStore.saveMentorship(local);
+                    await syncQueue.enqueue({ type: 'mentorships.create', tempId, payload });
+                    return { data: local };
+                }
+                throw e;
+            }
+        },
+        update: async (id, payload) => {
+            try {
+                return await _rawApi.mentorshipCreate.update(id, payload);
+            } catch (e) {
+                if (!navigator.onLine) {
+                    await syncQueue.enqueue({ type: 'mentorships.update', id, payload });
+                    return { data: { id, ...payload } };
+                }
+                throw e;
+            }
+        },
+        submit: async (id) => {
+            try {
+                return await _rawApi.mentorshipCreate.submit(id);
+            } catch (e) {
+                if (!navigator.onLine) {
+                    await syncQueue.enqueue({ type: 'mentorships.submit', id });
+                    return { message: 'Queued for sync.' };
+                }
+                throw e;
+            }
+        },
+    },
+
+    // ── Class lifecycle (online→queue) ───────────────────────────────────────
+    classLifecycle: {
+        start: async (classId) => {
+            try {
+                return await _rawApi.classLifecycle.start(classId);
+            } catch (e) {
+                if (!navigator.onLine) {
+                    await syncQueue.enqueue({ type: 'mentorships.startClass', classId });
+                    return { data: { id: classId, status: 'active' } };
+                }
+                throw e;
+            }
+        },
+        end: (classId) => _rawApi.classLifecycle.end(classId),
+        enrollMentee: async (classId, userId) => {
+            try {
+                return await _rawApi.classLifecycle.enrollMentee(classId, userId);
+            } catch (e) {
+                if (!navigator.onLine) {
+                    await syncQueue.enqueue({ type: 'mentorships.addMentee', classId, userId });
+                    return { data: { participant_id: 'local_' + Date.now(), user_id: userId } };
+                }
+                throw e;
+            }
+        },
+        removeMentee: async (classId, participantId) => {
+            try {
+                return await _rawApi.classLifecycle.removeMentee(classId, participantId);
+            } catch (e) {
+                if (!navigator.onLine) {
+                    await syncQueue.enqueue({ type: 'mentorships.removeMentee', classId, participantId });
+                    return { message: 'Queued for sync.' };
+                }
+                throw e;
+            }
+        },
+    },
+
+    // ── Session notes (online→queue, never discard) ──────────────────────────
+    sessions: {
+        update: async (sessionId, payload) => {
+            try {
+                const data = await _rawApi.sessions.update(sessionId, payload);
+                await offlineStore.saveSession({ id: sessionId, ...payload });
+                return data;
+            } catch (e) {
+                if (!navigator.onLine) {
+                    await offlineStore.saveSession({ id: sessionId, ...payload, _pending: true });
+                    await syncQueue.enqueue({ type: 'mentorships.updateSession', sessionId, payload });
+                    return { data: { id: sessionId, ...payload } };
+                }
+                throw e;
+            }
+        },
+    },
+
+    // ── Training actions (online→queue) ──────────────────────────────────────
+    trainingActions: {
+        enroll: async (trainingId) => {
+            try {
+                return await _rawApi.trainingActions.enroll(trainingId);
+            } catch (e) {
+                if (!navigator.onLine) {
+                    await syncQueue.enqueue({ type: 'trainings.enroll', trainingId });
+                    return { data: { participant_id: 'pending', status: 'registered' } };
+                }
+                throw e;
+            }
+        },
+        attendance: async (trainingId) => {
+            try {
+                return await _rawApi.trainingActions.attendance(trainingId);
+            } catch (e) {
+                if (!navigator.onLine) {
+                    await syncQueue.enqueue({ type: 'trainings.attendance', trainingId });
+                    return { message: 'Queued for sync.' };
+                }
+                throw e;
+            }
+        },
+    },
+
+    // ── Resources (cache with 24h TTL) ───────────────────────────────────────
+    resources: {
+        list: async (type) => {
+            const now = Date.now();
+            const cachedAt = (await offlineStore.getResourcesCachedAt()) ?? 0;
+            const ttl = 24 * 60 * 60 * 1000;
+            if (!type && now - cachedAt < ttl) {
+                const cached = await offlineStore.getResources();
+                if (cached) return cached;
+            }
+            try {
+                const data = await _rawApi.resources.list(type);
+                const list = data?.data ?? data;
+                if (!type) {
+                    await offlineStore.saveResources(list);
+                    await offlineStore.setResourcesCachedAt(now);
+                }
+                return list;
+            } catch {
+                return (await offlineStore.getResources()) ?? [];
+            }
+        },
     },
 
     // ── Participants ──────────────────────────────────────────────────────────
