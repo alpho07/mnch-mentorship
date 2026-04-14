@@ -69,4 +69,21 @@ class LookupApiTest extends TestCase
         $this->getJson('/api/v1/programs')->assertUnauthorized();
         $this->getJson('/api/v1/counties')->assertUnauthorized();
     }
+
+    public function test_user_search_filters_by_facility(): void
+    {
+        $facility = \App\Models\Facility::factory()->create();
+        $inFacility = User::factory()->create(['first_name' => 'Alice', 'last_name' => 'Nurse']);
+        $inFacility->facilities()->attach($facility->id);
+
+        User::factory()->create(['first_name' => 'Alice', 'last_name' => 'Other']); // not in facility
+
+        $results = $this->withHeader('Authorization', 'Bearer ' . $this->token)
+             ->getJson("/api/v1/users/search?q=Alice&facility_id={$facility->id}")
+             ->assertOk()
+             ->json('data');
+
+        $this->assertCount(1, $results);
+        $this->assertEquals('Alice Nurse', $results[0]['name']);
+    }
 }

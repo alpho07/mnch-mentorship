@@ -21,6 +21,7 @@ class LookupController extends Controller
     {
         $modules = ProgramModule::where('program_id', $program->id)
             ->where('is_active', true)
+            ->withCount(['moduleSessions as session_count' => fn($q) => $q->where('is_active', true)])
             ->orderBy('order_sequence')
             ->get()
             ->map(fn(ProgramModule $m) => [
@@ -28,8 +29,9 @@ class LookupController extends Controller
                 'name'           => $m->name,
                 'description'    => $m->description,
                 'order_sequence' => $m->order_sequence,
-                'session_count'  => $m->moduleSessions()->where('is_active', true)->count(),
+                'session_count'  => (int) $m->session_count,
             ]);
+
         return response()->json(['data' => $modules]);
     }
 
@@ -47,18 +49,21 @@ class LookupController extends Controller
         ]);
 
         $query = User::query()
-            ->where('name', 'like', '%' . $request->q . '%')
+            ->where(function ($q) use ($request) {
+                $q->where('first_name', 'like', '%' . $request->q . '%')
+                  ->orWhere('last_name', 'like', '%' . $request->q . '%');
+            })
             ->limit(30);
 
         if ($request->facility_id) {
             $query->whereHas('facilities', fn($q) => $q->where('facilities.id', $request->facility_id));
         }
 
-        $users = $query->get()->map(fn(User $u) => [
+        $users = $query->with('facilities')->get()->map(fn(User $u) => [
             'id'            => $u->id,
-            'name'          => $u->name,
+            'name'          => $u->full_name,
             'email'         => $u->email,
-            'facility_name' => $u->facilities()->first()?->name ?? '',
+            'facility_name' => $u->facilities->first()?->name ?? '',
         ]);
 
         return response()->json(['data' => $users]);
