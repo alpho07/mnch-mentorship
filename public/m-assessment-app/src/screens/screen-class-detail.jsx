@@ -53,41 +53,44 @@ export function ClassDetailScreen({ cls, onBack, onOpenModule, onManageMentees, 
 
     return (
         <div style={{ display: "flex", flexDirection: "column", height: "100%", background: T.bg }}>
-            {/* Header */}
-            <div style={{ padding: "16px 20px 12px", background: T.card, borderBottom: `1px solid ${T.border}`, display: "flex", gap: 12, alignItems: "center" }}>
-                <button onClick={onBack} style={{ border: "none", background: "none", cursor: "pointer", padding: 4 }}>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={T.text} strokeWidth="2.5"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
-                </button>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 16, fontWeight: 800, color: T.text }}>{data.name}</div>
-                    <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 2, flexWrap: "wrap" }}>
-                        <StatusBadge status={data.status} />
-                        <span style={{ fontSize: 12, color: T.textSub }}>
-                            {data.participant_count ?? mentees.length} mentees · {modules.length} modules
-                        </span>
-                    </div>
-                </div>
-                {onEditClass && (
-                    <button onClick={onEditClass} style={{ border: "none", background: "none", cursor: "pointer", padding: 4 }}>
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={T.textSub} strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            {/* ── Gradient Hero ── */}
+            <div style={{
+                background: "linear-gradient(160deg, #1E1B4B 0%, #3730A3 55%, #818CF8 100%)",
+                padding: "44px 20px 16px",
+                position: "relative", overflow: "hidden",
+            }}>
+                <div style={{ position: "absolute", width: 150, height: 150, borderRadius: "50%", background: "radial-gradient(circle, rgba(165,180,252,0.15) 0%, transparent 70%)", top: -30, right: -30 }} />
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 12 }}>
+                    <button onClick={onBack} style={{ border: "none", background: "rgba(255,255,255,0.12)", cursor: "pointer", padding: "6px 10px", borderRadius: 10, flexShrink: 0, display: "flex", alignItems: "center", gap: 4 }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                        <span style={{ fontSize: 12, color: "rgba(255,255,255,0.8)", fontWeight: 600 }}>Back</span>
                     </button>
-                )}
-            </div>
-
-            {/* Progress bar */}
-            <div style={{ background: T.card, padding: "10px 20px", borderBottom: `1px solid ${T.border}` }}>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                    <span style={{ fontSize: 11, color: T.textSub }}>Progress</span>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: pct === 100 ? "#10B981" : T.primary }}>{pct}%</span>
+                    {onEditClass && (
+                        <button onClick={onEditClass} style={{ marginLeft: "auto", border: "none", background: "rgba(255,255,255,0.12)", cursor: "pointer", padding: "6px 10px", borderRadius: 10, display: "flex", alignItems: "center", gap: 4 }}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.8)", fontWeight: 600 }}>Edit</span>
+                        </button>
+                    )}
                 </div>
-                <div style={{ height: 6, borderRadius: 4, background: T.borderLight, overflow: "hidden" }}>
-                    <div style={{ height: "100%", width: `${pct}%`, background: pct === 100 ? "#10B981" : T.gradientPrimary, borderRadius: 4, transition: "width 0.6s" }} />
+                <div style={{ fontSize: 18, fontWeight: 800, color: "white", lineHeight: 1.25, marginBottom: 6 }}>{data.name}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 9px", borderRadius: 20, background: "rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.9)", border: "1px solid rgba(255,255,255,0.2)" }}>
+                        {data.status}
+                    </span>
+                    <span style={{ fontSize: 12, color: "rgba(255,255,255,0.55)" }}>
+                        {data.participant_count ?? mentees.length} mentees · {modules.length} modules
+                    </span>
                 </div>
-                {(data.start_date || data.end_date) && (
-                    <div style={{ fontSize: 11, color: T.textMuted, marginTop: 5 }}>
-                        {data.start_date ?? "—"} → {data.end_date ?? "—"}
+                {/* Progress bar inside hero */}
+                <div style={{ marginTop: 14 }}>
+                    <div style={{ height: 5, borderRadius: 4, background: "rgba(255,255,255,0.15)", overflow: "hidden" }}>
+                        <div style={{ height: "100%", width: `${pct}%`, background: pct === 100 ? "#34D399" : "rgba(255,255,255,0.8)", borderRadius: 4, transition: "width 0.6s" }} />
                     </div>
-                )}
+                    <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
+                        <span style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>{data.start_date ?? ""}{data.end_date ? ` → ${data.end_date}` : ""}</span>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: pct === 100 ? "#34D399" : "rgba(255,255,255,0.8)" }}>{pct}%</span>
+                    </div>
+                </div>
             </div>
 
             {/* Tabs */}

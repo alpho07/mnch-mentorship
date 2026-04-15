@@ -89,14 +89,14 @@ export function TrainingsListScreen({ user, onOpen }) {
         <div style={{ height: "100%", overflowY: "auto", background: T.bg }}>
             {/* ── Gradient Hero ── */}
             <div style={{
-                background: "linear-gradient(160deg, #0C2340 0%, #1D4ED8 55%, #3B82F6 100%)",
+                background: "linear-gradient(160deg, #1E1B4B 0%, #3730A3 55%, #818CF8 100%)",
                 padding: "52px 20px 22px",
                 borderRadius: "24px 24px 28px 28px",
                 position: "relative", overflow: "hidden",
             }}>
                 {/* Decorative blobs */}
-                <div style={{ position: "absolute", width: 200, height: 200, borderRadius: "50%", background: "radial-gradient(circle, rgba(147,197,253,0.12) 0%, transparent 70%)", top: -60, right: -60 }} />
-                <div style={{ position: "absolute", width: 110, height: 110, borderRadius: "50%", background: "radial-gradient(circle, rgba(96,165,250,0.08) 0%, transparent 70%)", bottom: 0, left: -20 }} />
+                <div style={{ position: "absolute", width: 200, height: 200, borderRadius: "50%", background: "radial-gradient(circle, rgba(165,180,252,0.15) 0%, transparent 70%)", top: -60, right: -60 }} />
+                <div style={{ position: "absolute", width: 110, height: 110, borderRadius: "50%", background: "radial-gradient(circle, rgba(129,140,248,0.1) 0%, transparent 70%)", bottom: 0, left: -20 }} />
 
                 <div style={{ color: "white", fontSize: 22, fontWeight: 800, letterSpacing: -0.3, animation: "fadeInUp 0.4s ease both" }}>
                     Trainings
@@ -116,7 +116,7 @@ export function TrainingsListScreen({ user, onOpen }) {
                             flex: 1, padding: "9px 6px", borderRadius: 14,
                             background: filter === f.key ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.08)",
                             border: filter === f.key ? "none" : "1px solid rgba(255,255,255,0.12)",
-                            color: filter === f.key ? "#1D4ED8" : "rgba(255,255,255,0.6)",
+                            color: filter === f.key ? "#3730A3" : "rgba(255,255,255,0.6)",
                             cursor: "pointer", textAlign: "center",
                             transition: "all 0.2s cubic-bezier(0.4,0,0.2,1)",
                             boxShadow: filter === f.key ? "0 4px 12px rgba(0,0,0,0.15)" : "none",

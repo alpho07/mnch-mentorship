@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { T, GRADE_COLOR, GRADE_BG, GRADE_TEXT, GRADE_LABEL, calcGrade } from "../constants.js";
 import { GradeBadge, StatusChip, ProgressBar } from "../components/shared-components.jsx";
 import api from "../services/api.service.js";
+import offlineStore from "../services/offline-store.js";
 
 // ─── Circular ring ────────────────────────────────────────────────────────────
 function CircleRing({ pct, size = 64, stroke = 6, color, bg, children }) {
@@ -347,14 +348,16 @@ function AssessmentCard({ assessment, onView, index }) {
 export function DashboardScreen({ user, assessments, onViewAssessment, loading, error, onRetry }) {
     const [filter, setFilter] = useState("all");
 
-    const isMentor = (user?.roles ?? []).some(r =>
-        ['facility_mentor','spoke_mentor','spoke_mentor_lead','county_mentor_lead',
-         'subcounty_mentor_lead','facility_mentor_lead','mentor_lead'].includes(r)
-    );
-    const isMentee = (user?.roles ?? []).includes('mentee');
+    const roleSet = new Set(user?.roles ?? []);
+    const isMentor = ['facility_mentor','spoke_mentor','spoke_mentor_lead','county_mentor_lead',
+         'subcounty_mentor_lead','facility_mentor_lead','mentor_lead'].some(r => roleSet.has(r));
+    const isMentee = roleSet.has('mentee');
+    const isAdmin  = ['super_admin','admin','division','national'].some(r => roleSet.has(r));
 
-    const [mentorships, setMentorships] = useState(null);
-    const [myClasses, setMyClasses]     = useState(null);
+    const [mentorships, setMentorships]   = useState(null);
+    const [myClasses, setMyClasses]       = useState(null);
+    const [upcomingTrainings, setUpcomingTrainings] = useState(null);
+    const [conflictCount, setConflictCount] = useState(0);
 
     useEffect(() => {
         if (isMentor) {
@@ -367,6 +370,15 @@ export function DashboardScreen({ user, assessments, onViewAssessment, loading, 
                 .then(d => setMyClasses(Array.isArray(d?.data) ? d.data : []))
                 .catch(() => setMyClasses([]));
         }
+        if (isMentee || isAdmin) {
+            api.trainings.list()
+                .then(d => {
+                    const all = Array.isArray(d?.data) ? d.data : [];
+                    setUpcomingTrainings(all.filter(t => t.status === "upcoming" || t.status === "active").slice(0, 2));
+                })
+                .catch(() => setUpcomingTrainings([]));
+        }
+        offlineStore.getConflictCount().then(n => setConflictCount(n)).catch(() => {});
     }, [user?.id]);
     const list = assessments ?? [];
     const completed = list.filter(a => a.status === "completed");
@@ -482,6 +494,32 @@ export function DashboardScreen({ user, assessments, onViewAssessment, loading, 
 
             {/* ── Content ── */}
             <div style={{ padding: "16px 16px 20px" }}>
+
+                {/* Needs Attention — unresolved sync conflicts */}
+                {conflictCount > 0 && (
+                    <div style={{
+                        background: "#FEF2F2", border: "1px solid #FECACA",
+                        borderRadius: T.radius, padding: "12px 14px",
+                        display: "flex", alignItems: "center", gap: 10, marginBottom: 14,
+                    }}>
+                        <div style={{
+                            width: 32, height: 32, borderRadius: 10,
+                            background: "#FEE2E2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                        }}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2" strokeLinecap="round">
+                                <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+                            </svg>
+                        </div>
+                        <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: "#991B1B" }}>
+                                {conflictCount} item{conflictCount !== 1 ? "s" : ""} need your review
+                            </div>
+                            <div style={{ fontSize: 11, color: "#B91C1C", marginTop: 1 }}>
+                                Some offline changes could not sync — tap to review
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* Score distribution */}
                 {completed.length > 0 && <ScoreDonut assessments={list} />}
@@ -653,6 +691,35 @@ export function DashboardScreen({ user, assessments, onViewAssessment, loading, 
                                 +{mentorships.length - 2} more
                             </div>
                         )}
+                    </div>
+                )}
+
+                {/* ── Upcoming Trainings (for mentees + admins) ── */}
+                {(isMentee || isAdmin) && upcomingTrainings !== null && upcomingTrainings.length > 0 && (
+                    <div style={{ marginBottom: 16 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: T.textSub, marginBottom: 8, letterSpacing: 0.4 }}>
+                            UPCOMING TRAININGS
+                        </div>
+                        {upcomingTrainings.map(t => (
+                            <div key={t.id} style={{
+                                background: T.card, borderRadius: T.radiusSm,
+                                padding: "12px 14px", marginBottom: 8, boxShadow: T.shadowCard,
+                                border: `1px solid ${T.border}`,
+                            }}>
+                                <div style={{ fontWeight: 700, color: T.text, fontSize: 14 }}>{t.title}</div>
+                                <div style={{ fontSize: 12, color: T.textSub, marginTop: 2 }}>
+                                    {t.start_date ?? ""}{t.county ? ` · ${t.county}` : ""}
+                                </div>
+                                <div style={{
+                                    display: "inline-block", marginTop: 6,
+                                    fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 6,
+                                    background: t.status === "active" ? "#D1FAE5" : "#DBEAFE",
+                                    color: t.status === "active" ? "#065F46" : "#1D4ED8",
+                                }}>
+                                    {t.status}
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 )}
 

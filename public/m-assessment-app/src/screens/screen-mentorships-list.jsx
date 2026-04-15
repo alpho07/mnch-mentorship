@@ -87,14 +87,14 @@ export function MentorshipsListScreen({ user, onOpen, onNew }) {
         <div style={{ height: "100%", overflowY: "auto", background: T.bg, position: "relative" }}>
             {/* ── Gradient Hero ── */}
             <div style={{
-                background: "linear-gradient(160deg, #022C22 0%, #064E3B 55%, #059669 100%)",
+                background: "linear-gradient(160deg, #1E1B4B 0%, #3730A3 55%, #818CF8 100%)",
                 padding: "52px 20px 22px",
                 borderRadius: "24px 24px 28px 28px",
                 position: "relative", overflow: "hidden",
             }}>
                 {/* Decorative blobs */}
-                <div style={{ position: "absolute", width: 180, height: 180, borderRadius: "50%", background: "radial-gradient(circle, rgba(52,211,153,0.12) 0%, transparent 70%)", top: -50, right: -50 }} />
-                <div style={{ position: "absolute", width: 100, height: 100, borderRadius: "50%", background: "radial-gradient(circle, rgba(16,185,129,0.08) 0%, transparent 70%)", bottom: 0, left: -20 }} />
+                <div style={{ position: "absolute", width: 180, height: 180, borderRadius: "50%", background: "radial-gradient(circle, rgba(165,180,252,0.15) 0%, transparent 70%)", top: -50, right: -50 }} />
+                <div style={{ position: "absolute", width: 100, height: 100, borderRadius: "50%", background: "radial-gradient(circle, rgba(129,140,248,0.1) 0%, transparent 70%)", bottom: 0, left: -20 }} />
 
                 <div style={{ color: "white", fontSize: 22, fontWeight: 800, letterSpacing: -0.3, animation: "fadeInUp 0.4s ease both" }}>
                     My Mentorships
@@ -106,7 +106,7 @@ export function MentorshipsListScreen({ user, onOpen, onNew }) {
                 {/* Stat pills */}
                 <div style={{ display: "flex", gap: 8, marginTop: 16, animation: "fadeInUp 0.4s ease 0.1s both" }}>
                     {[
-                        { label: "Active",    count: active.length,    bg: "rgba(16,185,129,0.25)",  border: "rgba(52,211,153,0.3)" },
+                        { label: "Active",    count: active.length,    bg: "rgba(129,140,248,0.25)", border: "rgba(165,180,252,0.3)" },
                         { label: "Draft",     count: draft.length,     bg: "rgba(255,255,255,0.08)", border: "rgba(255,255,255,0.12)" },
                         { label: "Completed", count: completed.length, bg: "rgba(255,255,255,0.08)", border: "rgba(255,255,255,0.12)" },
                     ].map(p => (
@@ -135,9 +135,9 @@ export function MentorshipsListScreen({ user, onOpen, onNew }) {
                 <button onClick={onNew} style={{
                     position: "fixed", bottom: 80, right: 16, zIndex: 10,
                     width: 52, height: 52, borderRadius: "50%",
-                    background: "linear-gradient(135deg,#10B981,#059669)",
+                    background: "linear-gradient(135deg,#4F46E5,#818CF8)",
                     border: "none", color: "#fff", fontSize: 26, cursor: "pointer",
-                    boxShadow: "0 6px 20px rgba(16,185,129,0.4)",
+                    boxShadow: "0 6px 20px rgba(79,70,229,0.4)",
                     display: "flex", alignItems: "center", justifyContent: "center",
                 }}>+</button>
             )}

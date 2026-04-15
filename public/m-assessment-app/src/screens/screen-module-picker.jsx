@@ -31,13 +31,18 @@ export function ModulePickerScreen({ programId, existingModuleIds = [], onBack, 
 
     return (
         <div style={{ display: "flex", flexDirection: "column", height: "100%", background: T.bg }}>
-            <div style={{ background: T.card, borderBottom: `1px solid ${T.border}` }}>
-                <div style={{ height: 3, background: T.gradientPrimary }} />
-                <div style={{ padding: "14px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-                    <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", padding: 4 }}>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={T.text} strokeWidth="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            <div style={{
+                background: "linear-gradient(135deg, #1E1B4B 0%, #3730A3 60%, #6366F1 100%)",
+                padding: "40px 16px 14px",
+                position: "relative", overflow: "hidden",
+            }}>
+                <div style={{ position: "absolute", width: 120, height: 120, borderRadius: "50%", background: "radial-gradient(circle, rgba(165,180,252,0.15) 0%, transparent 70%)", top: -30, right: -20 }} />
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <button onClick={onBack} style={{ background: "rgba(255,255,255,0.12)", border: "none", cursor: "pointer", padding: "6px 10px", borderRadius: 10, display: "flex", alignItems: "center", gap: 4 }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                        <span style={{ fontSize: 12, color: "rgba(255,255,255,0.8)", fontWeight: 600 }}>Back</span>
                     </button>
-                    <div style={{ fontWeight: 800, fontSize: 16, color: T.text }}>Add Module</div>
+                    <div style={{ fontWeight: 800, fontSize: 16, color: "white" }}>Add Module</div>
                 </div>
             </div>
 
