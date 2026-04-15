@@ -21,7 +21,7 @@ function InfoRow({ label, value }) {
     );
 }
 
-export function MentorshipDetailScreen({ training, onBack, onOpenClass }) {
+export function MentorshipDetailScreen({ training, onBack, onOpenClass, onAddClass }) {
     const [detail, setDetail]       = useState(null);
     const [loading, setLoading]     = useState(true);
     const [resources, setResources] = useState([]);
@@ -92,8 +92,19 @@ export function MentorshipDetailScreen({ training, onBack, onOpenClass }) {
                 {/* Classes */}
                 {classes.length > 0 && (
                     <div>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: T.textSub, marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                            Classes ({classes.length})
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: T.textSub, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                                Classes ({classes.length})
+                            </div>
+                            {onAddClass && (
+                                <button onClick={onAddClass} style={{
+                                    padding: "5px 12px", borderRadius: T.radiusSm, border: "none",
+                                    background: "linear-gradient(135deg, #3730A3, #6366F1)",
+                                    color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer",
+                                }}>
+                                    + Add Class
+                                </button>
+                            )}
                         </div>
                         {classes.map(c => {
                             const cs = CLASS_STATUS[c.status] ?? CLASS_STATUS.draft;
@@ -129,7 +140,19 @@ export function MentorshipDetailScreen({ training, onBack, onOpenClass }) {
                 )}
 
                 {!loading && classes.length === 0 && (
-                    <div style={{ color: T.textSub, textAlign: "center", paddingTop: 20 }}>No classes yet.</div>
+                    <div style={{ textAlign: "center", paddingTop: 20 }}>
+                        <div style={{ color: T.textSub, marginBottom: 12, fontSize: 14 }}>No classes yet.</div>
+                        {onAddClass && (
+                            <button onClick={onAddClass} style={{
+                                padding: "10px 24px", borderRadius: T.radiusSm, border: "none",
+                                background: "linear-gradient(135deg, #3730A3, #6366F1)",
+                                color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer",
+                                boxShadow: "0 4px 12px rgba(55,48,163,0.3)",
+                            }}>
+                                + Add First Class
+                            </button>
+                        )}
+                    </div>
                 )}
 
                 {/* Resources */}

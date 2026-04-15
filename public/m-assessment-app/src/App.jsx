@@ -486,6 +486,7 @@ export default function App() {
                             training={modal.data}
                             onBack={closeModal}
                             onOpenClass={(cls) => setModal({ type: "classDetail", data: cls, prev: modal.data })}
+                            onAddClass={() => setModal({ type: "classForm", data: null, prev: modal.data, trainingId: modal.data.id, fromMentorship: true })}
                         />
                     </div>
                 )}
@@ -514,8 +515,15 @@ export default function App() {
                         <ClassFormScreen
                             trainingId={modal.trainingId ?? modal.prev?.id}
                             existingClass={modal.data}
-                            onBack={() => setModal({ type: "classDetail", data: modal.data, prev: modal.prev })}
-                            onSaved={(updated) => setModal({ type: "classDetail", data: { ...modal.data, ...updated }, prev: modal.prev })}
+                            onBack={() => modal.fromMentorship
+                                ? setModal({ type: "mentorshipDetail", data: modal.prev })
+                                : setModal({ type: "classDetail", data: modal.data, prev: modal.prev })
+                            }
+                            onSaved={(updated) => setModal({
+                                type: "classDetail",
+                                data: modal.data ? { ...modal.data, ...updated } : updated,
+                                prev: modal.prev,
+                            })}
                         />
                     </div>
                 )}
