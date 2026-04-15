@@ -20,6 +20,7 @@ class MentorshipCreateController extends Controller
         $request->validate([
             'program_id'       => 'required|integer|exists:programs,id',
             'facility_id'      => 'required|integer|exists:facilities,id',
+            'county_id'        => 'nullable|integer|exists:counties,id',
             'start_date'       => 'required|date',
             'end_date'         => 'required|date|after_or_equal:start_date',
             'max_participants' => 'nullable|integer|min:1',
@@ -34,6 +35,7 @@ class MentorshipCreateController extends Controller
             'type'             => 'facility_mentorship',
             'program_id'       => $request->program_id,
             'facility_id'      => $request->facility_id,
+            'county_id'        => $request->county_id,
             'mentor_id'        => $user->id,
             'start_date'       => $request->start_date,
             'end_date'         => $request->end_date,

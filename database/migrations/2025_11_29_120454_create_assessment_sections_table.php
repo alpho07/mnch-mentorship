@@ -11,6 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Superseded by 2025_12_01_064531_create_assessment_sections_table.php
+        return;
         Schema::create('assessment_sections', function (Blueprint $table) {
             $table->id();
             $table->foreignId('assessment_type_id')->constrained('assessment_types')->cascadeOnDelete();

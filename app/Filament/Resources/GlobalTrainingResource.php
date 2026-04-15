@@ -47,11 +47,23 @@ class GlobalTrainingResource extends Resource {
     protected static ?string $recordTitleAttribute = 'title';
 
     public static function shouldRegisterNavigation(): bool {
-        return auth()->check() && auth()->user()->hasRole(['super_admin', 'division']);
+        return auth()->check() && auth()->user()->hasRole(['super_admin', 'division','admin','national_mentor']);
     }
 
     public static function canAccess(): bool {
-        return auth()->check() && auth()->user()->hasRole(['super_admin', 'division']);
+        return auth()->check() && auth()->user()->hasRole(['super_admin', 'division','admin','national_mentor']);
+    }
+
+    public static function canCreate(): bool {
+        return static::canAccess();
+    }
+
+    public static function canEdit($record): bool {
+        return static::canAccess();
+    }
+
+    public static function canDelete($record): bool {
+        return static::canAccess();
     }
 
     // Filter to only show global trainings

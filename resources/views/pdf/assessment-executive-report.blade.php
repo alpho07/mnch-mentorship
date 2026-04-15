@@ -1,662 +1,697 @@
+{{-- resources/views/pdf/assessment-executive-report.blade.php --}}
 <!DOCTYPE html>
 <html>
-    <head>
-        <meta charset="utf-8">
-        <title>MNCH Assessment Report - {{ $facilityInfo['name'] }}</title>
-        <style>
-            @page {
-                margin: 20mm 15mm;
-            }
-
-            body {
-                font-family: 'DejaVu Sans', sans-serif;
-                font-size: 10pt;
-                color: #1f2937;
-                line-height: 1.4;
-            }
-
-            .header {
-                text-align: center;
-                margin-bottom: 30px;
-                border-bottom: 3px solid #3b82f6;
-                padding-bottom: 15px;
-            }
-
-            .header h1 {
-                color: #1e40af;
-                font-size: 20pt;
-                margin: 0 0 10px 0;
-            }
-
-            .header .subtitle {
-                font-size: 12pt;
-                color: #6b7280;
-                margin: 0;
-            }
-
-            .info-box {
-                background: #f3f4f6;
-                padding: 15px;
-                border-radius: 5px;
-                margin-bottom: 20px;
-            }
-
-            .info-row {
-                display: flex;
-                margin-bottom: 8px;
-            }
-
-            .info-label {
-                font-weight: bold;
-                width: 150px;
-                color: #374151;
-            }
-
-            .info-value {
-                color: #1f2937;
-            }
-
-            .section-title {
-                background: #3b82f6;
-                color: white;
-                padding: 10px 15px;
-                font-size: 14pt;
-                font-weight: bold;
-                margin-top: 25px;
-                margin-bottom: 15px;
-                border-radius: 3px;
-            }
-
-            .subsection-title {
-                background: #e5e7eb;
-                color: #1f2937;
-                padding: 8px 12px;
-                font-size: 11pt;
-                font-weight: bold;
-                margin-top: 15px;
-                margin-bottom: 10px;
-                border-left: 4px solid #3b82f6;
-            }
-
-            .score-card {
-                background: #f9fafb;
-                border: 2px solid #e5e7eb;
-                border-radius: 5px;
-                padding: 15px;
-                text-align: center;
-                margin-bottom: 20px;
-            }
-
-            .score-large {
-                font-size: 36pt;
-                font-weight: bold;
-                margin: 10px 0;
-            }
-
-            .score-label {
-                font-size: 12pt;
-                color: #6b7280;
-                margin-bottom: 5px;
-            }
-
-            .grade-badge {
-                display: inline-block;
-                padding: 5px 15px;
-                border-radius: 20px;
-                color: white;
-                font-weight: bold;
-                font-size: 11pt;
-            }
-
-            table {
-                width: 100%;
-                border-collapse: collapse;
-                margin-bottom: 20px;
-                font-size: 9pt;
-            }
-
-            th {
-                background: #3b82f6;
-                color: white;
-                padding: 8px;
-                text-align: left;
-                font-weight: bold;
-            }
-
-            td {
-                padding: 8px;
-                border-bottom: 1px solid #e5e7eb;
-            }
-
-            tr:nth-child(even) {
-                background: #f9fafb;
-            }
-
-            .stat-grid {
-                display: grid;
-                grid-template-columns: repeat(3, 1fr);
-                gap: 10px;
-                margin-bottom: 15px;
-            }
-
-            .stat-box {
-                background: #f3f4f6;
-                padding: 10px;
-                border-radius: 5px;
-                text-align: center;
-            }
-
-            .stat-number {
-                font-size: 18pt;
-                font-weight: bold;
-                color: #3b82f6;
-            }
-
-            .stat-label {
-                font-size: 8pt;
-                color: #6b7280;
-                margin-top: 5px;
-            }
-
-            .badge-yes {
-                background: #10b981;
-                color: white;
-                padding: 3px 8px;
-                border-radius: 3px;
-                font-size: 8pt;
-                font-weight: bold;
-            }
-
-            .badge-no {
-                background: #ef4444;
-                color: white;
-                padding: 3px 8px;
-                border-radius: 3px;
-                font-size: 8pt;
-                font-weight: bold;
-            }
-
-            .page-break {
-                page-break-after: always;
-            }
-
-            .footer {
-                position: fixed;
-                bottom: 0;
-                left: 0;
-                right: 0;
-                text-align: center;
-                font-size: 8pt;
-                color: #9ca3af;
-                border-top: 1px solid #e5e7eb;
-                padding-top: 10px;
-            }
-
-            .key-findings {
-                background: #fef3c7;
-                border-left: 4px solid #f59e0b;
-                padding: 15px;
-                margin: 15px 0;
-            }
-
-            .key-findings h3 {
-                color: #92400e;
-                margin: 0 0 10px 0;
-                font-size: 11pt;
-            }
-
-            .key-findings ul {
-                margin: 5px 0;
-                padding-left: 20px;
-            }
-
-            .key-findings li {
-                margin-bottom: 5px;
-                color: #78350f;
-            }
-        </style>
-    </head>
-    <body>
-        <!-- HEADER -->
-    <div class="header">
-        <h1>MNCH BASELINE ASSESSMENT REPORT</h1>
-        <p class="subtitle">Maternal, Newborn & Child Health Assessment</p>
-    </div>
-
-        <!-- FACILITY INFORMATION -->
-    <div class="info-box">
-        <div class="info-row">
-            <span class="info-label">Facility Name:</span>
-            <span class="info-value">{{ $facilityInfo['name'] }}</span>
+<head>
+    <meta charset="utf-8">
+    <title>MNCH Baseline Assessment Report</title>
+    <style>
+        @page {
+            margin: 0;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'DejaVu Sans', Arial, sans-serif;
+            font-size: 9pt;
+            color: #1f2937;
+            line-height: 1.4;
+            padding: 25mm 20mm;
+        }
+        
+        .report-container {
+            width: 100%;
+            max-width: 100%;
+        }
+        
+        /* Header */
+        .report-header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 3px solid #667eea;
+        }
+        
+        .report-header h1 {
+            color: #1f2937;
+            font-size: 18pt;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        
+        .report-header h2 {
+            color: #4b5563;
+            font-size: 13pt;
+            font-weight: normal;
+            margin-bottom: 5px;
+        }
+        
+        .report-header p {
+            color: #6b7280;
+            font-size: 9pt;
+        }
+        
+        /* Section Headers */
+        h2.section-title {
+            color: #1f2937;
+            font-size: 12pt;
+            font-weight: bold;
+            padding: 8px 10px;
+            margin-bottom: 10px;
+            margin-top: 15px;
+            background-color: #f3f4f6;
+            border-left: 4px solid #667eea;
+        }
+        
+        h3.subsection-title {
+            color: #374151;
+            font-size: 10pt;
+            font-weight: bold;
+            margin-top: 12px;
+            margin-bottom: 8px;
+            padding: 5px 8px;
+            background-color: #f9fafb;
+            border-left: 3px solid #9ca3af;
+        }
+        
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+            font-size: 9pt;
+        }
+        
+        /* Facility Info Table */
+        table.info-table td {
+            padding: 7px 10px;
+            border: 1px solid #d1d5db;
+        }
+        
+        table.info-table td.label {
+            background-color: #f9fafb;
+            font-weight: bold;
+            color: #4b5563;
+            width: 30%;
+        }
+        
+        table.info-table td.value {
+            color: #1f2937;
+            background-color: #ffffff;
+        }
+        
+        /* Section Scores Table */
+        table.scores-table {
+            margin-bottom: 15px;
+        }
+        
+        table.scores-table thead th {
+            background-color: #374151;
+            color: white;
+            padding: 8px 10px;
+            text-align: left;
+            border: 1px solid #374151;
+            font-weight: bold;
+            font-size: 9pt;
+        }
+        
+        table.scores-table thead th.center {
+            text-align: center;
+        }
+        
+        table.scores-table tbody td {
+            padding: 8px 10px;
+            border: 1px solid #d1d5db;
+        }
+        
+        table.scores-table tbody td.section-name {
+            font-weight: bold;
+            color: #1f2937;
+        }
+        
+        table.scores-table tbody td.percentage {
+            text-align: center;
+            font-size: 13pt;
+            font-weight: bold;
+            color: #1f2937;
+        }
+        
+        table.scores-table tbody td.fraction {
+            text-align: center;
+            color: #6b7280;
+            font-size: 9pt;
+        }
+        
+        table.scores-table tbody tr.green-row {
+            background-color: #f0fdf4;
+            border-left: 4px solid #10b981;
+        }
+        
+        table.scores-table tbody tr.yellow-row {
+            background-color: #fffbeb;
+            border-left: 4px solid #f59e0b;
+        }
+        
+        table.scores-table tbody tr.red-row {
+            background-color: #fef2f2;
+            border-left: 4px solid #ef4444;
+        }
+        
+        /* Overall Score Table */
+        table.overall-table {
+            background-color: #667eea;
+            color: white;
+            margin-bottom: 15px;
+        }
+        
+        table.overall-table td {
+            padding: 12px 15px;
+            border: none;
+        }
+        
+        table.overall-table td.label {
+            font-size: 10pt;
+            font-weight: normal;
+            width: 50%;
+        }
+        
+        table.overall-table td.percentage {
+            font-size: 28pt;
+            font-weight: bold;
+            text-align: center;
+            width: 30%;
+        }
+        
+        table.overall-table td.badge {
+            text-align: right;
+            width: 20%;
+        }
+        
+        .overall-badge {
+            display: inline-block;
+            font-size: 12pt;
+            font-weight: bold;
+            padding: 8px 16px;
+            border-radius: 3px;
+        }
+        
+        .overall-badge.green {
+            background-color: #10b981;
+        }
+        
+        .overall-badge.yellow {
+            background-color: #f59e0b;
+        }
+        
+        .overall-badge.red {
+            background-color: #ef4444;
+        }
+        
+        /* Data Tables (Infrastructure, Skills Lab, etc.) */
+        table.data-table thead th {
+            background-color: #374151;
+            color: white;
+            padding: 8px 10px;
+            text-align: left;
+            border: 1px solid #374151;
+            font-weight: bold;
+            font-size: 9pt;
+        }
+        
+        table.data-table thead th.center {
+            text-align: center;
+        }
+        
+        table.data-table tbody td {
+            padding: 7px 10px;
+            border: 1px solid #d1d5db;
+            background-color: #ffffff;
+        }
+        
+        table.data-table tbody td.center {
+            text-align: center;
+        }
+        
+        table.data-table tbody td.bold {
+            font-weight: bold;
+        }
+        
+        table.data-table tbody tr:nth-child(even) {
+            background-color: #f9fafb;
+        }
+        
+        /* HR Table Footer (Totals) - CRITICAL for visibility */
+        table.data-table tfoot {
+            background-color: #1f2937;
+            color: white;
+            font-weight: bold;
+        }
+        
+        table.data-table tfoot tr {
+            background-color: #1f2937;
+            color: white;
+        }
+        
+        table.data-table tfoot td {
+            padding: 10px;
+            border: 1px solid #1f2937;
+            background-color: #1f2937;
+            color: white;
+            font-weight: bold;
+        }
+        
+        /* Badges */
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 8pt;
+            font-weight: bold;
+            color: white;
+        }
+        
+        .badge-green {
+            background-color: #10b981;
+        }
+        
+        .badge-red {
+            background-color: #ef4444;
+        }
+        
+        .badge-yellow {
+            background-color: #f59e0b;
+        }
+        
+        /* Health Products Table */
+        table.commodity-table thead th {
+            background-color: #4b5563;
+            color: white;
+            padding: 6px 8px;
+            border: 1px solid #4b5563;
+            font-weight: bold;
+            font-size: 8pt;
+        }
+        
+        table.commodity-table tbody td {
+            padding: 5px 8px;
+            border: 1px solid #d1d5db;
+            font-size: 8pt;
+        }
+        
+        table.commodity-table tbody td.center {
+            text-align: center;
+        }
+        
+        table.commodity-table tbody tr:nth-child(even) {
+            background-color: #f9fafb;
+        }
+        
+        /* Quality of Care Stats Table */
+        table.stats-table {
+            margin-bottom: 12px;
+        }
+        
+        table.stats-table thead th {
+            background-color: #4b5563;
+            color: white;
+            padding: 7px 10px;
+            border: 1px solid #4b5563;
+            font-weight: bold;
+            font-size: 9pt;
+        }
+        
+        table.stats-table tbody td {
+            padding: 8px 10px;
+            border: 1px solid #d1d5db;
+        }
+        
+        table.stats-table tbody td.stat-label {
+            color: #6b7280;
+            font-size: 8pt;
+            background-color: #f9fafb;
+            width: 60%;
+        }
+        
+        table.stats-table tbody td.stat-value {
+            color: #1f2937;
+            font-size: 12pt;
+            font-weight: bold;
+            background-color: #ffffff;
+            text-align: center;
+        }
+        
+        /* Footer */
+        .report-footer {
+            margin-top: 25px;
+            padding-top: 12px;
+            border-top: 2px solid #e5e7eb;
+            text-align: center;
+            color: #6b7280;
+            font-size: 8pt;
+        }
+        
+        .report-footer p {
+            margin: 3px 0;
+        }
+        
+        /* Page Break Control */
+        .section {
+            page-break-inside: avoid;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="report-container">
+        {{-- Header --}}
+        <div class="report-header">
+            <h1>MNCH BASELINE ASSESSMENT</h1>
+            <h2>{{ $facilityInfo['name'] }}</h2>
+            <p>Assessment Date: {{ $assessment->assessment_date->format('F d, Y') }}</p>
         </div>
-        <div class="info-row">
-            <span class="info-label">MFL Code:</span>
-            <span class="info-value">{{ $facilityInfo['mfl_code'] ?? 'N/A' }}</span>
-        </div>
-        <div class="info-row">
-            <span class="info-label">County:</span>
-            <span class="info-value">{{ $facilityInfo['county'] }}</span>
-        </div>
-        <div class="info-row">
-            <span class="info-label">Sub-County:</span>
-            <span class="info-value">{{ $facilityInfo['subcounty'] }}</span>
-        </div>
-        <div class="info-row">
-            <span class="info-label">Level:</span>
-            <span class="info-value">{{ $facilityInfo['level'] ?? 'N/A' }}</span>
-        </div>
-        <div class="info-row">
-            <span class="info-label">Assessment Type:</span>
-            <span class="info-value">{{ $assessmentDetails['type'] }}</span>
-        </div>
-        <div class="info-row">
-            <span class="info-label">Assessment Date:</span>
-            <span class="info-value">{{ $assessmentDetails['date'] }}</span>
-        </div>
-        <div class="info-row">
-            <span class="info-label">Assessor:</span>
-            <span class="info-value">{{ $assessmentDetails['assessor_name'] }}</span>
-        </div>
-    </div>
 
-  
-        <!-- SECTION SCORES SUMMARY -->
-    <div class="section-title">Section Scores Overview</div>
-    <table>
-        <thead>
-            <tr>
-                <th>Section</th>
-                <th style="text-align: center">Score</th>
-                <th style="text-align: center">Questions</th>
-                <th style="text-align: center">Percentage</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach($sectionScores as $section)
+        {{-- Facility Information --}}
+        <div class="section">
+            <h2 class="section-title">Facility Information</h2>
+            <table class="info-table">
                 <tr>
-                    <td>{{ $section['section_name'] }}</td>
-                    <td style="text-align: center">{{ $section['score'] }}/{{ $section['max_score'] }}</td>
-                    <td style="text-align: center">{{ $section['answered_questions'] }}/{{ $section['total_questions'] }}</td>
-                    <td style="text-align: center"><strong>{{ number_format($section['percentage'], 1) }}%</strong></td>
+                    <td class="label">Facility Name</td>
+                    <td class="value">{{ $facilityInfo['name'] }}</td>
                 </tr>
-            @endforeach
-        </tbody>
-    </table>
-    
-          <!-- OVERALL SCORE -->
-    <div class="score-card">
-        <div class="score-label">Overall Assessment Score</div>
-        <div class="score-large" style="color: {{ $overallScore['grade_color'] }}">
-            {{ number_format($overallScore['percentage'], 1) }}%
+                <tr>
+                    <td class="label">MFL Code</td>
+                    <td class="value">{{ $facilityInfo['mfl_code'] ?? 'N/A' }}</td>
+                </tr>
+                <tr>
+                    <td class="label">County</td>
+                    <td class="value">{{ $facilityInfo['county'] }}</td>
+                </tr>
+                <tr>
+                    <td class="label">Sub-County</td>
+                    <td class="value">{{ $facilityInfo['subcounty'] }}</td>
+                </tr>
+                <tr>
+                    <td class="label">Assessor</td>
+                    <td class="value">{{ $assessment->assessor_name }}</td>
+                </tr>
+            </table>
         </div>
-        <span class="grade-badge" style="background: {{ $overallScore['grade_color'] }}">
-            {{ strtoupper($overallScore['grade']) }}
-        </span>
-    </div>
-
-
-    <div class="page-break"></div>
-
-        <!-- INFRASTRUCTURE -->
-    <div class="section-title">1. Infrastructure</div>
-
-    @if($infrastructure['has_nbu'])
-        <div class="subsection-title">Newborn Unit (NBU)</div>
-        <table>
-            <thead>
-                <tr>
-                    <th>NICU Beds</th>
-                    <th>General Cots</th>
-                    <th>KMC Beds</th>
-                    <th>Total Capacity</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td style="text-align: center"><strong>{{ $infrastructure['nbu_beds'] }}</strong></td>
-                    <td style="text-align: center"><strong>{{ $infrastructure['nbu_cots'] }}</strong></td>
-                    <td style="text-align: center"><strong>{{ $infrastructure['nbu_kmc'] }}</strong></td>
-                    <td style="text-align: center"><strong>{{ $infrastructure['nbu_beds'] + $infrastructure['nbu_cots'] + $infrastructure['nbu_kmc'] }}</strong></td>
-                </tr>
-            </tbody>
-        </table>
-    @else
-        <p><em>No Newborn Unit available at this facility.</em></p>
-    @endif
-
-    @if($infrastructure['has_paed'])
-        <div class="subsection-title">Paediatric Ward</div>
-        <table>
-            <thead>
-                <tr>
-                    <th>General Ward Beds</th>
-                    <th>PICU Beds</th>
-                    <th>Total Capacity</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td style="text-align: center"><strong>{{ $infrastructure['paed_beds'] }}</strong></td>
-                    <td style="text-align: center"><strong>{{ $infrastructure['paed_picu'] }}</strong></td>
-                    <td style="text-align: center"><strong>{{ $infrastructure['paed_beds'] + $infrastructure['paed_picu'] }}</strong></td>
-                </tr>
-            </tbody>
-        </table>
-    @else
-        <p><em>No Paediatric Ward available at this facility.</em></p>
-    @endif
-
-    <div class="subsection-title">Other Infrastructure</div>
-    <table>
-        <thead>
-            <tr>
-                <th>Question</th>
-                <th style="text-align: center; width: 100px">Response</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach($infrastructure['all_responses'] as $response)
-                @if(!in_array($response->question->question_code, ['INFRA_NBU', 'INFRA_PAED']))
-                    <tr>
-                        <td>{{ $response->question->question_text }}</td>
-                        <td style="text-align: center">
-                            <span class="{{ $response->response_value === 'Yes' ? 'badge-yes' : 'badge-no' }}">
-                                {{ $response->response_value }}
-                            </span>
-                        </td>
-                    </tr>
-                @endif
-            @endforeach
-        </tbody>
-    </table>
-
-        <!-- SKILLS LAB -->
-    <div class="section-title">2. Skills Lab</div>
-
-    @if($skillsLab['has_skills_lab'])
-        <p><strong>Skills Lab Status:</strong> <span class="badge-yes">AVAILABLE</span></p>
-
-        <div class="subsection-title">Equipment & Facilities Checklist</div>
-        <table>
-            <thead>
-                <tr>
-                    <th>Item</th>
-                    <th style="text-align: center; width: 100px">Available</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($skillsLab['all_responses'] as $response)
-                @if($response->question->question_code !== 'SKILLS_MASTER')
-                        <tr>
-                            <td>{{ $response->question->question_text }}</td>
-                            <td style="text-align: center">
-                                <span class="{{ $response->response_value === 'Yes' ? 'badge-yes' : 'badge-no' }}">
-                                    {{ $response->response_value }}
-                                </span>
-                            </td>
-                        </tr>
-                    @endif
-                @endforeach
-            </tbody>
-        </table>
-    @else
-        <p><strong>Skills Lab Status:</strong> <span class="badge-no">NOT AVAILABLE</span></p>
 
         @php
-        $spaceQuestion = $skillsLab['all_responses']->firstWhere('question.question_code', 'SKILLS_NO_1');
-    @endphp
+            $percentage = 0;
+        @endphp
 
-        @if($spaceQuestion)
-            <p><strong>Room/Space for Skills Teaching:</strong> 
-            <span class="{{ $spaceQuestion->response_value === 'Yes' ? 'badge-yes' : 'badge-no' }}">
-                {{ $spaceQuestion->response_value }}
-            </span>
-        </p>
-    @endif
-@endif
+        {{-- Section Scores --}}
+        <div class="section">
+            <h2 class="section-title">Section Performance</h2>
+            <table class="scores-table">
+                <thead>
+                    <tr>
+                        <th>Section</th>
+                        <th class="center">Score (%)</th>
+                        <th class="center">Points</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($sectionScores as $score)
+                        @php
+                            $rowClass = $score['percentage'] >= 70 ? 'green-row' : ($score['percentage'] >= 50 ? 'yellow-row' : 'red-row');
+                            $percentage += $score['percentage'];
+                        @endphp
+                        <tr class="{{ $rowClass }}">
+                            <td class="section-name">{{ $score['section_name'] }}</td>
+                            <td class="percentage">{{ number_format($score['percentage'], 1) }}%</td>
+                            <td class="fraction">{{ $score['score'] }} / {{ $score['max_score'] }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
 
-<div class="page-break"></div>
+        @php
+            $np = (int) ($percentage/4);
+            $color = $np >= 80 ? 'green' : ($np >= 50 ? 'yellow' : 'red');
+        @endphp
 
-        <!-- HUMAN RESOURCES -->
-<div class="section-title">3. Human Resources</div>
-
-<div class="subsection-title">Training Overview</div>
-<table>
-    <thead>
-        <tr>
-            <th>Total Staff</th>
-            <th>ETAT+ Trained</th>
-            <th>Comprehensive NB Care</th>
-            <th>IMNCI Trained</th>
-            <th>Type 1 Diabetes</th>
-            <th>Essential NB Care</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr>
-            <td style="text-align: center"><strong>{{ $humanResources['total_staff'] }}</strong></td>
-            <td style="text-align: center"><strong>{{ $humanResources['total_etat_plus'] }}</strong></td>
-            <td style="text-align: center"><strong>{{ $humanResources['total_comprehensive_nb'] }}</strong></td>
-            <td style="text-align: center"><strong>{{ $humanResources['total_imnci'] }}</strong></td>
-            <td style="text-align: center"><strong>{{ $humanResources['total_diabetes'] }}</strong></td>
-            <td style="text-align: center"><strong>{{ $humanResources['total_essential_nb'] }}</strong></td>
-        </tr>
-    </tbody>
-</table>
-
-<div class="subsection-title">Detailed Breakdown by Cadre</div>
-<table>
-    <thead>
-        <tr>
-            <th>Cadre</th>
-            <th style="text-align: center">Total</th>
-            <th style="text-align: center">ETAT+</th>
-            <th style="text-align: center">Comp. NB</th>
-            <th style="text-align: center">IMNCI</th>
-            <th style="text-align: center">Diabetes</th>
-            <th style="text-align: center">Ess. NB</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach($humanResources['by_cadre'] as $cadre)
-            @if($cadre['total'] > 0)
+        {{-- Overall Score Summary --}}
+        <div class="section">
+            <table class="overall-table">
                 <tr>
-                    <td>{{ $cadre['cadre'] }}</td>
-                    <td style="text-align: center"><strong>{{ $cadre['total'] }}</strong></td>
-                    <td style="text-align: center">{{ $cadre['etat_plus'] }}</td>
-                    <td style="text-align: center">{{ $cadre['comprehensive_nb'] }}</td>
-                    <td style="text-align: center">{{ $cadre['imnci'] }}</td>
-                    <td style="text-align: center">{{ $cadre['diabetes'] }}</td>
-                    <td style="text-align: center">{{ $cadre['essential_nb'] }}</td>
-                </tr>
-            @endif
-        @endforeach
-    </tbody>
-</table>
-
-<div class="page-break"></div>
-
-        <!-- HEALTH PRODUCTS -->
-<div class="section-title">4. Health Products & Commodities</div>
-
-@foreach($healthProducts as $departmentName => $dept)
-    <div class="subsection-title">{{ $departmentName }}</div>
-    <p>
-        <strong>Overall Availability:</strong> {{ $dept['available'] }}/{{ $dept['total'] }} 
-        ({{ $dept['percentage'] }}%)
-        <span class="grade-badge" style="background: {{ $dept['grade'] === 'green' ? '#10b981' : ($dept['grade'] === 'yellow' ? '#f59e0b' : '#ef4444') }}">
-            {{ strtoupper($dept['grade']) }}
-        </span>
-    </p>
-
-    <table>
-        <thead>
-            <tr>
-                <th>Commodity</th>
-                <th>Category</th>
-                <th style="text-align: center; width: 100px">Available</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach($dept['commodities'] as $commodity)
-                <tr>
-                    <td>{{ $commodity['name'] }}</td>
-                    <td>{{ $commodity['category'] }}</td>
-                    <td style="text-align: center">
-                        <span class="{{ $commodity['available'] ? 'badge-yes' : 'badge-no' }}">
-                            {{ $commodity['available'] ? 'Yes' : 'No' }}
-                        </span>
+                    <td class="label">Overall Assessment Score</td>
+                    <td class="percentage">{{ number_format($percentage/4, 1) }}%</td>
+                    <td class="badge">
+                        <span class="overall-badge {{ $color }}">{{ strtoupper($color) }}</span>
                     </td>
                 </tr>
-            @endforeach
-        </tbody>
-    </table>
+            </table>
+        </div>
 
-    <div style="margin-bottom: 15px;">
-        <strong>Summary by Category:</strong>
-        @foreach($dept['by_category'] as $category)
-            <div style="display: inline-block; margin-right: 15px; margin-top: 5px;">
-                <span style="font-weight: bold;">{{ $category['name'] }}:</span> 
-                {{ $category['available'] }}/{{ $category['total'] }} ({{ $category['percentage'] }}%)
+        {{-- Infrastructure Details --}}
+        @if(!empty($infrastructureDetails['responses']))
+            <div class="section">
+                <h2 class="section-title">Infrastructure</h2>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Question</th>
+                            <th class="center" style="width: 15%;">Response</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($infrastructureDetails['responses'] as $detail)
+                            <tr>
+                                <td>{{ $detail['question'] }}</td>
+                                <td class="center">
+                                    <span class="badge badge-{{ $detail['response'] === 'Yes' ? 'green' : 'red' }}">
+                                        {{ $detail['response'] }}
+                                    </span>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
             </div>
-        @endforeach
+        @endif
+
+        {{-- Skills Lab Details --}}
+        @if(!empty($skillsLabDetails['responses']))
+            <div class="section">
+                <h2 class="section-title">Skills Lab</h2>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Equipment/Item</th>
+                            <th class="center" style="width: 15%;">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($skillsLabDetails['responses'] as $detail)
+                            <tr>
+                                <td>{{ $detail['question'] }}</td>
+                                <td class="center">
+                                    <span class="badge badge-{{ $detail['response'] === 'Yes' ? 'green' : 'red' }}">
+                                        {{ $detail['response'] }}
+                                    </span>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
+
+        {{-- Information Systems Details --}}
+        @if(!empty($informationSystemsDetails['responses']))
+            <div class="section">
+                <h2 class="section-title">Information Systems</h2>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Question</th>
+                            <th class="center" style="width: 15%;">Response</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($informationSystemsDetails['responses'] as $detail)
+                            <tr>
+                                <td>{{ $detail['question'] }}</td>
+                                <td class="center">
+                                    <span class="badge badge-{{ $detail['response'] === 'Yes' ? 'green' : 'red' }}">
+                                        {{ $detail['response'] }}
+                                    </span>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
+
+        {{-- Human Resources --}}
+        @if(!empty($humanResourcesDetails['responses']))
+            @php
+                $totalAvailable = 0;
+                $totalEtat = 0;
+                $totalCompNB = 0;
+                $totalImnci = 0;
+                $totalDiabetes = 0;
+                $totalEssNB = 0;
+            @endphp
+
+            <div class="section">
+                <h2 class="section-title">Human Resources</h2>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Cadre</th>
+                            <th class="center" style="width: 12%;">Available</th>
+                            <th class="center" style="width: 11%;">ETAT+</th>
+                            <th class="center" style="width: 11%;">Comp. NB</th>
+                            <th class="center" style="width: 11%;">IMNCI</th>
+                            <th class="center" style="width: 11%;">Diabetes</th>
+                            <th class="center" style="width: 11%;">Ess. NB</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($humanResourcesDetails['responses'] as $hr)
+                            @php
+                                $etat = $hr['etat_plus'] ?? 0;
+                                $compNB = $hr['comprehensive_newborn_care'] ?? 0;
+                                $imnci = $hr['imnci'] ?? 0;
+                                $diabetes = $hr['type_1_diabetes'] ?? 0;
+                                $essNB = $hr['essential_newborn_care'] ?? 0;
+                                $available = $etat + $compNB + $imnci + $diabetes + $essNB;
+
+                                $totalAvailable += $available;
+                                $totalEtat += $etat;
+                                $totalCompNB += $compNB;
+                                $totalImnci += $imnci;
+                                $totalDiabetes += $diabetes;
+                                $totalEssNB += $essNB;
+                            @endphp
+                            <tr>
+                                <td class="bold">{{ $hr['cadre'] ?? '-' }}</td>
+                                <td class="center bold">{{ $available }}</td>
+                                <td class="center">{{ $etat }}</td>
+                                <td class="center">{{ $compNB }}</td>
+                                <td class="center">{{ $imnci }}</td>
+                                <td class="center">{{ $diabetes }}</td>
+                                <td class="center">{{ $essNB }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td>TOTAL</td>
+                            <td class="center">{{ $totalAvailable }}</td>
+                            <td class="center">{{ $totalEtat }}</td>
+                            <td class="center">{{ $totalCompNB }}</td>
+                            <td class="center">{{ $totalImnci }}</td>
+                            <td class="center">{{ $totalDiabetes }}</td>
+                            <td class="center">{{ $totalEssNB }}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        @endif
+
+        {{-- Health Products Summary --}}
+        @if(!empty($healthProductsDetails))
+            <div class="section">
+                <h2 class="section-title">Health Products & Commodities</h2>
+                @foreach($healthProductsDetails as $departmentName => $dept)
+                    <h3 class="subsection-title">{{ $departmentName }}</h3>
+                    @foreach($dept['categories'] as $category)
+                        <table class="commodity-table">
+                            <thead>
+                                <tr>
+                                    <th colspan="2">{{ $category['name'] }} ({{ $category['available'] }}/{{ $category['total'] }} available)</th>
+                                </tr>
+                                <tr>
+                                    <th>Item</th>
+                                    <th class="center" style="width: 15%;">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($category['items'] as $item)
+                                    <tr>
+                                        <td>{{ $item['name'] }}</td>
+                                        <td class="center">
+                                            <span class="badge badge-{{ $item['available'] ? 'green' : 'red' }}">
+                                                {{ $item['available'] ? 'Available' : 'Not Available' }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    @endforeach
+                @endforeach
+            </div>
+        @endif
+
+        {{-- Quality of Care --}}
+        @if(!empty($qualityOfCareDetails))
+            <div class="section">
+                <h2 class="section-title">Quality of Care</h2>
+
+                {{-- Audit Questions --}}
+                @if(!empty($qualityOfCareDetails['yes_no_array']))
+                    <h3 class="subsection-title">Audit & Process Compliance</h3>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Question</th>
+                                <th class="center" style="width: 15%;">Response</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($qualityOfCareDetails['yes_no_array'] as $item)
+                                <tr>
+                                    <td>{{ $item['question'] }}</td>
+                                    <td class="center">
+                                        <span class="badge badge-{{ $item['response'] === 'Yes' ? 'green' : 'red' }}">
+                                            {{ $item['response'] }}
+                                        </span>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                @endif
+
+                {{-- Statistical Data --}}
+                @if(!empty($qualityOfCareDetails['newborn_stats_array']) || !empty($qualityOfCareDetails['paed_stats_array']))
+                    <h3 class="subsection-title">Care Statistics</h3>
+                    <table class="stats-table">
+                        <thead>
+                            <tr>
+                                <th>Statistic</th>
+                                <th class="center" style="width: 25%;">Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach(array_merge($qualityOfCareDetails['newborn_stats_array'] ?? [], $qualityOfCareDetails['paed_stats_array'] ?? []) as $stat)
+                                <tr>
+                                    <td class="stat-label">{{ $stat['question'] }}</td>
+                                    <td class="stat-value">{{ $stat['response'] }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                @endif
+            </div>
+        @endif
+
+        {{-- Footer --}}
+        <div class="report-footer">
+            <p>Generated on {{ now()->format('F d, Y \a\t H:i') }}</p>
+            <p>MNCH Baseline Assessment System</p>
+        </div>
     </div>
-
-    @if(!$loop->last)
-        <div style="margin-bottom: 20px;"></div>
-    @endif
-@endforeach
-
-        <!-- INFORMATION SYSTEMS -->
-<div class="section-title">5. Information Systems</div>
-<table>
-    <thead>
-        <tr>
-            <th>Question</th>
-            <th style="text-align: center; width: 80px">Response</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach($informationSystems['all_responses'] as $response)
-            <tr>
-                <td>{{ $response->question->question_text }}</td>
-                <td style="text-align: center">
-                    <span class="{{ $response->response_value === 'Yes' ? 'badge-yes' : 'badge-no' }}">
-                        {{ $response->response_value }}
-                    </span>
-                </td>
-            </tr>
-        @endforeach
-    </tbody>
-</table>
-
-<div class="page-break"></div>
-
-        <!-- QUALITY OF CARE -->
-<div class="section-title">6. Quality of Care</div>
-
-@if($qualityOfCare['yes_no']->count() > 0 || $qualityOfCare['select']->count() > 0)
-    <div class="subsection-title">Audit & Process Compliance</div>
-    <table>
-        <thead>
-            <tr>
-                <th>Question</th>
-                <th style="text-align: center; width: 120px">Response</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach($qualityOfCare['yes_no'] as $response)
-                <tr>
-                    <td>{{ $response->question->question_text }}</td>
-                    <td style="text-align: center">
-                        <span class="{{ $response->response_value === 'Yes' ? 'badge-yes' : 'badge-no' }}">
-                            {{ $response->response_value }}
-                        </span>
-                    </td>
-                </tr>
-            @endforeach
-
-            @foreach($qualityOfCare['select'] as $response)
-                <tr>
-                    <td>{{ $response->question->question_text }}</td>
-                    <td style="text-align: center">
-                        <strong>{{ $response->response_value }}</strong>
-                    </td>
-                </tr>
-            @endforeach
-        </tbody>
-    </table>
-@endif
-
-@if($qualityOfCare['newborn_stats']->count() > 0)
-    <div class="subsection-title">Newborn Care Statistics (September 2025)</div>
-    <table>
-        <thead>
-            <tr>
-                <th>Indicator</th>
-                <th style="text-align: center; width: 100px">Count</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach($qualityOfCare['newborn_stats'] as $response)
-                <tr>
-                    <td>{{ $response->question->question_text }}</td>
-                    <td style="text-align: center"><strong>{{ $response->response_value ?? 0 }}</strong></td>
-                </tr>
-            @endforeach
-        </tbody>
-    </table>
-@endif
-
-@if($qualityOfCare['paed_stats']->count() > 0)
-    <div class="subsection-title">Paediatric Care Statistics (September 2025)</div>
-    <table>
-        <thead>
-            <tr>
-                <th>Indicator</th>
-                <th style="text-align: center; width: 100px">Count</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach($qualityOfCare['paed_stats'] as $response)
-                <tr>
-                    <td>{{ $response->question->question_text }}</td>
-                    <td style="text-align: center"><strong>{{ $response->response_value ?? 0 }}</strong></td>
-                </tr>
-            @endforeach
-        </tbody>
-    </table>
-@endif
-
-        <!-- KEY FINDINGS -->
-<div class="key-findings">
-    <h3>📊 Key Findings & Recommendations</h3>
-    <ul>
-        @if($overallScore['percentage'] >= 80)
-            <li>Facility demonstrates strong MNCH service capacity with {{ number_format($overallScore['percentage'], 1) }}% overall score</li>
-        @elseif($overallScore['percentage'] >= 50)
-            <li>Facility shows moderate MNCH capacity ({{ number_format($overallScore['percentage'], 1) }}%). Focus on identified gaps for improvement</li>
-        @else
-            <li>Significant gaps identified in MNCH services ({{ number_format($overallScore['percentage'], 1) }}%). Urgent interventions required</li>
-        @endif
-
-        @if($humanResources['total_staff'] > 0)
-            <li>Total staff: {{ $humanResources['total_staff'] }}. Training coverage: ETAT+ ({{ $humanResources['total_etat_plus'] }}), IMNCI ({{ $humanResources['total_imnci'] }})</li>
-        @endif
-
-        @if(!$skillsLab['has_skills_lab'])
-            <li>⚠ Skills lab not available - consider establishing training facility</li>
-        @endif
-
-        @if(!$infrastructure['has_nbu'])
-            <li>⚠ No dedicated newborn unit - critical for MNCH service delivery</li>
-        @endif
-    </ul>
-</div>
-
-        <!-- FOOTER -->
-<div class="footer">
-    <p>Generated on {{ now()->format('F j, Y \a\t g:i A') }} | MNCH Assessment System | Page <span class="pageNumber"></span></p>
-</div>
 </body>
 </html>

@@ -18,6 +18,7 @@ use App\Http\Controllers\AssessmentReportController;
 use App\Http\Controllers\MenteeEnrollmentController;
 use App\Http\Controllers\MenteeClassProgressController;
 use App\Http\Controllers\ModuleAttendanceController;
+use App\Http\Controllers\AccountVerificationController;
 use Illuminate\Http\Request;
 
 /*
@@ -25,7 +26,40 @@ use Illuminate\Http\Request;
   | Web Routes - Complete Resource Management System
   |--------------------------------------------------------------------------
  */
+use Illuminate\Support\Facades\Mail;
 
+Route::get('/test-mail', function () {
+    Mail::raw('Gmail is working!', function ($message) {
+        $message->to('alpho07@gmail.com')
+                ->subject('Test Email');
+    });
+
+    return 'Email sent!';
+});
+
+Route::middleware(['auth'])->prefix('admin/reports')->name('reports.')->group(function () {
+    Route::get('/class/{class}/html', [\App\Http\Controllers\ClassReportController::class, 'html'])->name('reports.class.html');
+    Route::get('/class/{class}/pdf', [\App\Http\Controllers\ClassReportController::class, 'pdf'])->name('reports.class.pdf');
+    Route::get('/class/{class}/certificate/{participant}', [\App\Http\Controllers\ClassReportController::class, 'certificate'])->name('reports.class.certificate');
+    Route::get('/class/{class}/certificate/{participant}/preview', [\App\Http\Controllers\ClassReportController::class, 'certificateHtml'])->name('reports.class.certificate.preview');
+});
+
+Route::get('/admin/set-password/{token}', App\Livewire\Auth\CustomResetPassword::class)
+        ->middleware(['web', 'guest'])
+        ->name('password.reset.custom');
+
+Route::middleware('guest')->group(function () {
+
+    // GET  /account/verify/{user}?expires=...&signature=...
+    // Shows the "Hello {name}, set your password" page
+    Route::get('/account/verify/{user}', [AccountVerificationController::class, 'show'])
+            ->name('account.verify.show');
+
+    // POST /account/verify/{user}?expires=...&signature=...
+    // Validates password, marks verified, auto-logs in, redirects to /admin
+    Route::post('/account/verify/{user}', [AccountVerificationController::class, 'update'])
+            ->name('account.verify.update');
+});
 
 // Override Livewire upload to bypass signature
 Route::post('/livewire/upload-file', function (Request $request) {
@@ -36,7 +70,7 @@ Route::post('/livewire/upload-file', function (Request $request) {
 
     $disk = config('livewire.temporary_file_upload.disk', 'local');
     $directory = config('livewire.temporary_file_upload.directory', 'livewire-tmp');
-    
+
     $request->validate([
         'files.*' => ['required', 'file', 'max:102400']
     ]);
@@ -45,45 +79,44 @@ Route::post('/livewire/upload-file', function (Request $request) {
     if (!is_array($files)) {
         $files = [$files];
     }
-    
+
     $paths = [];
 
     foreach ($files as $file) {
         try {
             // Generate unique filename
             $filename = Str::uuid() . '.' . $file->getClientOriginalExtension();
-            
+
             \Log::info('Storing file', [
                 'original_name' => $file->getClientOriginalName(),
                 'filename' => $filename,
                 'directory' => $directory,
                 'disk' => $disk,
             ]);
-            
+
             // Store the file
             $stored = Storage::disk($disk)->putFileAs($directory, $file, $filename);
-            
+
             if (!$stored) {
                 throw new \Exception('Failed to store file');
             }
-            
+
             \Log::info('File stored successfully', [
                 'path' => $stored,
                 'exists' => Storage::disk($disk)->exists($stored),
             ]);
-            
+
             // Return just the filename (not the full path)
             $paths[] = $filename;
-            
         } catch (\Exception $e) {
             \Log::error('File upload failed', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
-            
+
             return response()->json([
-                'error' => $e->getMessage()
-            ], 500);
+                        'error' => $e->getMessage()
+                            ], 500);
         }
     }
 
@@ -91,11 +124,9 @@ Route::post('/livewire/upload-file', function (Request $request) {
 
     // Return in the exact format Livewire expects
     return response()->json([
-        'paths' => $paths
+                'paths' => $paths
     ]);
-    
 })->middleware('web')->name('livewire.upload-file');
-
 
 Route::get('/check-upload-config', function () {
     return [
@@ -119,10 +150,7 @@ Route::get('/test-signature', function () {
     ];
 })->name('test');
 
-
-
 // Override Livewire upload to bypass signature
-
 // Module attendance routes (public/guest access)
 Route::get('/module/attend/{token}', [ModuleAttendanceController::class, 'attend'])
         ->name('module.attend');
@@ -140,7 +168,22 @@ Route::post('/enroll/{token}', [MenteeEnrollmentController::class, 'processEnrol
 // Mentee authenticated routes
 Route::middleware(['auth'])->group(function () {
     Route::get('/my-class/{class}', [MenteeClassProgressController::class, 'show'])
-            ->name('mentee.class-progress');
+            ->name('mentee.class.progress');
+});
+
+Route::get('/attend/{token}', [App\Http\Controllers\ModuleAttendanceController::class, 'confirm'])
+        ->name('module.attendance');
+
+Route::get('/enroll/{token}', [MenteeEnrollmentController::class, 'show'])
+        ->name('mentee.enroll');
+
+Route::post('/enroll/{token}', [MenteeEnrollmentController::class, 'submit'])
+        ->name('mentee.enroll.submit');
+
+// ── Auth required — complete enrollment after login ───────────────────────────
+Route::middleware(['auth'])->group(function () {
+    Route::get('/enroll/{token}/complete', [MenteeEnrollmentController::class, 'complete'])
+            ->name('mentee.enroll.complete');
 });
 
 Route::middleware(['auth'])->group(function () {
@@ -569,4 +612,6 @@ Route::middleware(['web'])->prefix('analytics')->name('analytics.')->group(funct
     Route::get('/facility/{facilityId}/participants', [TrainingExplorerController::class, 'participantsByFacility']);
     Route::get('/participant/{participantId}/profile', [TrainingExplorerController::class, 'participantProfile']);
 });
+
+//include 'api.php';
 

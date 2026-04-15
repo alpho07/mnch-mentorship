@@ -21,35 +21,106 @@ function StatusBadge({ status }) {
     );
 }
 
-export function ClassDetailScreen({ cls, onBack, onOpenModule, onManageMentees, onEditClass, onAddModule }) {
-    const [detail, setDetail]   = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [tab, setTab]         = useState("modules"); // "modules" | "mentees"
+export function ClassDetailScreen({
+    cls,
+    onBack,
+    onOpenModule,
+    onManageMentees,
+    onEditClass,
+    onAddModule,
+    confirm = (o) => Promise.resolve(window.confirm(o?.title ?? "Confirm?")),
+}) {
+    const [detail, setDetail]     = useState(null);
+    const [loading, setLoading]   = useState(true);
+    const [modules, setModules]   = useState([]);
+    const [tab, setTab]           = useState("modules");
+    const [acting, setActing]     = useState(null); // moduleId being started/completed/deleted
 
     useEffect(() => {
-        // Load full class detail (has mentees + modules)
         const trainingId = cls.trainingId;
         const classId    = cls.id;
 
         if (trainingId) {
             api.mentorships.classDetail(trainingId, classId)
-                .then(d => setDetail(d?.data ?? null))
-                .catch(() => {})
+                .then(d => {
+                    const data = d?.data ?? null;
+                    setDetail(data);
+                    setModules(data?.modules ?? []);
+                })
+                .catch(() => {
+                    setDetail(cls);
+                    setModules(cls.modules ?? []);
+                })
                 .finally(() => setLoading(false));
         } else {
-            // Fallback: just load modules
             api.modules.list(classId)
-                .then(d => setDetail({ ...cls, modules: Array.isArray(d?.data) ? d.data : [] }))
-                .catch(() => setDetail(cls))
+                .then(d => {
+                    const mods = Array.isArray(d?.data) ? d.data : [];
+                    setDetail({ ...cls, modules: mods });
+                    setModules(mods);
+                })
+                .catch(() => {
+                    setDetail(cls);
+                    setModules(cls.modules ?? []);
+                })
                 .finally(() => setLoading(false));
         }
     }, [cls.id]);
 
-    const data    = detail ?? cls;
-    const modules = data?.modules ?? [];
-    const mentees = data?.mentees ?? [];
+    // Called by parent after a module is added via the picker
+    // Parent passes updated class data with new module appended
+    useEffect(() => {
+        if (cls.modules) setModules(cls.modules);
+    }, [cls.modules]);
 
-    const pct = data?.progress_percentage ?? 0;
+    const data    = detail ?? cls;
+    const mentees = data?.mentees ?? [];
+    const pct     = data?.progress_percentage ?? 0;
+
+    const handleStart = async (mod) => {
+        setActing(mod.id);
+        try {
+            const res = await api.modules.start(mod.id);
+            const updated = res?.data ?? {};
+            setModules(prev => prev.map(m => m.id === mod.id ? { ...m, ...updated } : m));
+        } catch (e) {
+            alert(e.message ?? "Failed to start module.");
+        } finally {
+            setActing(null);
+        }
+    };
+
+    const handleComplete = async (mod) => {
+        setActing(mod.id);
+        try {
+            const res = await api.modules.complete(mod.id);
+            const updated = res?.data ?? {};
+            setModules(prev => prev.map(m => m.id === mod.id ? { ...m, ...updated } : m));
+        } catch (e) {
+            alert(e.message ?? "Failed to complete module.");
+        } finally {
+            setActing(null);
+        }
+    };
+
+    const handleDelete = async (mod) => {
+        const ok = await confirm({
+            title: `Delete "${mod.name}"?`,
+            message: "This module and its sessions will be permanently removed. Only modules that haven't been started can be deleted.",
+            confirmLabel: "Delete Module",
+            danger: true,
+        });
+        if (!ok) return;
+        setActing(mod.id);
+        try {
+            await api.modules.remove(mod.id);
+            setModules(prev => prev.filter(m => m.id !== mod.id));
+        } catch (e) {
+            alert(e.message ?? "Failed to delete module.");
+        } finally {
+            setActing(null);
+        }
+    };
 
     return (
         <div style={{ display: "flex", flexDirection: "column", height: "100%", background: T.bg }}>
@@ -81,7 +152,6 @@ export function ClassDetailScreen({ cls, onBack, onOpenModule, onManageMentees, 
                         {data.participant_count ?? mentees.length} mentees · {modules.length} modules
                     </span>
                 </div>
-                {/* Progress bar inside hero */}
                 <div style={{ marginTop: 14 }}>
                     <div style={{ height: 5, borderRadius: 4, background: "rgba(255,255,255,0.15)", overflow: "hidden" }}>
                         <div style={{ height: "100%", width: `${pct}%`, background: pct === 100 ? "#34D399" : "rgba(255,255,255,0.8)", borderRadius: 4, transition: "width 0.6s" }} />
@@ -125,30 +195,133 @@ export function ClassDetailScreen({ cls, onBack, onOpenModule, onManageMentees, 
                         {modules.length === 0 && (
                             <div style={{ color: T.textSub, textAlign: "center", paddingTop: 32 }}>No modules.</div>
                         )}
-                        {modules.map(m => (
-                            <button
-                                key={m.id}
-                                onClick={() => onOpenModule({ ...m, classId: cls.id })}
-                                style={{
-                                    background: T.card, border: `1px solid ${T.border}`,
-                                    borderRadius: T.radiusSm, padding: "14px 16px",
-                                    textAlign: "left", cursor: "pointer", boxShadow: T.shadowCard,
-                                }}
-                            >
-                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
-                                    <div style={{ fontWeight: 700, color: T.text, fontSize: 14, flex: 1, marginRight: 8 }}>
-                                        {m.order_sequence}. {m.name}
+                        {modules.map(m => {
+                            const isActing = acting === m.id;
+                            const canStart    = m.status === "not_started";
+                            const canComplete = m.status === "in_progress";
+                            const canDelete   = m.status === "not_started";
+
+                            return (
+                                <div
+                                    key={m.id}
+                                    style={{
+                                        background: T.card, border: `1px solid ${T.border}`,
+                                        borderRadius: T.radiusSm, boxShadow: T.shadowCard,
+                                        overflow: "hidden", opacity: isActing ? 0.7 : 1,
+                                    }}
+                                >
+                                    {/* Tappable body */}
+                                    <div
+                                        onClick={() => onOpenModule({ ...m, classId: cls.id })}
+                                        style={{ padding: "14px 16px", cursor: "pointer" }}
+                                    >
+                                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
+                                            <div style={{ fontWeight: 700, color: T.text, fontSize: 14, flex: 1, marginRight: 8 }}>
+                                                {m.order_sequence}. {m.name}
+                                            </div>
+                                            <StatusBadge status={m.status} />
+                                        </div>
+                                        <div style={{ fontSize: 12, color: T.textSub, display: "flex", gap: 12, flexWrap: "wrap" }}>
+                                            <span>{m.session_count ?? 0} sessions</span>
+                                            {m.requires_assessment && <span style={{ color: "#7C3AED" }}>· Assessment required</span>}
+                                            {m.started_at && <span>· Started {new Date(m.started_at).toLocaleDateString()}</span>}
+                                            {m.completed_at && <span>· Completed {new Date(m.completed_at).toLocaleDateString()}</span>}
+                                        </div>
                                     </div>
-                                    <StatusBadge status={m.status} />
+
+                                    {/* Action row */}
+                                    <div style={{
+                                        display: "flex", gap: 8, padding: "8px 12px",
+                                        borderTop: `1px solid ${T.borderLight}`,
+                                        background: T.bg,
+                                    }}>
+                                        {/* View */}
+                                        <button
+                                            onClick={() => onOpenModule({ ...m, classId: cls.id })}
+                                            style={{
+                                                flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+                                                padding: "6px 0", borderRadius: T.radiusXs,
+                                                border: "none", background: "linear-gradient(135deg, #3730A3, #6366F1)",
+                                                color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer",
+                                            }}
+                                        >
+                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                                            </svg>
+                                            View
+                                        </button>
+
+                                        {/* Start / Complete */}
+                                        {canStart && (
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); handleStart(m); }}
+                                                disabled={isActing}
+                                                style={{
+                                                    flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+                                                    padding: "6px 0", borderRadius: T.radiusXs,
+                                                    border: "1px solid #6EE7B7", background: "#ECFDF5",
+                                                    color: "#065F46", fontSize: 12, fontWeight: 600,
+                                                    cursor: isActing ? "not-allowed" : "pointer",
+                                                }}
+                                            >
+                                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                                    <polygon points="5 3 19 12 5 21 5 3"/>
+                                                </svg>
+                                                {isActing ? "…" : "Start"}
+                                            </button>
+                                        )}
+                                        {canComplete && (
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); handleComplete(m); }}
+                                                disabled={isActing}
+                                                style={{
+                                                    flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+                                                    padding: "6px 0", borderRadius: T.radiusXs,
+                                                    border: "1px solid #93C5FD", background: "#EFF6FF",
+                                                    color: "#1D4ED8", fontSize: 12, fontWeight: 600,
+                                                    cursor: isActing ? "not-allowed" : "pointer",
+                                                }}
+                                            >
+                                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                                    <polyline points="20 6 9 17 4 12"/>
+                                                </svg>
+                                                {isActing ? "…" : "Complete"}
+                                            </button>
+                                        )}
+                                        {m.status === "completed" && (
+                                            <div style={{
+                                                flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
+                                                fontSize: 12, color: "#065F46", fontWeight: 600,
+                                            }}>
+                                                ✓ Done
+                                            </div>
+                                        )}
+
+                                        {/* Delete */}
+                                        {canDelete ? (
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); handleDelete(m); }}
+                                                disabled={isActing}
+                                                style={{
+                                                    flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+                                                    padding: "6px 0", borderRadius: T.radiusXs,
+                                                    border: "1px solid #FECACA", background: "#FEF2F2",
+                                                    color: "#DC2626", fontSize: 12, fontWeight: 600,
+                                                    cursor: isActing ? "not-allowed" : "pointer",
+                                                }}
+                                            >
+                                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                                    <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
+                                                </svg>
+                                                Delete
+                                            </button>
+                                        ) : (
+                                            <div style={{ flex: 1 }} />
+                                        )}
+                                    </div>
                                 </div>
-                                <div style={{ fontSize: 12, color: T.textSub, display: "flex", gap: 12, flexWrap: "wrap" }}>
-                                    <span>{m.session_count ?? 0} sessions</span>
-                                    {m.requires_assessment && <span style={{ color: "#7C3AED" }}>· Assessment required</span>}
-                                    {m.started_at && <span>· Started {new Date(m.started_at).toLocaleDateString()}</span>}
-                                    {m.completed_at && <span>· Completed {new Date(m.completed_at).toLocaleDateString()}</span>}
-                                </div>
-                            </button>
-                        ))}
+                            );
+                        })}
                     </div>
                 )}
 

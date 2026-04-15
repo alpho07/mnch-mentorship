@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Resources\MentorshipTrainingResource\Pages;
+namespace App\Filament\Resources\MentorshipResource\Pages;
 
 use App\Filament\Resources\MentorshipTrainingResource;
 use App\Models\Training;
@@ -42,7 +42,7 @@ class ManageMentorshipMentees extends Page implements HasTable {
     public function mount(int|string $record): void {
         $this->record = Training::where('type', 'facility_mentorship')
                 ->with(['facility', 'participants.user'])
-                ->findOrFail($this->record->id);
+                ->findOrFail($record);
     }
 
     public function getTitle(): string {
@@ -361,6 +361,11 @@ class ManageMentorshipMentees extends Page implements HasTable {
                             ->searchable()
                             ->copyable()
                             ->placeholder('No phone'),
+                            Tables\Columns\TextColumn::make('user.email')
+                            ->label('Email')
+                            ->searchable()
+                            ->copyable()
+                            ->placeholder('No email'),
                             Tables\Columns\TextColumn::make('user.department.name')
                             ->label('Department')
                             ->badge()

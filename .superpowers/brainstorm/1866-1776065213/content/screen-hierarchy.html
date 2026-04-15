@@ -1,0 +1,136 @@
+<h2>Screen Hierarchy — New Modules</h2>
+<p class="subtitle">All new screens follow the same flat state machine pattern as assessments. Modals layer over tab content via <code>modal.type</code>.</p>
+
+<style>
+  .module-block { border-radius: 16px; padding: 20px 24px; margin-bottom: 20px; }
+  .module-mentor { background: linear-gradient(135deg, rgba(16,185,129,0.06), rgba(16,185,129,0.02)); border: 1.5px solid rgba(16,185,129,0.2); }
+  .module-mentee { background: linear-gradient(135deg, rgba(14,165,233,0.06), rgba(14,165,233,0.02)); border: 1.5px solid rgba(14,165,233,0.2); }
+  .module-training { background: linear-gradient(135deg, rgba(245,158,11,0.06), rgba(245,158,11,0.02)); border: 1.5px solid rgba(245,158,11,0.2); }
+  .module-shared { background: linear-gradient(135deg, rgba(108,92,231,0.06), rgba(108,92,231,0.02)); border: 1.5px solid rgba(108,92,231,0.2); }
+  .module-block h3 { margin: 0 0 14px; font-size: 15px; font-weight: 700; }
+  .screen-row { display: flex; flex-wrap: wrap; gap: 10px; }
+  .screen-pill { display: flex; align-items: center; gap: 6px; background: white; border: 1px solid #e2e4f0; border-radius: 8px; padding: 6px 12px; font-size: 12px; font-weight: 600; color: #3D3D5C; }
+  .screen-pill .type { font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 700; }
+  .type-tab { background: #6C5CE720; color: #6C5CE7; }
+  .type-modal { background: #F59E0B20; color: #92400E; }
+  .type-sheet { background: #10B98120; color: #065F46; }
+  .arrow { color: #A0A3BD; font-size: 12px; }
+  .flow { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+  .api-tag { background: #1A1A2E; color: #A29BFE; font-size: 10px; padding: 2px 7px; border-radius: 4px; font-family: monospace; }
+  .offline-tag { background: #D1FAE5; color: #065F46; font-size: 10px; padding: 2px 7px; border-radius: 4px; font-weight: 700; }
+  .section-label { font-size: 11px; font-weight: 700; color: #6B7194; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+</style>
+
+<!-- Mentor Module -->
+<div class="module-block module-mentor">
+  <h3>🎓 Mentor Module — <code>tab="mentorship"</code></h3>
+
+  <div class="section-label">Tab Screen (always visible)</div>
+  <div class="screen-row" style="margin-bottom:14px">
+    <div class="screen-pill"><span class="type type-tab">TAB</span> screen-mentorships-list.jsx</div>
+    <div class="api-tag">GET /mentorships</div>
+    <div class="offline-tag">⚡ offline</div>
+  </div>
+
+  <div class="section-label">Modal Stack (layered over tab)</div>
+  <div class="flow">
+    <div class="screen-pill"><span class="type type-modal">MODAL</span> screen-mentorship-detail.jsx</div>
+    <span class="arrow">→</span>
+    <div class="screen-pill"><span class="type type-modal">MODAL</span> screen-class-detail.jsx</div>
+    <span class="arrow">→</span>
+    <div class="screen-pill"><span class="type type-modal">MODAL</span> screen-module-detail.jsx</div>
+  </div>
+  <div class="flow">
+    <div class="screen-pill"><span class="type type-sheet">SHEET</span> screen-attendance-roster.jsx</div>
+    <span class="arrow">—</span>
+    <span style="font-size:12px;color:#6B7194">Slides up from module detail. Mentor marks each mentee present/absent.</span>
+  </div>
+  <div class="flow">
+    <div class="screen-pill"><span class="type type-modal">MODAL</span> screen-sessions-list.jsx</div>
+    <span class="arrow">—</span>
+    <span style="font-size:12px;color:#6B7194">Sessions within a module. Mentor can start/complete each session.</span>
+  </div>
+  <div class="flow">
+    <div class="screen-pill"><span class="type type-modal">MODAL</span> screen-mentee-progress.jsx</div>
+    <span class="arrow">—</span>
+    <span style="font-size:12px;color:#6B7194">Per-mentee progress view: module completion, attendance, assessments.</span>
+  </div>
+
+  <div class="section-label" style="margin-top:12px">API endpoints needed</div>
+  <div style="display:flex;gap:6px;flex-wrap:wrap">
+    <div class="api-tag">GET /mentorships</div>
+    <div class="api-tag">GET /mentorships/{id}/classes</div>
+    <div class="api-tag">GET /classes/{id}/modules</div>
+    <div class="api-tag">GET /classes/{id}/participants</div>
+    <div class="api-tag">POST /modules/{id}/start</div>
+    <div class="api-tag">POST /modules/{id}/complete</div>
+    <div class="api-tag">POST /modules/{id}/attendance</div>
+    <div class="api-tag">GET /participants/{id}/progress</div>
+  </div>
+</div>
+
+<!-- Mentee Module -->
+<div class="module-block module-mentee">
+  <h3>📚 Mentee Module — <code>tab="myClasses"</code></h3>
+
+  <div class="section-label">Tab Screen</div>
+  <div class="screen-row" style="margin-bottom:14px">
+    <div class="screen-pill"><span class="type type-tab">TAB</span> screen-my-classes.jsx</div>
+    <div class="api-tag">GET /me/classes</div>
+    <div class="offline-tag">⚡ offline</div>
+  </div>
+
+  <div class="section-label">Modal Stack</div>
+  <div class="flow">
+    <div class="screen-pill"><span class="type type-modal">MODAL</span> screen-class-progress.jsx</div>
+    <span class="arrow">—</span>
+    <span style="font-size:12px;color:#6B7194">Mirrors MenteeClassProgressController. Module list with status, confirm attendance button.</span>
+  </div>
+  <div class="flow">
+    <div class="screen-pill"><span class="type type-sheet">SHEET</span> AttendanceConfirmSheet</div>
+    <span class="arrow">—</span>
+    <span style="font-size:12px;color:#6B7194">In-app attendance confirmation (no token link needed when logged in on mobile).</span>
+  </div>
+
+  <div class="section-label" style="margin-top:12px">API endpoints needed</div>
+  <div style="display:flex;gap:6px;flex-wrap:wrap">
+    <div class="api-tag">GET /me/classes</div>
+    <div class="api-tag">GET /me/classes/{id}</div>
+    <div class="api-tag">GET /me/classes/{id}/progress</div>
+    <div class="api-tag">POST /me/classes/{id}/modules/{id}/confirm-attendance</div>
+  </div>
+</div>
+
+<!-- Global Training Module -->
+<div class="module-block module-training">
+  <h3>🏛️ Global Training Module — <code>tab="trainings"</code> (Admin / National roles)</h3>
+
+  <div class="screen-row" style="margin-bottom:14px">
+    <div class="screen-pill"><span class="type type-tab">TAB</span> screen-trainings-list.jsx</div>
+    <div class="api-tag">GET /trainings</div>
+    <div class="offline-tag">⚡ offline</div>
+  </div>
+  <div class="flow">
+    <div class="screen-pill"><span class="type type-modal">MODAL</span> screen-training-detail.jsx</div>
+    <span class="arrow">—</span>
+    <span style="font-size:12px;color:#6B7194">Training info, dates, location, participant count.</span>
+  </div>
+  <div class="flow">
+    <div class="screen-pill"><span class="type type-modal">MODAL</span> screen-training-participants.jsx</div>
+    <span class="arrow">—</span>
+    <span style="font-size:12px;color:#6B7194">Participant roster with attendance/completion status.</span>
+  </div>
+</div>
+
+<!-- Shared / Infrastructure -->
+<div class="module-block module-shared">
+  <h3>⚙️ Shared Infrastructure Changes</h3>
+  <div class="screen-row">
+    <div class="screen-pill">offline-store.js — +5 new stores</div>
+    <div class="screen-pill">api.service.js — +3 new namespaces</div>
+    <div class="screen-pill">sync-queue.js — +4 new op types</div>
+    <div class="screen-pill">App.jsx — role-aware tab computation</div>
+    <div class="screen-pill">BottomNav — dynamic tab list</div>
+    <div class="screen-pill">constants.js — MENTOR_META, MENTEE_META</div>
+  </div>
+</div>

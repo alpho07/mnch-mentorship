@@ -5,11 +5,19 @@ namespace Tests\Feature\Api;
 use App\Models\Training;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class MentorshipApiTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // Ensure the roles exist for tests
+        Role::firstOrCreate(['name' => 'facility_mentor', 'guard_name' => 'web']);
+    }
 
     public function test_mentor_can_list_their_mentorships(): void
     {

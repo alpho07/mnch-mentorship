@@ -8,10 +8,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\Indicators\FacilityIndicatorAssignment;
 
-class Facility extends Model
-{
-    use HasFactory, SoftDeletes;
+class Facility extends Model {
+
+    use HasFactory,
+        SoftDeletes;
 
     protected $fillable = [
         'name',
@@ -39,7 +41,6 @@ class Facility extends Model
         'storage_capacity',
         'operating_hours',
     ];
-
     protected $casts = [
         'latitude' => 'decimal:7',
         'longitude' => 'decimal:7',
@@ -48,7 +49,6 @@ class Facility extends Model
         'is_central_store' => 'boolean',
         'operating_hours' => 'array',
     ];
-
     protected $with = ['subcounty', 'facilityType', 'facilityLevel', 'facilityOwnership'];
 
     // ============================================
@@ -58,110 +58,92 @@ class Facility extends Model
     /**
      * Location & Classification Relationships
      */
-    public function subcounty(): BelongsTo
-    {
+    public function subcounty(): BelongsTo {
         return $this->belongsTo(Subcounty::class);
     }
 
-    public function facilityType(): BelongsTo
-    {
+    public function facilityType(): BelongsTo {
         return $this->belongsTo(FacilityType::class);
     }
 
-    public function facilityLevel(): BelongsTo
-    {
+    public function facilityLevel(): BelongsTo {
         return $this->belongsTo(FacilityLevel::class);
     }
 
-    public function facilityOwnership(): BelongsTo
-    {
+    public function facilityOwnership(): BelongsTo {
         return $this->belongsTo(FacilityOwnership::class);
     }
 
     /**
      * Hub & Spoke Relationships (Training/Mentorship)
      */
-    public function hub(): BelongsTo
-    {
+    public function hub(): BelongsTo {
         return $this->belongsTo(Facility::class, 'hub_id');
     }
 
-    public function spokes(): HasMany
-    {
+    public function spokes(): HasMany {
         return $this->hasMany(Facility::class, 'hub_id');
     }
 
     /**
      * User Relationships
      */
-    public function users(): HasMany
-    {
+    public function users(): HasMany {
         return $this->hasMany(User::class);
     }
 
-    public function scopedUsers(): BelongsToMany
-    {
+    public function scopedUsers(): BelongsToMany {
         return $this->belongsToMany(User::class, 'facility_user');
     }
 
     /**
      * Training & Assessment Relationships
      */
-    public function trainings(): HasMany
-    {
+    public function trainings(): HasMany {
         return $this->hasMany(Training::class);
     }
 
-    public function assessments(): HasMany
-    {
+    public function assessments(): HasMany {
         return $this->hasMany(Assessment::class);
     }
 
     /**
      * Inventory Management Relationships
      */
-    public function stockLevels(): HasMany
-    {
+    public function stockLevels(): HasMany {
         return $this->hasMany(StockLevel::class);
     }
 
-    public function stockRequests(): HasMany
-    {
+    public function stockRequests(): HasMany {
         return $this->hasMany(StockRequest::class, 'requesting_facility_id');
     }
 
-    public function centralStoreRequests(): HasMany
-    {
+    public function centralStoreRequests(): HasMany {
         return $this->hasMany(StockRequest::class, 'central_store_id');
     }
 
-    public function outgoingTransfers(): HasMany
-    {
+    public function outgoingTransfers(): HasMany {
         return $this->hasMany(StockTransfer::class, 'from_facility_id');
     }
 
-    public function incomingTransfers(): HasMany
-    {
+    public function incomingTransfers(): HasMany {
         return $this->hasMany(StockTransfer::class, 'to_facility_id');
     }
 
-    public function inventoryTransactions(): HasMany
-    {
+    public function inventoryTransactions(): HasMany {
         return $this->hasMany(InventoryTransaction::class);
     }
 
     /**
      * Reporting Relationships
      */
-    public function reportTemplates(): BelongsToMany
-    {
+    public function reportTemplates(): BelongsToMany {
         return $this->belongsToMany(ReportTemplate::class, 'facility_report_templates')
-            ->withPivot(['start_date', 'end_date'])
-            ->withTimestamps();
+                        ->withPivot(['start_date', 'end_date'])
+                        ->withTimestamps();
     }
 
-    public function monthlyReports(): HasMany
-    {
+    public function monthlyReports(): HasMany {
         return $this->hasMany(MonthlyReport::class);
     }
 
@@ -172,83 +154,73 @@ class Facility extends Model
     /**
      * Filter by subcounty
      */
-    public function scopeBySubcounty($query, int $subcountyId)
-    {
+    public function scopeBySubcounty($query, int $subcountyId) {
         return $query->where('subcounty_id', $subcountyId);
     }
 
     /**
      * Filter by facility level
      */
-    public function scopeByLevel($query, int $levelId)
-    {
+    public function scopeByLevel($query, int $levelId) {
         return $query->where('facility_level_id', $levelId);
     }
 
     /**
      * Filter by ownership type
      */
-    public function scopeByOwnership($query, int $ownershipId)
-    {
+    public function scopeByOwnership($query, int $ownershipId) {
         return $query->where('facility_ownership_id', $ownershipId);
     }
 
     /**
      * Filter by facility type
      */
-    public function scopeByType($query, int $facilityTypeId)
-    {
+    public function scopeByType($query, int $facilityTypeId) {
         return $query->where('facility_type_id', $facilityTypeId);
     }
 
     /**
      * Only active facilities
      */
-    public function scopeActive($query)
-    {
+    public function scopeActive($query) {
         return $query->where('is_active', true);
     }
 
     /**
      * Only hub facilities
      */
-    public function scopeHubs($query)
-    {
+    public function scopeHubs($query) {
         return $query->where('is_hub', true);
     }
 
     /**
      * Only spoke facilities
      */
-    public function scopeSpokes($query)
-    {
+    public function scopeSpokes($query) {
         return $query->where('is_hub', false)->whereNotNull('hub_id');
     }
 
     /**
      * Standalone facilities (not hub or spoke)
      */
-    public function scopeStandalone($query)
-    {
+    public function scopeStandalone($query) {
         return $query->where('is_hub', false)->whereNull('hub_id');
     }
 
     /**
      * Only central store facilities
      */
-    public function scopeCentralStores($query)
-    {
+    public function scopeCentralStores($query) {
         return $query->where('is_central_store', true);
     }
 
     /**
      * Facilities within a radius (km) from given coordinates
      */
-    public function scopeWithinRadius($query, float $lat, float $lng, float $radius)
-    {
+    public function scopeWithinRadius($query, float $lat, float $lng, float $radius) {
         return $query->whereNotNull('latitude')
-            ->whereNotNull('longitude')
-            ->selectRaw("*, (
+                        ->whereNotNull('longitude')
+                        ->selectRaw("*, (
                         6371 * acos(
                             cos(radians(?)) *
                             cos(radians(latitude)) *
@@ -257,26 +229,24 @@ class Facility extends Model
                             sin(radians(latitude))
                         )
                     ) AS distance", [$lat, $lng, $lat])
-            ->having('distance', '<', $radius)
-            ->orderBy('distance');
+                        ->having('distance', '<', $radius)
+                        ->orderBy('distance');
     }
 
     /**
      * Facilities with GPS coordinates
      */
-    public function scopeWithCoordinates($query)
-    {
+    public function scopeWithCoordinates($query) {
         return $query->whereNotNull('latitude')->whereNotNull('longitude');
     }
 
     /**
      * Facilities by county
      */
-    public function scopeByCounty($query, int $countyId)
-    {
+    public function scopeByCounty($query, int $countyId) {
         return $query->whereHas('subcounty', function ($q) use ($countyId) {
-            $q->where('county_id', $countyId);
-        });
+                    $q->where('county_id', $countyId);
+                });
     }
 
     // ============================================
@@ -286,16 +256,14 @@ class Facility extends Model
     /**
      * Get county name through subcounty relationship
      */
-    public function getCountyAttribute(): ?string
-    {
+    public function getCountyAttribute(): ?string {
         return $this->subcounty?->county?->name;
     }
 
     /**
      * Get coordinates as array
      */
-    public function getCoordinatesAttribute(): ?array
-    {
+    public function getCoordinatesAttribute(): ?array {
         if ($this->latitude && $this->longitude) {
             return [
                 'latitude' => (float) $this->latitude,
@@ -309,8 +277,7 @@ class Facility extends Model
     /**
      * Get facility in-charge details
      */
-    public function getInchargeDetailsAttribute(): array
-    {
+    public function getInchargeDetailsAttribute(): array {
         return [
             'name' => $this->incharge_name,
             'designation' => $this->incharge_designation,
@@ -321,8 +288,7 @@ class Facility extends Model
     /**
      * Get full address formatted
      */
-    public function getFullAddressAttribute(): string
-    {
+    public function getFullAddressAttribute(): string {
         $parts = array_filter([
             $this->physical_address,
             $this->ward,
@@ -336,40 +302,36 @@ class Facility extends Model
     /**
      * Get number of spoke facilities (if hub)
      */
-    public function getSpokeCountAttribute(): int
-    {
+    public function getSpokeCountAttribute(): int {
         return $this->spokes()->count();
     }
 
     /**
      * Get number of trainings conducted
      */
-    public function getTrainingCountAttribute(): int
-    {
+    public function getTrainingCountAttribute(): int {
         return $this->trainings()->count();
     }
 
     /**
      * Get number of assessments conducted
      */
-    public function getAssessmentCountAttribute(): int
-    {
+    public function getAssessmentCountAttribute(): int {
         return $this->assessments()->count();
     }
 
     /**
      * Get active report templates
      */
-    public function getActiveReportTemplatesAttribute()
-    {
+    public function getActiveReportTemplatesAttribute() {
         return $this->reportTemplates()
-            ->wherePivot('start_date', '<=', now())
-            ->where(function ($query) {
-                $query->wherePivot('end_date', '>=', now())
-                    ->orWherePivot('end_date', null);
-            })
-            ->where('is_active', true)
-            ->get();
+                        ->wherePivot('start_date', '<=', now())
+                        ->where(function ($query) {
+                            $query->wherePivot('end_date', '>=', now())
+                                    ->orWherePivot('end_date', null);
+                        })
+                        ->where('is_active', true)
+                        ->get();
     }
 
     // ============================================
@@ -379,46 +341,42 @@ class Facility extends Model
     /**
      * Get total stock value at facility
      */
-    public function getTotalStockValueAttribute(): float
-    {
+    public function getTotalStockValueAttribute(): float {
         return $this->stockLevels()
-            ->join('inventory_items', 'stock_levels.inventory_item_id', '=', 'inventory_items.id')
-            ->selectRaw('SUM(stock_levels.current_stock * inventory_items.unit_price) as total')
-            ->value('total') ?? 0;
+                        ->join('inventory_items', 'stock_levels.inventory_item_id', '=', 'inventory_items.id')
+                        ->selectRaw('SUM(stock_levels.current_stock * inventory_items.unit_price) as total')
+                        ->value('total') ?? 0;
     }
 
     /**
      * Get count of low stock items
      */
-    public function getLowStockItemsCountAttribute(): int
-    {
+    public function getLowStockItemsCountAttribute(): int {
         return $this->stockLevels()
-            ->join('inventory_items', 'stock_levels.inventory_item_id', '=', 'inventory_items.id')
-            ->whereColumn('stock_levels.current_stock', '<=', 'inventory_items.reorder_point')
-            ->count();
+                        ->join('inventory_items', 'stock_levels.inventory_item_id', '=', 'inventory_items.id')
+                        ->whereColumn('stock_levels.current_stock', '<=', 'inventory_items.reorder_point')
+                        ->count();
     }
 
     /**
      * Get count of out of stock items
      */
-    public function getOutOfStockItemsCountAttribute(): int
-    {
+    public function getOutOfStockItemsCountAttribute(): int {
         return $this->stockLevels()
-            ->where('current_stock', '<=', 0)
-            ->count();
+                        ->where('current_stock', '<=', 0)
+                        ->count();
     }
 
     /**
      * Get central store stock summary (if central store)
      */
-    public function getCentralStoreStockSummaryAttribute(): array
-    {
+    public function getCentralStoreStockSummaryAttribute(): array {
         if (!$this->is_central_store) {
             return [];
         }
 
         $stockLevels = $this->stockLevels()->with('inventoryItem')->get();
-        
+
         return [
             'total_items' => $stockLevels->count(),
             'total_quantity' => $stockLevels->sum('current_stock'),
@@ -437,50 +395,42 @@ class Facility extends Model
     /**
      * Check if facility has GPS coordinates
      */
-    public function hasCoordinates(): bool
-    {
+    public function hasCoordinates(): bool {
         return !is_null($this->latitude) && !is_null($this->longitude);
     }
 
     /**
      * Check if facility has in-charge information
      */
-    public function hasIncharge(): bool
-    {
+    public function hasIncharge(): bool {
         return !is_null($this->incharge_name) && !is_null($this->incharge_contact);
     }
 
     /**
      * Check if facility is ready for assessment
      */
-    public function isReadyForAssessment(): bool
-    {
-        return $this->is_active 
-            && !is_null($this->mfl_code)
-            && $this->hasIncharge();
+    public function isReadyForAssessment(): bool {
+        return $this->is_active && !is_null($this->mfl_code) && $this->hasIncharge();
     }
 
     /**
      * Check if this is a central store
      */
-    public function isCentralStore(): bool
-    {
+    public function isCentralStore(): bool {
         return $this->is_central_store;
     }
 
     /**
      * Check if this is a hub facility
      */
-    public function isHub(): bool
-    {
+    public function isHub(): bool {
         return $this->is_hub;
     }
 
     /**
      * Check if this is a spoke facility
      */
-    public function isSpoke(): bool
-    {
+    public function isSpoke(): bool {
         return !$this->is_hub && !is_null($this->hub_id);
     }
 
@@ -491,18 +441,16 @@ class Facility extends Model
     /**
      * Get stock level for a specific inventory item
      */
-    public function getStockLevel(int $inventoryItemId): ?StockLevel
-    {
+    public function getStockLevel(int $inventoryItemId): ?StockLevel {
         return $this->stockLevels()
-            ->where('inventory_item_id', $inventoryItemId)
-            ->first();
+                        ->where('inventory_item_id', $inventoryItemId)
+                        ->first();
     }
 
     /**
      * Check if facility has sufficient stock
      */
-    public function hasStock(int $inventoryItemId, int $quantity = 1): bool
-    {
+    public function hasStock(int $inventoryItemId, int $quantity = 1): bool {
         $stockLevel = $this->getStockLevel($inventoryItemId);
         return $stockLevel && $stockLevel->available_stock >= $quantity;
     }
@@ -510,22 +458,20 @@ class Facility extends Model
     /**
      * Get nearby facilities within radius
      */
-    public function getNearbyFacilities(float $radius = 50): \Illuminate\Database\Eloquent\Collection
-    {
+    public function getNearbyFacilities(float $radius = 50): \Illuminate\Database\Eloquent\Collection {
         if (!$this->hasCoordinates()) {
             return collect();
         }
 
         return static::withinRadius($this->latitude, $this->longitude, $radius)
-            ->where('id', '!=', $this->id)
-            ->get();
+                        ->where('id', '!=', $this->id)
+                        ->get();
     }
 
     /**
      * Check if this facility can receive transfers from another facility
      */
-    public function canReceiveTransfersFrom(Facility $fromFacility): bool
-    {
+    public function canReceiveTransfersFrom(Facility $fromFacility): bool {
         // Same subcounty transfers are always allowed
         if ($this->subcounty_id === $fromFacility->subcounty_id) {
             return true;
@@ -547,22 +493,21 @@ class Facility extends Model
     /**
      * Get the central store responsible for this facility
      */
-    public function getCentralStoreForFacility(): ?Facility
-    {
+    public function getCentralStoreForFacility(): ?Facility {
         if ($this->is_central_store) {
             return $this;
         }
 
         // First try to find central store in same subcounty
         $centralStore = Facility::centralStores()
-            ->where('subcounty_id', $this->subcounty_id)
-            ->first();
+                ->where('subcounty_id', $this->subcounty_id)
+                ->first();
 
         // If not found, try same county
         if (!$centralStore) {
             $centralStore = Facility::centralStores()
-                ->whereHas('subcounty', fn($q) => $q->where('county_id', $this->subcounty->county_id))
-                ->first();
+                    ->whereHas('subcounty', fn($q) => $q->where('county_id', $this->subcounty->county_id))
+                    ->first();
         }
 
         return $centralStore;
@@ -571,57 +516,54 @@ class Facility extends Model
     /**
      * Get facilities that this central store serves
      */
-    public function getDistributionFacilities(): \Illuminate\Database\Eloquent\Collection
-    {
+    public function getDistributionFacilities(): \Illuminate\Database\Eloquent\Collection {
         if (!$this->is_central_store) {
             return collect();
         }
 
         return Facility::where('is_central_store', false)
-            ->where(function ($query) {
-                $query->where('subcounty_id', $this->subcounty_id)
-                      ->orWhereHas('subcounty', fn($q) => $q->where('county_id', $this->subcounty->county_id));
-            })
-            ->get();
+                        ->where(function ($query) {
+                            $query->where('subcounty_id', $this->subcounty_id)
+                                    ->orWhereHas('subcounty', fn($q) => $q->where('county_id', $this->subcounty->county_id));
+                        })
+                        ->get();
     }
 
     /**
      * Get total stock grouped by category (for central stores)
      */
-    public function getTotalStockAtCentralStore(): array
-    {
+    public function getTotalStockAtCentralStore(): array {
         if (!$this->is_central_store) {
             return [];
         }
 
         return $this->stockLevels()
-            ->with('inventoryItem.category')
-            ->get()
-            ->groupBy('inventoryItem.category.name')
-            ->map(function ($items) {
-                return [
-                    'total_items' => $items->count(),
-                    'total_quantity' => $items->sum('current_stock'),
-                    'total_value' => $items->sum('stock_value'),
-                    'available_quantity' => $items->sum('available_stock'),
-                ];
-            })
-            ->toArray();
+                        ->with('inventoryItem.category')
+                        ->get()
+                        ->groupBy('inventoryItem.category.name')
+                        ->map(function ($items) {
+                            return [
+                                'total_items' => $items->count(),
+                                'total_quantity' => $items->sum('current_stock'),
+                                'total_value' => $items->sum('stock_value'),
+                                'available_quantity' => $items->sum('available_stock'),
+                            ];
+                        })
+                        ->toArray();
     }
 
     /**
      * Get pending distribution requests (for central stores)
      */
-    public function getPendingDistributions(): \Illuminate\Database\Eloquent\Collection
-    {
+    public function getPendingDistributions(): \Illuminate\Database\Eloquent\Collection {
         if (!$this->is_central_store) {
             return collect();
         }
 
         return StockRequest::where('central_store_id', $this->id)
-            ->whereIn('status', ['approved', 'partially_approved'])
-            ->with(['requestingFacility', 'items.inventoryItem'])
-            ->get();
+                        ->whereIn('status', ['approved', 'partially_approved'])
+                        ->with(['requestingFacility', 'items.inventoryItem'])
+                        ->get();
     }
 
     // ============================================
@@ -631,8 +573,7 @@ class Facility extends Model
     /**
      * Get all spoke facilities under this hub
      */
-    public function getSpokeFacilities(): \Illuminate\Database\Eloquent\Collection
-    {
+    public function getSpokeFacilities(): \Illuminate\Database\Eloquent\Collection {
         if (!$this->is_hub) {
             return collect();
         }
@@ -643,14 +584,13 @@ class Facility extends Model
     /**
      * Get training statistics for hub
      */
-    public function getHubTrainingStatistics(): array
-    {
+    public function getHubTrainingStatistics(): array {
         if (!$this->is_hub) {
             return [];
         }
 
         $spokeFacilities = $this->spokes()->pluck('id');
-        
+
         return [
             'hub_trainings' => $this->trainings()->count(),
             'spoke_trainings' => Training::whereIn('facility_id', $spokeFacilities)->count(),
@@ -666,41 +606,37 @@ class Facility extends Model
     /**
      * Get latest assessment
      */
-    public function getLatestAssessment(): ?Assessment
-    {
+    public function getLatestAssessment(): ?Assessment {
         return $this->assessments()
-            ->latest('assessment_date')
-            ->first();
+                        ->latest('assessment_date')
+                        ->first();
     }
 
     /**
      * Get assessments by type
      */
-    public function getAssessmentsByType(string $type): \Illuminate\Database\Eloquent\Collection
-    {
+    public function getAssessmentsByType(string $type): \Illuminate\Database\Eloquent\Collection {
         return $this->assessments()
-            ->whereHas('assessmentType', fn($q) => $q->where('code', $type))
-            ->with(['assessmentType', 'assessor'])
-            ->orderBy('assessment_date', 'desc')
-            ->get();
+                        ->whereHas('assessmentType', fn($q) => $q->where('code', $type))
+                        ->with(['assessmentType', 'assessor'])
+                        ->orderBy('assessment_date', 'desc')
+                        ->get();
     }
 
     /**
      * Check if facility has completed a specific assessment type
      */
-    public function hasCompletedAssessment(string $assessmentTypeCode): bool
-    {
+    public function hasCompletedAssessment(string $assessmentTypeCode): bool {
         return $this->assessments()
-            ->whereHas('assessmentType', fn($q) => $q->where('code', $assessmentTypeCode))
-            ->where('status', 'completed')
-            ->exists();
+                        ->whereHas('assessmentType', fn($q) => $q->where('code', $assessmentTypeCode))
+                        ->where('status', 'completed')
+                        ->exists();
     }
 
     /**
      * Get assessment completion rate
      */
-    public function getAssessmentCompletionRate(): float
-    {
+    public function getAssessmentCompletionRate(): float {
         $total = $this->assessments()->count();
         if ($total === 0) {
             return 0;
@@ -717,8 +653,7 @@ class Facility extends Model
     /**
      * Get facility statistics summary
      */
-    public function getStatisticsSummary(): array
-    {
+    public function getStatisticsSummary(): array {
         return [
             'basic_info' => [
                 'name' => $this->name,
@@ -759,8 +694,7 @@ class Facility extends Model
     /**
      * Validate facility data completeness
      */
-    public function getDataCompletenessScore(): array
-    {
+    public function getDataCompletenessScore(): array {
         $requiredFields = [
             'name' => !empty($this->name),
             'mfl_code' => !empty($this->mfl_code),
@@ -786,5 +720,19 @@ class Facility extends Model
             'percentage' => $percentage,
             'missing_fields' => array_keys(array_filter($requiredFields, fn($v) => !$v)),
         ];
+    }
+
+    /**
+     * The indicator reporting configuration for this facility.
+     */
+    public function indicatorAssignment(): \Illuminate\Database\Eloquent\Relations\HasOne {
+        return $this->hasOne(FacilityIndicatorAssignment::class, 'facility_id');
+    }
+
+    /**
+     * Check whether this facility is configured and ready for indicator reporting.
+     */
+    public function isReadyForIndicatorReporting(): bool {
+        return $this->indicatorAssignment?->is_locked && !empty($this->indicatorAssignment?->enabled_report_types);
     }
 }

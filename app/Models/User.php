@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Traits\HasResourceInteractions;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -12,6 +11,9 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
+use Illuminate\Notifications\Notification;
+use Illuminate\Notifications\Messages\MailMessage;
+use Laravel\Sanctum\HasApiTokens;   
 
 class User extends Authenticatable {
 
@@ -19,6 +21,7 @@ class User extends Authenticatable {
         Notifiable,
         HasRoles,
         SoftDeletes;
+    use Notifiable,HasApiTokens;
 
     // HasResourceInteractions; // Add the resource interactions trait
 
@@ -49,6 +52,56 @@ class User extends Authenticatable {
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    public function sendPasswordResetNotification($token): void {
+        $url = url('/admin/set-password/' . $token . '?email=' . urlencode($this->email));
+
+        $this->notify(new class($url) extends \Illuminate\Notifications\Notification {
+
+            public function __construct(protected string $url) {
+                
+            }
+
+            public function via($notifiable): array {
+                return ['mail'];
+            }
+
+            public function toMail($notifiable): \Illuminate\Notifications\Messages\MailMessage {
+                return (new \Illuminate\Notifications\Messages\MailMessage)
+                                ->subject('Reset Your MNCH Password')
+                                ->greeting('Hello!')
+                                ->line('We received a request to reset your password.')
+                                ->action('Reset Password', $this->url)
+                                ->line('This link expires in 60 minutes.')
+                                ->line('If you did not request this, ignore this email.');
+            }
+        });
+    }
+
+    public function sendPasswordResetNotification1($token) {
+        $url = url('/admin/password-reset/' . $token . '?email=' . urlencode($this->email));
+
+        $this->notify(new class($url) extends Notification {
+
+            protected string $url;
+
+            public function __construct($url) {
+                $this->url = $url;
+            }
+
+            public function via($notifiable) {
+                return ['mail'];
+            }
+
+            public function toMail($notifiable) {
+                return (new MailMessage)
+                                ->subject('Reset Your Password')
+                                ->line('Click the button below to reset your password.')
+                                ->action('Reset Password', $this->url)
+                                ->line('If you did not request a password reset, no further action is required.');
+            }
+        });
     }
 
     public function placementLogs() {
@@ -153,7 +206,7 @@ class User extends Authenticatable {
 
     // Authorization Helper Methods
     public function isAboveSite(): bool {
-        return $this->hasRole(['Super Admin', 'Division Lead', 'National Mentor Lead']);
+        return $this->hasRole(['super_admin', 'admin', 'division', 'national', 'division_lead', 'national_mentor_lead']);
     }
 
     public function scopedCountyIds() {

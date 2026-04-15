@@ -133,6 +133,7 @@ Route::prefix('v1')->name('api.v1.')->middleware(MobileApiCors::class)->group(fu
             Route::get('{program}/modules', [\App\Http\Controllers\Api\LookupController::class, 'programModules'])->name('modules');
         });
         Route::get('counties', [\App\Http\Controllers\Api\LookupController::class, 'counties'])->name('counties');
+        Route::get('counties/{county}/facilities', [\App\Http\Controllers\Api\LookupController::class, 'facilitiesByCounty'])->name('counties.facilities');
         Route::get('users/search', [\App\Http\Controllers\Api\LookupController::class, 'userSearch'])->name('users.search');
 
         // ── Mentorships ───────────────────────────────────────────────────────
@@ -144,13 +145,19 @@ Route::prefix('v1')->name('api.v1.')->middleware(MobileApiCors::class)->group(fu
             Route::post('/', [\App\Http\Controllers\Api\MentorshipCreateController::class, 'store'])->name('store');
             Route::put('{training}', [\App\Http\Controllers\Api\MentorshipCreateController::class, 'update'])->name('update');
             Route::post('{training}/submit', [\App\Http\Controllers\Api\MentorshipCreateController::class, 'submit'])->name('submit');
+            // ── Class CRUD ────────────────────────────────────────────────────
+            Route::post('{training}/classes', [MentorshipController::class, 'createClass'])->name('classes.store');
+            Route::put('{training}/classes/{class}', [MentorshipController::class, 'updateClass'])->name('classes.update');
+            Route::delete('{training}/classes/{class}', [MentorshipController::class, 'deleteClass'])->name('classes.destroy');
         });
 
         // ── Class modules ─────────────────────────────────────────────────────────
         Route::prefix('classes/{class}/modules')->name('class.modules.')->group(function () {
             Route::get('/', [\App\Http\Controllers\Api\ClassModuleController::class, 'index'])->name('index');
+            Route::post('/', [\App\Http\Controllers\Api\ClassModuleController::class, 'store'])->name('store');
         });
         Route::prefix('modules/{module}')->name('module.')->group(function () {
+            Route::delete('/', [\App\Http\Controllers\Api\ClassModuleController::class, 'destroy'])->name('destroy');
             Route::post('start', [\App\Http\Controllers\Api\ClassModuleController::class, 'start'])->name('start');
             Route::post('complete', [\App\Http\Controllers\Api\ClassModuleController::class, 'complete'])->name('complete');
             Route::get('sessions', [\App\Http\Controllers\Api\ClassModuleController::class, 'sessions'])->name('sessions');
@@ -169,6 +176,8 @@ Route::prefix('v1')->name('api.v1.')->middleware(MobileApiCors::class)->group(fu
             Route::post('end', [\App\Http\Controllers\Api\ClassLifecycleController::class, 'end'])->name('end');
             Route::post('mentees', [\App\Http\Controllers\Api\ClassLifecycleController::class, 'enrollMentee'])->name('mentees.store');
             Route::delete('mentees/{participant}', [\App\Http\Controllers\Api\ClassLifecycleController::class, 'removeMentee'])->name('mentees.destroy');
+            Route::post('regenerate-token', [\App\Http\Controllers\Api\ClassLifecycleController::class, 'regenerateToken'])->name('regenerate-token');
+            Route::get('enrollment-link', [\App\Http\Controllers\Api\ClassLifecycleController::class, 'enrollmentLink'])->name('enrollment-link');
         });
 
         // ── Session notes ─────────────────────────────────────────────────────────

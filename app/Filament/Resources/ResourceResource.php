@@ -130,7 +130,7 @@ class ResourceResource extends FilamentResource {
                                                 ->send();
                                     }
                                 })
-                                ->required()
+                               // ->required()
                                 ->validationMessages([
                                     'max' => 'This file is too large. Max allowed is 100MB.',
                                     'mimetypes' => 'This file type is not supported by the system.',
@@ -138,7 +138,7 @@ class ResourceResource extends FilamentResource {
                                 ]),
                                 Forms\Components\TextInput::make('original_name')
                                 ->label('File Name')
-                                ->required()
+                                //->required()
                                 ->maxLength(255),
                                 Forms\Components\TextInput::make('description')
                                 ->label('File Description')

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useConfirm } from "./hooks/useConfirm.jsx";
 
 // ── Shared ────────────────────────────────────────────────────────────────────
 import { SECTION_META, calcGrade, computeTabs, MENTOR_ROLES, MENTEE_ROLES, ADMIN_ROLES } from "./constants.js";
@@ -88,6 +89,7 @@ export default function App() {
     const [user, setUser] = useState(null);
     const [tab, setTab] = useState("dashboard");
     const [modal, setModal] = useState(null);
+    const { confirm, ConfirmDialog } = useConfirm();
     const [navConfig, setNavConfig] = useState({ tabs: null, showFab: false });
     const [assessments, setAssessments] = useState(null); // null = not yet loaded
     const [sections, setSections] = useState(null); // null = not yet loaded
@@ -487,6 +489,28 @@ export default function App() {
                             onBack={closeModal}
                             onOpenClass={(cls) => setModal({ type: "classDetail", data: cls, prev: modal.data })}
                             onAddClass={() => setModal({ type: "classForm", data: null, prev: modal.data, trainingId: modal.data.id, fromMentorship: true })}
+                            onEditClass={(cls) => setModal({ type: "classForm", data: cls, prev: modal.data, trainingId: modal.data.id, fromMentorship: true })}
+                            onDeleteClass={async (cls) => {
+                                const ok = await confirm({
+                                    title: `Delete "${cls.name}"?`,
+                                    message: "This class and all its modules, sessions, and attendance records will be permanently removed. This cannot be undone.",
+                                    confirmLabel: "Delete Class",
+                                    danger: true,
+                                });
+                                if (!ok) return;
+                                try {
+                                    await api.mentorships.deleteClass(modal.data.id, cls.id);
+                                    setModal(prev => ({
+                                        ...prev,
+                                        data: {
+                                            ...prev.data,
+                                            classes: (prev.data.classes ?? []).filter(c => c.id !== cls.id),
+                                        },
+                                    }));
+                                } catch (e) {
+                                    alert(e.message ?? "Failed to delete class.");
+                                }
+                            }}
                         />
                     </div>
                 )}
@@ -494,8 +518,9 @@ export default function App() {
                     <div style={{ position: "absolute", inset: 0 }}>
                         <ClassDetailScreen
                             cls={modal.data}
+                            confirm={confirm}
                             onBack={() => setModal({ type: "mentorshipDetail", data: modal.prev })}
-                            onOpenModule={(mod) => setModal({ type: "moduleDetail", data: mod, prev: modal.data })}
+                            onOpenModule={(mod) => setModal({ type: "moduleDetail", data: mod, prev: modal.data, mentorship: modal.prev })}
                             onManageMentees={() => setModal({ type: "menteeManager", data: modal.data, prev: modal.prev })}
                             onEditClass={() => setModal({ type: "classForm", data: modal.data, prev: modal.prev, trainingId: modal.prev?.id })}
                             onAddModule={() => setModal({ type: "modulePicker", data: modal.data, prev: modal.prev })}
@@ -507,6 +532,7 @@ export default function App() {
                         <MenteeManagerScreen
                             cls={modal.data}
                             onBack={() => setModal({ type: "classDetail", data: modal.data, prev: modal.prev })}
+                            confirm={confirm}
                         />
                     </div>
                 )}
@@ -519,11 +545,28 @@ export default function App() {
                                 ? setModal({ type: "mentorshipDetail", data: modal.prev })
                                 : setModal({ type: "classDetail", data: modal.data, prev: modal.prev })
                             }
-                            onSaved={(updated) => setModal({
-                                type: "classDetail",
-                                data: modal.data ? { ...modal.data, ...updated } : updated,
-                                prev: modal.prev,
-                            })}
+                            onSaved={(updated) => {
+                                if (modal.fromMentorship) {
+                                    // New class or edit from mentorship detail — go back to mentorshipDetail
+                                    // and patch the classes list in prev
+                                    const savedClass = modal.data ? { ...modal.data, ...updated } : updated;
+                                    const prevClasses = modal.prev?.classes ?? [];
+                                    const alreadyExists = prevClasses.some(c => c.id === savedClass.id);
+                                    const newClasses = alreadyExists
+                                        ? prevClasses.map(c => c.id === savedClass.id ? savedClass : c)
+                                        : [...prevClasses, savedClass];
+                                    setModal({
+                                        type: "mentorshipDetail",
+                                        data: { ...modal.prev, classes: newClasses },
+                                    });
+                                } else {
+                                    setModal({
+                                        type: "classDetail",
+                                        data: modal.data ? { ...modal.data, ...updated } : updated,
+                                        prev: modal.prev,
+                                    });
+                                }
+                            }}
                         />
                     </div>
                 )}
@@ -531,11 +574,22 @@ export default function App() {
                     <div style={{ position: "absolute", inset: 0 }}>
                         <ModulePickerScreen
                             programId={modal.prev?.program_id}
-                            existingModuleIds={(modal.data?.modules ?? []).map(m => m.program_module_id ?? m.id)}
+                            existingModuleIds={(modal.data?.modules ?? []).map(m => m.program_module_id).filter(Boolean)}
                             onBack={() => setModal({ type: "classDetail", data: modal.data, prev: modal.prev })}
                             onPicked={async (programModuleId) => {
-                                await api.classLifecycle.addModule(modal.data.id, programModuleId);
-                                setModal({ type: "classDetail", data: modal.data, prev: modal.prev });
+                                // Throws on error (picker catches and shows inline error)
+                                const res = await api.modules.add(modal.data.id, programModuleId);
+                                const newModule = res?.data;
+                                if (newModule) {
+                                    // Patch the class data so classDetail shows the new module immediately
+                                    setModal(prev => ({
+                                        ...prev,
+                                        data: {
+                                            ...prev.data,
+                                            modules: [...(prev.data.modules ?? []), newModule],
+                                        },
+                                    }));
+                                }
                             }}
                         />
                     </div>
@@ -545,9 +599,9 @@ export default function App() {
                         <ModuleDetailScreen
                             module={modal.data}
                             user={user}
-                            onBack={() => setModal({ type: "classDetail", data: modal.prev })}
-                            onOpenAttendance={(mod) => setModal({ type: "attendanceRoster", data: mod, prev: modal.prev })}
-                            onOpenSession={(session) => setModal({ type: "sessionNotes", data: session, prev: modal.data, prevClass: modal.prev })}
+                            onBack={() => setModal({ type: "classDetail", data: modal.prev, prev: modal.mentorship })}
+                            onOpenAttendance={(mod) => setModal({ type: "attendanceRoster", data: mod, prev: modal.prev, mentorship: modal.mentorship })}
+                            onOpenSession={(session) => setModal({ type: "sessionNotes", data: session, prev: modal.data, prevClass: modal.prev, mentorship: modal.mentorship })}
                         />
                     </div>
                 )}
@@ -555,8 +609,8 @@ export default function App() {
                     <div style={{ position: "absolute", inset: 0 }}>
                         <SessionNotesScreen
                             session={modal.data}
-                            onBack={() => setModal({ type: "moduleDetail", data: modal.prev, prev: modal.prevClass })}
-                            onSaved={() => setModal({ type: "moduleDetail", data: modal.prev, prev: modal.prevClass })}
+                            onBack={() => setModal({ type: "moduleDetail", data: modal.prev, prev: modal.prevClass, mentorship: modal.mentorship })}
+                            onSaved={() => setModal({ type: "moduleDetail", data: modal.prev, prev: modal.prevClass, mentorship: modal.mentorship })}
                         />
                     </div>
                 )}
@@ -565,7 +619,7 @@ export default function App() {
                         <AttendanceRosterScreen
                             module={modal.data}
                             user={user}
-                            onBack={() => setModal({ type: "moduleDetail", data: modal.data, prev: modal.prev })}
+                            onBack={() => setModal({ type: "moduleDetail", data: modal.data, prev: modal.prev, mentorship: modal.mentorship })}
                         />
                     </div>
                 )}
@@ -599,6 +653,7 @@ export default function App() {
                         />
                     </div>
                 )}
+                <ConfirmDialog />
             </PhoneShell>
             );
 }

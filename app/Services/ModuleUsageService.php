@@ -2,305 +2,334 @@
 
 namespace App\Services;
 
-use App\Models\Training;
-use App\Models\MentorshipClass;
 use App\Models\ClassModule;
-use App\Models\ProgramModule;
+use App\Models\ClassParticipant;
+use App\Models\MenteeModuleProgress;
+use App\Models\MentorshipClass;
 use App\Models\MentorshipModuleUsage;
+use App\Models\ProgramModule;
+use App\Models\Training;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
- * Enforces module usage rules at TWO levels:
+ * ModuleUsageService
  *
- * LEVEL 1 — Within this mentorship:
- *   Module used in class A → cannot be used in class B of the same mentorship.
- *   These modules are HIDDEN from the selection UI entirely.
+ * Enforces the domain invariant: a module can only be assigned once
+ * per class. The same module may be assigned to different classes.
  *
- * LEVEL 2 — Across mentorships at the same facility:
- *   Module was completed in a DIFFERENT mentorship at the same facility.
- *   These modules are SHOWN but DISABLED with a reason explaining where/when it was completed.
- *
- * POLICY: Option B — removal keeps usage locked historically within the mentorship.
+ * Also owns the auto-roster cascade: whenever a module is added to a class,
+ * every currently enrolled mentee automatically gets a MenteeModuleProgress
+ * row for it — zero manual work for the mentor.
  */
-class ModuleUsageService
-{
+class ModuleUsageService {
+    // ─────────────────────────────────────────────────────────────────────────
+    // Read — available modules
+    // ─────────────────────────────────────────────────────────────────────────
+
     /**
-     * Get program IDs associated with a training.
-     * Checks both direct program_id and the training_programs pivot.
+     * Modules from the program that are not already in the current class.
+     * The same module may still be used in another class.
      */
-    private function getTrainingProgramIds(Training $mentorship): array
-    {
-        $ids = [];
+    public function getAvailableModules(Training $training, MentorshipClass $class): Collection {
+        $classIds = $class->classModules()->pluck('program_module_id')->toArray();
 
-        // Direct program_id on the training
-        if ($mentorship->program_id) {
-            $ids[] = $mentorship->program_id;
-        }
-
-        // Many-to-many via training_programs pivot
-        $pivotIds = DB::table('training_programs')
-            ->where('training_id', $mentorship->id)
-            ->pluck('program_id')
-            ->toArray();
-
-        return array_unique(array_merge($ids, $pivotIds));
+        return ProgramModule::where('program_id', $training->program_id)
+                        ->where('is_active', true)
+                        ->whereNotIn('id', $classIds)
+                        ->orderBy('order_sequence')
+                        ->get();
     }
 
     /**
-     * Get structured module availability for the Add Modules UI.
-     *
-     * Returns a collection of objects with:
-     *   - module: ProgramModule model
-     *   - available: bool (can it be selected?)
-     *   - disabled_reason: string|null (why it's disabled)
-     *
-     * Level 1 modules (used in this mentorship) are excluded entirely.
-     * Level 2 modules (completed at same facility) are included but marked disabled.
+     * Usage summary for the subheading / info strips.
      */
-    public function getModulesWithAvailability(Training $mentorship, MentorshipClass $class): Collection
-    {
-        // Level 1: IDs used within THIS mentorship (hide completely)
-        $usedInThisMentorship = MentorshipModuleUsage::where('mentorship_id', $mentorship->id)
-            ->pluck('module_id')
-            ->toArray();
+    public function getUsageSummary(Training $training): array {
+        $totalModules = ProgramModule::where('program_id', $training->program_id)
+                ->where('is_active', true)
+                ->count();
 
-        // Also IDs already in this class
-        $inThisClass = $class->classModules()
-            ->pluck('program_module_id')
-            ->toArray();
+        $usedCount = ClassModule::whereHas('mentorshipClass',
+                        fn($query) => $query->where('training_id', $training->id)
+                )
+                ->distinct('program_module_id')
+                ->count('program_module_id');
 
-        $hideIds = array_unique(array_merge($usedInThisMentorship, $inThisClass));
-
-        // All program modules for this training's program(s) — excluding Level 1
-        $programIds = $this->getTrainingProgramIds($mentorship);
-
-        $allModules = ProgramModule::whereIn('program_id', $programIds)
-            ->when(! empty($hideIds), fn ($q) => $q->whereNotIn('id', $hideIds))
-            ->where('is_active', true)
-            ->orderBy('order_sequence')
-            ->get();
-
-        // Level 2: Modules completed in OTHER mentorships at the same facility
-        $completedElsewhere = $this->getModulesCompletedAtFacility($mentorship);
-
-        return $allModules->map(function (ProgramModule $module) use ($completedElsewhere) {
-            $completionInfo = $completedElsewhere->get($module->id);
-
-            return (object) [
-                'module' => $module,
-                'available' => $completionInfo === null,
-                'disabled_reason' => $completionInfo,
-            ];
-        });
+        return [
+            'total_modules' => $totalModules,
+            'used_modules' => $usedCount,
+            'remaining_modules' => max(0, $totalModules - $usedCount),
+            'completion_percentage' => $totalModules > 0 ? round(($usedCount / $totalModules) * 100) : 0,
+        ];
     }
 
-    /**
-     * Get modules that have been completed in OTHER mentorships at the same facility.
-     *
-     * Returns: Collection keyed by program_module_id => "Completed in {mentorship name} ({date})"
-     */
-    private function getModulesCompletedAtFacility(Training $mentorship): Collection
-    {
-        $facilityId = $mentorship->facility_id;
-
-        if (! $facilityId) {
-            return collect();
-        }
-
-        // Find all OTHER mentorships at the same facility
-        $otherMentorshipIds = Training::where('facility_id', $facilityId)
-            ->where('type', 'facility_mentorship')
-            ->where('id', '!=', $mentorship->id)
-            ->pluck('id')
-            ->toArray();
-
-        if (empty($otherMentorshipIds)) {
-            return collect();
-        }
-
-        // Find modules that were COMPLETED in those mentorships
-        // A module is "completed" if its class_module status = completed
-        return DB::table('class_modules')
-            ->join('mentorship_classes', 'class_modules.mentorship_class_id', '=', 'mentorship_classes.id')
-            ->join('trainings', 'mentorship_classes.training_id', '=', 'trainings.id')
-            ->whereIn('mentorship_classes.training_id', $otherMentorshipIds)
-            ->where('class_modules.status', 'completed')
-            ->select([
-                'class_modules.program_module_id',
-                'trainings.identifier as mentorship_identifier',
-                'trainings.id as training_id',
-                'mentorship_classes.name as class_name',
-                'class_modules.completed_at',
-            ])
-            ->get()
-            ->groupBy('program_module_id')
-            ->map(function ($records) {
-                // Take the most recent completion
-                $latest = $records->sortByDesc('completed_at')->first();
-
-                $identifier = $latest->mentorship_identifier ?? "Mentorship #{$latest->training_id}";
-                $className = $latest->class_name;
-                $date = $latest->completed_at
-                    ? \Carbon\Carbon::parse($latest->completed_at)->format('M j, Y')
-                    : 'previously';
-
-                return "Already completed in {$identifier} — {$className} ({$date})";
-            });
-    }
+    // ─────────────────────────────────────────────────────────────────────────
+    // Write — assign modules
+    // ─────────────────────────────────────────────────────────────────────────
 
     /**
-     * Get only the selectable (available) modules for a class.
-     * Used by service internals and for count displays.
-     */
-    public function getAvailableModules(Training $mentorship, MentorshipClass $class): Collection
-    {
-        return $this->getModulesWithAvailability($mentorship, $class)
-            ->filter(fn ($item) => $item->available)
-            ->map(fn ($item) => $item->module);
-    }
-
-    /**
-     * Assign selected modules to a class and record usage atomically.
+     * Assign program modules to a class.
      *
-     * DEFENSIVE: Double-checks usage before insert. Also blocks Level 2 modules.
+     * For each module:
+     *  1. Skips modules already assigned to this class
+     *  2. Creates ClassModule record
+     *  3. Records usage for reporting when possible
+     *  4. *** AUTO-ROSTER CASCADE ***
+     *     If the class is already active, creates MenteeModuleProgress rows for
+     *     every currently enrolled mentee — so the mentor never has to add mentees
+     *     to modules manually.
      *
-     * @return int Number of modules assigned
+     * Returns the count of modules successfully created.
      */
     public function assignModulesToClass(
-        Training $mentorship,
-        MentorshipClass $class,
-        array $programModuleIds
+            Training $training,
+            MentorshipClass $class,
+            array $programModuleIds,
+            ?int $recordedBy = null
     ): int {
-        $assigned = 0;
+        $added = 0;
+        $recordedBy = $recordedBy ?? auth()->id();
 
-        // Pre-filter: get the full availability map to block Level 2 modules
-        $availability = $this->getModulesWithAvailability($mentorship, $class)
-            ->keyBy(fn ($item) => $item->module->id);
-
-        DB::transaction(function () use ($mentorship, $class, $programModuleIds, &$assigned, $availability) {
+        DB::transaction(function () use ($training, $class, $programModuleIds, $recordedBy, &$added) {
             $maxSequence = $class->classModules()->max('order_sequence') ?? 0;
 
-            foreach ($programModuleIds as $moduleId) {
-                // Block if Level 2 disabled
-                $info = $availability->get($moduleId);
-                if ($info && ! $info->available) {
+            // Pre-fetch enrolled mentees once — used for cascade below
+            $enrolledParticipants = $class->status === 'active' ? ClassParticipant::where('mentorship_class_id', $class->id)
+                            ->whereIn('status', ['enrolled', 'active'])
+                            ->get() : collect();
+
+            // Pre-fetch previously completed module IDs per participant (for exemption)
+            $completedByUser = [];
+            foreach ($enrolledParticipants as $participant) {
+                $completedByUser[$participant->id] = $this->getCompletedModuleIds($participant->user_id);
+            }
+
+            foreach ($programModuleIds as $programModuleId) {
+                // Skip if already assigned to this class.
+                $alreadyInClass = $class->classModules()
+                        ->where('program_module_id', $programModuleId)
+                        ->exists();
+
+                if ($alreadyInClass) {
+                    Log::warning("ModuleUsageService: module {$programModuleId} already assigned to class {$class->id}, skipping.");
                     continue;
                 }
 
-                // DEFENSIVE: Check Level 1 usage within transaction (race condition guard)
-                $alreadyUsed = MentorshipModuleUsage::where('mentorship_id', $mentorship->id)
-                    ->where('module_id', $moduleId)
-                    ->lockForUpdate()
-                    ->exists();
-
-                if ($alreadyUsed) {
-                    continue;
-                }
-
-                // Create the class_module record
-                ClassModule::create([
+                // 2. Create ClassModule
+                $maxSequence++;
+                $classModule = ClassModule::create([
                     'mentorship_class_id' => $class->id,
-                    'program_module_id'   => $moduleId,
-                    'status'              => 'not_started',
-                    'order_sequence'      => ++$maxSequence,
+                    'program_module_id' => $programModuleId,
+                    'status' => 'not_started',
+                    'order_sequence' => $maxSequence,
+                    'min_attendance_percentage' => 75,
+                    'requires_assessment' => false,
+                    'attendance_link_active' => false,
                 ]);
 
-                // Record usage at mentorship level (domain invariant)
-                MentorshipModuleUsage::create([
-                    'mentorship_id'  => $mentorship->id,
-                    'module_id'      => $moduleId,
+                // 3. Keep legacy usage tracking populated without enforcing availability.
+                MentorshipModuleUsage::firstOrCreate([
+                    'mentorship_id' => $training->id,
+                    'module_id' => $programModuleId,
+                ], [
                     'first_class_id' => $class->id,
                 ]);
 
-                $assigned++;
+                // 3. AUTO-ROSTER CASCADE
+                // If the class is already active, ensure every enrolled mentee
+                // gets a progress row for this new module immediately.
+                if ($enrolledParticipants->isNotEmpty()) {
+                    $this->cascadeRosterToModule($classModule, $enrolledParticipants, $completedByUser);
+                }
+
+                $added++;
             }
         });
 
-        return $assigned;
+        return $added;
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Write — remove modules
+    // ─────────────────────────────────────────────────────────────────────────
 
     /**
      * Remove a module from a class.
      *
-     * OPTION B: Usage record is NOT deleted. Module remains permanently consumed.
-     * Blocked if module has completed sessions.
+     * Removes the module from this class. Blocked if the module has started
+     * or has sessions.
      */
     public function removeModuleFromClass(
-        Training $mentorship,
-        MentorshipClass $class,
-        ClassModule $classModule
+            Training $training,
+            MentorshipClass $class,
+            ClassModule $classModule
     ): bool {
-        $hasCompletedSessions = $classModule->sessions()
-            ->where('status', 'completed')
-            ->exists();
-
-        if ($hasCompletedSessions) {
+        if (!$classModule->canBeRemoved()) {
             return false;
         }
 
-        DB::transaction(function () use ($classModule) {
-            $classModule->menteeProgress()->delete();
-            $classModule->sessions()->delete();
+        DB::transaction(function () use ($training, $classModule) {
+            // Delete progress rows for this module
+            MenteeModuleProgress::where('class_module_id', $classModule->id)->delete();
+
+            // Delete the class module (cascades to sessions via FK)
             $classModule->delete();
-            // Usage record NOT deleted (Option B)
         });
 
         return true;
     }
 
-    /**
-     * Get modules already used across all classes in this mentorship.
-     */
-    public function getUsedModules(Training $mentorship): Collection
-    {
-        return MentorshipModuleUsage::where('mentorship_id', $mentorship->id)
-            ->with(['module', 'firstClass'])
-            ->get();
-    }
+    // ─────────────────────────────────────────────────────────────────────────
+    // Auto-roster helpers
+    // ─────────────────────────────────────────────────────────────────────────
 
     /**
-     * Check if a specific module has been used in this mentorship.
+     * Create MenteeModuleProgress rows for all given participants on a module.
+     *
+     * Called:
+     *   A) When a module is added to an already-active class (new module)
+     *   B) From MenteeEnrollmentController when a mentee joins (all existing modules)
+     *   C) From ClassModule::start() as a sync guard (ensureMenteeProgressRecords)
+     *
+     * Uses firstOrCreate so it is safe to call multiple times (idempotent).
      */
-    public function isModuleUsed(Training $mentorship, int $moduleId): bool
-    {
-        return MentorshipModuleUsage::where('mentorship_id', $mentorship->id)
-            ->where('module_id', $moduleId)
-            ->exists();
-    }
+    public function cascadeRosterToModule(
+            ClassModule $classModule,
+            Collection $participants,
+            array $completedByUser = []
+    ): int {
+        $created = 0;
 
-    /**
-     * Backfill usage records from existing class_modules data.
-     * Run ONCE after migration.
-     */
-    public function backfillUsageRecords(Training $mentorship): int
-    {
-        $backfilled = 0;
+        // Determine what status a progress row should start at for this module
+        $moduleStatus = match ($classModule->status) {
+            'in_progress' => 'in_progress',
+            'completed' => 'completed',
+            default => 'not_started',
+        };
 
-        $classes = $mentorship->mentorshipClasses()
-            ->with('classModules')
-            ->orderBy('created_at')
-            ->get();
+        foreach ($participants as $participant) {
+            $completedModuleIds = $completedByUser[$participant->id] ?? $this->getCompletedModuleIds($participant->user_id);
 
-        DB::transaction(function () use ($mentorship, $classes, &$backfilled) {
-            foreach ($classes as $class) {
-                foreach ($class->classModules as $classModule) {
-                    $exists = MentorshipModuleUsage::where('mentorship_id', $mentorship->id)
-                        ->where('module_id', $classModule->program_module_id)
-                        ->exists();
+            $isExempted = in_array($classModule->program_module_id, $completedModuleIds);
 
-                    if (! $exists) {
-                        MentorshipModuleUsage::create([
-                            'mentorship_id'  => $mentorship->id,
-                            'module_id'      => $classModule->program_module_id,
-                            'first_class_id' => $class->id,
-                        ]);
-                        $backfilled++;
-                    }
-                }
+            [$record, $wasCreated] = [
+                MenteeModuleProgress::firstOrCreate(
+                        [
+                            'class_participant_id' => $participant->id,
+                            'class_module_id' => $classModule->id,
+                        ],
+                        [
+                            'status' => $isExempted ? 'exempted' : $moduleStatus,
+                            'started_at' => ($isExempted || $moduleStatus === 'in_progress') ? now() : null,
+                            'completed_in_previous_class' => $isExempted,
+                            'exempted_at' => $isExempted ? now() : null,
+                        ]
+                ),
+                null,
+            ];
+
+            // firstOrCreate doesn't return wasCreated directly in all versions
+            if (!$record->wasRecentlyCreated) {
+                continue;
             }
-        });
 
-        return $backfilled;
+            $created++;
+        }
+
+        return $created;
+    }
+
+    /**
+     * Cascade ALL existing modules in a class to a single new participant.
+     *
+     * Called from MenteeEnrollmentController when a mentee enrolls (including
+     * late joiners after class has started).
+     */
+    public function cascadeAllModulesToParticipant(
+            MentorshipClass $class,
+            ClassParticipant $participant
+    ): int {
+        $class->loadMissing('classModules');
+
+        $completedModuleIds = $this->getCompletedModuleIds($participant->user_id);
+        $created = 0;
+
+        foreach ($class->classModules as $classModule) {
+            $isExempted = in_array($classModule->program_module_id, $completedModuleIds);
+
+            $moduleStatus = match ($classModule->status) {
+                'in_progress' => 'in_progress',
+                'completed' => 'completed',
+                default => 'not_started',
+            };
+
+            $record = MenteeModuleProgress::firstOrCreate(
+                    [
+                        'class_participant_id' => $participant->id,
+                        'class_module_id' => $classModule->id,
+                    ],
+                    [
+                        'status' => $isExempted ? 'exempted' : $moduleStatus,
+                        'started_at' => ($isExempted || $moduleStatus === 'in_progress') ? now() : null,
+                        'completed_in_previous_class' => $isExempted,
+                        'exempted_at' => $isExempted ? now() : null,
+                    ]
+            );
+
+            if ($record->wasRecentlyCreated) {
+                $created++;
+            }
+        }
+
+        return $created;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Internal helpers
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Get program_module_ids a user has already completed in any previous class.
+     * Used for exemption detection on enrollment.
+     *
+     * Uses two independent sources and merges them — whichever confirms presence
+     * first wins. This makes exemption robust even if one source is incomplete.
+     *
+     * Source 1 — MenteeModuleProgress (status = completed|exempted)
+     *   Set by ClassModule::complete() for mentees who confirmed attendance.
+     *   Covers normal flow and prior exemptions.
+     *
+     * Source 2 — ClassAttendance (direct attendance record)
+     *   Stronger proof: the mentee physically clicked the attendance link.
+     *   Acts as fallback if progress records were not finalized for any reason
+     *   (e.g. mentor ended class without completing all modules).
+     *
+     * Both sources match on program_module_id — stable identity across all
+     * mentorships and classes on the platform.
+     */
+    public function getCompletedModuleIds(int $userId): array {
+        // Source 1: progress records marked completed or exempted
+        $fromProgress = DB::table('class_participants')
+                ->join('mentee_module_progress', 'class_participants.id', '=', 'mentee_module_progress.class_participant_id')
+                ->join('class_modules', 'mentee_module_progress.class_module_id', '=', 'class_modules.id')
+                ->where('class_participants.user_id', $userId)
+                ->whereIn('mentee_module_progress.status', ['completed', 'exempted'])
+                ->pluck('class_modules.program_module_id');
+
+        // Source 2: direct ClassAttendance records (mentee confirmed presence via link)
+        // Requires class_module_id column — added by migration:
+        //   add_class_module_id_to_class_attendances
+        $fromAttendance = DB::table('class_attendances')
+                ->join('class_modules', 'class_attendances.class_module_id', '=', 'class_modules.id')
+                ->where('class_attendances.user_id', $userId)
+                ->whereNotNull('class_attendances.class_module_id')
+                ->pluck('class_modules.program_module_id');
+
+        return $fromProgress
+                        ->merge($fromAttendance)
+                        ->unique()
+                        ->values()
+                        ->toArray();
     }
 }

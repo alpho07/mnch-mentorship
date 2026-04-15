@@ -16,9 +16,9 @@ class MentorshipCoMentor extends Model {
         'invited_by',
         'invited_at',
         'accepted_at',
-        'status', // pending | accepted | declined | revoked | removed
-        'invitation_token', // unique token for invitation link
+        'status',
         'permissions',
+        'invitation_token',
     ];
     protected $casts = [
         'invited_at' => 'datetime',
@@ -26,10 +26,7 @@ class MentorshipCoMentor extends Model {
         'permissions' => 'array',
     ];
 
-    // ==========================================
-    // RELATIONSHIPS
-    // ==========================================
-
+    // Relationships
     public function training(): BelongsTo {
         return $this->belongsTo(Training::class, 'training_id');
     }
@@ -42,10 +39,7 @@ class MentorshipCoMentor extends Model {
         return $this->belongsTo(User::class, 'invited_by');
     }
 
-    // ==========================================
-    // SCOPES
-    // ==========================================
-
+    // Scopes
     public function scopePending($query) {
         return $query->where('status', 'pending');
     }
@@ -62,10 +56,7 @@ class MentorshipCoMentor extends Model {
         return $query->where('status', 'revoked');
     }
 
-    // ==========================================
-    // COMPUTED ATTRIBUTES
-    // ==========================================
-
+    // Computed Attributes
     public function getIsAcceptedAttribute(): bool {
         return $this->status === 'accepted';
     }
@@ -74,22 +65,19 @@ class MentorshipCoMentor extends Model {
         return $this->status === 'pending';
     }
 
-    public function getIsRevokedAttribute(): bool {
-        return $this->status === 'revoked';
+    public function getInvitationLinkAttribute(): ?string {
+        if (!$this->invitation_token) {
+            return null;
+        }
+
+        return url("/co-mentor/accept/{$this->invitation_token}");
     }
 
-    /**
-     * Check if this co-mentor has active access.
-     * Only accepted status grants access. Revoked immediately loses it.
-     */
     public function hasAccess(): bool {
         return $this->status === 'accepted';
     }
 
-    // ==========================================
-    // STATUS TRANSITION METHODS
-    // ==========================================
-
+    // Methods
     public function accept(): void {
         $this->update([
             'status' => 'accepted',
@@ -101,36 +89,16 @@ class MentorshipCoMentor extends Model {
         $this->update(['status' => 'declined']);
     }
 
-    /**
-     * Revoke a pending invitation. Co-mentor cannot accept after revocation.
-     */
     public function revoke(): void {
         $this->update(['status' => 'revoked']);
     }
 
-    /**
-     * Remove an accepted co-mentor. Immediately loses all access.
-     */
     public function remove(): void {
         $this->update(['status' => 'removed']);
     }
 
-    // ==========================================
-    // PERMISSION CHECKS
-    // ==========================================
-
     public function canFacilitate(): bool {
-        return $this->hasAccess() &&
+        return $this->is_accepted &&
                 ($this->permissions['can_facilitate'] ?? true);
-    }
-
-    public function canCreateClasses(): bool {
-        return $this->hasAccess() &&
-                ($this->permissions['can_create_classes'] ?? false);
-    }
-
-    public function canInviteMentors(): bool {
-        return $this->hasAccess() &&
-                ($this->permissions['can_invite_mentors'] ?? false);
     }
 }

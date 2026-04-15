@@ -11,7 +11,7 @@ class Cadre extends Model
     use HasFactory;
     protected $table='assessment_cadres';
 
-    protected $fillable = ['name'];
+    protected $fillable = ['name', 'code', 'description', 'order', 'is_active'];
 
     public function trainingParticipants(): HasMany
     {

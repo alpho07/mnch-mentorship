@@ -210,6 +210,7 @@ export const _rawApi = {
         programs: () => get('/programs'),
         programModules: (programId) => get('/programs/' + programId + '/modules'),
         counties: () => get('/counties'),
+        facilitiesByCounty: (countyId) => get('/counties/' + countyId + '/facilities'),
         userSearch: (q, facilityId) => get('/users/search?q=' + encodeURIComponent(q) + (facilityId ? '&facility_id=' + facilityId : '')),
     },
     mentorshipCreate: {
@@ -797,6 +798,7 @@ const api = {
         classDetail: _rawApi.mentorships.classDetail,
         createClass: _rawApi.mentorships.createClass,
         updateClass: _rawApi.mentorships.updateClass,
+        deleteClass: _rawApi.mentorships.deleteClass,
     },
 
     // ── Modules (write ops queued when offline) ──────────────────────────────
@@ -831,6 +833,8 @@ const api = {
                 throw e;
             }
         },
+        add: _rawApi.modules.add,
+        remove: _rawApi.modules.remove,
         sessions: _rawApi.modules.sessions,
     },
 
@@ -981,6 +985,7 @@ const api = {
                 return (await offlineStore.getMeta('counties')) ?? [];
             }
         },
+        facilitiesByCounty: _rawApi.lookups.facilitiesByCounty,
         userSearch: _rawApi.lookups.userSearch,
     },
 

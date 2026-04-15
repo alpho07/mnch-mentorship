@@ -9,6 +9,7 @@ use App\Models\MentorshipClass;
 use App\Services\ModuleUsageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class ClassLifecycleController extends Controller
 {
@@ -87,6 +88,49 @@ class ClassLifecycleController extends Controller
                 'name'           => $participant->user?->full_name ?? $participant->user?->name,
             ],
         ], 201);
+    }
+
+    /**
+     * GET /api/v1/classes/{class}/enrollment-link
+     */
+    public function enrollmentLink(MentorshipClass $class): JsonResponse
+    {
+        $this->authorizeClassAccess($class);
+
+        if (!$class->enrollment_token) {
+            $class->update(['enrollment_token' => Str::uuid(), 'enrollment_link_active' => true]);
+            $class->refresh();
+        }
+
+        $url = url('/enroll/' . $class->enrollment_token);
+
+        return response()->json([
+            'data' => [
+                'token'  => $class->enrollment_token,
+                'url'    => $url,
+                'active' => (bool) $class->enrollment_link_active,
+            ],
+        ]);
+    }
+
+    /**
+     * POST /api/v1/classes/{class}/regenerate-token
+     */
+    public function regenerateToken(MentorshipClass $class): JsonResponse
+    {
+        $this->authorizeClassAccess($class);
+        abort_if($class->status === 'completed' || $class->status === 'cancelled', 422, 'Cannot regenerate token for a completed class.');
+
+        $token = Str::uuid();
+        $class->update(['enrollment_token' => $token, 'enrollment_link_active' => true]);
+
+        return response()->json([
+            'data' => [
+                'token'  => $token,
+                'url'    => url('/enroll/' . $token),
+                'active' => true,
+            ],
+        ]);
     }
 
     /**

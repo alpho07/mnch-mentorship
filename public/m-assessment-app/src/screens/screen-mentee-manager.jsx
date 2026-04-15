@@ -16,7 +16,7 @@ function Avatar({ name, size = 36, bg = T.primaryGhost, color = T.primary }) {
     );
 }
 
-export function MenteeManagerScreen({ cls, onBack }) {
+export function MenteeManagerScreen({ cls, onBack, confirm = (o) => Promise.resolve(window.confirm(o?.title ?? "Confirm?")) }) {
     const [mentees, setMentees]           = useState(cls.mentees ?? []);
     const [search, setSearch]             = useState("");
     const [results, setResults]           = useState([]);
@@ -71,7 +71,13 @@ export function MenteeManagerScreen({ cls, onBack }) {
     };
 
     const handleRemove = async (mentee) => {
-        if (!window.confirm(`Remove ${mentee.name} from this class?`)) return;
+        const ok = await confirm({
+            title: `Remove ${mentee.name}?`,
+            message: "This mentee will be removed from the class. They can be re-enrolled later.",
+            confirmLabel: "Remove",
+            danger: true,
+        });
+        if (!ok) return;
         setRemoving(mentee.id); setError(null);
         try {
             await api.classLifecycle.removeMentee(cls.id, mentee.id);
@@ -84,7 +90,13 @@ export function MenteeManagerScreen({ cls, onBack }) {
     };
 
     const handleRegenerate = async () => {
-        if (!window.confirm("Regenerate enrollment link? The old link will stop working.")) return;
+        const ok = await confirm({
+            title: "Regenerate enrollment link?",
+            message: "The current link will be invalidated immediately. Anyone who had it will no longer be able to use it.",
+            confirmLabel: "Regenerate",
+            danger: false,
+        });
+        if (!ok) return;
         setLinkLoading(true);
         try {
             const res = await api.classLifecycle.regenerateToken(cls.id);

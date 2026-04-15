@@ -14,8 +14,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Add 'revoked' to the status enum
-        DB::statement("ALTER TABLE `mentorship_co_mentors` MODIFY COLUMN `status` ENUM('pending','accepted','declined','removed','revoked') NOT NULL DEFAULT 'pending'");
+        // Add 'revoked' to the status enum (MySQL only — SQLite does not support MODIFY COLUMN)
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement("ALTER TABLE `mentorship_co_mentors` MODIFY COLUMN `status` ENUM('pending','accepted','declined','removed','revoked') NOT NULL DEFAULT 'pending'");
+        }
 
         // Add invitation_token column if not exists
         if (!Schema::hasColumn('mentorship_co_mentors', 'invitation_token')) {
@@ -36,7 +38,9 @@ return new class extends Migration
             ->where('status', 'revoked')
             ->update(['status' => 'removed']);
 
-        DB::statement("ALTER TABLE `mentorship_co_mentors` MODIFY COLUMN `status` ENUM('pending','accepted','declined','removed') NOT NULL DEFAULT 'pending'");
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement("ALTER TABLE `mentorship_co_mentors` MODIFY COLUMN `status` ENUM('pending','accepted','declined','removed') NOT NULL DEFAULT 'pending'");
+        }
 
         if (Schema::hasColumn('mentorship_co_mentors', 'invitation_token')) {
             Schema::table('mentorship_co_mentors', function (Blueprint $table) {

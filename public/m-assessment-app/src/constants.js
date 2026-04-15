@@ -181,19 +181,19 @@ export function computeTabs(roles = []) {
 
     const tabs = [{ key: 'dashboard', label: 'Home', iconKey: 'dashboard' }];
 
-    if (isAssessor) {
+    if (isAssessor || isAdmin) {
         tabs.push({ key: 'assessments', label: 'Assessments', iconKey: 'assessments' });
     }
-    if (isMentor) {
+    if (isMentor || isAdmin) {
         tabs.push({ key: 'mentorship', label: 'Mentorship', iconKey: 'mentorship' });
     }
-    if (isMentee) {
+    if (isMentee || isAdmin) {
         tabs.push({ key: 'myClasses', label: 'My Classes', iconKey: 'myClasses' });
     }
     if (isAdmin || isMentee) {
         tabs.push({ key: 'trainings', label: 'Trainings', iconKey: 'trainings' });
     }
-    if (isAssessor || isMentor) {
+    if (isAssessor || isAdmin) {
         tabs.push({ key: 'reports', label: 'Reports', iconKey: 'reports' });
     }
 

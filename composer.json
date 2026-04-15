@@ -12,6 +12,7 @@
         "filament/filament": "^3.3",
         "intervention/image": "^3.11",
         "laravel/framework": "^12.0",
+        "laravel/sanctum": "*",
         "laravel/tinker": "^2.10.1",
         "league/csv": "^9.24",
         "spatie/laravel-activitylog": "^4.10",
@@ -28,6 +29,9 @@
         "phpunit/phpunit": "^11.5.3"
     },
     "autoload": {
+        "files": [
+            "bootstrap/php84_polyfills.php"
+        ],
         "psr-4": {
             "App\\": "app/",
             "Database\\Factories\\": "database/factories/",

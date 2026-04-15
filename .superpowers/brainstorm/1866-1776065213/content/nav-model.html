@@ -1,0 +1,81 @@
+<h2>Navigation Model — Role-Aware Bottom Nav</h2>
+<p class="subtitle">How the bottom nav adapts per user role combination. All existing assessment tabs are preserved untouched.</p>
+
+<style>
+  .nav-scenario { background: #fff; border: 1.5px solid #e2e4f0; border-radius: 16px; padding: 20px 24px; margin-bottom: 18px; }
+  .nav-scenario h3 { margin: 0 0 6px; font-size: 14px; font-weight: 700; color: #1A1A2E; }
+  .nav-scenario .roles { font-size: 12px; color: #6B7194; margin-bottom: 14px; }
+  .phone-nav { display: flex; align-items: center; background: #f8f9fe; border: 1px solid #e2e4f0; border-radius: 12px; padding: 10px 8px; gap: 4px; }
+  .nav-tab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 4px; border-radius: 10px; font-size: 10px; font-weight: 600; color: #A0A3BD; cursor: default; }
+  .nav-tab.active { background: rgba(108,92,231,0.10); color: #6C5CE7; }
+  .nav-tab.new-tab { background: linear-gradient(135deg,#6C5CE7,#A29BFE); color: white; border-radius: 50%; width: 44px; height: 44px; flex: none; margin: -6px 4px; box-shadow: 0 4px 16px rgba(108,92,231,0.35); font-size: 9px; }
+  .nav-tab.mentor-tab { background: rgba(16,185,129,0.10); color: #059669; }
+  .nav-tab.mentee-tab { background: rgba(14,165,233,0.10); color: #0EA5E9; }
+  .nav-tab .icon { font-size: 18px; line-height: 1; }
+  .badge-new { display: inline-block; background: #10B981; color: white; font-size: 9px; padding: 1px 5px; border-radius: 4px; margin-left: 4px; vertical-align: middle; }
+  .badge-exists { display: inline-block; background: #6C5CE7; color: white; font-size: 9px; padding: 1px 5px; border-radius: 4px; margin-left: 4px; vertical-align: middle; }
+  .legend { display: flex; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #3D3D5C; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; }
+</style>
+
+<div class="legend">
+  <div class="legend-item"><div class="dot" style="background:#6C5CE7"></div> Existing (unchanged)</div>
+  <div class="legend-item"><div class="dot" style="background:#10B981"></div> New — Mentor</div>
+  <div class="legend-item"><div class="dot" style="background:#0EA5E9"></div> New — Mentee</div>
+  <div class="legend-item"><div class="dot" style="background:#F59E0B"></div> New — Training</div>
+</div>
+
+<!-- Scenario 1: Assessor only -->
+<div class="nav-scenario">
+  <h3>Assessor Only <span class="badge-exists">Existing — no change</span></h3>
+  <div class="roles">Roles: facility_mentor (assessor), spoke_mentor, any non-mentee role</div>
+  <div class="phone-nav">
+    <div class="nav-tab active"><div class="icon">🏠</div>Dashboard</div>
+    <div class="nav-tab"><div class="icon">📋</div>Assessments</div>
+    <div class="nav-tab new-tab"><div class="icon">＋</div></div>
+    <div class="nav-tab"><div class="icon">📊</div>Reports</div>
+    <div class="nav-tab"><div class="icon">👤</div>Profile</div>
+  </div>
+</div>
+
+<!-- Scenario 2: Mentor + Assessor (most common) -->
+<div class="nav-scenario">
+  <h3>Mentor + Assessor <span class="badge-new">Most common field worker</span></h3>
+  <div class="roles">Roles: facility_mentor / spoke_mentor / mentor_lead — user who both conducts assessments AND runs mentorship classes</div>
+  <div class="phone-nav">
+    <div class="nav-tab"><div class="icon">🏠</div>Dashboard</div>
+    <div class="nav-tab"><div class="icon">📋</div>Assessments</div>
+    <div class="nav-tab mentor-tab"><div class="icon">🎓</div>Mentorship</div>
+    <div class="nav-tab"><div class="icon">📊</div>Reports</div>
+    <div class="nav-tab"><div class="icon">👤</div>Profile</div>
+  </div>
+  <p style="font-size:12px;color:#6B7194;margin:10px 0 0;">Center FAB removed — "New Assessment" moves to a button inside the Assessments tab header (already exists as a sheet trigger). No functionality lost.</p>
+</div>
+
+<!-- Scenario 3: Mentee -->
+<div class="nav-scenario">
+  <h3>Mentee <span class="badge-new">New</span></h3>
+  <div class="roles">Roles: mentee — enrolled in mentorship classes, may also do assessments</div>
+  <div class="phone-nav">
+    <div class="nav-tab"><div class="icon">🏠</div>Dashboard</div>
+    <div class="nav-tab mentee-tab"><div class="icon">📚</div>My Classes</div>
+    <div class="nav-tab"><div class="icon">📋</div>Assessments</div>
+    <div class="nav-tab"><div class="icon">📊</div>Reports</div>
+    <div class="nav-tab"><div class="icon">👤</div>Profile</div>
+  </div>
+</div>
+
+<!-- Scenario 4: Admin / Super Admin -->
+<div class="nav-scenario">
+  <h3>Admin / Super Admin <span class="badge-new">Extended</span></h3>
+  <div class="roles">Roles: super_admin, admin, division — sees everything</div>
+  <div class="phone-nav">
+    <div class="nav-tab"><div class="icon">🏠</div>Dashboard</div>
+    <div class="nav-tab"><div class="icon">📋</div>Assessments</div>
+    <div class="nav-tab mentor-tab"><div class="icon">🎓</div>Mentorship</div>
+    <div class="nav-tab mentee-tab"><div class="icon">🏛️</div>Trainings</div>
+    <div class="nav-tab"><div class="icon">👤</div>Profile</div>
+  </div>
+  <p style="font-size:12px;color:#6B7194;margin:10px 0 0;">Reports moved into Dashboard for admins. MOH Global Trainings tab replaces Reports slot.</p>
+</div>

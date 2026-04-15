@@ -1,5 +1,5 @@
 <?php
-namespace App\Filament\Resources\MentorshipTrainingResource\Pages;
+namespace App\Filament\Resources\MentorshipResource\Pages;
 
 use App\Filament\Resources\MentorshipTrainingResource;
 use App\Models\AssessmentCategory;
@@ -23,10 +23,15 @@ class EditMentorshipTraining extends EditRecord
                     ->icon('heroicon-o-users')
                     ->url(fn () => static::getResource()::getUrl('mentees', ['record' => $this->record])),
                 
-                Actions\Action::make('assessment_matrix')
-                    ->label('Assessment Matrix')
-                    ->icon('heroicon-o-clipboard-document-check')
-                    ->url(fn () => static::getResource()::getUrl('assessments', ['record' => $this->record])),
+                Actions\Action::make('manage_classes')
+                    ->label('Manage Classes')
+                    ->icon('heroicon-o-rectangle-stack')
+                    ->url(fn () => static::getResource()::getUrl('classes', ['record' => $this->record])),
+
+                Actions\Action::make('co_mentors')
+                    ->label('Co-Mentors')
+                    ->icon('heroicon-o-user-group')
+                    ->url(fn () => static::getResource()::getUrl('co-mentors', ['record' => $this->record])),
                 
                 Actions\Action::make('duplicate_training')
                     ->label('Duplicate Mentorship')

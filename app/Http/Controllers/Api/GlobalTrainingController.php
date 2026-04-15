@@ -32,6 +32,7 @@ class GlobalTrainingController extends Controller
             'start_date'    => $t->start_date?->toDateString(),
             'end_date'      => $t->end_date?->toDateString(),
             'county'        => $t->county?->name,
+            'facility'      => $t->facility?->name,
             'location_type' => $t->location_type,
         ]);
 
@@ -70,9 +71,16 @@ class GlobalTrainingController extends Controller
                 'start_date'       => $training->start_date?->toDateString(),
                 'end_date'         => $training->end_date?->toDateString(),
                 'county'           => $training->county?->name,
+                'facility'         => $training->facility?->name,
+                'facility_mfl'     => $training->facility?->mfl_code,
+                'program'          => $training->program?->name,
                 'location_type'    => $training->location_type,
+                'online_link'      => $training->online_link,
                 'max_participants' => $training->max_participants,
                 'description'      => $training->description,
+                'notes'            => $training->notes,
+                'target_audience'  => $training->target_audience,
+                'learning_outcomes'=> $training->learning_outcomes,
             ],
         ]);
     }
@@ -126,6 +134,7 @@ class GlobalTrainingController extends Controller
             ->get()
             ->map(fn($p) => [
                 'id'                => $p->id,
+                'user_id'           => $p->user_id,
                 'name'              => $p->user?->name,
                 'completion_status' => $p->completion_status ?? 'registered',
             ]);

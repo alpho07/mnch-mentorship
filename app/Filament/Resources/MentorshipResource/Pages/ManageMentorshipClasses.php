@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Resources\MentorshipTrainingResource\Pages;
+namespace App\Filament\Resources\MentorshipResource\Pages;
 
 use App\Filament\Resources\MentorshipTrainingResource;
 use App\Models\Training;
@@ -40,12 +40,12 @@ class ManageMentorshipClasses extends Page implements HasTable {
         if ($this->viewingModules && $this->selectedClass) {
             return "Modules - {$this->selectedClass->name}";
         }
-        return "Classes";
+        return "Classes/Cohort";
     }
 
     public function getSubheading(): ?string {
         if ($this->viewingModules && $this->selectedClass) {
-            return "{$this->selectedClass->module_count} modules â€¢ {$this->selectedClass->session_count} sessions";
+            return "{$this->selectedClass->module_count} modules {$this->selectedClass->session_count} sessions";
         }
         return "Manage mentorship cohorts and modules";
     }
@@ -55,18 +55,30 @@ class ManageMentorshipClasses extends Page implements HasTable {
             return $this->getModuleHeaderActions();
         }
 
+
+
         return $this->getClassHeaderActions();
+    }
+
+    protected function getHeaderWidgets(): array {
+        return [
+            \App\Filament\Widgets\MentorshipSetupNotice::class
+        ];
+    }
+
+    public function getHeaderWidgetsColumns(): int|array {
+        return 1;
     }
 
     private function getClassHeaderActions(): array {
         return [
                     Actions\Action::make('create_class')
-                    ->label('Create New Class')
+                    ->label('Create New Class/Cohort')
                     ->icon('heroicon-o-plus')
                     ->color('success')
                     ->form([
                         Forms\Components\TextInput::make('name')
-                        ->label('Class Name')
+                        ->label('Class/Cohort Name')
                         ->required()
                         ->placeholder('e.g., January 2025 Cohort')
                         ->maxLength(255),
@@ -90,14 +102,15 @@ class ManageMentorshipClasses extends Page implements HasTable {
                         Forms\Components\Textarea::make('description')
                         ->label('Description')
                         ->rows(3)
-                        ->placeholder('Details about this class cohort'),
+                        ->placeholder('Describe the gap identified and how this class will be delivered.')
+                        ->helperText('Make this detailed: describe the gap identified, the mentorship focus, and how the class will be done.'),
                     ])
                     ->action(fn(array $data) => $this->createClass($data)),
                     Actions\Action::make('back_to_training')
                     ->label('Back to Mentorships')
                     ->icon('heroicon-o-arrow-left')
                     ->color('gray')
-                    ->url(fn() => MentorshipTrainingResource::getUrl('index'))
+                    ->url(fn() => MentorshipTrainingResource::getUrl('index')),
         ];
     }
 
@@ -184,9 +197,10 @@ class ManageMentorshipClasses extends Page implements HasTable {
                                 ->icon('heroicon-o-book-open')
                                 ->color('primary')
                                 ->url(fn(MentorshipClass $record): string =>
-                                        MentorshipTrainingResource::getUrl('classes', [
-                                            'record' => $this->record,
-                                        ]) . '?class=' . $record->id
+                                        MentorshipTrainingResource::getUrl('class-modules', [
+                                            'training' => $this->record->id,
+                                            'class' => $record->id
+                                        ])
                                 ),
                                 Tables\Actions\Action::make('invite_mentees')
                                 ->label('Manage/Invite Mentees')
@@ -230,7 +244,9 @@ class ManageMentorshipClasses extends Page implements HasTable {
                                         ->afterOrEqual('start_date'),
                                     ]),
                                     Forms\Components\Textarea::make('description')
-                                    ->rows(3),
+                                    ->rows(3)
+                                    ->placeholder('Describe the gap identified and how this class will be delivered.')
+                                    ->helperText('Make this detailed: describe the gap identified, the mentorship focus, and how the class will be done.'),
                                 ]),
                                 Tables\Actions\DeleteAction::make()
                                 ->requiresConfirmation(),
@@ -367,7 +383,7 @@ class ManageMentorshipClasses extends Page implements HasTable {
 
         // Navigate to the class modules page to manually add modules
         redirect(MentorshipTrainingResource::getUrl('class-modules', [
-                    'record' => $this->record->id,
+                    'training' => $this->record->id,
                     'class' => $class->id,
         ]));
     }

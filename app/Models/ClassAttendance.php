@@ -20,6 +20,7 @@ class ClassAttendance extends Model
 
     protected $fillable = [
         'class_id',
+        'class_module_id',
         'session_id',
         'user_id',
         'marked_by',

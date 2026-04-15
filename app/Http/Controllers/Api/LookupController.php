@@ -3,6 +3,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\County;
+use App\Models\Facility;
 use App\Models\Program;
 use App\Models\ProgramModule;
 use App\Models\User;
@@ -39,6 +40,21 @@ class LookupController extends Controller
     {
         $counties = County::orderBy('name')->get(['id', 'name']);
         return response()->json(['data' => $counties]);
+    }
+
+    public function facilitiesByCounty(County $county): JsonResponse
+    {
+        $facilities = Facility::whereHas('subcounty', fn($q) => $q->where('county_id', $county->id))
+            ->orderBy('name')
+            ->get(['id', 'name', 'mfl_code'])
+            ->map(fn(Facility $f) => [
+                'id'       => $f->id,
+                'name'     => $f->name,
+                'mfl_code' => $f->mfl_code,
+                'label'    => "{$f->mfl_code} — {$f->name}",
+            ]);
+
+        return response()->json(['data' => $facilities]);
     }
 
     public function userSearch(Request $request): JsonResponse

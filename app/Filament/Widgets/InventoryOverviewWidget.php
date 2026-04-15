@@ -1,6 +1,5 @@
 <?php
 
-// Create a Quick Stock Entry Widget for Dashboard
 namespace App\Filament\Widgets;
 
 use App\Models\InventoryItem;
@@ -12,7 +11,7 @@ use Filament\Notifications\Notification;
 use Filament\Widgets\Widget;
 use Livewire\Component;
 
-class QuickStockEntryWidget extends Widget implements Forms\Contracts\HasForms
+class InventoryOverviewWidget extends Widget implements Forms\Contracts\HasForms
 {
     use Forms\Concerns\InteractsWithForms;
 

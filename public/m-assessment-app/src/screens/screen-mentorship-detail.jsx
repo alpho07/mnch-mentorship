@@ -21,7 +21,7 @@ function InfoRow({ label, value }) {
     );
 }
 
-export function MentorshipDetailScreen({ training, onBack, onOpenClass, onAddClass }) {
+export function MentorshipDetailScreen({ training, onBack, onOpenClass, onAddClass, onEditClass, onDeleteClass }) {
     const [detail, setDetail]       = useState(null);
     const [loading, setLoading]     = useState(true);
     const [resources, setResources] = useState([]);
@@ -110,30 +110,89 @@ export function MentorshipDetailScreen({ training, onBack, onOpenClass, onAddCla
                             const cs = CLASS_STATUS[c.status] ?? CLASS_STATUS.draft;
                             const pct = c.progress_percentage ?? 0;
                             return (
-                                <button
+                                <div
                                     key={c.id}
-                                    onClick={() => onOpenClass({ ...c, trainingId: data.id })}
                                     style={{
-                                        width: "100%", background: T.card, border: `1px solid ${T.border}`,
-                                        borderRadius: T.radiusSm, padding: "14px 16px",
-                                        textAlign: "left", cursor: "pointer", boxShadow: T.shadowCard, marginBottom: 8,
+                                        background: T.card, border: `1px solid ${T.border}`,
+                                        borderRadius: T.radiusSm, boxShadow: T.shadowCard, marginBottom: 8,
+                                        overflow: "hidden",
                                     }}
                                 >
-                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
-                                        <div style={{ fontWeight: 700, color: T.text, fontSize: 14 }}>{c.name}</div>
-                                        <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 5, background: cs.bg, color: cs.color, flexShrink: 0, marginLeft: 8 }}>
-                                            {c.status}
-                                        </span>
+                                    {/* Tappable body */}
+                                    <div
+                                        onClick={() => onOpenClass({ ...c, trainingId: data.id })}
+                                        style={{ padding: "14px 16px", cursor: "pointer" }}
+                                    >
+                                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
+                                            <div style={{ fontWeight: 700, color: T.text, fontSize: 14 }}>{c.name}</div>
+                                            <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 5, background: cs.bg, color: cs.color, flexShrink: 0, marginLeft: 8 }}>
+                                                {c.status}
+                                            </span>
+                                        </div>
+                                        <div style={{ fontSize: 12, color: T.textSub, marginBottom: 8 }}>
+                                            {c.participant_count ?? 0} mentees · {c.module_count ?? 0} modules
+                                            {c.start_date ? ` · ${c.start_date}` : ""}
+                                        </div>
+                                        <div style={{ height: 5, borderRadius: 4, background: T.borderLight, overflow: "hidden" }}>
+                                            <div style={{ height: "100%", width: `${pct}%`, background: pct === 100 ? "#10B981" : T.gradientPrimary, borderRadius: 4 }} />
+                                        </div>
+                                        <div style={{ fontSize: 11, color: T.textSub, marginTop: 3 }}>{pct}% complete</div>
                                     </div>
-                                    <div style={{ fontSize: 12, color: T.textSub, marginBottom: 8 }}>
-                                        {c.participant_count ?? 0} mentees · {c.module_count ?? 0} modules
-                                        {c.start_date ? ` · ${c.start_date}` : ""}
+                                    {/* Action row */}
+                                    <div style={{
+                                        display: "flex", gap: 8, padding: "8px 12px",
+                                        borderTop: `1px solid ${T.borderLight}`,
+                                        background: T.bg,
+                                    }}>
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); onOpenClass({ ...c, trainingId: data.id }); }}
+                                            style={{
+                                                flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+                                                padding: "6px 0", borderRadius: T.radiusXs,
+                                                border: "none", background: "linear-gradient(135deg, #3730A3, #6366F1)",
+                                                color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer",
+                                            }}
+                                        >
+                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                                            </svg>
+                                            View
+                                        </button>
+                                        {onEditClass && (
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); onEditClass({ ...c, trainingId: data.id }); }}
+                                                style={{
+                                                    flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+                                                    padding: "6px 0", borderRadius: T.radiusXs,
+                                                    border: `1px solid ${T.border}`, background: T.card,
+                                                    color: T.primary, fontSize: 12, fontWeight: 600, cursor: "pointer",
+                                                }}
+                                            >
+                                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                                </svg>
+                                                Edit
+                                            </button>
+                                        )}
+                                        {onDeleteClass && (
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); onDeleteClass({ ...c, trainingId: data.id }); }}
+                                                style={{
+                                                    flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+                                                    padding: "6px 0", borderRadius: T.radiusXs,
+                                                    border: "1px solid #FECACA", background: "#FEF2F2",
+                                                    color: "#DC2626", fontSize: 12, fontWeight: 600, cursor: "pointer",
+                                                }}
+                                            >
+                                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                                    <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
+                                                </svg>
+                                                Delete
+                                            </button>
+                                        )}
                                     </div>
-                                    <div style={{ height: 5, borderRadius: 4, background: T.borderLight, overflow: "hidden" }}>
-                                        <div style={{ height: "100%", width: `${pct}%`, background: pct === 100 ? "#10B981" : T.gradientPrimary, borderRadius: 4 }} />
-                                    </div>
-                                    <div style={{ fontSize: 11, color: T.textSub, marginTop: 3 }}>{pct}% complete</div>
-                                </button>
+                                </div>
                             );
                         })}
                     </div>
