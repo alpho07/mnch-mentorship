@@ -1,0 +1,55 @@
+/* ── Reset ─────────────────────────────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+:root {
+    font-family: 'Plus Jakarta Sans', Inter, system-ui, sans-serif;
+    line-height: 1.5;
+    font-weight: 400;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+
+    /* Safe area insets — populated by the OS on notched/gesture-nav devices.
+     Falls back to 0 on devices without system bars. */
+    --sat: env(safe-area-inset-top, 0px);
+    --sar: env(safe-area-inset-right, 0px);
+    --sab: env(safe-area-inset-bottom, 0px);
+    --sal: env(safe-area-inset-left, 0px);
+
+    /* Bottom nav total height = visible tab bar + system nav bar */
+    --nav-bar-height: 56px;
+    --bottom-inset: calc(var(--nav-bar-height) + var(--sab));
+}
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    /* Prevent iOS/Android bounce scroll on the root */
+    overflow: hidden;
+    background: #f0fdf4;
+}
+
+#root {
+    width: 100%;
+    height: 100%;
+    /* Use 100dvh so the shell fills the real viewport on mobile browsers */
+    height: 100dvh;
+}
+
+button {
+    font-family: inherit;
+    cursor: pointer;
+}
+
+a {
+    color: inherit;
+    text-decoration: none;
+}

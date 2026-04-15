@@ -9,7 +9,7 @@ use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Support\Facades\Auth;
 
-class MenteeDashboard extends BaseWidget {
+class MentorDashboard extends BaseWidget {
 
     protected static ?int $sort = 1;
     protected static ?string $pollingInterval = '60s';

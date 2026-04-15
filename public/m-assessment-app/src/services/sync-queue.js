@@ -22,6 +22,7 @@ function notify() {
         try {
             fn(state);
         } catch {
+            // Swallow listener errors to prevent one bad subscriber from breaking others
         }
     });
 }
@@ -46,6 +47,16 @@ async function refreshCount() {
 //   "assessments.submit"       → { assessmentId }
 //   "humanResources.save"      → { assessmentId, responses }
 //   "healthProducts.save"      → { assessmentId, responses, departmentId? }
+//   "assessments.create"       → { tempId, facility_id, assessment_type, assessment_date }
+//   "mentorships.create"        → { tempId, payload }
+//   "mentorships.update"        → { id, payload }
+//   "mentorships.submit"        → { id }
+//   "mentorships.addMentee"     → { classId, userId }
+//   "mentorships.removeMentee"  → { classId, participantId }
+//   "mentorships.updateSession" → { sessionId, payload }
+//   "mentorships.startClass"    → { classId }
+//   "trainings.enroll"          → { trainingId }
+//   "trainings.attendance"      → { trainingId }
 
 async function enqueue(op) {
     await offlineStore.addToQueue(op);
@@ -152,6 +163,183 @@ async function executeOp(rawApi, op) {
             return rawApi.healthProducts.save(
                     op.assessmentId, op.responses, op.departmentId ?? null
                     );
+
+        case "assessments.create": {
+            const migrateId = async (fromId, toId) => {
+                await offlineStore.copyAssessmentData(fromId, toId);
+                await offlineStore.deleteAssessment(fromId);
+                window.dispatchEvent(new CustomEvent("assessment:id-resolved", {
+                    detail: { tempId: fromId, realId: toId },
+                }));
+            };
+
+            // Inner try/catch: 409 must be handled here, not by flush()'s 4xx discard handler,
+            // because we need to run ID migration before the op is dequeued.
+            try {
+                const response = await rawApi.assessments.create(
+                    op.facility_id, op.assessment_type, op.assessment_date
+                );
+                const realId = response?.assessment?.id;
+                if (!realId) {
+                    throw new Error("[SyncQueue] assessments.create: server returned no assessment.id");
+                }
+                await migrateId(op.tempId, realId);
+                return response;
+            } catch (e) {
+                if (e.status === 409) {
+                    const realId = e.data?.assessment?.id;
+                    if (realId) {
+                        await migrateId(op.tempId, realId);
+                    } else {
+                        console.warn("[SyncQueue] assessments.create: 409 with no realId — deleting orphan", op.tempId);
+                        await offlineStore.deleteAssessment(op.tempId);
+                    }
+                    // Treat as success — op should be dequeued
+                    return null;
+                }
+                throw e;
+            }
+        }
+
+        case "report.email": {
+            try {
+                const data = await rawApi.reports.emailReport(op.assessmentId, op.emails);
+                // Swap the local placeholder with the real server job
+                if (op.localJobId) {
+                    await offlineStore.deleteEmailJob(op.localJobId);
+                }
+                if (data?.id) {
+                    await offlineStore.saveEmailJob({
+                        ...data,
+                        assessment_id: op.assessmentId,
+                        emails: op.emails,
+                    });
+                }
+                window.dispatchEvent(new CustomEvent("emailJob:synced", {
+                    detail: { localJobId: op.localJobId, serverJob: data },
+                }));
+                return data;
+            } catch (e) {
+                // 4xx means a permanent error — update local job status and remove from queue
+                if (e.status >= 400 && e.status < 500) {
+                    if (op.localJobId) {
+                        const existing = await offlineStore.getEmailJob(op.localJobId);
+                        if (existing) {
+                            await offlineStore.saveEmailJob({
+                                ...existing,
+                                status: "failed",
+                                error: e.message ?? "Request rejected by server",
+                            });
+                        }
+                    }
+                    return null; // dequeue
+                }
+                throw e;
+            }
+        }
+
+        case 'mentorship.module.start':
+            return rawApi.modules.start(op.moduleId);
+
+        case 'mentorship.module.complete':
+            return rawApi.modules.complete(op.moduleId);
+
+        case 'mentorship.attendance.mark':
+            return rawApi.attendance.mark(op.moduleId, op.participantId, op.status);
+
+        case 'mentee.attendance.confirm':
+            return rawApi.me.attend(op.classId, op.moduleId);
+
+        case 'mentorships.create': {
+            const migrateId = async (fromId, toId) => {
+                const existing = await offlineStore.getMentorship(fromId);
+                if (existing) {
+                    await offlineStore.saveMentorship({ ...existing, id: toId, _isOffline: false });
+                    await offlineStore.deleteMentorship(fromId);
+                }
+                window.dispatchEvent(new CustomEvent('mentorship:id-resolved', {
+                    detail: { tempId: fromId, realId: toId },
+                }));
+            };
+            try {
+                const response = await rawApi.mentorshipCreate.create(op.payload);
+                const realId = response?.data?.id;
+                if (!realId) throw new Error('[SyncQueue] mentorships.create: server returned no id');
+                await migrateId(op.tempId, realId);
+                return response;
+            } catch (e) {
+                if (e.status === 409) {
+                    const realId = e.data?.data?.id;
+                    if (realId) await migrateId(op.tempId, realId);
+                    return null;
+                }
+                if (e.status >= 400 && e.status < 500) {
+                    await offlineStore.saveConflict({
+                        id: 'conflict_' + Date.now(),
+                        op_type: op.type,
+                        payload: op.payload,
+                        error: e.message ?? 'Request rejected',
+                        created_at: new Date().toISOString(),
+                        resolved: false,
+                    });
+                    return null;
+                }
+                throw e;
+            }
+        }
+
+        case 'mentorships.update':
+            return rawApi.mentorshipCreate.update(op.id, op.payload);
+
+        case 'mentorships.submit':
+            return rawApi.mentorshipCreate.submit(op.id);
+
+        case 'mentorships.addMentee':
+            return rawApi.classLifecycle.enrollMentee(op.classId, op.userId);
+
+        case 'mentorships.removeMentee': {
+            try {
+                return await rawApi.classLifecycle.removeMentee(op.classId, op.participantId);
+            } catch (e) {
+                if (e.status === 404) return null; // already removed — discard
+                throw e;
+            }
+        }
+
+        case 'mentorships.updateSession': {
+            // NEVER discard silently — write to conflicts on permanent failure
+            try {
+                return await rawApi.sessions.update(op.sessionId, op.payload);
+            } catch (e) {
+                if (e.status >= 400 && e.status < 500) {
+                    await offlineStore.saveConflict({
+                        id: 'conflict_' + Date.now(),
+                        op_type: 'mentorships.updateSession',
+                        payload: { sessionId: op.sessionId, ...op.payload },
+                        error: e.message ?? 'Session sync failed',
+                        created_at: new Date().toISOString(),
+                        resolved: false,
+                    });
+                    return null; // dequeue — handled via conflicts UI
+                }
+                throw e;
+            }
+        }
+
+        case 'mentorships.startClass':
+            return rawApi.classLifecycle.start(op.classId);
+
+        case 'trainings.enroll': {
+            try {
+                return await rawApi.trainingActions.enroll(op.trainingId);
+            } catch (e) {
+                if (e.status === 409) return null; // already enrolled
+                throw e;
+            }
+        }
+
+        case 'trainings.attendance':
+            return rawApi.trainingActions.attendance(op.trainingId);
 
         default:
             console.warn(`[SyncQueue] Unknown op type: ${op.type}`);

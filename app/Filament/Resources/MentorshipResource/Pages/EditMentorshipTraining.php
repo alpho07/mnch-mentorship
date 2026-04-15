@@ -1,5 +1,5 @@
 <?php
-namespace App\Filament\Resources\MentorshipTrainingResource\Pages;
+namespace App\Filament\Resources\MentorshipResource\Pages;
 
 use App\Filament\Resources\MentorshipTrainingResource;
 use App\Models\AssessmentCategory;

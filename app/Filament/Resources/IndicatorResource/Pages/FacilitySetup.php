@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Pages\Indicators;
+namespace App\Filament\Resources\IndicatorResource\Pages;
 
 use App\Models\Facility;
 use App\Models\Indicators\FacilityIndicatorAssignment;

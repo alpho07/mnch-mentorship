@@ -14,7 +14,11 @@ return new class extends Migration {
         if (Schema::hasTable('trainings')) {
             Schema::table('trainings', function (Blueprint $table) {
                 if (!Schema::hasColumn('trainings', 'approved_training_area_id')) {
-                    $table->foreignId('approved_training_area_id')->nullable()->constrained('approved_training_areas')->nullOnDelete();
+                    $col = $table->unsignedBigInteger('approved_training_area_id')->nullable();
+                    // Avoid FK to non-existent table on SQLite
+                    if (\Illuminate\Support\Facades\DB::getDriverName() !== 'sqlite') {
+                        $table->foreign('approved_training_area_id')->references('id')->on('approved_training_areas')->nullOnDelete();
+                    }
                 }
                 if (!Schema::hasColumn('trainings', 'lead_division_id')) {
                     $table->foreignId('lead_division_id')->nullable()->constrained('divisions')->nullOnDelete();

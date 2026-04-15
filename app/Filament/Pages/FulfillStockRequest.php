@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Resources\StockRequestResource\Pages;
+namespace App\Filament\Pages;
 
 use App\Filament\Resources\StockRequestResource;
 use App\Models\StockRequest;

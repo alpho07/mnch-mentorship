@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MNCH Mobile Expansion — Design</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #F4F6FB; color: #1A1A2E; }
+
+  /* ── Tab nav ── */
+  .tab-nav { display: flex; gap: 4px; padding: 16px 20px 0; background: #fff; border-bottom: 1px solid #e2e4f0; position: sticky; top: 0; z-index: 100; flex-wrap: wrap; }
+  .tab-btn { padding: 10px 18px; border: none; background: none; font-size: 13px; font-weight: 600; color: #6B7194; cursor: pointer; border-radius: 10px 10px 0 0; border-bottom: 3px solid transparent; transition: all 0.15s; }
+  .tab-btn:hover { background: #F4F6FB; color: #1A1A2E; }
+  .tab-btn.active { color: #6C5CE7; border-bottom-color: #6C5CE7; background: #F4F6FB; }
+  .tab-panel { display: none; padding: 24px 20px; max-width: 900px; margin: 0 auto; }
+  .tab-panel.active { display: block; }
+
+  /* ── Shared ── */
+  h2 { font-size: 20px; font-weight: 800; color: #1A1A2E; margin-bottom: 6px; }
+  .subtitle { font-size: 13px; color: #6B7194; margin-bottom: 24px; line-height: 1.5; }
+  h3 { font-size: 14px; font-weight: 700; color: #1A1A2E; margin-bottom: 4px; }
+  code { font-family: 'Courier New', monospace; background: #f0f1f8; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+
+  /* ── Nav Model ── */
+  .nav-scenario { background: #fff; border: 1.5px solid #e2e4f0; border-radius: 16px; padding: 20px 24px; margin-bottom: 14px; }
+  .nav-scenario .roles { font-size: 12px; color: #6B7194; margin-bottom: 14px; }
+  .phone-nav { display: flex; align-items: center; background: #f8f9fe; border: 1px solid #e2e4f0; border-radius: 12px; padding: 10px 8px; gap: 4px; }
+  .nav-tab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 4px; border-radius: 10px; font-size: 10px; font-weight: 600; color: #A0A3BD; }
+  .nav-tab.fab { background: linear-gradient(135deg,#6C5CE7,#A29BFE); color: white; border-radius: 50%; width: 44px; height: 44px; flex: none; margin: -6px 4px; box-shadow: 0 4px 16px rgba(108,92,231,0.35); font-size: 9px; }
+  .nav-tab.mentor { background: rgba(16,185,129,0.10); color: #059669; }
+  .nav-tab.mentee { background: rgba(14,165,233,0.10); color: #0EA5E9; }
+  .nav-tab.training { background: rgba(245,158,11,0.10); color: #B45309; }
+  .nav-tab .icon { font-size: 18px; line-height: 1; }
+  .badge { display: inline-block; font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 4px; margin-left: 6px; vertical-align: middle; }
+  .badge-new { background: #D1FAE5; color: #065F46; }
+  .badge-exists { background: #EDE9FE; color: #6C5CE7; }
+  .legend { display: flex; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #3D3D5C; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .note { font-size: 11px; color: #6B7194; margin-top: 8px; }
+
+  /* ── Screen Hierarchy ── */
+  .module-block { border-radius: 16px; padding: 20px 24px; margin-bottom: 18px; }
+  .module-mentor { background: rgba(16,185,129,0.05); border: 1.5px solid rgba(16,185,129,0.25); }
+  .module-mentee { background: rgba(14,165,233,0.05); border: 1.5px solid rgba(14,165,233,0.25); }
+  .module-training { background: rgba(245,158,11,0.05); border: 1.5px solid rgba(245,158,11,0.25); }
+  .module-infra { background: rgba(108,92,231,0.05); border: 1.5px solid rgba(108,92,231,0.25); }
+  .section-label { font-size: 10px; font-weight: 800; color: #6B7194; text-transform: uppercase; letter-spacing: 0.6px; margin: 12px 0 8px; }
+  .screen-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+  .screen-pill { display: flex; align-items: center; gap: 5px; background: white; border: 1px solid #e2e4f0; border-radius: 8px; padding: 5px 10px; font-size: 11px; font-weight: 600; color: #3D3D5C; }
+  .type { font-size: 9px; padding: 2px 5px; border-radius: 4px; font-weight: 800; }
+  .type-tab { background: #EDE9FE; color: #6C5CE7; }
+  .type-modal { background: #FEF3C7; color: #92400E; }
+  .type-sheet { background: #D1FAE5; color: #065F46; }
+  .flow { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+  .arrow { color: #A0A3BD; font-weight: 700; }
+  .api-tag { background: #1A1A2E; color: #A29BFE; font-size: 10px; padding: 2px 7px; border-radius: 4px; font-family: monospace; }
+  .offline-tag { background: #D1FAE5; color: #065F46; font-size: 10px; padding: 2px 7px; border-radius: 4px; font-weight: 700; }
+  .tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+
+  /* ── Offline ── */
+  .flow-diagram { background: #fff; border: 1.5px solid #e2e4f0; border-radius: 14px; padding: 20px; margin-bottom: 16px; }
+  .flow-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+  .box { padding: 7px 12px; border-radius: 9px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+  .box-app { background: #EDE9FE; color: #4A3DC7; border: 1px solid #C4B5FD; }
+  .box-api { background: #DBEAFE; color: #1E40AF; border: 1px solid #BFDBFE; }
+  .box-idb { background: #D1FAE5; color: #065F46; border: 1px solid #6EE7B7; }
+  .box-queue { background: #FEF3C7; color: #92400E; border: 1px solid #FCD34D; }
+  .box-server { background: #1A1A2E; color: #A29BFE; border: 1px solid #3D3D5C; }
+  .label-sm { font-size: 10px; color: #6B7194; }
+  .stores-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-top: 12px; }
+  .store-card { border-radius: 10px; padding: 10px 12px; border: 1px solid #e2e4f0; }
+  .store-exists { background: #F8F9FE; }
+  .store-new { background: #D1FAE5; border-color: #6EE7B7; }
+  .store-card .sname { font-size: 11px; font-weight: 700; font-family: monospace; color: #1A1A2E; }
+  .store-card .sdesc { font-size: 10px; color: #6B7194; margin-top: 2px; }
+  .sync-ops { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+  .sync-op { border-radius: 8px; padding: 9px 11px; }
+  .sync-op-exists { background: #F8F9FE; border: 1px solid #e2e4f0; }
+  .sync-op-new { background: #FEF3C7; border: 1px solid #FCD34D; }
+  .op-name { font-size: 10px; font-weight: 700; font-family: monospace; color: #1A1A2E; }
+  .op-desc { font-size: 10px; color: #6B7194; margin-top: 2px; }
+
+  /* ── API ── */
+  .controller-block { background: #fff; border: 1.5px solid #e2e4f0; border-radius: 14px; padding: 18px 20px; margin-bottom: 14px; }
+  .controller-block .sub { font-size: 11px; color: #6B7194; margin-bottom: 12px; line-height: 1.5; }
+  .route-list { display: flex; flex-direction: column; gap: 8px; }
+  .route { display: flex; align-items: flex-start; gap: 8px; }
+  .method { font-size: 9px; font-weight: 800; padding: 3px 7px; border-radius: 5px; min-width: 36px; text-align: center; flex-shrink: 0; margin-top: 2px; }
+  .get { background: #D1FAE5; color: #065F46; }
+  .post { background: #DBEAFE; color: #1E40AF; }
+  .route-path { font-family: monospace; font-size: 11px; color: #6C5CE7; min-width: 260px; flex-shrink: 0; }
+  .route-desc { font-size: 11px; color: #6B7194; }
+  .service-tag { font-size: 10px; background: #1A1A2E; color: #A29BFE; padding: 1px 6px; border-radius: 4px; font-family: monospace; display: inline-block; margin-top: 2px; }
+</style>
+</head>
+<body>
+
+<div class="tab-nav">
+  <button class="tab-btn active" onclick="showTab('nav')">🗂 Navigation Model</button>
+  <button class="tab-btn" onclick="showTab('screens')">📱 Screen Hierarchy</button>
+  <button class="tab-btn" onclick="showTab('offline')">⚡ Offline Architecture</button>
+  <button class="tab-btn" onclick="showTab('api')">🔌 Backend API</button>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ TAB 1 — NAV MODEL -->
+<div id="tab-nav" class="tab-panel active">
+  <h2>Navigation Model — Role-Aware Bottom Nav</h2>
+  <p class="subtitle">The bottom nav adapts to the user's roles, resolved at login from <code>/auth/me</code> and cached offline. Existing assessment tabs are completely untouched.</p>
+
+  <div class="legend">
+    <div class="legend-item"><div class="dot" style="background:#6C5CE7"></div> Existing (unchanged)</div>
+    <div class="legend-item"><div class="dot" style="background:#10B981"></div> New — Mentor tab</div>
+    <div class="legend-item"><div class="dot" style="background:#0EA5E9"></div> New — Mentee tab</div>
+    <div class="legend-item"><div class="dot" style="background:#F59E0B"></div> New — Training tab</div>
+  </div>
+
+  <div class="nav-scenario">
+    <h3>Assessor Only <span class="badge badge-exists">No change</span></h3>
+    <div class="roles">Roles: any non-mentor non-mentee role — existing app users today</div>
+    <div class="phone-nav">
+      <div class="nav-tab"><div class="icon">🏠</div>Dashboard</div>
+      <div class="nav-tab"><div class="icon">📋</div>Assessments</div>
+      <div class="nav-tab fab"><div class="icon">＋</div></div>
+      <div class="nav-tab"><div class="icon">📊</div>Reports</div>
+      <div class="nav-tab"><div class="icon">👤</div>Profile</div>
+    </div>
+  </div>
+
+  <div class="nav-scenario">
+    <h3>Mentor + Assessor <span class="badge badge-new">Most common field worker</span></h3>
+    <div class="roles">Roles: facility_mentor / spoke_mentor / mentor_lead — conducts assessments AND runs mentorship classes</div>
+    <div class="phone-nav">
+      <div class="nav-tab"><div class="icon">🏠</div>Dashboard</div>
+      <div class="nav-tab"><div class="icon">📋</div>Assessments</div>
+      <div class="nav-tab mentor"><div class="icon">🎓</div>Mentorship</div>
+      <div class="nav-tab"><div class="icon">📊</div>Reports</div>
+      <div class="nav-tab"><div class="icon">👤</div>Profile</div>
+    </div>
+    <div class="note">Center FAB is removed for mentors — "New Assessment" moves to a button inside the Assessments tab header (already exists as a sheet trigger there). No functionality lost.</div>
+  </div>
+
+  <div class="nav-scenario">
+    <h3>Mentee <span class="badge badge-new">New</span></h3>
+    <div class="roles">Roles: mentee — enrolled in classes, may also conduct facility assessments</div>
+    <div class="phone-nav">
+      <div class="nav-tab"><div class="icon">🏠</div>Dashboard</div>
+      <div class="nav-tab mentee"><div class="icon">📚</div>My Classes</div>
+      <div class="nav-tab"><div class="icon">📋</div>Assessments</div>
+      <div class="nav-tab"><div class="icon">📊</div>Reports</div>
+      <div class="nav-tab"><div class="icon">👤</div>Profile</div>
+    </div>
+  </div>
+
+  <div class="nav-scenario">
+    <h3>Admin / Division / Super Admin <span class="badge badge-new">Extended</span></h3>
+    <div class="roles">Roles: super_admin, admin, division — oversight across all modules</div>
+    <div class="phone-nav">
+      <div class="nav-tab"><div class="icon">🏠</div>Dashboard</div>
+      <div class="nav-tab"><div class="icon">📋</div>Assessments</div>
+      <div class="nav-tab mentor"><div class="icon">🎓</div>Mentorship</div>
+      <div class="nav-tab training"><div class="icon">🏛️</div>Trainings</div>
+      <div class="nav-tab"><div class="icon">👤</div>Profile</div>
+    </div>
+    <div class="note">Reports tab collapses into Dashboard for admins (they already see aggregate stats there). Global Trainings tab takes that slot.</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ TAB 2 — SCREENS -->
+<div id="tab-screens" class="tab-panel">
+  <h2>Screen Hierarchy — New Modules</h2>
+  <p class="subtitle">All new screens follow the existing flat state machine pattern. Tab screens are always visible; modals layer over them via <code>modal.type</code>. Sheets slide up from within modals.</p>
+
+  <div class="module-block module-mentor">
+    <h3>🎓 Mentor Module — <code>tab="mentorship"</code></h3>
+
+    <div class="section-label">Tab Screen (always visible when tab active)</div>
+    <div class="screen-row">
+      <div class="screen-pill"><span class="type type-tab">TAB</span> screen-mentorships-list.jsx</div>
+      <div class="api-tag">GET /mentorships</div>
+      <div class="offline-tag">⚡ offline</div>
+    </div>
+    <div class="note">List of my mentorships with status, class count, facility name. Tap → opens detail modal.</div>
+
+    <div class="section-label">Modal stack (layers over tab)</div>
+    <div class="flow">
+      <div class="screen-pill"><span class="type type-modal">MODAL</span> screen-mentorship-detail.jsx</div>
+      <span class="arrow">→</span>
+      <div class="screen-pill"><span class="type type-modal">MODAL</span> screen-class-detail.jsx</div>
+      <span class="arrow">→</span>
+      <div class="screen-pill"><span class="type type-modal">MODAL</span> screen-module-detail.jsx</div>
+    </div>
+    <div class="flow">
+      <div class="screen-pill"><span class="type type-sheet">SHEET</span> AttendanceRosterSheet</div>
+      <span class="arrow">—</span>
+      <span style="font-size:11px;color:#6B7194">Slides up from module detail. Mentor marks each mentee present/absent. Bulk "Mark All" button.</span>
+    </div>
+    <div class="flow">
+      <div class="screen-pill"><span class="type type-modal">MODAL</span> screen-sessions-list.jsx</div>
+      <span class="arrow">—</span>
+      <span style="font-size:11px;color:#6B7194">Sessions within a module. Start / complete each session.</span>
+    </div>
+    <div class="flow">
+      <div class="screen-pill"><span class="type type-modal">MODAL</span> screen-mentee-progress.jsx</div>
+      <span class="arrow">—</span>
+      <span style="font-size:11px;color:#6B7194">Per-mentee progress: module completion, attendance %, assessment scores.</span>
+    </div>
+    <div class="tags">
+      <div class="api-tag">GET /mentorships/{id}/classes</div>
+      <div class="api-tag">GET /classes/{id}/modules</div>
+      <div class="api-tag">GET /classes/{id}/participants</div>
+      <div class="api-tag">POST /modules/{id}/start</div>
+      <div class="api-tag">POST /modules/{id}/complete</div>
+      <div class="api-tag">POST /modules/{id}/attendance/bulk</div>
+    </div>
+  </div>
+
+  <div class="module-block module-mentee">
+    <h3>📚 Mentee Module — <code>tab="myClasses"</code></h3>
+
+    <div class="section-label">Tab Screen</div>
+    <div class="screen-row">
+      <div class="screen-pill"><span class="type type-tab">TAB</span> screen-my-classes.jsx</div>
+      <div class="api-tag">GET /me/classes</div>
+      <div class="offline-tag">⚡ offline</div>
+    </div>
+    <div class="note">Enrolled classes with completion %, active module name, next session date.</div>
+
+    <div class="section-label">Modal stack</div>
+    <div class="flow">
+      <div class="screen-pill"><span class="type type-modal">MODAL</span> screen-class-progress.jsx</div>
+      <span class="arrow">—</span>
+      <span style="font-size:11px;color:#6B7194">Mirrors MenteeClassProgressController. Module list with status badges + Confirm Attendance button per active module.</span>
+    </div>
+    <div class="flow">
+      <div class="screen-pill"><span class="type type-sheet">SHEET</span> AttendanceConfirmSheet</div>
+      <span class="arrow">—</span>
+      <span style="font-size:11px;color:#6B7194">One-tap confirm. No token link needed — user is already authenticated on mobile.</span>
+    </div>
+    <div class="tags">
+      <div class="api-tag">GET /me/classes/{id}</div>
+      <div class="api-tag">GET /me/classes/{id}/progress</div>
+      <div class="api-tag">POST /me/classes/{id}/modules/{id}/attend</div>
+    </div>
+  </div>
+
+  <div class="module-block module-training">
+    <h3>🏛️ Global Training Module — <code>tab="trainings"</code></h3>
+
+    <div class="screen-row">
+      <div class="screen-pill"><span class="type type-tab">TAB</span> screen-trainings-list.jsx</div>
+      <div class="api-tag">GET /trainings</div>
+      <div class="offline-tag">⚡ offline</div>
+    </div>
+    <div class="flow">
+      <div class="screen-pill"><span class="type type-modal">MODAL</span> screen-training-detail.jsx</div>
+      <span class="arrow">+</span>
+      <div class="screen-pill"><span class="type type-modal">MODAL</span> screen-training-participants.jsx</div>
+    </div>
+    <div class="tags">
+      <div class="api-tag">GET /trainings/{id}</div>
+      <div class="api-tag">GET /trainings/{id}/participants</div>
+    </div>
+  </div>
+
+  <div class="module-block module-infra">
+    <h3>⚙️ Shared Changes (no new files — existing files extended)</h3>
+    <div class="screen-row">
+      <div class="screen-pill">App.jsx — role-aware tab list</div>
+      <div class="screen-pill">shared-components.jsx — BottomNav dynamic</div>
+      <div class="screen-pill">constants.js — role helpers + MENTOR_META</div>
+      <div class="screen-pill">offline-store.js — 5 new stores</div>
+      <div class="screen-pill">api.service.js — 3 new namespaces</div>
+      <div class="screen-pill">sync-queue.js — 4 new op types</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ TAB 3 — OFFLINE -->
+<div id="tab-offline" class="tab-panel">
+  <h2>Offline-First Architecture</h2>
+  <p class="subtitle">All new modules use the same read-cache / write-queue pattern as assessments. IndexedDB is extended (not replaced) — DB version bumped 4 → 5.</p>
+
+  <div class="flow-diagram">
+    <h3 style="margin-bottom:14px">Read Flow (all GET requests)</h3>
+    <div class="flow-row">
+      <div class="box box-app">App requests data</div>
+      <span class="arrow">→</span>
+      <div class="box box-api">api.service.js</div>
+      <span class="arrow">→</span>
+      <div class="box box-server">Network request</div>
+      <span class="arrow" style="color:#10B981">✓</span>
+      <div class="box box-idb">Cache in IndexedDB</div>
+      <span class="arrow">→</span>
+      <div class="box box-app">Return to UI</div>
+    </div>
+    <div class="flow-row" style="padding-left: 200px;">
+      <span class="arrow">↓</span><span class="label-sm" style="margin-left:4px">Offline / network fail</span>
+    </div>
+    <div class="flow-row" style="padding-left: 200px;">
+      <div class="box box-idb">Serve cached data</div>
+      <span class="arrow">→</span>
+      <div class="box box-app">UI works normally</div>
+    </div>
+    <p class="label-sm" style="margin-top:10px">Covers: mentorships list, classes, modules, sessions, roster, my classes, module progress, global trainings</p>
+  </div>
+
+  <div class="flow-diagram">
+    <h3 style="margin-bottom:14px">Write Flow (POST/PUT actions)</h3>
+    <div class="flow-row">
+      <div class="box box-app">User action</div>
+      <span class="arrow">→</span>
+      <div class="box box-idb">Update local state optimistically</div>
+      <span class="arrow">→</span>
+      <div class="box box-server">Try network</div>
+      <span class="arrow" style="color:#10B981">✓</span>
+      <div class="box box-app">Confirmed</div>
+    </div>
+    <div class="flow-row" style="padding-left: 320px;">
+      <span class="arrow">↓</span><span class="label-sm" style="margin-left:4px">Offline</span>
+    </div>
+    <div class="flow-row" style="padding-left: 320px;">
+      <div class="box box-queue">Enqueue in SyncQueue</div>
+      <span class="arrow">→</span>
+      <div class="box box-app">Optimistic UI shown</div>
+    </div>
+    <div class="flow-row" style="padding-left: 320px;">
+      <span class="arrow">↓</span><span class="label-sm" style="margin-left:4px">Back online</span>
+    </div>
+    <div class="flow-row" style="padding-left: 320px;">
+      <div class="box box-server">Replay queued ops</div>
+      <span class="arrow">→</span>
+      <div class="box box-app">SyncIndicator clears</div>
+    </div>
+    <p class="label-sm" style="margin-top:10px">Covers: module start/complete, attendance marking (mentor), self-confirm attendance (mentee)</p>
+  </div>
+
+  <div class="flow-diagram">
+    <h3 style="margin-bottom:4px">IndexedDB Stores — <code>mnch_offline</code> v4 → v5</h3>
+    <p class="label-sm" style="margin-bottom:12px">Added via <code>onupgradeneeded</code>. Existing stores are untouched — zero migration risk.</p>
+    <div class="stores-grid">
+      <div class="store-card store-exists"><div class="sname">schema</div><div class="sdesc">Assessment section schema</div></div>
+      <div class="store-card store-exists"><div class="sname">assessments</div><div class="sdesc">Assessment records</div></div>
+      <div class="store-card store-exists"><div class="sname">responses</div><div class="sdesc">Section responses</div></div>
+      <div class="store-card store-exists"><div class="sname">hr / hp</div><div class="sdesc">HR & Health Products</div></div>
+      <div class="store-card store-exists"><div class="sname">user / facilities</div><div class="sdesc">User + facility cache</div></div>
+      <div class="store-card store-exists"><div class="sname">syncQueue / meta</div><div class="sdesc">Write queue + timestamps</div></div>
+      <div class="store-card store-new"><div class="sname">mentorships</div><div class="sdesc">Mentor training + class/module tree</div></div>
+      <div class="store-card store-new"><div class="sname">participants</div><div class="sdesc">Mentee roster per class</div></div>
+      <div class="store-card store-new"><div class="sname">myClasses</div><div class="sdesc">Mentee classes + module progress</div></div>
+      <div class="store-card store-new"><div class="sname">trainings</div><div class="sdesc">MOH global training list</div></div>
+      <div class="store-card store-new"><div class="sname">attendance</div><div class="sdesc">Module attendance state</div></div>
+    </div>
+  </div>
+
+  <div class="flow-diagram">
+    <h3 style="margin-bottom:12px">Sync Queue — New Operation Types</h3>
+    <div class="sync-ops">
+      <div class="sync-op sync-op-exists"><div class="op-name">assessments.create / submit</div><div class="op-desc">Existing — unchanged</div></div>
+      <div class="sync-op sync-op-exists"><div class="op-name">responses.bulkSave / hr.save / hp.save</div><div class="op-desc">Existing — unchanged</div></div>
+      <div class="sync-op sync-op-new"><div class="op-name">mentorship.module.start</div><div class="op-desc">Queued when mentor starts a module offline</div></div>
+      <div class="sync-op sync-op-new"><div class="op-name">mentorship.module.complete</div><div class="op-desc">Queued when mentor completes a module offline</div></div>
+      <div class="sync-op sync-op-new"><div class="op-name">mentorship.attendance.mark</div><div class="op-desc">Mentor marks mentee present/absent offline</div></div>
+      <div class="sync-op sync-op-new"><div class="op-name">mentee.attendance.confirm</div><div class="op-desc">Mentee self-confirms module attendance offline</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ TAB 4 — API -->
+<div id="tab-api" class="tab-panel">
+  <h2>Backend API — New Controllers</h2>
+  <p class="subtitle">6 new controllers in <code>app/Http/Controllers/Api/</code>. All delegate to existing Services — no business logic duplicated. Routes added to <code>routes/api.php</code> under the existing Sanctum middleware group.</p>
+
+  <div class="controller-block">
+    <h3>MentorshipController</h3>
+    <div class="sub">Scoped to authenticated user — mentor_id = me OR accepted co-mentor. Uses Training model filtered to type='facility_mentorship'.</div>
+    <div class="route-list">
+      <div class="route"><span class="method get">GET</span><span class="route-path">/api/v1/mentorships</span><div class="route-desc">My mentorships with class counts and overall status</div></div>
+      <div class="route"><span class="method get">GET</span><span class="route-path">/api/v1/mentorships/{id}</span><div class="route-desc">Training detail + classes + KPIs (mirrors MentorDashboard loader)</div></div>
+      <div class="route"><span class="method get">GET</span><span class="route-path">/api/v1/mentorships/{id}/classes</span><div class="route-desc">All MentorshipClass records for this training</div></div>
+      <div class="route"><span class="method get">GET</span><span class="route-path">/api/v1/mentorships/{id}/classes/{classId}</span><div class="route-desc">Class detail + modules list + participant count</div></div>
+    </div>
+  </div>
+
+  <div class="controller-block">
+    <h3>ClassModuleController</h3>
+    <div class="sub">Module lifecycle. Calls ClassModule::start() and ClassModule::complete() — exact same methods as Filament page actions.</div>
+    <div class="route-list">
+      <div class="route"><span class="method get">GET</span><span class="route-path">/api/v1/classes/{classId}/modules</span><div class="route-desc">ClassModules with status, session count, attendance rate, programModule name</div></div>
+      <div class="route"><span class="method post">POST</span><span class="route-path">/api/v1/modules/{moduleId}/start</span><div><div class="route-desc">Start module → generates attendance_token, creates MenteeModuleProgress rows</div><div class="service-tag">ClassModule::start()</div></div></div>
+      <div class="route"><span class="method post">POST</span><span class="route-path">/api/v1/modules/{moduleId}/complete</span><div><div class="route-desc">Complete module → finalises all participant progress records</div><div class="service-tag">ClassModule::complete()</div></div></div>
+      <div class="route"><span class="method get">GET</span><span class="route-path">/api/v1/modules/{moduleId}/sessions</span><div class="route-desc">ClassSessions with scheduled dates, duration, status</div></div>
+    </div>
+  </div>
+
+  <div class="controller-block">
+    <h3>AttendanceApiController</h3>
+    <div class="sub">Mentor marks module attendance for their roster. Delegates entirely to AttendanceService.</div>
+    <div class="route-list">
+      <div class="route"><span class="method get">GET</span><span class="route-path">/api/v1/modules/{moduleId}/attendance</span><div class="route-desc">Participant roster with present / absent / not_started status</div></div>
+      <div class="route"><span class="method post">POST</span><span class="route-path">/api/v1/modules/{moduleId}/attendance/{participantId}</span><div><div class="route-desc">Mark one participant. Body: <code>{ status: "present"|"absent" }</code></div><div class="service-tag">AttendanceService::markManualModuleAttendance()</div></div></div>
+      <div class="route"><span class="method post">POST</span><span class="route-path">/api/v1/modules/{moduleId}/attendance/bulk</span><div><div class="route-desc">Mark all at once. Body: <code>{ attendances: [{participant_id, status}] }</code></div><div class="service-tag">AttendanceService — loop</div></div></div>
+    </div>
+  </div>
+
+  <div class="controller-block">
+    <h3>MenteeApiController</h3>
+    <div class="sub">Mentee's own classes and progress. Mirrors MenteeClassProgressController as JSON. Self-confirm attendance without needing a token link — user is authenticated.</div>
+    <div class="route-list">
+      <div class="route"><span class="method get">GET</span><span class="route-path">/api/v1/me/classes</span><div class="route-desc">All enrolled classes with training summary and completion %</div></div>
+      <div class="route"><span class="method get">GET</span><span class="route-path">/api/v1/me/classes/{classId}</span><div class="route-desc">Class detail + all MenteeModuleProgress records + confirmed attendance flags</div></div>
+      <div class="route"><span class="method post">POST</span><span class="route-path">/api/v1/me/classes/{classId}/modules/{moduleId}/attend</span><div><div class="route-desc">Self-confirm attendance. Guards: module in_progress, user enrolled.</div><div class="service-tag">AttendanceService::confirmModuleAttendance()</div></div></div>
+    </div>
+  </div>
+
+  <div class="controller-block">
+    <h3>ParticipantController</h3>
+    <div class="sub">Mentor views the mentee roster and drills into individual progress.</div>
+    <div class="route-list">
+      <div class="route"><span class="method get">GET</span><span class="route-path">/api/v1/classes/{classId}/participants</span><div class="route-desc">All ClassParticipants with user info, completion %, attendance rate</div></div>
+      <div class="route"><span class="method get">GET</span><span class="route-path">/api/v1/participants/{participantId}/progress</span><div class="route-desc">Full MenteeModuleProgress breakdown — mirrors MenteeProgress Filament page</div></div>
+    </div>
+  </div>
+
+  <div class="controller-block">
+    <h3>GlobalTrainingController</h3>
+    <div class="sub">MOH/national trainings. Admins see all; participants see only their registered trainings.</div>
+    <div class="route-list">
+      <div class="route"><span class="method get">GET</span><span class="route-path">/api/v1/trainings</span><div class="route-desc">Scoped to user's role — all for admin, my registrations for participants</div></div>
+      <div class="route"><span class="method get">GET</span><span class="route-path">/api/v1/trainings/{id}</span><div class="route-desc">Training detail with participant count, dates, location, program</div></div>
+      <div class="route"><span class="method get">GET</span><span class="route-path">/api/v1/trainings/{id}/participants</span><div class="route-desc">TrainingParticipant roster with completion_status and attendance_status</div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+function showTab(name) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>
+</body>
+</html>

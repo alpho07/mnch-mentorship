@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Resources\MentorshipTrainingResource\Pages;
+namespace App\Filament\Pages;
 
 use App\Filament\Resources\MentorshipTrainingResource;
 use App\Models\ClassAttendance;

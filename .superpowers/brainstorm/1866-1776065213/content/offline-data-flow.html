@@ -1,0 +1,174 @@
+<h2>Offline-First Data Architecture</h2>
+<p class="subtitle">Every new module follows the same offline-first pattern as assessments. IndexedDB stores are extended, not replaced. The sync queue gets new operation types.</p>
+
+<style>
+  .flow-diagram { background: #fff; border: 1.5px solid #e2e4f0; border-radius: 16px; padding: 24px; margin-bottom: 20px; }
+  .flow-diagram h3 { margin: 0 0 16px; font-size: 14px; font-weight: 700; color: #1A1A2E; }
+  .flow-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+  .box { padding: 8px 14px; border-radius: 10px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .box-app { background: #6C5CE720; color: #4A3DC7; border: 1px solid #6C5CE740; }
+  .box-api { background: #0EA5E920; color: #0369A1; border: 1px solid #0EA5E940; }
+  .box-idb { background: #10B98120; color: #065F46; border: 1px solid #10B98140; }
+  .box-queue { background: #F59E0B20; color: #92400E; border: 1px solid #F59E0B40; }
+  .box-server { background: #1A1A2E; color: #A29BFE; border: 1px solid #3D3D5C; }
+  .arrow { color: #A0A3BD; font-weight: 700; font-size: 14px; }
+  .label-sm { font-size: 10px; color: #6B7194; }
+  .divider { border: none; border-top: 1px dashed #e2e4f0; margin: 16px 0; }
+  .stores-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; margin-top: 12px; }
+  .store-card { border-radius: 10px; padding: 12px; border: 1px solid #e2e4f0; }
+  .store-exists { background: #F4F6FB; }
+  .store-new { background: #D1FAE5; border-color: #6EE7B7; }
+  .store-card .name { font-size: 12px; font-weight: 700; color: #1A1A2E; font-family: monospace; }
+  .store-card .desc { font-size: 10px; color: #6B7194; margin-top: 3px; }
+  .store-card .badge { font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 4px; margin-top: 6px; display: inline-block; }
+  .badge-exists { background: #6C5CE720; color: #6C5CE7; }
+  .badge-new { background: #10B98120; color: #065F46; }
+  .sync-ops { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+  .sync-op { border-radius: 8px; padding: 10px 12px; }
+  .sync-op-exists { background: #F4F6FB; border: 1px solid #e2e4f0; }
+  .sync-op-new { background: #FEF3C7; border: 1px solid #FCD34D; }
+  .sync-op .op-name { font-size: 11px; font-weight: 700; font-family: monospace; color: #1A1A2E; }
+  .sync-op .op-desc { font-size: 10px; color: #6B7194; margin-top: 2px; }
+</style>
+
+<!-- Read flow -->
+<div class="flow-diagram">
+  <h3>Read Flow — All data types (GET requests)</h3>
+  <div class="flow-row">
+    <div class="box box-app">App requests data</div>
+    <div class="arrow">→</div>
+    <div class="box box-api">api.service.js</div>
+    <div class="arrow">→</div>
+    <div class="box box-server">Network request</div>
+    <div class="arrow">✓</div>
+    <div class="box box-idb">Cache in IndexedDB</div>
+    <div class="arrow">→</div>
+    <div class="box box-app">Return to UI</div>
+  </div>
+  <div class="flow-row" style="padding-left:130px">
+    <div class="arrow" style="transform:rotate(90deg)">↓</div>
+    <div class="label-sm">Network fails / offline</div>
+  </div>
+  <div class="flow-row" style="padding-left: 130px">
+    <div class="box box-idb">Return cached data</div>
+    <div class="arrow">→</div>
+    <div class="box box-app">UI works normally</div>
+  </div>
+  <p class="label-sm" style="margin-top:10px">Applies to: mentorships list, classes, modules, sessions, participant roster, my enrolled classes, module progress, global trainings</p>
+</div>
+
+<!-- Write flow -->
+<div class="flow-diagram">
+  <h3>Write Flow — Actions (POST requests)</h3>
+  <div class="flow-row">
+    <div class="box box-app">User takes action</div>
+    <div class="arrow">→</div>
+    <div class="box box-idb">Update local state</div>
+    <div class="arrow">→</div>
+    <div class="box box-server">Try network</div>
+    <div class="arrow">✓</div>
+    <div class="box box-app">Confirm</div>
+  </div>
+  <div class="flow-row" style="padding-left: 290px">
+    <div class="arrow" style="transform:rotate(90deg)">↓</div>
+    <div class="label-sm">Offline</div>
+  </div>
+  <div class="flow-row" style="padding-left: 290px">
+    <div class="box box-queue">Enqueue in SyncQueue</div>
+    <div class="arrow">→</div>
+    <div class="box box-app">Optimistic UI shown</div>
+  </div>
+  <div class="flow-row" style="padding-left: 290px">
+    <div class="arrow" style="transform:rotate(90deg)">↓</div>
+    <div class="label-sm">Back online</div>
+  </div>
+  <div class="flow-row" style="padding-left: 290px">
+    <div class="box box-server">Replay queued ops</div>
+    <div class="arrow">→</div>
+    <div class="box box-app">Sync indicator clears</div>
+  </div>
+  <p class="label-sm" style="margin-top:10px">Applies to: module start/complete, attendance marking, mentee self-confirm attendance</p>
+</div>
+
+<!-- IndexedDB stores -->
+<div class="flow-diagram">
+  <h3>IndexedDB Stores — mnch_offline (version 5)</h3>
+  <p class="label-sm" style="margin-bottom:0">New stores added via <code>onupgradeneeded</code>. Existing stores untouched. DB version bumped 4 → 5.</p>
+  <div class="stores-grid">
+    <div class="store-card store-exists">
+      <div class="name">schema</div><div class="desc">Assessment section schema</div>
+      <span class="badge badge-exists">Existing</span>
+    </div>
+    <div class="store-card store-exists">
+      <div class="name">assessments</div><div class="desc">Assessment records</div>
+      <span class="badge badge-exists">Existing</span>
+    </div>
+    <div class="store-card store-exists">
+      <div class="name">responses</div><div class="desc">Assessment responses</div>
+      <span class="badge badge-exists">Existing</span>
+    </div>
+    <div class="store-card store-exists">
+      <div class="name">hr / hp</div><div class="desc">HR & Health Products</div>
+      <span class="badge badge-exists">Existing</span>
+    </div>
+    <div class="store-card store-exists">
+      <div class="name">user / facilities</div><div class="desc">User + facility cache</div>
+      <span class="badge badge-exists">Existing</span>
+    </div>
+    <div class="store-card store-exists">
+      <div class="name">syncQueue / meta</div><div class="desc">Write queue + timestamps</div>
+      <span class="badge badge-exists">Existing</span>
+    </div>
+    <div class="store-card store-new">
+      <div class="name">mentorships</div><div class="desc">Mentor's training list + class/module tree</div>
+      <span class="badge badge-new">New</span>
+    </div>
+    <div class="store-card store-new">
+      <div class="name">participants</div><div class="desc">Mentee roster per class</div>
+      <span class="badge badge-new">New</span>
+    </div>
+    <div class="store-card store-new">
+      <div class="name">myClasses</div><div class="desc">Mentee enrolled classes + module progress</div>
+      <span class="badge badge-new">New</span>
+    </div>
+    <div class="store-card store-new">
+      <div class="name">trainings</div><div class="desc">Global/MOH training list</div>
+      <span class="badge badge-new">New</span>
+    </div>
+    <div class="store-card store-new">
+      <div class="name">attendance</div><div class="desc">Offline attendance state per module</div>
+      <span class="badge badge-new">New</span>
+    </div>
+  </div>
+</div>
+
+<!-- Sync Queue new ops -->
+<div class="flow-diagram">
+  <h3>Sync Queue — New Operation Types</h3>
+  <div class="sync-ops">
+    <div class="sync-op sync-op-exists">
+      <div class="op-name">assessments.create / submit</div>
+      <div class="op-desc">Existing — unchanged</div>
+    </div>
+    <div class="sync-op sync-op-exists">
+      <div class="op-name">responses.bulkSave / humanResources.save</div>
+      <div class="op-desc">Existing — unchanged</div>
+    </div>
+    <div class="sync-op sync-op-new">
+      <div class="op-name">mentorship.module.start</div>
+      <div class="op-desc">Queued when mentor starts a module offline</div>
+    </div>
+    <div class="sync-op sync-op-new">
+      <div class="op-name">mentorship.module.complete</div>
+      <div class="op-desc">Queued when mentor completes a module offline</div>
+    </div>
+    <div class="sync-op sync-op-new">
+      <div class="op-name">mentorship.attendance.mark</div>
+      <div class="op-desc">Mentor marks a mentee present/absent offline</div>
+    </div>
+    <div class="sync-op sync-op-new">
+      <div class="op-name">mentee.attendance.confirm</div>
+      <div class="op-desc">Mentee self-confirms attendance for a module</div>
+    </div>
+  </div>
+</div>

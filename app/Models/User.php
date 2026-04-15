@@ -166,6 +166,10 @@ class User extends Authenticatable {
         return $this->hasMany(TrainingParticipant::class);
     }
 
+    public function classParticipations(): HasMany {
+        return $this->hasMany(ClassParticipant::class);
+    }
+
     // Many-to-many relationships for user access scoping
     public function counties(): BelongsToMany {
         return $this->belongsToMany(County::class, 'county_user');
@@ -206,7 +210,7 @@ class User extends Authenticatable {
 
     // Authorization Helper Methods
     public function isAboveSite(): bool {
-        return $this->hasRole(['Super Admin', 'Division Lead', 'National Mentor Lead']);
+        return $this->hasRole(['super_admin', 'admin', 'division', 'national', 'division_lead', 'national_mentor_lead']);
     }
 
     public function scopedCountyIds() {

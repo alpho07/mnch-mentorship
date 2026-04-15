@@ -17,6 +17,7 @@ class EditUser extends EditRecord {
         $data['counties'] = $user->counties->pluck('id')->toArray();
         $data['subcounties'] = $user->subcounties->pluck('id')->toArray();
         $data['facilities'] = $user->facilities->pluck('id')->toArray();
+        $data = UserResource::populateNamePartsFromDisplayName($data);
 
         // Recalculate display name from first, middle, last names
         $parts = array_filter([

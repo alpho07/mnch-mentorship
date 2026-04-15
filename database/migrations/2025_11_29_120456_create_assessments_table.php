@@ -11,6 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Superseded by 2025_12_01_064530_create_assessments_table.php
+        return;
         Schema::create('assessments', function (Blueprint $table) {
             $table->id();
             $table->string('assessment_number')->unique(); // e.g., ASS-2024-001

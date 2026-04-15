@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Resources\IndicatorReportTypeResource\RelationManagers;
+namespace App\Filament\Resources\IndicatorGroupResource\RelationManagers;
 
 use Filament\Forms;
 use Filament\Forms\Form;

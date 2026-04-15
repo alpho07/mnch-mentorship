@@ -157,3 +157,60 @@ export function getSectionCompletion(questions, responses) {
     });
     return { total: required.length, answered: answered.length };
 }
+
+// ─── Role sets ────────────────────────────────────────────────────────────────
+export const MENTOR_ROLES = new Set([
+    'facility_mentor', 'spoke_mentor', 'spoke_mentor_lead',
+    'county_mentor_lead', 'subcounty_mentor_lead', 'facility_mentor_lead',
+    'mentor_lead',
+]);
+export const MENTEE_ROLES = new Set(['mentee']);
+export const ASSESSOR_ROLES = new Set(['Assessor']);
+export const ADMIN_ROLES = new Set(['super_admin', 'admin', 'division', 'national']);
+
+/**
+ * Compute the dynamic tab list from an array of role name strings.
+ * Returns { tabs, showFab }.
+ */
+export function computeTabs(roles = []) {
+    const roleSet = new Set(roles);
+    const isMentor   = [...MENTOR_ROLES].some(r => roleSet.has(r));
+    const isMentee   = [...MENTEE_ROLES].some(r => roleSet.has(r));
+    const isAssessor = [...ASSESSOR_ROLES].some(r => roleSet.has(r));
+    const isAdmin    = [...ADMIN_ROLES].some(r => roleSet.has(r));
+
+    const tabs = [{ key: 'dashboard', label: 'Home', iconKey: 'dashboard' }];
+
+    if (isAssessor || isAdmin) {
+        tabs.push({ key: 'assessments', label: 'Assessments', iconKey: 'assessments' });
+    }
+    if (isMentor || isAdmin) {
+        tabs.push({ key: 'mentorship', label: 'Mentorship', iconKey: 'mentorship' });
+    }
+    if (isMentee || isAdmin) {
+        tabs.push({ key: 'myClasses', label: 'My Classes', iconKey: 'myClasses' });
+    }
+    if (isAdmin || isMentee) {
+        tabs.push({ key: 'trainings', label: 'Trainings', iconKey: 'trainings' });
+    }
+    if (isAssessor || isAdmin) {
+        tabs.push({ key: 'reports', label: 'Reports', iconKey: 'reports' });
+    }
+
+    tabs.push({ key: 'profile', label: 'Profile', iconKey: 'profile' });
+
+    // FAB only for assessor-only users (not mentors/mentees)
+    const showFab = isAssessor && !isMentor && !isMentee;
+
+    return { tabs, showFab };
+}
+
+// ─── Mentor/Mentee metadata ───────────────────────────────────────────────────
+export const MENTOR_META = {
+    icon: '🎓',
+    gradient: ['#10B981', '#059669'],
+};
+export const MENTEE_META = {
+    icon: '📚',
+    gradient: ['#0EA5E9', '#0369A1'],
+};

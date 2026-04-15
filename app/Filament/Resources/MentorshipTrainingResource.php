@@ -2,7 +2,7 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\MentorshipTrainingResource\Pages;
+use App\Filament\Resources\MentorshipResource\Pages;
 use App\Models\ClassParticipant;
 use App\Models\Facility;
 use App\Models\Training;

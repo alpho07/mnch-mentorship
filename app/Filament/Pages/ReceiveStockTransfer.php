@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Resources\StockTransferResource\Pages;
+namespace App\Filament\Pages;
 
 use App\Filament\Resources\StockTransferResource;
 use App\Models\StockTransfer;

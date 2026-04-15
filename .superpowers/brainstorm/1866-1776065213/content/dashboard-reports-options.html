@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard & Reports — Combined Role Design</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #F4F6FB; color: #1A1A2E; }
+
+  .tab-nav { display: flex; gap: 4px; padding: 16px 20px 0; background: #fff; border-bottom: 1px solid #e2e4f0; position: sticky; top: 0; z-index: 100; }
+  .tab-btn { padding: 10px 18px; border: none; background: none; font-size: 13px; font-weight: 600; color: #6B7194; cursor: pointer; border-radius: 10px 10px 0 0; border-bottom: 3px solid transparent; transition: all 0.15s; }
+  .tab-btn:hover { background: #F4F6FB; color: #1A1A2E; }
+  .tab-btn.active { color: #6C5CE7; border-bottom-color: #6C5CE7; background: #F4F6FB; }
+  .tab-panel { display: none; padding: 24px 20px; max-width: 1100px; margin: 0 auto; }
+  .tab-panel.active { display: block; }
+
+  h2 { font-size: 20px; font-weight: 800; margin-bottom: 6px; }
+  h3 { font-size: 14px; font-weight: 700; }
+  .subtitle { font-size: 13px; color: #6B7194; margin-bottom: 24px; line-height: 1.5; }
+  .label { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; color: #6B7194; margin-bottom: 8px; }
+
+  /* Options grid */
+  .options-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 28px; }
+  @media(max-width: 800px) { .options-grid { grid-template-columns: 1fr; } }
+
+  .option-card { background: #fff; border: 2px solid #e2e4f0; border-radius: 16px; overflow: hidden; cursor: pointer; transition: all 0.15s; }
+  .option-card:hover { border-color: #A29BFE; box-shadow: 0 8px 32px rgba(108,92,231,0.12); }
+  .option-card.selected { border-color: #6C5CE7; box-shadow: 0 8px 32px rgba(108,92,231,0.18); }
+  .option-card.recommended { border-color: #10B981; }
+  .option-card.recommended .option-header { background: linear-gradient(135deg, #059669, #10B981); }
+
+  .option-header { background: linear-gradient(135deg, #6C5CE7, #A29BFE); color: white; padding: 14px 16px; }
+  .option-header h3 { font-size: 14px; color: white; margin-bottom: 2px; }
+  .option-header .opt-num { font-size: 11px; opacity: 0.8; }
+
+  .option-body { padding: 16px; }
+  .option-body .desc { font-size: 12px; color: #6B7194; margin-bottom: 12px; line-height: 1.5; }
+
+  .pros-cons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 11px; }
+  .pros { color: #065F46; }
+  .cons { color: #991B1B; }
+  .pros li, .cons li { margin-left: 14px; margin-bottom: 2px; }
+
+  /* Phone mockup */
+  .phone { width: 100%; max-width: 220px; margin: 12px auto; border: 2px solid #1A1A2E; border-radius: 24px; overflow: hidden; background: #F4F6FB; box-shadow: 0 8px 24px rgba(0,0,0,0.15); }
+  .phone-status { background: #1A1A2E; color: white; font-size: 9px; padding: 6px 12px; display: flex; justify-content: space-between; }
+  .phone-content { padding: 0; min-height: 340px; }
+  .phone-nav-bar { display: flex; background: white; border-top: 1px solid #e2e4f0; padding: 6px 4px 2px; }
+  .pnav { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 8px; font-weight: 600; color: #A0A3BD; padding: 4px 2px; border-radius: 6px; }
+  .pnav.act { color: #6C5CE7; background: rgba(108,92,231,0.08); }
+  .pnav.grn { color: #059669; background: rgba(16,185,129,0.08); }
+  .pnav .ico { font-size: 14px; }
+
+  /* Mock dashboard elements */
+  .mock-header { background: linear-gradient(135deg, #064E3B, #059669); padding: 14px 12px 10px; color: white; }
+  .mock-header .greeting { font-size: 10px; opacity: 0.8; }
+  .mock-header .name { font-size: 14px; font-weight: 700; }
+  .mock-toggle { display: flex; background: rgba(255,255,255,0.15); border-radius: 20px; padding: 2px; margin-top: 8px; }
+  .mock-toggle span { flex: 1; text-align: center; font-size: 9px; font-weight: 700; padding: 4px 6px; border-radius: 16px; }
+  .mock-toggle span.on { background: white; color: #059669; }
+  .mock-toggle span.off { color: rgba(255,255,255,0.7); }
+
+  .mock-seg { display: flex; background: #F4F6FB; border-radius: 10px; padding: 2px; margin: 8px 10px; }
+  .mock-seg span { flex: 1; text-align: center; font-size: 8px; font-weight: 700; padding: 5px 4px; border-radius: 8px; color: #6B7194; }
+  .mock-seg span.on { background: white; color: #6C5CE7; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+
+  .mock-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 0 10px 8px; }
+  .mock-stat { background: white; border-radius: 10px; padding: 8px; text-align: center; }
+  .mock-stat .num { font-size: 16px; font-weight: 800; color: #6C5CE7; }
+  .mock-stat .lbl { font-size: 8px; color: #6B7194; }
+  .mock-stat.grn .num { color: #059669; }
+  .mock-stat.amber .num { color: #D97706; }
+
+  .mock-section-header { display: flex; align-items: center; justify-content: space-between; padding: 6px 10px 4px; }
+  .mock-section-header span { font-size: 10px; font-weight: 700; color: #1A1A2E; }
+  .mock-section-header a { font-size: 9px; color: #6C5CE7; }
+
+  .mock-card { background: white; border-radius: 10px; margin: 0 10px 6px; padding: 8px 10px; display: flex; align-items: center; gap: 8px; }
+  .mock-card .icon-box { width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+  .mock-card .info .title { font-size: 10px; font-weight: 700; color: #1A1A2E; }
+  .mock-card .info .sub { font-size: 9px; color: #6B7194; }
+  .mock-card .badge { margin-left: auto; font-size: 8px; font-weight: 700; padding: 2px 6px; border-radius: 10px; }
+  .badge-grn { background: #D1FAE5; color: #065F46; }
+  .badge-amber { background: #FEF3C7; color: #92400E; }
+  .badge-blue { background: #DBEAFE; color: #1E40AF; }
+  .badge-purple { background: #EDE9FE; color: #6C5CE7; }
+
+  .mock-scroll-hint { text-align: center; font-size: 8px; color: #A0A3BD; padding: 4px; }
+
+  /* Reports mock elements */
+  .mock-inner-tabs { display: flex; gap: 0; border-bottom: 1px solid #e2e4f0; background: white; }
+  .mock-inner-tab { flex: 1; text-align: center; font-size: 9px; font-weight: 700; padding: 8px 4px; color: #6B7194; border-bottom: 2px solid transparent; }
+  .mock-inner-tab.on { color: #6C5CE7; border-bottom-color: #6C5CE7; }
+
+  .mock-report-item { background: white; border-radius: 10px; margin: 6px 10px; padding: 8px 10px; }
+  .mock-report-item .rt { font-size: 8px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 2px; }
+  .mock-report-item .rn { font-size: 10px; font-weight: 700; color: #1A1A2E; }
+  .mock-report-item .rs { font-size: 8px; color: #6B7194; }
+
+  .recommendation-box { background: linear-gradient(135deg, rgba(16,185,129,0.08), rgba(16,185,129,0.03)); border: 2px solid rgba(16,185,129,0.3); border-radius: 16px; padding: 20px 24px; margin-top: 8px; }
+  .recommendation-box h3 { color: #065F46; margin-bottom: 8px; font-size: 15px; }
+  .recommendation-box p { font-size: 13px; color: #3D3D5C; line-height: 1.6; }
+</style>
+</head>
+<body>
+
+<div class="tab-nav">
+  <button class="tab-btn active" onclick="showTab('dashboard')">🏠 Dashboard Solutions</button>
+  <button class="tab-btn" onclick="showTab('reports')">📊 Reports Solutions</button>
+  <button class="tab-btn" onclick="showTab('nav-updated')">🗂 Updated Nav Model</button>
+</div>
+
+<!-- ═══════════════ DASHBOARD TAB ═══════════════ -->
+<div id="tab-dashboard" class="tab-panel active">
+  <h2>Dashboard — Combined Role Problem</h2>
+  <p class="subtitle">
+    When a user is both an <strong>Assessor</strong> and a <strong>Mentor</strong>, the Dashboard needs to show KPIs for both domains.
+    Three approaches — each with a phone mockup so you can see what it actually feels like.
+  </p>
+
+  <div class="options-grid">
+
+    <!-- Option A: Mode Toggle in Header -->
+    <div class="option-card" onclick="this.classList.toggle('selected')">
+      <div class="option-header">
+        <div class="opt-num">Option A</div>
+        <h3>Mode Toggle in Header</h3>
+      </div>
+      <div class="phone">
+        <div class="phone-status"><span>9:41</span><span>📶 🔋</span></div>
+        <div class="phone-content">
+          <div class="mock-header">
+            <div class="greeting">Good morning,</div>
+            <div class="name">Dr. Kamau 👋</div>
+            <div class="mock-toggle">
+              <span class="on">📋 Assessments</span>
+              <span class="off">🎓 Mentorship</span>
+            </div>
+          </div>
+          <div class="mock-stats" style="margin-top:8px">
+            <div class="mock-stat"><div class="num">12</div><div class="lbl">Assessments</div></div>
+            <div class="mock-stat grn"><div class="num">83%</div><div class="lbl">Avg Score</div></div>
+            <div class="mock-stat amber"><div class="num">3</div><div class="lbl">In Progress</div></div>
+            <div class="mock-stat"><div class="num">9</div><div class="lbl">Completed</div></div>
+          </div>
+          <div class="mock-section-header"><span>Recent Assessments</span><a>See all</a></div>
+          <div class="mock-card"><div class="icon-box" style="background:#EDE9FE">📋</div><div class="info"><div class="title">Mama Lucy Kibaki</div><div class="sub">Apr 10 · Infrastructure</div></div><span class="badge badge-grn">Good</span></div>
+          <div class="mock-card"><div class="icon-box" style="background:#FEF3C7">📋</div><div class="info"><div class="title">Kenyatta Nat. Hospital</div><div class="sub">Apr 8 · Skills Lab</div></div><span class="badge badge-amber">Fair</span></div>
+        </div>
+        <div class="phone-nav-bar">
+          <div class="pnav act"><div class="ico">🏠</div>Home</div>
+          <div class="pnav"><div class="ico">📋</div>Assess</div>
+          <div class="pnav grn"><div class="ico">🎓</div>Mentor</div>
+          <div class="pnav"><div class="ico">📊</div>Reports</div>
+          <div class="pnav"><div class="ico">👤</div>Me</div>
+        </div>
+      </div>
+      <div class="option-body">
+        <div class="desc">A pill toggle in the dashboard header switches the entire KPI section and recent activity list between "Assessments" and "Mentorship" mode. One dashboard, two views.</div>
+        <div class="pros-cons">
+          <div class="pros"><strong>✓ Pros</strong><ul><li>Very clear switching</li><li>Each view is clean and focused</li><li>Easy to implement</li></ul></div>
+          <div class="cons"><strong>✗ Cons</strong><ul><li>Can't see both at a glance</li><li>Extra tap to switch views</li></ul></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Option B: Unified Scrollable -->
+    <div class="option-card recommended" onclick="this.classList.toggle('selected')">
+      <div class="option-header">
+        <div class="opt-num">Option B ⭐ Recommended</div>
+        <h3>Unified Scrollable Dashboard</h3>
+      </div>
+      <div class="phone">
+        <div class="phone-status"><span>9:41</span><span>📶 🔋</span></div>
+        <div class="phone-content">
+          <div class="mock-header" style="padding-bottom:14px">
+            <div class="greeting">Good morning,</div>
+            <div class="name">Dr. Kamau 👋</div>
+            <div style="display:flex;gap:6px;margin-top:8px">
+              <div style="background:rgba(255,255,255,0.2);border-radius:8px;padding:4px 8px;font-size:9px;font-weight:700;color:white">📋 Assessor</div>
+              <div style="background:rgba(255,255,255,0.2);border-radius:8px;padding:4px 8px;font-size:9px;font-weight:700;color:white">🎓 Mentor</div>
+            </div>
+          </div>
+          <!-- Assessment section -->
+          <div class="mock-section-header" style="margin-top:8px">
+            <span style="color:#6C5CE7">📋 ASSESSMENTS</span>
+            <a>See all →</a>
+          </div>
+          <div class="mock-stats" style="padding-bottom:4px">
+            <div class="mock-stat"><div class="num">12</div><div class="lbl">Total</div></div>
+            <div class="mock-stat grn"><div class="num">83%</div><div class="lbl">Avg Score</div></div>
+          </div>
+          <div class="mock-card"><div class="icon-box" style="background:#EDE9FE">📋</div><div class="info"><div class="title">Mama Lucy Kibaki</div><div class="sub">Apr 10</div></div><span class="badge badge-grn">Good</span></div>
+          <!-- Mentor section -->
+          <div class="mock-section-header">
+            <span style="color:#059669">🎓 MENTORSHIP</span>
+            <a>See all →</a>
+          </div>
+          <div class="mock-stats" style="padding-bottom:4px">
+            <div class="mock-stat grn"><div class="num">2</div><div class="lbl">Classes</div></div>
+            <div class="mock-stat grn"><div class="num">78%</div><div class="lbl">Attendance</div></div>
+          </div>
+          <div class="mock-card"><div class="icon-box" style="background:#D1FAE5">🎓</div><div class="info"><div class="title">Jan 2025 Cohort</div><div class="sub">Module 3 active</div></div><span class="badge badge-amber">In Progress</span></div>
+          <div class="mock-scroll-hint">↕ scroll for more</div>
+        </div>
+        <div class="phone-nav-bar">
+          <div class="pnav act"><div class="ico">🏠</div>Home</div>
+          <div class="pnav"><div class="ico">📋</div>Assess</div>
+          <div class="pnav grn"><div class="ico">🎓</div>Mentor</div>
+          <div class="pnav"><div class="ico">📊</div>Reports</div>
+          <div class="pnav"><div class="ico">👤</div>Me</div>
+        </div>
+      </div>
+      <div class="option-body">
+        <div class="desc">One scroll shows role badges at top, then an Assessment section (mini KPIs + 1 recent), then a Mentorship section (mini KPIs + 1 recent). Each section has a "See all →" deep-link to the relevant tab.</div>
+        <div class="pros-cons">
+          <div class="pros"><strong>✓ Pros</strong><ul><li>Both roles visible at once</li><li>No extra taps to switch</li><li>Natural scroll = natural hierarchy</li><li>Deep-links to tabs</li></ul></div>
+          <div class="cons"><strong>✗ Cons</strong><ul><li>Longer screen to scroll</li><li>More complex to build</li></ul></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Option C: Role Cards -->
+    <div class="option-card" onclick="this.classList.toggle('selected')">
+      <div class="option-header">
+        <div class="opt-num">Option C</div>
+        <h3>Role Module Cards</h3>
+      </div>
+      <div class="phone">
+        <div class="phone-status"><span>9:41</span><span>📶 🔋</span></div>
+        <div class="phone-content">
+          <div class="mock-header" style="padding-bottom:14px">
+            <div class="greeting">Good morning,</div>
+            <div class="name">Dr. Kamau 👋</div>
+          </div>
+          <div style="padding:10px 10px 4px;font-size:10px;font-weight:700;color:#1A1A2E">My Modules</div>
+          <!-- Assessment card -->
+          <div style="background:linear-gradient(135deg,#6C5CE7,#A29BFE);border-radius:12px;margin:0 10px 8px;padding:12px;color:white">
+            <div style="font-size:10px;font-weight:800;opacity:0.8">FACILITY ASSESSMENTS</div>
+            <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:6px">
+              <div>
+                <div style="font-size:22px;font-weight:800">12</div>
+                <div style="font-size:9px;opacity:0.8">assessments · 83% avg</div>
+              </div>
+              <div style="font-size:24px">📋</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.2);border-radius:8px;padding:4px 8px;font-size:9px;font-weight:700;margin-top:8px;display:inline-block">3 in progress →</div>
+          </div>
+          <!-- Mentor card -->
+          <div style="background:linear-gradient(135deg,#059669,#10B981);border-radius:12px;margin:0 10px 8px;padding:12px;color:white">
+            <div style="font-size:10px;font-weight:800;opacity:0.8">MENTORSHIP</div>
+            <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:6px">
+              <div>
+                <div style="font-size:22px;font-weight:800">2</div>
+                <div style="font-size:9px;opacity:0.8">active classes · 78% attendance</div>
+              </div>
+              <div style="font-size:24px">🎓</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.2);border-radius:8px;padding:4px 8px;font-size:9px;font-weight:700;margin-top:8px;display:inline-block">Module 3 needs attention →</div>
+          </div>
+        </div>
+        <div class="phone-nav-bar">
+          <div class="pnav act"><div class="ico">🏠</div>Home</div>
+          <div class="pnav"><div class="ico">📋</div>Assess</div>
+          <div class="pnav grn"><div class="ico">🎓</div>Mentor</div>
+          <div class="pnav"><div class="ico">📊</div>Reports</div>
+          <div class="pnav"><div class="ico">👤</div>Me</div>
+        </div>
+      </div>
+      <div class="option-body">
+        <div class="desc">Dashboard becomes a module launcher. Each role gets a large gradient card with headline KPI. Tapping a card deep-links to that tab. The dashboard itself is minimal — depth lives in the tabs.</div>
+        <div class="pros-cons">
+          <div class="pros"><strong>✓ Pros</strong><ul><li>Very clear visual hierarchy</li><li>Scales to 3+ roles cleanly</li><li>No scroll needed</li></ul></div>
+          <div class="cons"><strong>✗ Cons</strong><ul><li>Less detail at a glance</li><li>Dashboard feels like a launcher, not a summary</li></ul></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="recommendation-box">
+    <h3>⭐ My recommendation: Option B (Unified Scrollable) with a twist</h3>
+    <p>Show role badges in the header so the user always knows their context. Below that, render only the sections their roles entitle them to — an assessor-only user sees only the assessment section, a mentor+assessor sees both. A mentee sees an "My Classes" section instead. This makes the dashboard feel personal rather than generic, and every section has a clear "See all →" that deep-links into the relevant tab. No switching, no toggling — just scroll.</p>
+  </div>
+</div>
+
+<!-- ═══════════════ REPORTS TAB ═══════════════ -->
+<div id="tab-reports" class="tab-panel">
+  <h2>Reports Tab — Combined Role Problem</h2>
+  <p class="subtitle">
+    For an Assessor, "Reports" means assessment analytics (section averages, trends, PDF exports).<br>
+    For a Mentor, "Reports" means mentorship analytics (class progress, attendance rates, mentee completion).<br>
+    For a combined role — both. Three solutions:
+  </p>
+
+  <div class="options-grid">
+
+    <!-- Option A: Inner Tabs -->
+    <div class="option-card recommended" onclick="this.classList.toggle('selected')">
+      <div class="option-header">
+        <div class="opt-num">Option A ⭐ Recommended</div>
+        <h3>Inner Tabs within Reports</h3>
+      </div>
+      <div class="phone">
+        <div class="phone-status"><span>9:41</span><span>📶 🔋</span></div>
+        <div class="phone-content">
+          <div style="background:white;padding:12px 12px 0">
+            <div style="font-size:14px;font-weight:800;color:#1A1A2E;margin-bottom:8px">Reports</div>
+            <div class="mock-inner-tabs">
+              <div class="mock-inner-tab on">📋 Assessments</div>
+              <div class="mock-inner-tab">🎓 Mentorship</div>
+            </div>
+          </div>
+          <div style="padding:8px 0">
+            <div class="mock-stats" style="padding:0 10px 8px">
+              <div class="mock-stat"><div class="num">83%</div><div class="lbl">Avg Score</div></div>
+              <div class="mock-stat grn"><div class="num">12</div><div class="lbl">Completed</div></div>
+              <div class="mock-stat amber"><div class="num">2</div><div class="lbl">Poor Areas</div></div>
+              <div class="mock-stat"><div class="num">↑5%</div><div class="lbl">vs Last Month</div></div>
+            </div>
+            <div class="mock-section-header"><span>Section Averages</span></div>
+            <div class="mock-report-item"><div class="rt" style="color:#6C5CE7">INFRASTRUCTURE</div><div class="rn">Avg 79% · 12 assessments</div></div>
+            <div class="mock-report-item"><div class="rt" style="color:#6C5CE7">SKILLS LAB</div><div class="rn">Avg 91% · 12 assessments</div></div>
+            <div class="mock-report-item"><div class="rt" style="color:#D97706">QUALITY OF CARE</div><div class="rn">Avg 58% · 12 assessments</div></div>
+            <div style="text-align:center;padding:8px;font-size:9px;color:#6C5CE7;font-weight:700">📧 Email Reports · 📄 PDF Export</div>
+          </div>
+        </div>
+        <div class="phone-nav-bar">
+          <div class="pnav"><div class="ico">🏠</div>Home</div>
+          <div class="pnav"><div class="ico">📋</div>Assess</div>
+          <div class="pnav grn"><div class="ico">🎓</div>Mentor</div>
+          <div class="pnav act"><div class="ico">📊</div>Reports</div>
+          <div class="pnav"><div class="ico">👤</div>Me</div>
+        </div>
+      </div>
+      <div class="option-body">
+        <div class="desc">Reports screen has inner tabs — one per role domain. For assessors only: no tabs shown (just the assessment view). For mentors only: no tabs (just mentorship). For combined: both tabs appear. Clean and scalable.</div>
+        <div class="pros-cons">
+          <div class="pros"><strong>✓ Pros</strong><ul><li>Clean separation of concerns</li><li>Single-role users see no extra UI</li><li>Easy to add training reports later</li></ul></div>
+          <div class="cons"><strong>✗ Cons</strong><ul><li>Must tap to see both domains</li></ul></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Option B: Unified feed with filters -->
+    <div class="option-card" onclick="this.classList.toggle('selected')">
+      <div class="option-header">
+        <div class="opt-num">Option B</div>
+        <h3>Unified Feed + Type Filter</h3>
+      </div>
+      <div class="phone">
+        <div class="phone-status"><span>9:41</span><span>📶 🔋</span></div>
+        <div class="phone-content">
+          <div style="background:white;padding:12px">
+            <div style="font-size:14px;font-weight:800;color:#1A1A2E;margin-bottom:8px">All Reports</div>
+            <div style="display:flex;gap:4px">
+              <div style="background:#6C5CE7;color:white;border-radius:20px;padding:3px 10px;font-size:9px;font-weight:700">All</div>
+              <div style="background:#EDE9FE;color:#6C5CE7;border-radius:20px;padding:3px 10px;font-size:9px;font-weight:700">📋 Assessment</div>
+              <div style="background:#D1FAE5;color:#065F46;border-radius:20px;padding:3px 10px;font-size:9px;font-weight:700">🎓 Mentorship</div>
+            </div>
+          </div>
+          <div style="padding:4px 0">
+            <div class="mock-report-item">
+              <div class="rt" style="color:#6C5CE7">📋 ASSESSMENT REPORT</div>
+              <div class="rn">Mama Lucy Kibaki — Apr 10</div>
+              <div class="rs">Overall: 83% · Grade: Good</div>
+            </div>
+            <div class="mock-report-item">
+              <div class="rt" style="color:#059669">🎓 MENTORSHIP REPORT</div>
+              <div class="rn">Jan 2025 Cohort · Module 3</div>
+              <div class="rs">Attendance: 78% · 14 mentees</div>
+            </div>
+            <div class="mock-report-item">
+              <div class="rt" style="color:#6C5CE7">📋 ASSESSMENT REPORT</div>
+              <div class="rn">Kenyatta Nat. Hospital — Apr 8</div>
+              <div class="rs">Overall: 61% · Grade: Fair</div>
+            </div>
+            <div class="mock-report-item">
+              <div class="rt" style="color:#059669">🎓 MENTORSHIP REPORT</div>
+              <div class="rn">Mar 2025 Cohort · Complete</div>
+              <div class="rs">Completion: 91% · 18 mentees</div>
+            </div>
+          </div>
+        </div>
+        <div class="phone-nav-bar">
+          <div class="pnav"><div class="ico">🏠</div>Home</div>
+          <div class="pnav"><div class="ico">📋</div>Assess</div>
+          <div class="pnav grn"><div class="ico">🎓</div>Mentor</div>
+          <div class="pnav act"><div class="ico">📊</div>Reports</div>
+          <div class="pnav"><div class="ico">👤</div>Me</div>
+        </div>
+      </div>
+      <div class="option-body">
+        <div class="desc">One unified list of all report items, chronological. Filter chips at top let user narrow to assessment or mentorship reports. Type badges make it clear which domain each item belongs to.</div>
+        <div class="pros-cons">
+          <div class="pros"><strong>✓ Pros</strong><ul><li>Everything in one place</li><li>Cross-domain chronological view</li></ul></div>
+          <div class="cons"><strong>✗ Cons</strong><ul><li>Assessment analytics (section averages) and mentorship analytics are structurally very different — hard to unify</li><li>Aggregates don't mix well</li></ul></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Option C: Sectioned Scroll -->
+    <div class="option-card" onclick="this.classList.toggle('selected')">
+      <div class="option-header">
+        <div class="opt-num">Option C</div>
+        <h3>Sectioned Scroll (like Dashboard B)</h3>
+      </div>
+      <div class="phone">
+        <div class="phone-status"><span>9:41</span><span>📶 🔋</span></div>
+        <div class="phone-content">
+          <div style="background:white;padding:12px 12px 8px">
+            <div style="font-size:14px;font-weight:800;color:#1A1A2E">Reports</div>
+          </div>
+          <div style="padding:4px 0">
+            <div class="mock-section-header"><span style="color:#6C5CE7">📋 ASSESSMENT ANALYTICS</span></div>
+            <div class="mock-stats" style="padding: 0 10px 6px">
+              <div class="mock-stat"><div class="num">83%</div><div class="lbl">Avg Score</div></div>
+              <div class="mock-stat grn"><div class="num">↑5%</div><div class="lbl">vs Last Month</div></div>
+            </div>
+            <div class="mock-report-item"><div class="rn" style="font-size:9px">Infrastructure 79% · Skills Lab 91% · Quality 58%</div></div>
+            <div style="text-align:center;padding:4px;font-size:9px;color:#6C5CE7;font-weight:700">Email · PDF Export</div>
+
+            <div class="mock-section-header" style="margin-top:4px"><span style="color:#059669">🎓 MENTORSHIP ANALYTICS</span></div>
+            <div class="mock-stats" style="padding: 0 10px 6px">
+              <div class="mock-stat grn"><div class="num">78%</div><div class="lbl">Attendance</div></div>
+              <div class="mock-stat grn"><div class="num">84%</div><div class="lbl">Completion</div></div>
+            </div>
+            <div class="mock-report-item"><div class="rn" style="font-size:9px">2 active classes · 32 mentees · 3 modules in progress</div></div>
+            <div class="mock-scroll-hint">↕ scroll for more</div>
+          </div>
+        </div>
+        <div class="phone-nav-bar">
+          <div class="pnav"><div class="ico">🏠</div>Home</div>
+          <div class="pnav"><div class="ico">📋</div>Assess</div>
+          <div class="pnav grn"><div class="ico">🎓</div>Mentor</div>
+          <div class="pnav act"><div class="ico">📊</div>Reports</div>
+          <div class="pnav"><div class="ico">👤</div>Me</div>
+        </div>
+      </div>
+      <div class="option-body">
+        <div class="desc">Single scroll with clearly labelled sections for each role domain. Mirrors Option B for the Dashboard. Consistent mental model across the whole app — scroll = see everything.</div>
+        <div class="pros-cons">
+          <div class="pros"><strong>✓ Pros</strong><ul><li>Consistent with Dashboard Option B</li><li>No tabs or extra taps</li></ul></div>
+          <div class="cons"><strong>✗ Cons</strong><ul><li>Long page for combined roles</li><li>Assessment analytics are chart-heavy — harder to compress into a section</li></ul></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="recommendation-box">
+    <h3>⭐ Recommendation: Option A (Inner Tabs) for Reports</h3>
+    <p>Reports are structurally very different between domains — assessment reports have section averages, PDF exports, and email jobs; mentorship reports have cohort completion, attendance rates, and per-mentee breakdowns. Trying to merge these into one scroll or feed creates a confusing mixed bag. Inner tabs give each domain its own full-screen space while keeping a single "Reports" entry in the bottom nav. For single-role users, tabs don't appear at all — it just renders the relevant view directly.</p>
+  </div>
+</div>
+
+<!-- ═══════════════ UPDATED NAV ═══════════════ -->
+<div id="tab-nav-updated" class="tab-panel">
+  <h2>Updated Navigation Model</h2>
+  <p class="subtitle">Corrected role names + combined-role behaviour for Dashboard and Reports.</p>
+
+  <div style="display:flex;flex-direction:column;gap:14px">
+
+    <!-- Assessor only -->
+    <div style="background:#fff;border:1.5px solid #e2e4f0;border-radius:16px;padding:18px 20px">
+      <h3 style="margin-bottom:4px">Assessor <span style="background:#EDE9FE;color:#6C5CE7;font-size:10px;padding:2px 7px;border-radius:4px;font-weight:700;margin-left:6px">Role: Assessor</span></h3>
+      <div style="font-size:11px;color:#6B7194;margin-bottom:12px">Dashboard shows assessment KPIs only. Reports shows assessment analytics only. No tabs needed in either.</div>
+      <div style="display:flex;background:#f8f9fe;border:1px solid #e2e4f0;border-radius:12px;padding:8px 6px;gap:4px">
+        <div class="pnav act" style="font-size:10px;padding:6px 4px"><div class="ico">🏠</div>Dashboard</div>
+        <div class="pnav" style="font-size:10px;padding:6px 4px"><div class="ico">📋</div>Assessments</div>
+        <div style="background:linear-gradient(135deg,#6C5CE7,#A29BFE);color:white;border-radius:50%;width:44px;height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:8px;font-weight:700;flex-shrink:0;margin:-4px 4px;box-shadow:0 4px 16px rgba(108,92,231,0.35)">＋</div>
+        <div class="pnav" style="font-size:10px;padding:6px 4px"><div class="ico">📊</div>Reports</div>
+        <div class="pnav" style="font-size:10px;padding:6px 4px"><div class="ico">👤</div>Profile</div>
+      </div>
+    </div>
+
+    <!-- Mentor + Assessor -->
+    <div style="background:#fff;border:1.5px solid #10B981;border-radius:16px;padding:18px 20px">
+      <h3 style="margin-bottom:4px">Mentor + Assessor <span style="background:#D1FAE5;color:#065F46;font-size:10px;padding:2px 7px;border-radius:4px;font-weight:700;margin-left:6px">Most common</span></h3>
+      <div style="font-size:11px;color:#6B7194;margin-bottom:4px">Roles: <code style="background:#f0f1f8;padding:1px 4px;border-radius:3px;font-size:10px">Assessor + facility_mentor / spoke_mentor / mentor_lead</code></div>
+      <div style="font-size:11px;color:#6B7194;margin-bottom:12px">
+        <strong>Dashboard:</strong> Option B — scrollable sections for both Assessment KPIs and Mentorship KPIs.<br>
+        <strong>Reports:</strong> Option A — inner tabs: "📋 Assessments" | "🎓 Mentorship".<br>
+        Center FAB removed — New Assessment is a button inside the Assessments tab header.
+      </div>
+      <div style="display:flex;background:#f8f9fe;border:1px solid #e2e4f0;border-radius:12px;padding:8px 6px;gap:4px">
+        <div class="pnav act" style="font-size:10px;padding:6px 4px"><div class="ico">🏠</div>Dashboard</div>
+        <div class="pnav" style="font-size:10px;padding:6px 4px"><div class="ico">📋</div>Assessments</div>
+        <div class="pnav grn" style="font-size:10px;padding:6px 4px"><div class="ico">🎓</div>Mentorship</div>
+        <div class="pnav" style="font-size:10px;padding:6px 4px"><div class="ico">📊</div>Reports</div>
+        <div class="pnav" style="font-size:10px;padding:6px 4px"><div class="ico">👤</div>Profile</div>
+      </div>
+    </div>
+
+    <!-- Mentee -->
+    <div style="background:#fff;border:1.5px solid #e2e4f0;border-radius:16px;padding:18px 20px">
+      <h3 style="margin-bottom:4px">Mentee <span style="background:#DBEAFE;color:#1E40AF;font-size:10px;padding:2px 7px;border-radius:4px;font-weight:700;margin-left:6px">Role: mentee</span></h3>
+      <div style="font-size:11px;color:#6B7194;margin-bottom:4px">May also be an Assessor.</div>
+      <div style="font-size:11px;color:#6B7194;margin-bottom:12px">
+        <strong>Dashboard:</strong> Shows My Classes summary section (next module, attendance rate) + assessment section if also Assessor.<br>
+        <strong>Reports:</strong> If Assessor too — shows inner tabs. If mentee only — Reports tab shows their personal progress analytics.
+      </div>
+      <div style="display:flex;background:#f8f9fe;border:1px solid #e2e4f0;border-radius:12px;padding:8px 6px;gap:4px">
+        <div class="pnav act" style="font-size:10px;padding:6px 4px"><div class="ico">🏠</div>Dashboard</div>
+        <div class="pnav" style="font-size:10px;padding:6px 4px;background:rgba(14,165,233,0.08);color:#0EA5E9"><div class="ico">📚</div>My Classes</div>
+        <div class="pnav" style="font-size:10px;padding:6px 4px"><div class="ico">📋</div>Assessments</div>
+        <div class="pnav" style="font-size:10px;padding:6px 4px"><div class="ico">📊</div>Reports</div>
+        <div class="pnav" style="font-size:10px;padding:6px 4px"><div class="ico">👤</div>Profile</div>
+      </div>
+    </div>
+
+    <!-- Admin -->
+    <div style="background:#fff;border:1.5px solid #e2e4f0;border-radius:16px;padding:18px 20px">
+      <h3 style="margin-bottom:4px">Admin / Division / Super Admin</h3>
+      <div style="font-size:11px;color:#6B7194;margin-bottom:4px">Roles: <code style="background:#f0f1f8;padding:1px 4px;border-radius:3px;font-size:10px">super_admin / admin / division</code></div>
+      <div style="font-size:11px;color:#6B7194;margin-bottom:12px">
+        <strong>Dashboard:</strong> All three sections (Assessments + Mentorship + Training). Aggregate KPIs across all users.<br>
+        <strong>Reports:</strong> Three inner tabs: "📋 Assessments" | "🎓 Mentorship" | "🏛️ Training".
+      </div>
+      <div style="display:flex;background:#f8f9fe;border:1px solid #e2e4f0;border-radius:12px;padding:8px 6px;gap:4px">
+        <div class="pnav act" style="font-size:10px;padding:6px 4px"><div class="ico">🏠</div>Dashboard</div>
+        <div class="pnav" style="font-size:10px;padding:6px 4px"><div class="ico">📋</div>Assessments</div>
+        <div class="pnav grn" style="font-size:10px;padding:6px 4px"><div class="ico">🎓</div>Mentorship</div>
+        <div class="pnav" style="font-size:10px;padding:6px 4px;background:rgba(245,158,11,0.08);color:#B45309"><div class="ico">🏛️</div>Trainings</div>
+        <div class="pnav" style="font-size:10px;padding:6px 4px"><div class="ico">👤</div>Profile</div>
+      </div>
+      <div style="font-size:11px;color:#6B7194;margin-top:10px">Reports tab now at bottom-right of phone (Profile shifts right) — or Reports is accessible inside Dashboard via section headers.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+function showTab(name) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,176 @@
+<h2>Backend API — New Controllers & Routes</h2>
+<p class="subtitle">Mirrors the existing <code>app/Http/Controllers/Api/</code> pattern. Leverages existing Services — no business logic duplicated.</p>
+
+<style>
+  .controller-block { background: #fff; border: 1.5px solid #e2e4f0; border-radius: 14px; padding: 18px 20px; margin-bottom: 16px; }
+  .controller-block h3 { margin: 0 0 4px; font-size: 14px; font-weight: 700; color: #1A1A2E; font-family: monospace; }
+  .controller-block .sub { font-size: 12px; color: #6B7194; margin-bottom: 12px; }
+  .route-list { display: flex; flex-direction: column; gap: 6px; }
+  .route { display: flex; align-items: flex-start; gap: 8px; }
+  .method { font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 5px; min-width: 36px; text-align: center; flex-shrink: 0; margin-top: 2px; }
+  .get { background: #D1FAE5; color: #065F46; }
+  .post { background: #DBEAFE; color: #1E40AF; }
+  .put { background: #FEF3C7; color: #92400E; }
+  .route-path { font-family: monospace; font-size: 12px; color: #6C5CE7; min-width: 280px; }
+  .route-desc { font-size: 11px; color: #6B7194; }
+  .service-tag { font-size: 10px; background: #1A1A2E; color: #A29BFE; padding: 1px 6px; border-radius: 4px; font-family: monospace; display: inline-block; margin-top: 2px; }
+  .section-divider { border: none; border-top: 1px dashed #e2e4f0; margin: 10px 0; }
+</style>
+
+<!-- MentorshipController -->
+<div class="controller-block">
+  <h3>MentorshipController</h3>
+  <div class="sub">Scoped to authenticated user's mentorships (mentor_id = me OR co-mentor). Uses Training model with type='facility_mentorship'.</div>
+  <div class="route-list">
+    <div class="route">
+      <span class="method get">GET</span>
+      <span class="route-path">/api/v1/mentorships</span>
+      <div><div class="route-desc">List my mentorships with class counts and status</div></div>
+    </div>
+    <div class="route">
+      <span class="method get">GET</span>
+      <span class="route-path">/api/v1/mentorships/{id}</span>
+      <div><div class="route-desc">Training detail + classes + KPIs (mirrors MentorDashboard loader)</div></div>
+    </div>
+    <div class="route">
+      <span class="method get">GET</span>
+      <span class="route-path">/api/v1/mentorships/{id}/classes</span>
+      <div><div class="route-desc">All MentorshipClass records for this training</div></div>
+    </div>
+    <div class="route">
+      <span class="method get">GET</span>
+      <span class="route-path">/api/v1/mentorships/{id}/classes/{classId}</span>
+      <div><div class="route-desc">Class detail + modules + participant count</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ClassModuleController -->
+<div class="controller-block">
+  <h3>ClassModuleController</h3>
+  <div class="sub">Module lifecycle actions. Calls ClassModule::start() and ClassModule::complete() — same logic as Filament page actions.</div>
+  <div class="route-list">
+    <div class="route">
+      <span class="method get">GET</span>
+      <span class="route-path">/api/v1/mentorships/{id}/classes/{classId}/modules</span>
+      <div><div class="route-desc">All ClassModules with programModule name, status, session count, attendance rate</div></div>
+    </div>
+    <div class="route">
+      <span class="method post">POST</span>
+      <span class="route-path">/api/v1/modules/{moduleId}/start</span>
+      <div>
+        <div class="route-desc">Start module → generates attendance_token, creates MenteeModuleProgress rows</div>
+        <div class="service-tag">ClassModule::start()</div>
+      </div>
+    </div>
+    <div class="route">
+      <span class="method post">POST</span>
+      <span class="route-path">/api/v1/modules/{moduleId}/complete</span>
+      <div>
+        <div class="route-desc">Complete module → finalises MenteeModuleProgress for all participants</div>
+        <div class="service-tag">ClassModule::complete()</div>
+      </div>
+    </div>
+    <div class="route">
+      <span class="method get">GET</span>
+      <span class="route-path">/api/v1/modules/{moduleId}/sessions</span>
+      <div><div class="route-desc">ClassSessions for this module with scheduled dates and status</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- AttendanceApiController -->
+<div class="controller-block">
+  <h3>AttendanceApiController</h3>
+  <div class="sub">Mentor marks attendance for a whole module roster. Delegates to AttendanceService — no new business logic.</div>
+  <div class="route-list">
+    <div class="route">
+      <span class="method get">GET</span>
+      <span class="route-path">/api/v1/modules/{moduleId}/attendance</span>
+      <div><div class="route-desc">Participant roster with present/absent/not_started status for this module</div></div>
+    </div>
+    <div class="route">
+      <span class="method post">POST</span>
+      <span class="route-path">/api/v1/modules/{moduleId}/attendance/{participantId}</span>
+      <div>
+        <div class="route-desc">Mark one participant present or absent. Body: { status: "present"|"absent" }</div>
+        <div class="service-tag">AttendanceService::markManualModuleAttendance()</div>
+      </div>
+    </div>
+    <div class="route">
+      <span class="method post">POST</span>
+      <span class="route-path">/api/v1/modules/{moduleId}/attendance/bulk</span>
+      <div>
+        <div class="route-desc">Mark all participants at once. Body: { attendances: [{participant_id, status}] }</div>
+        <div class="service-tag">AttendanceService — loop</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MenteeApiController -->
+<div class="controller-block">
+  <h3>MenteeApiController</h3>
+  <div class="sub">Mentee's own classes and progress. Mirrors MenteeClassProgressController but returns JSON. Mentee self-confirms attendance via mobile (no token link needed — already authenticated).</div>
+  <div class="route-list">
+    <div class="route">
+      <span class="method get">GET</span>
+      <span class="route-path">/api/v1/me/classes</span>
+      <div><div class="route-desc">All ClassParticipant records for current user with class + training summary</div></div>
+    </div>
+    <div class="route">
+      <span class="method get">GET</span>
+      <span class="route-path">/api/v1/me/classes/{classId}</span>
+      <div><div class="route-desc">Class detail + all MenteeModuleProgress records + attendance flags</div></div>
+    </div>
+    <div class="route">
+      <span class="method post">POST</span>
+      <span class="route-path">/api/v1/me/classes/{classId}/modules/{moduleId}/attend</span>
+      <div>
+        <div class="route-desc">Self-confirm attendance. Guards: module must be in_progress, user must be enrolled.</div>
+        <div class="service-tag">AttendanceService::confirmModuleAttendance()</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- GlobalTrainingController -->
+<div class="controller-block">
+  <h3>GlobalTrainingController</h3>
+  <div class="sub">MOH/national trainings. Read-mostly for field workers. Admins see all; participants see trainings they're registered for.</div>
+  <div class="route-list">
+    <div class="route">
+      <span class="method get">GET</span>
+      <span class="route-path">/api/v1/trainings</span>
+      <div><div class="route-desc">List trainings scoped to user's role — all for admin, my registrations for participants</div></div>
+    </div>
+    <div class="route">
+      <span class="method get">GET</span>
+      <span class="route-path">/api/v1/trainings/{id}</span>
+      <div><div class="route-desc">Training detail with participants count, dates, location, program</div></div>
+    </div>
+    <div class="route">
+      <span class="method get">GET</span>
+      <span class="route-path">/api/v1/trainings/{id}/participants</span>
+      <div><div class="route-desc">TrainingParticipant roster with completion_status and attendance_status</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ParticipantController -->
+<div class="controller-block">
+  <h3>ParticipantController</h3>
+  <div class="sub">Mentor views per-mentee progress across all modules in a class.</div>
+  <div class="route-list">
+    <div class="route">
+      <span class="method get">GET</span>
+      <span class="route-path">/api/v1/classes/{classId}/participants</span>
+      <div><div class="route-desc">All ClassParticipants with user info, overall completion %, attendance rate</div></div>
+    </div>
+    <div class="route">
+      <span class="method get">GET</span>
+      <span class="route-path">/api/v1/participants/{participantId}/progress</span>
+      <div><div class="route-desc">Full MenteeModuleProgress breakdown for one mentee (mirrors MenteeProgress Filament page)</div></div>
+    </div>
+  </div>
+</div>

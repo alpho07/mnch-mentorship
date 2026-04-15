@@ -8,11 +8,30 @@ use Illuminate\Http\Request;
 class ResourceController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * GET /api/v1/resources
      */
-    public function index()
+    public function index(Request $request): \Illuminate\Http\JsonResponse
     {
-        //
+        $user = $request->user();
+
+        $query = \App\Models\Resource::accessibleTo($user)
+            ->where('status', 'published')
+            ->with('resourceType');
+
+        if ($request->type) {
+            $query->byType($request->type);
+        }
+
+        $resources = $query->latest('published_at')->get()->map(fn($r) => [
+            'id'          => $r->id,
+            'title'       => $r->title,
+            'description' => $r->excerpt,
+            'type'        => $r->resourceType?->slug ?? 'document',
+            'url'         => $r->external_url,
+            'file_url'    => $r->file_path ? asset('storage/' . $r->file_path) : null,
+        ]);
+
+        return response()->json(['data' => $resources]);
     }
 
     /**

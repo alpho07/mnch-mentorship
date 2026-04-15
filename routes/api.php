@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\FacilityController;
 use App\Http\Controllers\Api\HumanResourceController;
 use App\Http\Controllers\Api\HealthProductsController;
 use App\Http\Controllers\Api\ChatController;
+use App\Http\Controllers\Api\MentorshipController;
 use App\Http\Middleware\MobileApiCors;
 
 /*
@@ -125,6 +126,80 @@ Route::prefix('v1')->name('api.v1.')->middleware(MobileApiCors::class)->group(fu
             Route::get('section-averages', [ReportController::class, 'sectionAverages'])->name('section-averages');
             Route::get('email-jobs', [ReportController::class, 'emailJobs'])->name('email-jobs');
         });
+
+        // ── Lookup ────────────────────────────────────────────────────────────────
+        Route::prefix('programs')->name('programs.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\LookupController::class, 'programs'])->name('index');
+            Route::get('{program}/modules', [\App\Http\Controllers\Api\LookupController::class, 'programModules'])->name('modules');
+        });
+        Route::get('counties', [\App\Http\Controllers\Api\LookupController::class, 'counties'])->name('counties');
+        Route::get('users/search', [\App\Http\Controllers\Api\LookupController::class, 'userSearch'])->name('users.search');
+
+        // ── Mentorships ───────────────────────────────────────────────────────
+        Route::prefix('mentorships')->name('mentorships.')->group(function () {
+            Route::get('/', [MentorshipController::class, 'index'])->name('index');
+            Route::get('{training}', [MentorshipController::class, 'show'])->name('show');
+            Route::get('{training}/classes', [MentorshipController::class, 'classes'])->name('classes');
+            Route::get('{training}/classes/{class}', [MentorshipController::class, 'classDetail'])->name('class-detail');
+            Route::post('/', [\App\Http\Controllers\Api\MentorshipCreateController::class, 'store'])->name('store');
+            Route::put('{training}', [\App\Http\Controllers\Api\MentorshipCreateController::class, 'update'])->name('update');
+            Route::post('{training}/submit', [\App\Http\Controllers\Api\MentorshipCreateController::class, 'submit'])->name('submit');
+            // ── Class CRUD ────────────────────────────────────────────────────
+            Route::post('{training}/classes', [MentorshipController::class, 'createClass'])->name('classes.store');
+            Route::put('{training}/classes/{class}', [MentorshipController::class, 'updateClass'])->name('classes.update');
+            Route::delete('{training}/classes/{class}', [MentorshipController::class, 'deleteClass'])->name('classes.destroy');
+        });
+
+        // ── Class modules ─────────────────────────────────────────────────────────
+        Route::prefix('classes/{class}/modules')->name('class.modules.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\ClassModuleController::class, 'index'])->name('index');
+            Route::post('/', [\App\Http\Controllers\Api\ClassModuleController::class, 'store'])->name('store');
+        });
+        Route::prefix('modules/{module}')->name('module.')->group(function () {
+            Route::delete('/', [\App\Http\Controllers\Api\ClassModuleController::class, 'destroy'])->name('destroy');
+            Route::post('start', [\App\Http\Controllers\Api\ClassModuleController::class, 'start'])->name('start');
+            Route::post('complete', [\App\Http\Controllers\Api\ClassModuleController::class, 'complete'])->name('complete');
+            Route::get('sessions', [\App\Http\Controllers\Api\ClassModuleController::class, 'sessions'])->name('sessions');
+            Route::get('attendance', [\App\Http\Controllers\Api\AttendanceApiController::class, 'roster'])->name('attendance.roster');
+            Route::post('attendance/bulk', [\App\Http\Controllers\Api\AttendanceApiController::class, 'bulk'])->name('attendance.bulk');
+            Route::post('attendance/{participant}', [\App\Http\Controllers\Api\AttendanceApiController::class, 'mark'])->name('attendance.mark');
+        });
+
+        // ── Classes / participants ─────────────────────────────────────────────────
+        Route::get('classes/{class}/participants', [\App\Http\Controllers\Api\ParticipantController::class, 'index'])->name('classes.participants');
+        Route::get('participants/{participant}/progress', [\App\Http\Controllers\Api\ParticipantController::class, 'progress'])->name('participants.progress');
+
+        // ── Class lifecycle + mentee enrollment ───────────────────────────────────
+        Route::prefix('classes/{class}')->name('class.')->group(function () {
+            Route::post('start', [\App\Http\Controllers\Api\ClassLifecycleController::class, 'start'])->name('start');
+            Route::post('end', [\App\Http\Controllers\Api\ClassLifecycleController::class, 'end'])->name('end');
+            Route::post('mentees', [\App\Http\Controllers\Api\ClassLifecycleController::class, 'enrollMentee'])->name('mentees.store');
+            Route::delete('mentees/{participant}', [\App\Http\Controllers\Api\ClassLifecycleController::class, 'removeMentee'])->name('mentees.destroy');
+            Route::post('regenerate-token', [\App\Http\Controllers\Api\ClassLifecycleController::class, 'regenerateToken'])->name('regenerate-token');
+            Route::get('enrollment-link', [\App\Http\Controllers\Api\ClassLifecycleController::class, 'enrollmentLink'])->name('enrollment-link');
+        });
+
+        // ── Session notes ─────────────────────────────────────────────────────────
+        Route::put('sessions/{session}', [\App\Http\Controllers\Api\ClassSessionController::class, 'update'])->name('sessions.update');
+
+        // ── Mentee (self) ─────────────────────────────────────────────────────────
+        Route::prefix('me/classes')->name('me.classes.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\MenteeApiController::class, 'index'])->name('index');
+            Route::get('{class}', [\App\Http\Controllers\Api\MenteeApiController::class, 'show'])->name('show');
+            Route::post('{class}/modules/{module}/attend', [\App\Http\Controllers\Api\MenteeApiController::class, 'attend'])->name('attend');
+        });
+
+        // ── Global trainings ──────────────────────────────────────────────────────
+        Route::prefix('trainings')->name('trainings.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\GlobalTrainingController::class, 'index'])->name('index');
+            Route::get('{training}', [\App\Http\Controllers\Api\GlobalTrainingController::class, 'show'])->name('show');
+            Route::get('{training}/participants', [\App\Http\Controllers\Api\GlobalTrainingController::class, 'participants'])->name('participants');
+            Route::post('{training}/enroll', [\App\Http\Controllers\Api\GlobalTrainingController::class, 'enroll'])->name('enroll');
+            Route::post('{training}/attendance', [\App\Http\Controllers\Api\GlobalTrainingController::class, 'attendance'])->name('attendance');
+        });
+
+        // ── Resources ─────────────────────────────────────────────────────────────
+        Route::get('resources', [\App\Http\Controllers\Api\ResourceController::class, 'index'])->name('resources.index');
 
         // ── Chat Assistant ──────────────────────────────────────────────────
         Route::post('chat/assistant', [ChatController::class, 'assistant'])->name('chat.assistant');
