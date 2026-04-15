@@ -119,6 +119,7 @@ export function ModuleDetailScreen({ module: mod, user, onBack, onOpenAttendance
 
     return (
         <div style={{ display: "flex", flexDirection: "column", height: "100%", background: T.bg }}>
+<<<<<<< HEAD
             {/* ── Gradient Hero ── */}
             <div style={{
                 background: "linear-gradient(160deg, #1E1B4B 0%, #3730A3 55%, #818CF8 100%)",
@@ -142,6 +143,19 @@ export function ModuleDetailScreen({ module: mod, user, onBack, onOpenAttendance
                     <span style={{ fontSize: 12, color: "rgba(255,255,255,0.7)", fontWeight: 600, flexShrink: 0 }}>
                         {completedSessions}/{sessions.length} sessions
                     </span>
+=======
+            {/* Header */}
+            <div style={{ padding: "16px 20px 12px", background: T.card, borderBottom: `1px solid ${T.border}`, display: "flex", gap: 12, alignItems: "center" }}>
+                <button onClick={onBack} style={{ border: "none", background: "none", cursor: "pointer", padding: 4 }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={T.text} strokeWidth="2.5"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
+                </button>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: T.text }}>{mod.name}</div>
+                    <div style={{ fontSize: 12, color: T.textSub }}>
+                        Module {mod.order_sequence}
+                        {mod.requires_assessment ? " · Assessment required" : ""}
+                    </div>
+>>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
                 </div>
             </div>
 

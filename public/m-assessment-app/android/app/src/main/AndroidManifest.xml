@@ -5,9 +5,14 @@
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
+<<<<<<< HEAD
         android:roundIcon="@mipmap/mentorship"
         android:supportsRtl="true"
         android:usesCleartextTraffic="true"
+=======
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+>>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
         android:theme="@style/AppTheme">
 
         <activity

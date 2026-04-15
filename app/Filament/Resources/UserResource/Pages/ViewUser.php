@@ -143,10 +143,17 @@ class ViewUser extends ViewRecord {
                             ->schema([
                                 Infolists\Components\TextEntry::make('facility.name')
                                 ->label('Primary Facility')
+<<<<<<< HEAD
                                 ->placeholder('—')
                                 ->description(fn(User $record) =>
                                         $record->facility?->mfl_code ? "MFL: {$record->facility->mfl_code}" : null
                                 ),
+=======
+                                ->placeholder('—'),
+                                Infolists\Components\TextEntry::make('facility.mfl_code')
+                                ->label('MFL Code')
+                                ->placeholder('—'),
+>>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
                                 Infolists\Components\TextEntry::make('facility.subcounty.name')
                                 ->label('Sub-County')
                                 ->placeholder('—'),

@@ -210,7 +210,10 @@ export const _rawApi = {
         programs: () => get('/programs'),
         programModules: (programId) => get('/programs/' + programId + '/modules'),
         counties: () => get('/counties'),
+<<<<<<< HEAD
         facilitiesByCounty: (countyId) => get('/counties/' + countyId + '/facilities'),
+=======
+>>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
         userSearch: (q, facilityId) => get('/users/search?q=' + encodeURIComponent(q) + (facilityId ? '&facility_id=' + facilityId : '')),
     },
     mentorshipCreate: {
@@ -225,7 +228,10 @@ export const _rawApi = {
         removeMentee: (classId, participantId) => del('/classes/' + classId + '/mentees/' + participantId),
         enrollmentLink: (classId) => get('/classes/' + classId + '/enrollment-link'),
         regenerateToken: (classId) => post('/classes/' + classId + '/regenerate-token'),
+<<<<<<< HEAD
         addModule: (classId, programModuleId) => post('/classes/' + classId + '/modules', { program_module_id: programModuleId }),
+=======
+>>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
     },
     sessions: {
         update: (sessionId, payload) => put('/sessions/' + sessionId, payload),
@@ -796,9 +802,12 @@ const api = {
             }
         },
         classDetail: _rawApi.mentorships.classDetail,
+<<<<<<< HEAD
         createClass: _rawApi.mentorships.createClass,
         updateClass: _rawApi.mentorships.updateClass,
         deleteClass: _rawApi.mentorships.deleteClass,
+=======
+>>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
     },
 
     // ── Modules (write ops queued when offline) ──────────────────────────────
@@ -833,8 +842,11 @@ const api = {
                 throw e;
             }
         },
+<<<<<<< HEAD
         add: _rawApi.modules.add,
         remove: _rawApi.modules.remove,
+=======
+>>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
         sessions: _rawApi.modules.sessions,
     },
 
@@ -985,7 +997,10 @@ const api = {
                 return (await offlineStore.getMeta('counties')) ?? [];
             }
         },
+<<<<<<< HEAD
         facilitiesByCounty: _rawApi.lookups.facilitiesByCounty,
+=======
+>>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
         userSearch: _rawApi.lookups.userSearch,
     },
 
@@ -1044,9 +1059,12 @@ const api = {
             }
         },
         end: (classId) => _rawApi.classLifecycle.end(classId),
+<<<<<<< HEAD
         enrollmentLink: (classId) => _rawApi.classLifecycle.enrollmentLink(classId),
         regenerateToken: (classId) => _rawApi.classLifecycle.regenerateToken(classId),
         addModule: (classId, programModuleId) => _rawApi.classLifecycle.addModule(classId, programModuleId),
+=======
+>>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
         enrollMentee: async (classId, userId) => {
             try {
                 return await _rawApi.classLifecycle.enrollMentee(classId, userId);

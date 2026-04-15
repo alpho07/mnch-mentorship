@@ -21,6 +21,7 @@ function StatusBadge({ status }) {
     );
 }
 
+<<<<<<< HEAD
 export function ClassDetailScreen({
     cls,
     onBack,
@@ -37,11 +38,21 @@ export function ClassDetailScreen({
     const [acting, setActing]     = useState(null); // moduleId being started/completed/deleted
 
     useEffect(() => {
+=======
+export function ClassDetailScreen({ cls, onBack, onOpenModule }) {
+    const [detail, setDetail]   = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [tab, setTab]         = useState("modules"); // "modules" | "mentees"
+
+    useEffect(() => {
+        // Load full class detail (has mentees + modules)
+>>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
         const trainingId = cls.trainingId;
         const classId    = cls.id;
 
         if (trainingId) {
             api.mentorships.classDetail(trainingId, classId)
+<<<<<<< HEAD
                 .then(d => {
                     const data = d?.data ?? null;
                     setDetail(data);
@@ -63,10 +74,21 @@ export function ClassDetailScreen({
                     setDetail(cls);
                     setModules(cls.modules ?? []);
                 })
+=======
+                .then(d => setDetail(d?.data ?? null))
+                .catch(() => {})
+                .finally(() => setLoading(false));
+        } else {
+            // Fallback: just load modules
+            api.modules.list(classId)
+                .then(d => setDetail({ ...cls, modules: Array.isArray(d?.data) ? d.data : [] }))
+                .catch(() => setDetail(cls))
+>>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
                 .finally(() => setLoading(false));
         }
     }, [cls.id]);
 
+<<<<<<< HEAD
     // Called by parent after a module is added via the picker
     // Parent passes updated class data with new module appended
     useEffect(() => {
@@ -159,10 +181,51 @@ export function ClassDetailScreen({
                     <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
                         <span style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>{data.start_date ?? ""}{data.end_date ? ` → ${data.end_date}` : ""}</span>
                         <span style={{ fontSize: 11, fontWeight: 700, color: pct === 100 ? "#34D399" : "rgba(255,255,255,0.8)" }}>{pct}%</span>
+=======
+    const data    = detail ?? cls;
+    const modules = data?.modules ?? [];
+    const mentees = data?.mentees ?? [];
+
+    const pct = data?.progress_percentage ?? 0;
+
+    return (
+        <div style={{ display: "flex", flexDirection: "column", height: "100%", background: T.bg }}>
+            {/* Header */}
+            <div style={{ padding: "16px 20px 12px", background: T.card, borderBottom: `1px solid ${T.border}`, display: "flex", gap: 12, alignItems: "center" }}>
+                <button onClick={onBack} style={{ border: "none", background: "none", cursor: "pointer", padding: 4 }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={T.text} strokeWidth="2.5"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
+                </button>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: T.text }}>{data.name}</div>
+                    <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 2, flexWrap: "wrap" }}>
+                        <StatusBadge status={data.status} />
+                        <span style={{ fontSize: 12, color: T.textSub }}>
+                            {data.participant_count ?? mentees.length} mentees · {modules.length} modules
+                        </span>
+>>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
                     </div>
                 </div>
             </div>
 
+<<<<<<< HEAD
+=======
+            {/* Progress bar */}
+            <div style={{ background: T.card, padding: "10px 20px", borderBottom: `1px solid ${T.border}` }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                    <span style={{ fontSize: 11, color: T.textSub }}>Progress</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: pct === 100 ? "#10B981" : T.primary }}>{pct}%</span>
+                </div>
+                <div style={{ height: 6, borderRadius: 4, background: T.borderLight, overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: `${pct}%`, background: pct === 100 ? "#10B981" : T.gradientPrimary, borderRadius: 4, transition: "width 0.6s" }} />
+                </div>
+                {(data.start_date || data.end_date) && (
+                    <div style={{ fontSize: 11, color: T.textMuted, marginTop: 5 }}>
+                        {data.start_date ?? "—"} → {data.end_date ?? "—"}
+                    </div>
+                )}
+            </div>
+
+>>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
             {/* Tabs */}
             <div style={{ display: "flex", background: T.card, borderBottom: `1px solid ${T.border}` }}>
                 {["modules", "mentees"].map(t => (
@@ -183,6 +246,7 @@ export function ClassDetailScreen({
                 {/* Modules tab */}
                 {!loading && tab === "modules" && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+<<<<<<< HEAD
                         {onAddModule && (
                             <button onClick={onAddModule} style={{
                                 padding: "10px 14px", borderRadius: T.radiusSm, border: `1.5px dashed ${T.primary}`,
@@ -322,12 +386,42 @@ export function ClassDetailScreen({
                                 </div>
                             );
                         })}
+=======
+                        {modules.length === 0 && (
+                            <div style={{ color: T.textSub, textAlign: "center", paddingTop: 32 }}>No modules.</div>
+                        )}
+                        {modules.map(m => (
+                            <button
+                                key={m.id}
+                                onClick={() => onOpenModule({ ...m, classId: cls.id })}
+                                style={{
+                                    background: T.card, border: `1px solid ${T.border}`,
+                                    borderRadius: T.radiusSm, padding: "14px 16px",
+                                    textAlign: "left", cursor: "pointer", boxShadow: T.shadowCard,
+                                }}
+                            >
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
+                                    <div style={{ fontWeight: 700, color: T.text, fontSize: 14, flex: 1, marginRight: 8 }}>
+                                        {m.order_sequence}. {m.name}
+                                    </div>
+                                    <StatusBadge status={m.status} />
+                                </div>
+                                <div style={{ fontSize: 12, color: T.textSub, display: "flex", gap: 12, flexWrap: "wrap" }}>
+                                    <span>{m.session_count ?? 0} sessions</span>
+                                    {m.requires_assessment && <span style={{ color: "#7C3AED" }}>· Assessment required</span>}
+                                    {m.started_at && <span>· Started {new Date(m.started_at).toLocaleDateString()}</span>}
+                                    {m.completed_at && <span>· Completed {new Date(m.completed_at).toLocaleDateString()}</span>}
+                                </div>
+                            </button>
+                        ))}
+>>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
                     </div>
                 )}
 
                 {/* Mentees tab */}
                 {!loading && tab === "mentees" && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+<<<<<<< HEAD
                         {onManageMentees && (
                             <button onClick={onManageMentees} style={{
                                 padding: "10px 14px", borderRadius: T.radiusSm, border: `1.5px solid ${T.primary}`,
@@ -339,6 +433,10 @@ export function ClassDetailScreen({
                         )}
                         {mentees.length === 0 && (
                             <div style={{ color: T.textSub, textAlign: "center", paddingTop: 20 }}>No mentees enrolled.</div>
+=======
+                        {mentees.length === 0 && (
+                            <div style={{ color: T.textSub, textAlign: "center", paddingTop: 32 }}>No mentees enrolled.</div>
+>>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
                         )}
                         {mentees.map(m => (
                             <div key={m.id} style={{

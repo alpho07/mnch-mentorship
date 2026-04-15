@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import { useState, useEffect, useRef } from "react";
+=======
+import { useState, useEffect } from "react";
+>>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
 import { T, GRADE_COLOR, GRADE_BG, calcGrade } from "../constants.js";
 import { BackButton, GradeBadge, StatusChip, ProgressBar } from "../components/shared-components.jsx";
 import api from "../services/api.service.js";
@@ -484,6 +488,7 @@ function HpResponsesView({ data }) {
     );
 }
 
+<<<<<<< HEAD
 // ── Delete confirmation modal ─────────────────────────────────────────────────
 function DeleteConfirmModal({ assessment, onCancel, onConfirmed }) {
     const COUNTDOWN = 4;
@@ -648,12 +653,18 @@ export function AssessmentDetailScreen({ assessment, sections, onBack, onContinu
     const [tab, setTab] = useState("overview");
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
+=======
+// ── Main screen ───────────────────────────────────────────────────────────────
+export function AssessmentDetailScreen({ assessment, sections, onBack, onContinue, onViewReport }) {
+    const [tab, setTab] = useState("overview");
+>>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
     const tabs = assessment.status === "completed"
         ? ["overview", "responses", "report"]
         : ["overview", "responses"];
     const headerPct = calcOverallFromSections(assessment.section_scores ?? {}) ?? assessment.overall_percentage;
     const headerGrade = headerPct != null ? calcGrade(headerPct) : assessment.overall_grade;
 
+<<<<<<< HEAD
     // Show delete only when assessment is not completed (may have partial/no data)
     const canDelete = assessment.status !== "completed" && onDelete;
 
@@ -670,6 +681,10 @@ export function AssessmentDetailScreen({ assessment, sections, onBack, onContinu
                 />
             )}
 
+=======
+    return (
+        <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+>>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
             {/* Header */}
             <div style={{
                 background: T.gradientDark, padding: "20px 20px 24px",
@@ -677,6 +692,7 @@ export function AssessmentDetailScreen({ assessment, sections, onBack, onContinu
                 borderRadius: "24px 24px 28px 28px",
             }}>
                 <div style={{ position: "absolute", width: 140, height: 140, borderRadius: "50%", background: "radial-gradient(circle, rgba(16,185,129,0.1) 0%, transparent 70%)", top: -40, right: -30 }} />
+<<<<<<< HEAD
 
                 {/* Top row: back + delete */}
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -705,6 +721,9 @@ export function AssessmentDetailScreen({ assessment, sections, onBack, onContinu
                     )}
                 </div>
 
+=======
+                <BackButton onBack={onBack} light />
+>>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
                 <div style={{ marginTop: 12, color: "white", fontSize: 18, fontWeight: 800, letterSpacing: -0.3, animation: "fadeInUp 0.4s ease both" }}>
                     {assessment.facility_name || "Assessment"}
                 </div>

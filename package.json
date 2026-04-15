@@ -19,6 +19,7 @@
     "dependencies": {
         "@alpinejs/persist": "^3.14.9",
         "alpinejs": "^3.14.9",
-        "chart.js": "^4.5.0"
+        "chart.js": "^4.5.0",
+        "puppeteer": "^24.37.5"
     }
 }

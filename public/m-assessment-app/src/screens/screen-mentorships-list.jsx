@@ -78,6 +78,7 @@ export function MentorshipsListScreen({ user, onOpen, onNew }) {
             .finally(() => setLoading(false));
     }, []);
 
+<<<<<<< HEAD
     const all = mentorships ?? [];
     const active    = all.filter(m => m.status === "active");
     const draft     = all.filter(m => m.status === "draft");
@@ -129,16 +130,38 @@ export function MentorshipsListScreen({ user, onOpen, onNew }) {
                     <div style={{ color: T.textSub, textAlign: "center", paddingTop: 60 }}>No mentorships assigned yet.</div>
                 )}
                 {all.map(m => <MentorshipCard key={m.id} m={m} onOpen={onOpen} />)}
+=======
+    return (
+        <div style={{ display: "flex", flexDirection: "column", height: "100%", background: T.bg, position: "relative" }}>
+            <div style={{ padding: "20px 20px 12px", background: T.card, borderBottom: `1px solid ${T.border}` }}>
+                <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>{MENTOR_META.icon} Mentorships</div>
+                <div style={{ fontSize: 13, color: T.textSub, marginTop: 2 }}>{user?.name ?? ""}</div>
+            </div>
+
+            <div style={{ flex: 1, overflowY: "auto", padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+                {loading && <div style={{ color: T.textSub, textAlign: "center", paddingTop: 40 }}>Loading…</div>}
+                {error && <div style={{ color: "#EF4444", textAlign: "center", paddingTop: 40 }}>{error}</div>}
+                {!loading && !error && mentorships?.length === 0 && (
+                    <div style={{ color: T.textSub, textAlign: "center", paddingTop: 60 }}>No mentorships assigned yet.</div>
+                )}
+                {(mentorships ?? []).map(m => <MentorshipCard key={m.id} m={m} onOpen={onOpen} />)}
+>>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
             </div>
 
             {onNew && (
                 <button onClick={onNew} style={{
+<<<<<<< HEAD
                     position: "fixed", bottom: 80, right: 16, zIndex: 10,
                     width: 52, height: 52, borderRadius: "50%",
                     background: "linear-gradient(135deg,#4F46E5,#818CF8)",
                     border: "none", color: "#fff", fontSize: 26, cursor: "pointer",
                     boxShadow: "0 6px 20px rgba(79,70,229,0.4)",
                     display: "flex", alignItems: "center", justifyContent: "center",
+=======
+                    position: "absolute", bottom: 80, right: 16, zIndex: 10,
+                    width: 48, height: 48, borderRadius: "50%", background: T.primary,
+                    border: "none", color: "#fff", fontSize: 24, cursor: "pointer", boxShadow: T.shadowMd,
+>>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
                 }}>+</button>
             )}
         </div>

@@ -3,7 +3,10 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\County;
+<<<<<<< HEAD
 use App\Models\Facility;
+=======
+>>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
 use App\Models\Program;
 use App\Models\ProgramModule;
 use App\Models\User;
@@ -42,6 +45,7 @@ class LookupController extends Controller
         return response()->json(['data' => $counties]);
     }
 
+<<<<<<< HEAD
     public function facilitiesByCounty(County $county): JsonResponse
     {
         $facilities = Facility::whereHas('subcounty', fn($q) => $q->where('county_id', $county->id))
@@ -57,6 +61,8 @@ class LookupController extends Controller
         return response()->json(['data' => $facilities]);
     }
 
+=======
+>>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
     public function userSearch(Request $request): JsonResponse
     {
         $request->validate([

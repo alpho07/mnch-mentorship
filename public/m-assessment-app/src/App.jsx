@@ -1,5 +1,8 @@
 import { useState, useEffect, useRef } from "react";
+<<<<<<< HEAD
 import { useConfirm } from "./hooks/useConfirm.jsx";
+=======
+>>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
 
 // ── Shared ────────────────────────────────────────────────────────────────────
 import { SECTION_META, calcGrade, computeTabs, MENTOR_ROLES, MENTEE_ROLES, ADMIN_ROLES } from "./constants.js";
@@ -27,9 +30,12 @@ import { TrainingsListScreen } from "./screens/screen-trainings-list.jsx";
 import { TrainingDetailScreen } from "./screens/screen-training-detail.jsx";
 import { MentorshipFormScreen } from "./screens/screen-mentorship-form.jsx";
 import { SessionNotesScreen } from "./screens/screen-session-notes.jsx";
+<<<<<<< HEAD
 import { MenteeManagerScreen } from "./screens/screen-mentee-manager.jsx";
 import { ClassFormScreen } from "./screens/screen-class-form.jsx";
 import { ModulePickerScreen } from "./screens/screen-module-picker.jsx";
+=======
+>>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
 
 import api from "./services/api.service.js";
 
@@ -89,7 +95,10 @@ export default function App() {
     const [user, setUser] = useState(null);
     const [tab, setTab] = useState("dashboard");
     const [modal, setModal] = useState(null);
+<<<<<<< HEAD
     const { confirm, ConfirmDialog } = useConfirm();
+=======
+>>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
     const [navConfig, setNavConfig] = useState({ tabs: null, showFab: false });
     const [assessments, setAssessments] = useState(null); // null = not yet loaded
     const [sections, setSections] = useState(null); // null = not yet loaded
@@ -488,6 +497,7 @@ export default function App() {
                             training={modal.data}
                             onBack={closeModal}
                             onOpenClass={(cls) => setModal({ type: "classDetail", data: cls, prev: modal.data })}
+<<<<<<< HEAD
                             onAddClass={() => setModal({ type: "classForm", data: null, prev: modal.data, trainingId: modal.data.id, fromMentorship: true })}
                             onEditClass={(cls) => setModal({ type: "classForm", data: cls, prev: modal.data, trainingId: modal.data.id, fromMentorship: true })}
                             onDeleteClass={async (cls) => {
@@ -511,6 +521,8 @@ export default function App() {
                                     alert(e.message ?? "Failed to delete class.");
                                 }
                             }}
+=======
+>>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
                         />
                     </div>
                 )}
@@ -518,6 +530,7 @@ export default function App() {
                     <div style={{ position: "absolute", inset: 0 }}>
                         <ClassDetailScreen
                             cls={modal.data}
+<<<<<<< HEAD
                             confirm={confirm}
                             onBack={() => setModal({ type: "mentorshipDetail", data: modal.prev })}
                             onOpenModule={(mod) => setModal({ type: "moduleDetail", data: mod, prev: modal.data, mentorship: modal.prev })}
@@ -591,6 +604,10 @@ export default function App() {
                                     }));
                                 }
                             }}
+=======
+                            onBack={() => setModal({ type: "mentorshipDetail", data: modal.prev })}
+                            onOpenModule={(mod) => setModal({ type: "moduleDetail", data: mod, prev: modal.data })}
+>>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
                         />
                     </div>
                 )}
@@ -599,9 +616,15 @@ export default function App() {
                         <ModuleDetailScreen
                             module={modal.data}
                             user={user}
+<<<<<<< HEAD
                             onBack={() => setModal({ type: "classDetail", data: modal.prev, prev: modal.mentorship })}
                             onOpenAttendance={(mod) => setModal({ type: "attendanceRoster", data: mod, prev: modal.prev, mentorship: modal.mentorship })}
                             onOpenSession={(session) => setModal({ type: "sessionNotes", data: session, prev: modal.data, prevClass: modal.prev, mentorship: modal.mentorship })}
+=======
+                            onBack={() => setModal({ type: "classDetail", data: modal.prev })}
+                            onOpenAttendance={(mod) => setModal({ type: "attendanceRoster", data: mod, prev: modal.prev })}
+                            onOpenSession={(session) => setModal({ type: "sessionNotes", data: session, prev: modal.data, prevClass: modal.prev })}
+>>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
                         />
                     </div>
                 )}
@@ -609,8 +632,13 @@ export default function App() {
                     <div style={{ position: "absolute", inset: 0 }}>
                         <SessionNotesScreen
                             session={modal.data}
+<<<<<<< HEAD
                             onBack={() => setModal({ type: "moduleDetail", data: modal.prev, prev: modal.prevClass, mentorship: modal.mentorship })}
                             onSaved={() => setModal({ type: "moduleDetail", data: modal.prev, prev: modal.prevClass, mentorship: modal.mentorship })}
+=======
+                            onBack={() => setModal({ type: "moduleDetail", data: modal.prev, prev: modal.prevClass })}
+                            onSaved={() => setModal({ type: "moduleDetail", data: modal.prev, prev: modal.prevClass })}
+>>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
                         />
                     </div>
                 )}
@@ -619,7 +647,11 @@ export default function App() {
                         <AttendanceRosterScreen
                             module={modal.data}
                             user={user}
+<<<<<<< HEAD
                             onBack={() => setModal({ type: "moduleDetail", data: modal.data, prev: modal.prev, mentorship: modal.mentorship })}
+=======
+                            onBack={() => setModal({ type: "moduleDetail", data: modal.data, prev: modal.prev })}
+>>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
                         />
                     </div>
                 )}
@@ -653,7 +685,10 @@ export default function App() {
                         />
                     </div>
                 )}
+<<<<<<< HEAD
                 <ConfirmDialog />
+=======
+>>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
             </PhoneShell>
             );
 }

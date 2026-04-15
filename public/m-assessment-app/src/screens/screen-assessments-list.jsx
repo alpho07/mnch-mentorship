@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { useState, useEffect } from "react";
 import { T, GRADE_COLOR, GRADE_BG, GRADE_TEXT } from "../constants.js";
 import { GradeBadge, StatusChip, ProgressBar } from "../components/shared-components.jsx";
@@ -11,13 +12,25 @@ export function AssessmentsListScreen({ assessments, sections, onView, loading, 
     useEffect(() => {
         if (openSheet) setShowSheet(true);
     }, [openSheet]);
+=======
+import { useState } from "react";
+import { T, GRADE_COLOR, GRADE_BG } from "../constants.js";
+import { GradeBadge, StatusChip, ProgressBar } from "../components/shared-components.jsx";
+
+export function AssessmentsListScreen({ assessments, sections, onView, loading }) {
+    const [filter, setFilter] = useState("all");
+>>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
 
     const list = filter === "all"
         ? (assessments || [])
         : (assessments || []).filter(a => a.status === filter);
 
     return (
+<<<<<<< HEAD
         <div style={{ height: "100%", overflowY: "auto", background: T.bg, position: "relative" }}>
+=======
+        <div style={{ height: "100%", overflowY: "auto", background: T.bg }}>
+>>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
             <div style={{
                 background: T.gradientDark,
                 padding: "52px 20px 22px",
@@ -85,7 +98,11 @@ export function AssessmentsListScreen({ assessments, sections, onView, loading, 
                         <div style={{ fontSize: 56, marginBottom: 16 }}>📋</div>
                         <div style={{ fontSize: 17, fontWeight: 700, color: T.textMid, marginBottom: 8 }}>No assessments yet</div>
                         <div style={{ fontSize: 13, color: T.textSub, lineHeight: 1.6 }}>
+<<<<<<< HEAD
                             No assessments yet. Tap + to start one.
+=======
+                            Your assessments will appear here once assigned by an administrator.
+>>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
                         </div>
                     </div>
                 )}
@@ -99,6 +116,7 @@ export function AssessmentsListScreen({ assessments, sections, onView, loading, 
                         transition: "all 0.25s cubic-bezier(0.4,0,0.2,1)",
                         animation: `fadeInUp 0.4s ease ${i * 0.05}s both`,
                     }}>
+<<<<<<< HEAD
                         {a._isOffline && (
                             <div style={{
                                 display: "inline-flex",
@@ -116,6 +134,8 @@ export function AssessmentsListScreen({ assessments, sections, onView, loading, 
                                 Pending sync
                             </div>
                         )}
+=======
+>>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                             <div style={{ flex: 1, minWidth: 0 }}>
                                 <div style={{
@@ -173,6 +193,7 @@ export function AssessmentsListScreen({ assessments, sections, onView, loading, 
                     </button>
                 ))}
             </div>
+<<<<<<< HEAD
 
             {/* FAB — create new assessment */}
             <button
@@ -214,6 +235,8 @@ export function AssessmentsListScreen({ assessments, sections, onView, loading, 
                     onClose={() => { setShowSheet(false); onSheetClose?.(); }}
                 />
             )}
+=======
+>>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
         </div>
     );
 }

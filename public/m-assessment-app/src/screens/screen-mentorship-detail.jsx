@@ -21,7 +21,11 @@ function InfoRow({ label, value }) {
     );
 }
 
+<<<<<<< HEAD
 export function MentorshipDetailScreen({ training, onBack, onOpenClass, onAddClass, onEditClass, onDeleteClass }) {
+=======
+export function MentorshipDetailScreen({ training, onBack, onOpenClass }) {
+>>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
     const [detail, setDetail]       = useState(null);
     const [loading, setLoading]     = useState(true);
     const [resources, setResources] = useState([]);
@@ -44,6 +48,7 @@ export function MentorshipDetailScreen({ training, onBack, onOpenClass, onAddCla
     const statusStyle = CLASS_STATUS[trainingStatus] ?? CLASS_STATUS.draft;
 
     return (
+<<<<<<< HEAD
         <div style={{ height: "100%", overflowY: "auto", background: T.bg }}>
             {/* ── Gradient Hero ── */}
             <div style={{
@@ -68,6 +73,28 @@ export function MentorshipDetailScreen({ training, onBack, onOpenClass, onAddCla
             </div>
 
             <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+=======
+        <div style={{ display: "flex", flexDirection: "column", height: "100%", background: T.bg }}>
+            {/* Header */}
+            <div style={{ padding: "16px 20px 12px", background: T.card, borderBottom: `1px solid ${T.border}`, display: "flex", gap: 12, alignItems: "center" }}>
+                <button onClick={onBack} style={{ border: "none", background: "none", cursor: "pointer", padding: 4 }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={T.text} strokeWidth="2.5"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
+                </button>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: T.text, marginBottom: 2 }}>{data.title}</div>
+                    <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                        <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 5, background: statusStyle.bg, color: statusStyle.color }}>
+                            {trainingStatus}
+                        </span>
+                        {data.program && (
+                            <span style={{ fontSize: 11, color: T.textSub }}>{data.program}</span>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            <div style={{ flex: 1, overflowY: "auto", padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+>>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
                 {loading && <div style={{ color: T.textSub, textAlign: "center", paddingTop: 32 }}>Loading…</div>}
 
                 {/* Info card */}
@@ -92,6 +119,7 @@ export function MentorshipDetailScreen({ training, onBack, onOpenClass, onAddCla
                 {/* Classes */}
                 {classes.length > 0 && (
                     <div>
+<<<<<<< HEAD
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                             <div style={{ fontSize: 11, fontWeight: 700, color: T.textSub, textTransform: "uppercase", letterSpacing: 0.5 }}>
                                 Classes ({classes.length})
@@ -105,11 +133,16 @@ export function MentorshipDetailScreen({ training, onBack, onOpenClass, onAddCla
                                     + Add Class
                                 </button>
                             )}
+=======
+                        <div style={{ fontSize: 11, fontWeight: 700, color: T.textSub, marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                            Classes ({classes.length})
+>>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
                         </div>
                         {classes.map(c => {
                             const cs = CLASS_STATUS[c.status] ?? CLASS_STATUS.draft;
                             const pct = c.progress_percentage ?? 0;
                             return (
+<<<<<<< HEAD
                                 <div
                                     key={c.id}
                                     style={{
@@ -193,12 +226,39 @@ export function MentorshipDetailScreen({ training, onBack, onOpenClass, onAddCla
                                         )}
                                     </div>
                                 </div>
+=======
+                                <button
+                                    key={c.id}
+                                    onClick={() => onOpenClass({ ...c, trainingId: data.id })}
+                                    style={{
+                                        width: "100%", background: T.card, border: `1px solid ${T.border}`,
+                                        borderRadius: T.radiusSm, padding: "14px 16px",
+                                        textAlign: "left", cursor: "pointer", boxShadow: T.shadowCard, marginBottom: 8,
+                                    }}
+                                >
+                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
+                                        <div style={{ fontWeight: 700, color: T.text, fontSize: 14 }}>{c.name}</div>
+                                        <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 5, background: cs.bg, color: cs.color, flexShrink: 0, marginLeft: 8 }}>
+                                            {c.status}
+                                        </span>
+                                    </div>
+                                    <div style={{ fontSize: 12, color: T.textSub, marginBottom: 8 }}>
+                                        {c.participant_count ?? 0} mentees · {c.module_count ?? 0} modules
+                                        {c.start_date ? ` · ${c.start_date}` : ""}
+                                    </div>
+                                    <div style={{ height: 5, borderRadius: 4, background: T.borderLight, overflow: "hidden" }}>
+                                        <div style={{ height: "100%", width: `${pct}%`, background: pct === 100 ? "#10B981" : T.gradientPrimary, borderRadius: 4 }} />
+                                    </div>
+                                    <div style={{ fontSize: 11, color: T.textSub, marginTop: 3 }}>{pct}% complete</div>
+                                </button>
+>>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
                             );
                         })}
                     </div>
                 )}
 
                 {!loading && classes.length === 0 && (
+<<<<<<< HEAD
                     <div style={{ textAlign: "center", paddingTop: 20 }}>
                         <div style={{ color: T.textSub, marginBottom: 12, fontSize: 14 }}>No classes yet.</div>
                         {onAddClass && (
@@ -212,6 +272,9 @@ export function MentorshipDetailScreen({ training, onBack, onOpenClass, onAddCla
                             </button>
                         )}
                     </div>
+=======
+                    <div style={{ color: T.textSub, textAlign: "center", paddingTop: 20 }}>No classes yet.</div>
+>>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
                 )}
 
                 {/* Resources */}

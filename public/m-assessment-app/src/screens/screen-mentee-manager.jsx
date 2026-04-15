@@ -16,7 +16,11 @@ function Avatar({ name, size = 36, bg = T.primaryGhost, color = T.primary }) {
     );
 }
 
+<<<<<<< HEAD
 export function MenteeManagerScreen({ cls, onBack, confirm = (o) => Promise.resolve(window.confirm(o?.title ?? "Confirm?")) }) {
+=======
+export function MenteeManagerScreen({ cls, onBack }) {
+>>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
     const [mentees, setMentees]           = useState(cls.mentees ?? []);
     const [search, setSearch]             = useState("");
     const [results, setResults]           = useState([]);
@@ -71,6 +75,7 @@ export function MenteeManagerScreen({ cls, onBack, confirm = (o) => Promise.reso
     };
 
     const handleRemove = async (mentee) => {
+<<<<<<< HEAD
         const ok = await confirm({
             title: `Remove ${mentee.name}?`,
             message: "This mentee will be removed from the class. They can be re-enrolled later.",
@@ -78,6 +83,9 @@ export function MenteeManagerScreen({ cls, onBack, confirm = (o) => Promise.reso
             danger: true,
         });
         if (!ok) return;
+=======
+        if (!window.confirm(`Remove ${mentee.name} from this class?`)) return;
+>>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
         setRemoving(mentee.id); setError(null);
         try {
             await api.classLifecycle.removeMentee(cls.id, mentee.id);
@@ -90,6 +98,7 @@ export function MenteeManagerScreen({ cls, onBack, confirm = (o) => Promise.reso
     };
 
     const handleRegenerate = async () => {
+<<<<<<< HEAD
         const ok = await confirm({
             title: "Regenerate enrollment link?",
             message: "The current link will be invalidated immediately. Anyone who had it will no longer be able to use it.",
@@ -97,6 +106,9 @@ export function MenteeManagerScreen({ cls, onBack, confirm = (o) => Promise.reso
             danger: false,
         });
         if (!ok) return;
+=======
+        if (!window.confirm("Regenerate enrollment link? The old link will stop working.")) return;
+>>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
         setLinkLoading(true);
         try {
             const res = await api.classLifecycle.regenerateToken(cls.id);
@@ -118,6 +130,7 @@ export function MenteeManagerScreen({ cls, onBack, confirm = (o) => Promise.reso
 
     return (
         <div style={{ display: "flex", flexDirection: "column", height: "100%", background: T.bg }}>
+<<<<<<< HEAD
             {/* ── Gradient Header ── */}
             <div style={{
                 background: "linear-gradient(135deg, #1E1B4B 0%, #3730A3 60%, #6366F1 100%)",
@@ -138,6 +151,21 @@ export function MenteeManagerScreen({ cls, onBack, confirm = (o) => Promise.reso
             </div>
             {/* Tabs on white background */}
             <div style={{ background: T.card, borderBottom: `1px solid ${T.border}` }}>
+=======
+            {/* Header */}
+            <div style={{ background: T.card, borderBottom: `1px solid ${T.border}` }}>
+                <div style={{ height: 3, background: T.gradientPrimary }} />
+                <div style={{ padding: "14px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+                    <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", padding: 4 }}>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={T.text} strokeWidth="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                    </button>
+                    <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 800, fontSize: 16, color: T.text }}>Manage Mentees</div>
+                        <div style={{ fontSize: 12, color: T.textSub }}>{cls.name} · {mentees.length} enrolled</div>
+                    </div>
+                </div>
+                {/* Tabs */}
+>>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
                 <div style={{ display: "flex" }}>
                     {[
                         { key: "roster", label: `Roster (${mentees.length})` },

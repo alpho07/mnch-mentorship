@@ -166,6 +166,10 @@ class User extends Authenticatable {
         return $this->hasMany(TrainingParticipant::class);
     }
 
+    public function classParticipations(): HasMany {
+        return $this->hasMany(ClassParticipant::class);
+    }
+
     // Many-to-many relationships for user access scoping
     public function counties(): BelongsToMany {
         return $this->belongsToMany(County::class, 'county_user');

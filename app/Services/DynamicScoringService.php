@@ -46,6 +46,7 @@ class DynamicScoringService {
         }
         // ─────────────────────────────────────────────────────────────────────
 
+<<<<<<< HEAD
         // ── mortality_three_month exclusion ───────────────────────────────────
         // These questions store a JSON string (monthly counts), not a yes/no
         // value, so they can never match a scoring_map key. Exclude them from
@@ -53,6 +54,8 @@ class DynamicScoringService {
         $questions = $questions->filter(fn($q) => $q->question_type !== 'mortality_three_month');
         // ─────────────────────────────────────────────────────────────────────
 
+=======
+>>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
         $totalQuestions = $questions->count();
 
         if ($totalQuestions === 0) {

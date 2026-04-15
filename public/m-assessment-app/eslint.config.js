@@ -5,7 +5,11 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
+<<<<<<< HEAD
   globalIgnores(['dist/**', 'android/**', 'New folder/**']),
+=======
+  globalIgnores(['dist']),
+>>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
   {
     files: ['**/*.{js,jsx}'],
     extends: [
@@ -24,7 +28,10 @@ export default defineConfig([
     },
     rules: {
       'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+<<<<<<< HEAD
       'no-empty': ['error', { allowEmptyCatch: true }],
+=======
+>>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
     },
   },
 ])

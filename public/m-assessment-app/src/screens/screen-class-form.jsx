@@ -56,6 +56,7 @@ export function ClassFormScreen({ trainingId, existingClass, onBack, onSaved }) 
 
     return (
         <div style={{ display: "flex", flexDirection: "column", height: "100%", background: T.bg }}>
+<<<<<<< HEAD
             {/* ── Gradient Header ── */}
             <div style={{
                 background: "linear-gradient(135deg, #1E1B4B 0%, #3730A3 60%, #6366F1 100%)",
@@ -76,6 +77,23 @@ export function ClassFormScreen({ trainingId, existingClass, onBack, onSaved }) 
                         background: saving ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.95)",
                         color: saving ? "rgba(255,255,255,0.5)" : "#3730A3",
                         fontSize: 13, fontWeight: 700, cursor: saving ? "not-allowed" : "pointer",
+=======
+            {/* Header */}
+            <div style={{ background: T.card, borderBottom: `1px solid ${T.border}` }}>
+                <div style={{ height: 3, background: T.gradientPrimary }} />
+                <div style={{ padding: "14px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+                    <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", padding: 4 }}>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={T.text} strokeWidth="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                    </button>
+                    <div style={{ flex: 1, fontWeight: 800, fontSize: 16, color: T.text }}>
+                        {isEdit ? "Edit Class" : "New Class"}
+                    </div>
+                    <button onClick={handleSave} disabled={saving} style={{
+                        padding: "8px 20px", borderRadius: T.radiusSm, border: "none",
+                        background: saving ? T.border : T.gradientPrimary,
+                        color: "#fff", fontSize: 13, fontWeight: 700, cursor: saving ? "not-allowed" : "pointer",
+                        boxShadow: saving ? "none" : `0 4px 12px ${T.primaryGlow}`,
+>>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
                     }}>
                         {saving ? "Saving…" : isEdit ? "Update" : "Create"}
                     </button>
