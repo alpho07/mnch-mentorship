@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 
 // ── Shared ────────────────────────────────────────────────────────────────────
-import { SECTION_META, calcGrade, computeTabs } from "./constants.js";
+import { SECTION_META, calcGrade, computeTabs, MENTOR_ROLES, MENTEE_ROLES, ADMIN_ROLES } from "./constants.js";
 import { PhoneShell, BottomNav } from "./components/shared-components.jsx";
 import { SyncIndicator } from "./components/sync-indicator.jsx";
 
@@ -26,6 +26,9 @@ import { TrainingsListScreen } from "./screens/screen-trainings-list.jsx";
 import { TrainingDetailScreen } from "./screens/screen-training-detail.jsx";
 import { MentorshipFormScreen } from "./screens/screen-mentorship-form.jsx";
 import { SessionNotesScreen } from "./screens/screen-session-notes.jsx";
+import { MenteeManagerScreen } from "./screens/screen-mentee-manager.jsx";
+import { ClassFormScreen } from "./screens/screen-class-form.jsx";
+import { ModulePickerScreen } from "./screens/screen-module-picker.jsx";
 
 import api from "./services/api.service.js";
 
@@ -202,6 +205,24 @@ export default function App() {
                 setFacilities(arr);
             })
             .catch(() => { /* non-critical — facilities will load from cache or show warning */ });
+
+        // ── Role-based background bootstrap ──────────────────────────────────
+        const roleSet = new Set(user?.roles ?? []);
+        const isMentorUser  = [...MENTOR_ROLES].some(r => roleSet.has(r));
+        const isMenteeUser  = [...MENTEE_ROLES].some(r => roleSet.has(r));
+        const isAdminUser   = [...ADMIN_ROLES].some(r => roleSet.has(r));
+
+        if (isMentorUser) {
+            api.mentorships.list().catch(() => {});
+        }
+        if (isMenteeUser) {
+            api.me.classes().catch(() => {});
+        }
+        if (isMenteeUser || isAdminUser) {
+            api.trainings.list().catch(() => {});
+        }
+        // Resources: load once, TTL guard is inside api.resources.list()
+        api.resources.list().catch(() => {});
     };
 
     // ── Retry ─────────────────────────────────────────────────────────────────
@@ -474,6 +495,40 @@ export default function App() {
                             cls={modal.data}
                             onBack={() => setModal({ type: "mentorshipDetail", data: modal.prev })}
                             onOpenModule={(mod) => setModal({ type: "moduleDetail", data: mod, prev: modal.data })}
+                            onManageMentees={() => setModal({ type: "menteeManager", data: modal.data, prev: modal.prev })}
+                            onEditClass={() => setModal({ type: "classForm", data: modal.data, prev: modal.prev, trainingId: modal.prev?.id })}
+                            onAddModule={() => setModal({ type: "modulePicker", data: modal.data, prev: modal.prev })}
+                        />
+                    </div>
+                )}
+                {user && modal?.type === "menteeManager" && (
+                    <div style={{ position: "absolute", inset: 0 }}>
+                        <MenteeManagerScreen
+                            cls={modal.data}
+                            onBack={() => setModal({ type: "classDetail", data: modal.data, prev: modal.prev })}
+                        />
+                    </div>
+                )}
+                {user && modal?.type === "classForm" && (
+                    <div style={{ position: "absolute", inset: 0 }}>
+                        <ClassFormScreen
+                            trainingId={modal.trainingId ?? modal.prev?.id}
+                            existingClass={modal.data}
+                            onBack={() => setModal({ type: "classDetail", data: modal.data, prev: modal.prev })}
+                            onSaved={(updated) => setModal({ type: "classDetail", data: { ...modal.data, ...updated }, prev: modal.prev })}
+                        />
+                    </div>
+                )}
+                {user && modal?.type === "modulePicker" && (
+                    <div style={{ position: "absolute", inset: 0 }}>
+                        <ModulePickerScreen
+                            programId={modal.prev?.program_id}
+                            existingModuleIds={(modal.data?.modules ?? []).map(m => m.program_module_id ?? m.id)}
+                            onBack={() => setModal({ type: "classDetail", data: modal.data, prev: modal.prev })}
+                            onPicked={async (programModuleId) => {
+                                await api.classLifecycle.addModule(modal.data.id, programModuleId);
+                                setModal({ type: "classDetail", data: modal.data, prev: modal.prev });
+                            }}
                         />
                     </div>
                 )}
@@ -519,6 +574,7 @@ export default function App() {
                     <div style={{ position: "absolute", inset: 0 }}>
                         <TrainingDetailScreen
                             training={modal.data}
+                            user={user}
                             onBack={closeModal}
                         />
                     </div>

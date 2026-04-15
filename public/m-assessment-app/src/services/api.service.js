@@ -172,9 +172,14 @@ export const _rawApi = {
         find: (id) => get('/mentorships/' + id),
         classes: (id) => get('/mentorships/' + id + '/classes'),
         classDetail: (id, classId) => get('/mentorships/' + id + '/classes/' + classId),
+        createClass: (trainingId, payload) => post('/mentorships/' + trainingId + '/classes', payload),
+        updateClass: (trainingId, classId, payload) => put('/mentorships/' + trainingId + '/classes/' + classId, payload),
+        deleteClass: (trainingId, classId) => del('/mentorships/' + trainingId + '/classes/' + classId),
     },
     modules: {
         list: (classId) => get('/classes/' + classId + '/modules'),
+        add: (classId, programModuleId) => post('/classes/' + classId + '/modules', { program_module_id: programModuleId }),
+        remove: (moduleId) => del('/modules/' + moduleId),
         start: (moduleId) => post('/modules/' + moduleId + '/start'),
         complete: (moduleId) => post('/modules/' + moduleId + '/complete'),
         sessions: (moduleId) => get('/modules/' + moduleId + '/sessions'),
@@ -217,6 +222,9 @@ export const _rawApi = {
         end: (classId) => post('/classes/' + classId + '/end'),
         enrollMentee: (classId, userId) => post('/classes/' + classId + '/mentees', { user_id: userId }),
         removeMentee: (classId, participantId) => del('/classes/' + classId + '/mentees/' + participantId),
+        enrollmentLink: (classId) => get('/classes/' + classId + '/enrollment-link'),
+        regenerateToken: (classId) => post('/classes/' + classId + '/regenerate-token'),
+        addModule: (classId, programModuleId) => post('/classes/' + classId + '/modules', { program_module_id: programModuleId }),
     },
     sessions: {
         update: (sessionId, payload) => put('/sessions/' + sessionId, payload),
@@ -787,6 +795,8 @@ const api = {
             }
         },
         classDetail: _rawApi.mentorships.classDetail,
+        createClass: _rawApi.mentorships.createClass,
+        updateClass: _rawApi.mentorships.updateClass,
     },
 
     // ── Modules (write ops queued when offline) ──────────────────────────────
@@ -1029,6 +1039,9 @@ const api = {
             }
         },
         end: (classId) => _rawApi.classLifecycle.end(classId),
+        enrollmentLink: (classId) => _rawApi.classLifecycle.enrollmentLink(classId),
+        regenerateToken: (classId) => _rawApi.classLifecycle.regenerateToken(classId),
+        addModule: (classId, programModuleId) => _rawApi.classLifecycle.addModule(classId, programModuleId),
         enrollMentee: async (classId, userId) => {
             try {
                 return await _rawApi.classLifecycle.enrollMentee(classId, userId);
