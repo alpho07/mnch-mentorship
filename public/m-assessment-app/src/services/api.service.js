@@ -88,6 +88,25 @@ function isNetworkError(e) {
             );
 }
 
+function normalizeApiList(data) {
+    if (Array.isArray(data?.data)) return data.data;
+    if (Array.isArray(data?.data?.data)) return data.data.data;
+    if (Array.isArray(data)) return data;
+    return [];
+}
+
+function normalizeFacilityOption(facility) {
+    const mfl = facility?.mfl_code ? String(facility.mfl_code).trim() : "";
+    const name = facility?.name ? String(facility.name).trim() : "";
+    return {
+        ...facility,
+        id: facility?.id,
+        name,
+        mfl_code: mfl,
+        label: facility?.label || (mfl ? `${mfl} - ${name}` : name),
+    };
+}
+
 // ── Raw API (exported for sync-queue to use directly) ────────────────────────
 export const _rawApi = {
     auth: {
@@ -113,7 +132,7 @@ export const _rawApi = {
     },
     facilities: {
         list: (params) => get('/facilities', params),
-        byCounty: (countyId) => get('/facilities/county/' + countyId),
+        byCounty: (countyId) => get('/facilities', { county_id: countyId, per_page: 1000 }),
         find: (id) => get('/facilities/' + id),
     },
     sections: {
@@ -210,11 +229,11 @@ export const _rawApi = {
         programs: () => get('/programs'),
         programModules: (programId) => get('/programs/' + programId + '/modules'),
         counties: () => get('/counties'),
-<<<<<<< HEAD
+        cadres: () => get('/cadres'),
+        departments: () => get('/departments'),
         facilitiesByCounty: (countyId) => get('/counties/' + countyId + '/facilities'),
-=======
->>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
-        userSearch: (q, facilityId) => get('/users/search?q=' + encodeURIComponent(q) + (facilityId ? '&facility_id=' + facilityId : '')),
+        userByEmail: (email) => get('/users/by-email?email=' + encodeURIComponent(email)),
+        userSearch: (q, perPage = 20) => get('/users/search?q=' + encodeURIComponent(q) + '&per_page=' + encodeURIComponent(perPage)),
     },
     mentorshipCreate: {
         create: (payload) => post('/mentorships', payload),
@@ -225,13 +244,11 @@ export const _rawApi = {
         start: (classId) => post('/classes/' + classId + '/start'),
         end: (classId) => post('/classes/' + classId + '/end'),
         enrollMentee: (classId, userId) => post('/classes/' + classId + '/mentees', { user_id: userId }),
+        createMentee: (classId, payload) => post('/classes/' + classId + '/mentees/create', payload),
         removeMentee: (classId, participantId) => del('/classes/' + classId + '/mentees/' + participantId),
         enrollmentLink: (classId) => get('/classes/' + classId + '/enrollment-link'),
         regenerateToken: (classId) => post('/classes/' + classId + '/regenerate-token'),
-<<<<<<< HEAD
         addModule: (classId, programModuleId) => post('/classes/' + classId + '/modules', { program_module_id: programModuleId }),
-=======
->>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
     },
     sessions: {
         update: (sessionId, payload) => put('/sessions/' + sessionId, payload),
@@ -242,6 +259,9 @@ export const _rawApi = {
     },
     resources: {
         list: (type) => get('/resources' + (type ? '?type=' + type : '')),
+    },
+    scopes: {
+        getConfig: () => get('/scope-config'),
     },
 };
 
@@ -801,13 +821,11 @@ const api = {
                 throw e;
             }
         },
+        update: _rawApi.mentorshipCreate.update,
         classDetail: _rawApi.mentorships.classDetail,
-<<<<<<< HEAD
         createClass: _rawApi.mentorships.createClass,
         updateClass: _rawApi.mentorships.updateClass,
         deleteClass: _rawApi.mentorships.deleteClass,
-=======
->>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
     },
 
     // ── Modules (write ops queued when offline) ──────────────────────────────
@@ -842,11 +860,8 @@ const api = {
                 throw e;
             }
         },
-<<<<<<< HEAD
         add: _rawApi.modules.add,
         remove: _rawApi.modules.remove,
-=======
->>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
         sessions: _rawApi.modules.sessions,
     },
 
@@ -997,10 +1012,28 @@ const api = {
                 return (await offlineStore.getMeta('counties')) ?? [];
             }
         },
-<<<<<<< HEAD
-        facilitiesByCounty: _rawApi.lookups.facilitiesByCounty,
-=======
->>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
+        facilitiesByCounty: async (countyId) => {
+            try {
+                let data;
+                try {
+                    data = await _rawApi.lookups.facilitiesByCounty(countyId);
+                } catch (lookupError) {
+                    data = await _rawApi.facilities.byCounty(countyId);
+                }
+                const list = normalizeApiList(data)
+                    .map(normalizeFacilityOption)
+                    .filter(f => f.id && f.name);
+                await offlineStore.setMeta('facilities_county_' + countyId, list);
+                return list;
+            } catch (e) {
+                const cached = (await offlineStore.getMeta('facilities_county_' + countyId)) ?? [];
+                if (cached.length > 0 || isNetworkError(e)) return cached;
+                throw e;
+            }
+        },
+        cadres: _rawApi.lookups.cadres,
+        departments: _rawApi.lookups.departments,
+        userByEmail: _rawApi.lookups.userByEmail,
         userSearch: _rawApi.lookups.userSearch,
     },
 
@@ -1059,12 +1092,9 @@ const api = {
             }
         },
         end: (classId) => _rawApi.classLifecycle.end(classId),
-<<<<<<< HEAD
         enrollmentLink: (classId) => _rawApi.classLifecycle.enrollmentLink(classId),
         regenerateToken: (classId) => _rawApi.classLifecycle.regenerateToken(classId),
         addModule: (classId, programModuleId) => _rawApi.classLifecycle.addModule(classId, programModuleId),
-=======
->>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
         enrollMentee: async (classId, userId) => {
             try {
                 return await _rawApi.classLifecycle.enrollMentee(classId, userId);
@@ -1076,6 +1106,7 @@ const api = {
                 throw e;
             }
         },
+        createMentee: (classId, payload) => _rawApi.classLifecycle.createMentee(classId, payload),
         removeMentee: async (classId, participantId) => {
             try {
                 return await _rawApi.classLifecycle.removeMentee(classId, participantId);
@@ -1173,6 +1204,11 @@ const api = {
             }
         },
         progress: _rawApi.participants.progress,
+    },
+
+    // ── Scope config ─────────────────────────────────────────────────────────
+    scopes: {
+        getConfig: () => _rawApi.scopes.getConfig(),
     },
 
     // ── Prefetch for offline ─────────────────────────────────────────────────
