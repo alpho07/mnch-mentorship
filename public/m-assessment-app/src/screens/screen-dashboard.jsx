@@ -397,18 +397,19 @@ export function DashboardScreen({ user, assessments, onViewAssessment, loading, 
 
     return (
         <div style={{ height: "100%", overflowY: "auto", background: T.bg }}>
+            {/* 6px breathing gap */}
+            <div style={{ height: 6, background: T.bg }} />
             {/* ── Hero Header ── */}
             <div style={{
                 background: T.gradientDark,
-                backgroundSize: "200% 200%",
-                animation: "gradientShift 10s ease infinite",
-                padding: "52px 20px 28px",
+                padding: "28px 20px 28px",
                 position: "relative", overflow: "hidden",
-                borderRadius: "24px 24px 28px 28px",
+                borderRadius: "0 0 28px 28px",
+                margin: "0 6px",
             }}>
                 {/* Decorative elements */}
-                <div style={{ position: "absolute", width: 200, height: 200, borderRadius: "50%", background: "radial-gradient(circle, rgba(16,185,129,0.12) 0%, transparent 70%)", top: -60, right: -50 }} />
-                <div style={{ position: "absolute", width: 120, height: 120, borderRadius: "50%", background: "radial-gradient(circle, rgba(52,211,153,0.08) 0%, transparent 70%)", bottom: 0, left: -30 }} />
+                <div style={{ position: "absolute", width: 200, height: 200, borderRadius: "50%", background: "radial-gradient(circle, rgba(38,198,218,0.15) 0%, transparent 70%)", top: -60, right: -50 }} />
+                <div style={{ position: "absolute", width: 120, height: 120, borderRadius: "50%", background: "radial-gradient(circle, rgba(0,151,167,0.1) 0%, transparent 70%)", bottom: 0, left: -30 }} />
 
                 {/* Greeting */}
                 <div style={{
@@ -634,9 +635,9 @@ export function DashboardScreen({ user, assessments, onViewAssessment, loading, 
                 {completed.length > 0 && (
                     <div style={{
                         marginTop: 6, padding: "16px 18px",
-                        background: "linear-gradient(135deg, rgba(108,92,231,0.06), rgba(14,165,233,0.06))",
+                        background: "linear-gradient(135deg, rgba(0,151,167,0.06), rgba(38,198,218,0.06))",
                         borderRadius: T.radius,
-                        border: `1px solid ${T.primary}15`,
+                        border: `1px solid ${T.primary}22`,
                         display: "flex", alignItems: "flex-start", gap: 12,
                     }}>
                         <div style={{
@@ -667,27 +668,32 @@ export function DashboardScreen({ user, assessments, onViewAssessment, loading, 
                 {/* ── Mentorship summary (for mentors) ── */}
                 {isMentor && mentorships !== null && (
                     <div style={{ marginBottom: 16 }}>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: T.textSub, marginBottom: 8, letterSpacing: 0.4 }}>
-                            MENTORSHIPS
+                        <div style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, marginBottom: 10, letterSpacing: 1, textTransform: "uppercase" }}>
+                            My Mentorships
                         </div>
                         {mentorships.length === 0 ? (
-                            <div style={{ color: T.textSub, fontSize: 13 }}>No mentorships assigned.</div>
+                            <div style={{ color: T.textSub, fontSize: 13, padding: "12px 0" }}>No mentorships assigned.</div>
                         ) : (
                             mentorships.slice(0, 2).map(m => (
                                 <div key={m.id} style={{
                                     background: T.card, borderRadius: T.radiusSm,
-                                    padding: "12px 14px", marginBottom: 8, boxShadow: T.shadowCard,
+                                    padding: "14px 16px", marginBottom: 8, boxShadow: T.shadowCard,
                                     border: `1px solid ${T.border}`,
+                                    display: "flex", alignItems: "center", gap: 12,
                                 }}>
-                                    <div style={{ fontWeight: 700, color: T.text, fontSize: 14 }}>{m.title}</div>
-                                    <div style={{ fontSize: 12, color: T.textSub, marginTop: 2 }}>
-                                        {m.class_count} class{m.class_count !== 1 ? "es" : ""}
+                                    <div style={{ width: 36, height: 36, borderRadius: 10, background: T.primaryGhost, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={T.primary} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/><path d="M17 11l2 2 4-4" stroke={T.success}/></svg>
                                     </div>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ fontWeight: 700, color: T.text, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.title}</div>
+                                        <div style={{ fontSize: 11, color: T.textSub, marginTop: 2 }}>{m.class_count} class{m.class_count !== 1 ? "es" : ""} · {m.status}</div>
+                                    </div>
+                                    <div style={{ width: 7, height: 7, borderRadius: "50%", background: m.status === "active" ? "#10B981" : T.border, flexShrink: 0 }} />
                                 </div>
                             ))
                         )}
                         {mentorships.length > 2 && (
-                            <div style={{ fontSize: 12, color: T.primary, fontWeight: 600, textAlign: "right" }}>
+                            <div style={{ fontSize: 12, color: T.primary, fontWeight: 600, textAlign: "right", marginTop: 2 }}>
                                 +{mentorships.length - 2} more
                             </div>
                         )}
@@ -697,25 +703,24 @@ export function DashboardScreen({ user, assessments, onViewAssessment, loading, 
                 {/* ── Upcoming Trainings (for mentees + admins) ── */}
                 {(isMentee || isAdmin) && upcomingTrainings !== null && upcomingTrainings.length > 0 && (
                     <div style={{ marginBottom: 16 }}>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: T.textSub, marginBottom: 8, letterSpacing: 0.4 }}>
-                            UPCOMING TRAININGS
+                        <div style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, marginBottom: 10, letterSpacing: 1, textTransform: "uppercase" }}>
+                            Upcoming Trainings
                         </div>
                         {upcomingTrainings.map(t => (
                             <div key={t.id} style={{
                                 background: T.card, borderRadius: T.radiusSm,
-                                padding: "12px 14px", marginBottom: 8, boxShadow: T.shadowCard,
+                                padding: "14px 16px", marginBottom: 8, boxShadow: T.shadowCard,
                                 border: `1px solid ${T.border}`,
+                                display: "flex", alignItems: "center", gap: 12,
                             }}>
-                                <div style={{ fontWeight: 700, color: T.text, fontSize: 14 }}>{t.title}</div>
-                                <div style={{ fontSize: 12, color: T.textSub, marginTop: 2 }}>
-                                    {t.start_date ?? ""}{t.county ? ` · ${t.county}` : ""}
+                                <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(14,165,233,0.08)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0EA5E9" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                                 </div>
-                                <div style={{
-                                    display: "inline-block", marginTop: 6,
-                                    fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 6,
-                                    background: t.status === "active" ? "#D1FAE5" : "#DBEAFE",
-                                    color: t.status === "active" ? "#065F46" : "#1D4ED8",
-                                }}>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ fontWeight: 700, color: T.text, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.title}</div>
+                                    <div style={{ fontSize: 11, color: T.textSub, marginTop: 2 }}>{t.start_date ?? ""}{t.county ? ` · ${t.county}` : ""}</div>
+                                </div>
+                                <div style={{ fontSize: 10, fontWeight: 700, padding: "3px 9px", borderRadius: 6, background: t.status === "active" ? "#D1FAE5" : T.borderLight, color: t.status === "active" ? "#065F46" : T.textSub, flexShrink: 0 }}>
                                     {t.status}
                                 </div>
                             </div>
@@ -726,24 +731,24 @@ export function DashboardScreen({ user, assessments, onViewAssessment, loading, 
                 {/* ── My classes summary (for mentees) ── */}
                 {isMentee && myClasses !== null && (
                     <div style={{ marginBottom: 16 }}>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: T.textSub, marginBottom: 8, letterSpacing: 0.4 }}>
-                            MY CLASSES
+                        <div style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, marginBottom: 10, letterSpacing: 1, textTransform: "uppercase" }}>
+                            My Classes
                         </div>
                         {myClasses.length === 0 ? (
-                            <div style={{ color: T.textSub, fontSize: 13 }}>Not enrolled in any classes yet.</div>
+                            <div style={{ color: T.textSub, fontSize: 13, padding: "12px 0" }}>Not enrolled in any classes yet.</div>
                         ) : (
                             myClasses.slice(0, 2).map(c => (
                                 <div key={c.id} style={{
                                     background: T.card, borderRadius: T.radiusSm,
-                                    padding: "12px 14px", marginBottom: 8, boxShadow: T.shadowCard,
+                                    padding: "14px 16px", marginBottom: 8, boxShadow: T.shadowCard,
                                     border: `1px solid ${T.border}`,
                                 }}>
-                                    <div style={{ fontWeight: 700, color: T.text, fontSize: 14 }}>{c.name}</div>
-                                    <div style={{ marginTop: 6, height: 4, borderRadius: 4, background: T.border, overflow: "hidden" }}>
-                                        <div style={{ height: "100%", width: (c.progress_percentage ?? 0) + "%", background: "#0EA5E9" }} />
+                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                                        <div style={{ fontWeight: 700, color: T.text, fontSize: 13, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</div>
+                                        <span style={{ fontSize: 12, fontWeight: 700, color: T.primary, flexShrink: 0, marginLeft: 8 }}>{c.progress_percentage ?? 0}%</span>
                                     </div>
-                                    <div style={{ fontSize: 11, color: T.textSub, marginTop: 3 }}>
-                                        {c.progress_percentage ?? 0}% complete
+                                    <div style={{ height: 5, borderRadius: 999, background: T.borderLight, overflow: "hidden" }}>
+                                        <div style={{ height: "100%", width: (c.progress_percentage ?? 0) + "%", background: T.gradientPrimary, borderRadius: 999, transition: "width 0.6s cubic-bezier(0.4,0,0.2,1)" }} />
                                     </div>
                                 </div>
                             ))

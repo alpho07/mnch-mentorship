@@ -7,6 +7,7 @@ use App\Models\Resource;
 use App\Models\ResourceType;
 use App\Models\ResourceCategory;
 use App\Models\Tag;
+use App\Models\Training;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -67,7 +68,23 @@ class ResourceController extends Controller
                 ->orderBy('sort_order')
                 ->get();
 
-            return compact('featuredResources', 'recentResources', 'popularResources', 'categories', 'resourceTypes');
+            $upcomingTrainings = Training::where('type', 'global_training')
+                ->whereNotIn('status', ['cancelled', 'completed'])
+                ->where('start_date', '>=', now())
+                ->with(['county'])
+                ->orderBy('start_date')
+                ->limit(4)
+                ->get();
+
+            $upcomingMentorships = Training::where('type', 'facility_mentorship')
+                ->whereNotIn('status', ['cancelled', 'completed'])
+                ->where('start_date', '>=', now())
+                ->with(['county', 'facility'])
+                ->orderBy('start_date')
+                ->limit(4)
+                ->get();
+
+            return compact('featuredResources', 'recentResources', 'popularResources', 'categories', 'resourceTypes', 'upcomingTrainings', 'upcomingMentorships');
         });
 
         return view('frontend.home', $data);

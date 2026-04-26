@@ -37,6 +37,7 @@ class MentorshipController extends Controller {
             'facility'    => $t->facility?->name,
             'county'      => $t->county?->name,
             'program'     => $t->program?->name,
+            'program_id'  => $t->program_id,
             'mentor_name' => $t->mentor?->name,
         ]);
 
@@ -82,6 +83,7 @@ class MentorshipController extends Controller {
                 'facility_mfl' => $training->facility?->mfl_code,
                 'county'       => $training->county?->name,
                 'program'      => $training->program?->name,
+                'program_id'   => $training->program_id,
                 'mentor_name'  => $training->mentor?->name,
                 'mentor_email' => $training->mentor?->email,
                 'notes'        => $training->notes,

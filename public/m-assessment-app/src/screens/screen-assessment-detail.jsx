@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { T, GRADE_COLOR, GRADE_BG, calcGrade } from "../constants.js";
 import { BackButton, GradeBadge, StatusChip, ProgressBar } from "../components/shared-components.jsx";
+import { SectionIcon } from "../components/section-icons.jsx";
 import api from "../services/api.service.js";
 import offlineStore from "../services/offline-store.js";
 
@@ -149,9 +150,9 @@ function OverviewTab({ assessment, sections }) {
                                     <div style={{
                                         width: 38, height: 38, borderRadius: 12,
                                         background: `${g1}12`, display: "flex", alignItems: "center", justifyContent: "center",
-                                        fontSize: 18, flexShrink: 0, border: `1px solid ${g1}20`,
+                                        flexShrink: 0, border: `1px solid ${g1}20`,
                                     }}>
-                                        {s.icon ?? "📋"}
+                                        <SectionIcon code={s.code} size={18} />
                                     </div>
                                     <div style={{ flex: 1, minWidth: 0 }}>
                                         <div style={{ fontWeight: 700, fontSize: 13, color: T.text }}>{s.name}</div>
@@ -346,7 +347,7 @@ function ResponsesTab({ assessment, sections }) {
                             width: "100%", padding: "13px 16px", border: "none", background: "none",
                             cursor: "pointer", display: "flex", alignItems: "center", gap: 10, textAlign: "left",
                         }}>
-                            <span style={{ fontSize: 20 }}>{s.icon ?? "📋"}</span>
+                            <SectionIcon code={s.code} size={20} />
                             <div style={{ flex: 1 }}>
                                 <div style={{ fontWeight: 700, fontSize: 13, color: T.text }}>{s.name}</div>
                                 <div style={{ fontSize: 11, color: T.textMuted, marginTop: 2 }}>
@@ -484,25 +485,230 @@ function HpResponsesView({ data }) {
     );
 }
 
+// ── Delete confirmation modal ─────────────────────────────────────────────────
+function DeleteConfirmModal({ assessment, onCancel, onConfirmed }) {
+    const COUNTDOWN = 4;
+    const [seconds, setSeconds] = useState(COUNTDOWN);
+    const [deleting, setDeleting] = useState(false);
+    const [error, setError] = useState(null);
+    const timerRef = useRef(null);
+
+    useEffect(() => {
+        timerRef.current = setInterval(() => {
+            setSeconds(s => {
+                if (s <= 1) {
+                    clearInterval(timerRef.current);
+                    return 0;
+                }
+                return s - 1;
+            });
+        }, 1000);
+        return () => clearInterval(timerRef.current);
+    }, []);
+
+    async function handleDelete() {
+        if (seconds > 0 || deleting) return;
+        setDeleting(true);
+        setError(null);
+        try {
+            await api.assessments.delete(assessment.id);
+            await offlineStore.deleteAssessment(assessment.id).catch(() => {});
+            onConfirmed(assessment.id);
+        } catch (e) {
+            setError(e.message ?? "Failed to delete. Please try again.");
+            setDeleting(false);
+        }
+    }
+
+    const canDelete = seconds === 0 && !deleting;
+
+    return (
+        <>
+            {/* Backdrop */}
+            <div style={{
+                position: "fixed", inset: 0,
+                background: "rgba(0,0,0,0.65)",
+                zIndex: 2000,
+                backdropFilter: "blur(4px)",
+                WebkitBackdropFilter: "blur(4px)",
+            }} />
+
+            {/* Modal */}
+            <div style={{
+                position: "fixed", inset: 0,
+                zIndex: 2001,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                padding: "0 24px",
+            }}>
+                <div style={{
+                    background: "#fff",
+                    borderRadius: 20,
+                    padding: "28px 24px 24px",
+                    width: "100%",
+                    maxWidth: 360,
+                    boxShadow: "0 24px 60px rgba(0,0,0,0.35)",
+                }}>
+                    {/* Icon */}
+                    <div style={{
+                        width: 56, height: 56, borderRadius: "50%",
+                        background: "#FEE2E2",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        margin: "0 auto 18px",
+                    }}>
+                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="3 6 5 6 21 6" />
+                            <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
+                            <path d="M10 11v6M14 11v6" />
+                            <path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2" />
+                        </svg>
+                    </div>
+
+                    <div style={{ textAlign: "center", marginBottom: 16 }}>
+                        <div style={{ fontSize: 17, fontWeight: 800, color: "#111827", marginBottom: 8 }}>
+                            Permanently Delete Assessment?
+                        </div>
+                        <div style={{
+                            fontSize: 13, color: "#6B7280", lineHeight: 1.6,
+                        }}>
+                            You are about to permanently delete the assessment for{" "}
+                            <strong style={{ color: "#374151" }}>{assessment.facility_name}</strong>.
+                        </div>
+                    </div>
+
+                    {/* Warning box */}
+                    <div style={{
+                        background: "#FEF2F2",
+                        border: "1px solid #FECACA",
+                        borderRadius: 10,
+                        padding: "12px 14px",
+                        marginBottom: 20,
+                    }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: "#991B1B", marginBottom: 4, display: "flex", alignItems: "center", gap: 6 }}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2.5" strokeLinecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                            This action is irreversible
+                        </div>
+                        <div style={{ fontSize: 12, color: "#B91C1C", lineHeight: 1.6 }}>
+                            All responses, scores, and data for this assessment will be wiped from both the server and this device. There is no way to recover it.
+                        </div>
+                    </div>
+
+                    {error && (
+                        <div style={{
+                            background: "#FEE2E2", color: "#991B1B",
+                            borderRadius: 8, padding: "10px 12px",
+                            fontSize: 13, marginBottom: 14,
+                        }}>
+                            {error}
+                        </div>
+                    )}
+
+                    <div style={{ display: "flex", gap: 10 }}>
+                        <button
+                            onClick={onCancel}
+                            disabled={deleting}
+                            style={{
+                                flex: 1, padding: "13px 0",
+                                borderRadius: 12, border: `1.5px solid ${T.border}`,
+                                background: "#fff", color: T.textMid,
+                                fontSize: 14, fontWeight: 600, cursor: "pointer",
+                                opacity: deleting ? 0.5 : 1,
+                            }}
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={handleDelete}
+                            disabled={!canDelete}
+                            style={{
+                                flex: 1, padding: "13px 0",
+                                borderRadius: 12, border: "none",
+                                background: canDelete ? "#DC2626" : "#FCA5A5",
+                                color: "#fff",
+                                fontSize: 14, fontWeight: 700,
+                                cursor: canDelete ? "pointer" : "not-allowed",
+                                transition: "background 0.3s",
+                                position: "relative",
+                                overflow: "hidden",
+                            }}
+                        >
+                            {deleting
+                                ? "Deleting…"
+                                : seconds > 0
+                                    ? `Delete (${seconds})`
+                                    : "Yes, Delete"}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </>
+    );
+}
+
 // ── Main screen ───────────────────────────────────────────────────────────────
-export function AssessmentDetailScreen({ assessment, sections, onBack, onContinue, onViewReport }) {
+export function AssessmentDetailScreen({ assessment, sections, onBack, onContinue, onViewReport, onDelete }) {
     const [tab, setTab] = useState("overview");
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
     const tabs = assessment.status === "completed"
         ? ["overview", "responses", "report"]
         : ["overview", "responses"];
     const headerPct = calcOverallFromSections(assessment.section_scores ?? {}) ?? assessment.overall_percentage;
     const headerGrade = headerPct != null ? calcGrade(headerPct) : assessment.overall_grade;
 
+    // Show delete only when assessment is not completed (may have partial/no data)
+    const canDelete = assessment.status !== "completed" && onDelete;
+
     return (
         <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+            {showDeleteConfirm && (
+                <DeleteConfirmModal
+                    assessment={assessment}
+                    onCancel={() => setShowDeleteConfirm(false)}
+                    onConfirmed={(id) => {
+                        setShowDeleteConfirm(false);
+                        onDelete(id);
+                    }}
+                />
+            )}
+
+            {/* 6px breathing gap between status bar and gradient card */}
+            <div style={{ height: 6, background: T.bg }} />
             {/* Header */}
             <div style={{
-                background: T.gradientDark, padding: "20px 20px 24px",
+                background: T.gradientDark, padding: "14px 20px 24px",
                 position: "relative", overflow: "hidden",
-                borderRadius: "24px 24px 28px 28px",
+                borderRadius: "0 0 28px 28px",
+                margin: "0 6px",
             }}>
                 <div style={{ position: "absolute", width: 140, height: 140, borderRadius: "50%", background: "radial-gradient(circle, rgba(16,185,129,0.1) 0%, transparent 70%)", top: -40, right: -30 }} />
-                <BackButton onBack={onBack} light />
+
+                {/* Top row: back + delete */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <BackButton onBack={onBack} light />
+                    {canDelete && (
+                        <button
+                            onClick={() => setShowDeleteConfirm(true)}
+                            aria-label="Delete assessment"
+                            style={{
+                                background: "rgba(255,255,255,0.12)",
+                                border: "1px solid rgba(255,255,255,0.2)",
+                                borderRadius: 10,
+                                padding: "8px 10px",
+                                cursor: "pointer",
+                                display: "flex", alignItems: "center", justifyContent: "center",
+                                backdropFilter: "blur(8px)",
+                            }}
+                        >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,200,200,0.9)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="3 6 5 6 21 6" />
+                                <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
+                                <path d="M10 11v6M14 11v6" />
+                                <path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2" />
+                            </svg>
+                        </button>
+                    )}
+                </div>
+
                 <div style={{ marginTop: 12, color: "white", fontSize: 18, fontWeight: 800, letterSpacing: -0.3, animation: "fadeInUp 0.4s ease both" }}>
                     {assessment.facility_name || "Assessment"}
                 </div>

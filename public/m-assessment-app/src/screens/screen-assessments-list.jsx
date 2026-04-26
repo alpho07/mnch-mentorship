@@ -1,20 +1,31 @@
-import { useState } from "react";
-import { T, GRADE_COLOR, GRADE_BG } from "../constants.js";
+import { useState, useEffect } from "react";
+import { T, GRADE_COLOR, GRADE_BG, GRADE_TEXT } from "../constants.js";
 import { GradeBadge, StatusChip, ProgressBar } from "../components/shared-components.jsx";
+import { SectionIcon } from "../components/section-icons.jsx";
+import { NewAssessmentSheet } from "./screen-new-assessment.jsx";
 
-export function AssessmentsListScreen({ assessments, sections, onView, loading }) {
+export function AssessmentsListScreen({ assessments, sections, onView, loading, onCreate, facilities, user, openSheet, onSheetClose }) {
     const [filter, setFilter] = useState("all");
+    const [showSheet, setShowSheet] = useState(false);
+
+    // Allow App.jsx (e.g. bottom-nav "New" tap) to open the sheet externally
+    useEffect(() => {
+        if (openSheet) setShowSheet(true);
+    }, [openSheet]);
 
     const list = filter === "all"
         ? (assessments || [])
         : (assessments || []).filter(a => a.status === filter);
 
     return (
-        <div style={{ height: "100%", overflowY: "auto", background: T.bg }}>
+        <div style={{ height: "100%", overflowY: "auto", background: T.bg, position: "relative" }}>
+            {/* 6px breathing gap between status bar and gradient card */}
+            <div style={{ height: 6, background: T.bg }} />
             <div style={{
                 background: T.gradientDark,
-                padding: "52px 20px 22px",
-                borderRadius: "24px 24px 28px 28px",
+                padding: "28px 20px 22px",
+                borderRadius: "0 0 28px 28px",
+                margin: "0 6px",
                 position: "relative", overflow: "hidden",
             }}>
                 <div style={{ position: "absolute", width: 160, height: 160, borderRadius: "50%", background: "radial-gradient(circle, rgba(52,211,153,0.1) 0%, transparent 70%)", top: -40, right: -40 }} />
@@ -78,7 +89,7 @@ export function AssessmentsListScreen({ assessments, sections, onView, loading }
                         <div style={{ fontSize: 56, marginBottom: 16 }}>📋</div>
                         <div style={{ fontSize: 17, fontWeight: 700, color: T.textMid, marginBottom: 8 }}>No assessments yet</div>
                         <div style={{ fontSize: 13, color: T.textSub, lineHeight: 1.6 }}>
-                            Your assessments will appear here once assigned by an administrator.
+                            No assessments yet. Tap + to start one.
                         </div>
                     </div>
                 )}
@@ -92,6 +103,23 @@ export function AssessmentsListScreen({ assessments, sections, onView, loading }
                         transition: "all 0.25s cubic-bezier(0.4,0,0.2,1)",
                         animation: `fadeInUp 0.4s ease ${i * 0.05}s both`,
                     }}>
+                        {a._isOffline && (
+                            <div style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: 4,
+                                background: GRADE_BG.yellow,
+                                color: GRADE_TEXT.yellow,
+                                fontSize: 11,
+                                fontWeight: 600,
+                                borderRadius: 6,
+                                padding: "3px 8px",
+                                marginBottom: 6,
+                            }}>
+                                <span style={{ width: 6, height: 6, borderRadius: "50%", background: GRADE_COLOR.yellow, display: "inline-block" }} />
+                                Pending sync
+                            </div>
+                        )}
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                             <div style={{ flex: 1, minWidth: 0 }}>
                                 <div style={{
@@ -135,7 +163,9 @@ export function AssessmentsListScreen({ assessments, sections, onView, loading }
                                     const sc = (a.section_scores || {})[s.code];
                                     return (
                                         <div key={s.code} style={{ flex: 1, textAlign: "center" }}>
-                                            <div style={{ fontSize: 10, marginBottom: 4 }}>{s.icon}</div>
+                                            <div style={{ display: "flex", justifyContent: "center", marginBottom: 4 }}>
+                                <SectionIcon code={s.code} size={11} />
+                            </div>
                                             <ProgressBar
                                                 pct={sc ? sc.percentage : 0}
                                                 color={sc ? GRADE_COLOR[sc.grade] : T.border}
@@ -149,6 +179,47 @@ export function AssessmentsListScreen({ assessments, sections, onView, loading }
                     </button>
                 ))}
             </div>
+
+            {/* FAB — create new assessment */}
+            <button
+                onClick={() => setShowSheet(true)}
+                aria-label="New assessment"
+                style={{
+                    position: "fixed",
+                    bottom: 80,
+                    right: 20,
+                    width: 52,
+                    height: 52,
+                    borderRadius: "50%",
+                    background: T.gradientPrimary,
+                    border: "none",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    boxShadow: T.shadowMd,
+                    zIndex: 10,
+                }}
+            >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+            </button>
+
+            {showSheet && (
+                <NewAssessmentSheet
+                    facilities={facilities}
+                    sections={sections}
+                    user={user}
+                    onSubmit={(assessment) => {
+                        setShowSheet(false);
+                        onSheetClose?.();
+                        onCreate(assessment);
+                    }}
+                    onClose={() => { setShowSheet(false); onSheetClose?.(); }}
+                />
+            )}
         </div>
     );
 }

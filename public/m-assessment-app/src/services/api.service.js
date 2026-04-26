@@ -73,9 +73,10 @@ const get = (path, params) => {
             ? '?' + new URLSearchParams(params).toString() : '';
     return request('GET', path + qs);
 };
-const post = (path, body) => request('POST', path, body);
-const put = (path, body) => request('PUT', path, body);
-const del = (path) => request('DELETE', path);
+const post  = (path, body) => request('POST',  path, body);
+const put   = (path, body) => request('PUT',   path, body);
+const patch = (path, body) => request('PATCH', path, body);
+const del   = (path)       => request('DELETE', path);
 
 // ── Helper: is a fetch error a network error? ───────────────────────────────
 function isNetworkError(e) {
@@ -86,6 +87,25 @@ function isNetworkError(e) {
             e.message?.includes('NetworkError') ||
             !navigator.onLine
             );
+}
+
+function normalizeApiList(data) {
+    if (Array.isArray(data?.data)) return data.data;
+    if (Array.isArray(data?.data?.data)) return data.data.data;
+    if (Array.isArray(data)) return data;
+    return [];
+}
+
+function normalizeFacilityOption(facility) {
+    const mfl = facility?.mfl_code ? String(facility.mfl_code).trim() : "";
+    const name = facility?.name ? String(facility.name).trim() : "";
+    return {
+        ...facility,
+        id: facility?.id,
+        name,
+        mfl_code: mfl,
+        label: facility?.label || (mfl ? `${mfl} - ${name}` : name),
+    };
 }
 
 // ── Raw API (exported for sync-queue to use directly) ────────────────────────
@@ -113,7 +133,7 @@ export const _rawApi = {
     },
     facilities: {
         list: (params) => get('/facilities', params),
-        byCounty: (countyId) => get('/facilities/county/' + countyId),
+        byCounty: (countyId) => get('/facilities', { county_id: countyId, per_page: 1000 }),
         find: (id) => get('/facilities/' + id),
     },
     sections: {
@@ -183,6 +203,8 @@ export const _rawApi = {
         start: (moduleId) => post('/modules/' + moduleId + '/start'),
         complete: (moduleId) => post('/modules/' + moduleId + '/complete'),
         sessions: (moduleId) => get('/modules/' + moduleId + '/sessions'),
+        sessionTemplates: (moduleId) => get('/modules/' + moduleId + '/sessions/available-templates'),
+        addSession: (moduleId, moduleSessionId) => post('/modules/' + moduleId + '/sessions', { module_session_id: moduleSessionId }),
     },
     attendance: {
         roster: (moduleId) => get('/modules/' + moduleId + '/attendance'),
@@ -210,7 +232,11 @@ export const _rawApi = {
         programs: () => get('/programs'),
         programModules: (programId) => get('/programs/' + programId + '/modules'),
         counties: () => get('/counties'),
-        userSearch: (q, facilityId) => get('/users/search?q=' + encodeURIComponent(q) + (facilityId ? '&facility_id=' + facilityId : '')),
+        cadres: () => get('/cadres'),
+        departments: () => get('/departments'),
+        facilitiesByCounty: (countyId) => get('/counties/' + countyId + '/facilities'),
+        userByEmail: (email) => get('/users/by-email?email=' + encodeURIComponent(email)),
+        userSearch: (q, perPage = 20) => get('/users/search?q=' + encodeURIComponent(q) + '&per_page=' + encodeURIComponent(perPage)),
     },
     mentorshipCreate: {
         create: (payload) => post('/mentorships', payload),
@@ -220,13 +246,19 @@ export const _rawApi = {
     classLifecycle: {
         start: (classId) => post('/classes/' + classId + '/start'),
         end: (classId) => post('/classes/' + classId + '/end'),
+        report: (classId) => get('/classes/' + classId + '/report'),
         enrollMentee: (classId, userId) => post('/classes/' + classId + '/mentees', { user_id: userId }),
+        createMentee: (classId, payload) => post('/classes/' + classId + '/mentees/create', payload),
         removeMentee: (classId, participantId) => del('/classes/' + classId + '/mentees/' + participantId),
+        updateMentee: (classId, participantId, data) => patch('/classes/' + classId + '/mentees/' + participantId, data),
+        markInvited: (classId, participantId) => post('/classes/' + classId + '/mentees/' + participantId + '/invite'),
         enrollmentLink: (classId) => get('/classes/' + classId + '/enrollment-link'),
         regenerateToken: (classId) => post('/classes/' + classId + '/regenerate-token'),
+        addModule: (classId, programModuleId) => post('/classes/' + classId + '/modules', { program_module_id: programModuleId }),
     },
     sessions: {
         update: (sessionId, payload) => put('/sessions/' + sessionId, payload),
+        remove: (sessionId) => del('/sessions/' + sessionId),
     },
     trainingActions: {
         enroll: (trainingId) => post('/trainings/' + trainingId + '/enroll'),
@@ -234,6 +266,9 @@ export const _rawApi = {
     },
     resources: {
         list: (type) => get('/resources' + (type ? '?type=' + type : '')),
+    },
+    scopes: {
+        getConfig: () => get('/scope-config'),
     },
 };
 
@@ -793,7 +828,11 @@ const api = {
                 throw e;
             }
         },
+        update: _rawApi.mentorshipCreate.update,
         classDetail: _rawApi.mentorships.classDetail,
+        createClass: _rawApi.mentorships.createClass,
+        updateClass: _rawApi.mentorships.updateClass,
+        deleteClass: _rawApi.mentorships.deleteClass,
     },
 
     // ── Modules (write ops queued when offline) ──────────────────────────────
@@ -828,7 +867,11 @@ const api = {
                 throw e;
             }
         },
+        add: _rawApi.modules.add,
+        remove: _rawApi.modules.remove,
         sessions: _rawApi.modules.sessions,
+        sessionTemplates: _rawApi.modules.sessionTemplates,
+        addSession: _rawApi.modules.addSession,
     },
 
     // ── Attendance ────────────────────────────────────────────────────────────
@@ -978,6 +1021,28 @@ const api = {
                 return (await offlineStore.getMeta('counties')) ?? [];
             }
         },
+        facilitiesByCounty: async (countyId) => {
+            try {
+                let data;
+                try {
+                    data = await _rawApi.lookups.facilitiesByCounty(countyId);
+                } catch (lookupError) {
+                    data = await _rawApi.facilities.byCounty(countyId);
+                }
+                const list = normalizeApiList(data)
+                    .map(normalizeFacilityOption)
+                    .filter(f => f.id && f.name);
+                await offlineStore.setMeta('facilities_county_' + countyId, list);
+                return list;
+            } catch (e) {
+                const cached = (await offlineStore.getMeta('facilities_county_' + countyId)) ?? [];
+                if (cached.length > 0 || isNetworkError(e)) return cached;
+                throw e;
+            }
+        },
+        cadres: _rawApi.lookups.cadres,
+        departments: _rawApi.lookups.departments,
+        userByEmail: _rawApi.lookups.userByEmail,
         userSearch: _rawApi.lookups.userSearch,
     },
 
@@ -1036,6 +1101,10 @@ const api = {
             }
         },
         end: (classId) => _rawApi.classLifecycle.end(classId),
+        report: (classId) => _rawApi.classLifecycle.report(classId),
+        enrollmentLink: (classId) => _rawApi.classLifecycle.enrollmentLink(classId),
+        regenerateToken: (classId) => _rawApi.classLifecycle.regenerateToken(classId),
+        addModule: (classId, programModuleId) => _rawApi.classLifecycle.addModule(classId, programModuleId),
         enrollMentee: async (classId, userId) => {
             try {
                 return await _rawApi.classLifecycle.enrollMentee(classId, userId);
@@ -1047,6 +1116,9 @@ const api = {
                 throw e;
             }
         },
+        createMentee: (classId, payload) => _rawApi.classLifecycle.createMentee(classId, payload),
+        updateMentee: (classId, participantId, data) => _rawApi.classLifecycle.updateMentee(classId, participantId, data),
+        markInvited: (classId, participantId) => _rawApi.classLifecycle.markInvited(classId, participantId),
         removeMentee: async (classId, participantId) => {
             try {
                 return await _rawApi.classLifecycle.removeMentee(classId, participantId);
@@ -1060,8 +1132,9 @@ const api = {
         },
     },
 
-    // ── Session notes (online→queue, never discard) ──────────────────────────
+    // ── Session notes / lifecycle ────────────────────────────────────────────
     sessions: {
+        remove: _rawApi.sessions.remove,
         update: async (sessionId, payload) => {
             try {
                 const data = await _rawApi.sessions.update(sessionId, payload);
@@ -1144,6 +1217,11 @@ const api = {
             }
         },
         progress: _rawApi.participants.progress,
+    },
+
+    // ── Scope config ─────────────────────────────────────────────────────────
+    scopes: {
+        getConfig: () => _rawApi.scopes.getConfig(),
     },
 
     // ── Prefetch for offline ─────────────────────────────────────────────────

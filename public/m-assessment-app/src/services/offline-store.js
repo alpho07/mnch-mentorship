@@ -10,7 +10,7 @@
  */
 
 const DB_NAME = "mnch_offline";
-const DB_VERSION = 6;
+const DB_VERSION = 7;
 
 const STORES = {
     schema: "schema", // full section schema (keyed by "full")
@@ -33,6 +33,8 @@ const STORES = {
     mentorshipMentees: "mentorshipMentees",  // keyed by class_id
     mentorshipSessions: "mentorshipSessions", // keyed by "class_${classId}" or "module_${moduleId}"
     conflicts: "conflicts",                   // keyed by conflict id (auto-generated)
+    // v7 — scope config (role-driven navigation)
+    scopeConfig: "scopeConfig",               // keyed by "config"
 };
 
 // ── Open / upgrade database ─────────────────────────────────────────────────
@@ -289,6 +291,11 @@ const offlineStore = {
             }
         }
     },
+
+    // ── Scope Config ─────────────────────────────────────────────────────────
+    getScopeConfig: () => dbGet(STORES.scopeConfig, "config"),
+    saveScopeConfig: (scopes) => dbPut(STORES.scopeConfig, "config", scopes),
+    clearScopeConfig: () => dbDelete(STORES.scopeConfig, "config"),
 
     // ── Full wipe (logout) ───────────────────────────────────────────────────
     clearAll: async () => {

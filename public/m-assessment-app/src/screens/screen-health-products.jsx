@@ -41,95 +41,87 @@ function AvailabilityToggle({ value, onChange }) {
     );
 }
 
-// ── Category accordion ────────────────────────────────────────────────────────
-function CategorySection({ category, deptId, responses, onChange }) {
-    const [open, setOpen] = useState(true);
-    const answered = category.commodities.filter(c => responses[`${deptId}_${c.commodity_id}`] !== undefined).length;
-    const available = category.commodities.filter(c => responses[`${deptId}_${c.commodity_id}`] === true).length;
-    const total = category.commodities.length;
-    const allAvailable = answered === total && available === total;
-    const allUnavailable = answered === total && available === 0;
-
-    const handleSetAll = (e, val) => {
-        e.stopPropagation();
-        category.commodities.forEach(c => onChange(`${deptId}_${c.commodity_id}`, val));
-    };
-
+// ── Flat commodity list (with category label as section divider) ───────────────
+function CommodityList({ department, deptId, responses, onChange }) {
+    // Render each category as a labelled group, commodities individually with no accordion
     return (
-        <div style={{ marginBottom: 8, borderRadius: 12, overflow: "hidden", border: `1px solid ${T.border}`, background: T.card }}>
-            <div style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 8 }}>
-                {/* Expand toggle */}
-                <button onClick={() => setOpen(o => !o)} style={{
-                    flex: 1, display: "flex", alignItems: "center", gap: 8,
-                    background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: 0,
-                }}>
-                    <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: T.text }}>{category.category_name}</div>
-                        <div style={{ fontSize: 10, color: T.textMuted, marginTop: 1 }}>
-                            {answered}/{total} answered
-                            {answered > 0 && ` · ${available} available`}
+        <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+            {department.categories.map((category) => {
+                const answered = category.commodities.filter(c => responses[`${deptId}_${c.commodity_id}`] !== undefined).length;
+                const available = category.commodities.filter(c => responses[`${deptId}_${c.commodity_id}`] === true).length;
+                const total = category.commodities.length;
+                const allAvailable = answered === total && available === total;
+                const allUnavailable = answered === total && available === 0;
+
+                return (
+                    <div key={category.category_id} style={{ marginBottom: 10 }}>
+                        {/* Category header row */}
+                        <div style={{
+                            display: "flex", alignItems: "center", justifyContent: "space-between",
+                            padding: "7px 12px",
+                            background: "linear-gradient(135deg, #EEF2FF, #E0E7FF)",
+                            borderRadius: "10px 10px 0 0",
+                            border: `1px solid #C7D2FE`,
+                            borderBottom: "none",
+                        }}>
+                            <div style={{ flex: 1 }}>
+                                <span style={{ fontSize: 11, fontWeight: 800, color: "#3730A3", textTransform: "uppercase", letterSpacing: 0.6 }}>
+                                    {category.category_name}
+                                </span>
+                                <span style={{ fontSize: 10, color: "#6366F1", marginLeft: 8, fontWeight: 500 }}>
+                                    {answered}/{total} answered{answered > 0 ? ` · ${available} available` : ""}
+                                </span>
+                            </div>
+                            {/* Bulk actions */}
+                            <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+                                <button
+                                    onClick={() => category.commodities.forEach(c => onChange(`${deptId}_${c.commodity_id}`, true))}
+                                    style={{
+                                        padding: "3px 7px", borderRadius: 6, border: `1px solid ${allAvailable ? "#6EE7B7" : "#D1FAE5"}`,
+                                        background: allAvailable ? "#D1FAE5" : "rgba(16,185,129,0.08)",
+                                        color: allAvailable ? "#065F46" : "#10B981",
+                                        fontSize: 9, fontWeight: 700, cursor: "pointer",
+                                    }}
+                                >All ✓</button>
+                                <button
+                                    onClick={() => category.commodities.forEach(c => onChange(`${deptId}_${c.commodity_id}`, false))}
+                                    style={{
+                                        padding: "3px 7px", borderRadius: 6, border: `1px solid ${allUnavailable ? "#FCA5A5" : "#FEE2E2"}`,
+                                        background: allUnavailable ? "#FEE2E2" : "rgba(239,68,68,0.08)",
+                                        color: allUnavailable ? "#991B1B" : "#EF4444",
+                                        fontSize: 9, fontWeight: 700, cursor: "pointer",
+                                    }}
+                                >All ✗</button>
+                            </div>
+                        </div>
+
+                        {/* Commodities — each as its own flat row */}
+                        <div style={{ border: `1px solid #C7D2FE`, borderRadius: "0 0 10px 10px", overflow: "hidden" }}>
+                            {category.commodities.map((c, i) => {
+                                const key = `${deptId}_${c.commodity_id}`;
+                                const val = responses[key];
+                                return (
+                                    <div key={c.commodity_id} style={{
+                                        padding: "11px 14px",
+                                        borderBottom: i < category.commodities.length - 1 ? `1px solid ${T.borderLight}` : "none",
+                                        display: "flex", alignItems: "center", gap: 10,
+                                        background: val === true ? "rgba(16,185,129,0.04)" : val === false ? "rgba(239,68,68,0.04)" : T.card,
+                                        transition: "background 0.15s",
+                                    }}>
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                            <div style={{ fontSize: 13, color: T.text, lineHeight: 1.4, fontWeight: 500 }}>{c.name}</div>
+                                            {c.description && (
+                                                <div style={{ fontSize: 10, color: T.textMuted, marginTop: 2, lineHeight: 1.3 }}>{c.description}</div>
+                                            )}
+                                        </div>
+                                        <AvailabilityToggle value={val === undefined ? null : val} onChange={v => onChange(key, v)} />
+                                    </div>
+                                );
+                            })}
                         </div>
                     </div>
-                    {/* Mini progress bar */}
-                    <div style={{ width: 40, height: 4, background: T.borderLight, borderRadius: 999, overflow: "hidden", flexShrink: 0 }}>
-                        <div style={{ height: "100%", width: `${total > 0 ? (answered / total) * 100 : 0}%`, background: "#10B981", borderRadius: 999, transition: "width 0.3s" }} />
-                    </div>
-                    <span style={{ color: T.textMuted, fontSize: 13, transform: open ? "rotate(180deg)" : "none", transition: "transform 0.2s", flexShrink: 0 }}>▾</span>
-                </button>
-
-                {/* Bulk action buttons */}
-                <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
-                    <button
-                        onClick={e => handleSetAll(e, true)}
-                        title="Mark all commodities as available"
-                        style={{
-                            padding: "4px 8px", borderRadius: 7, border: `1.5px solid ${allAvailable ? "#6EE7B7" : "#D1FAE5"}`,
-                            background: allAvailable ? "#D1FAE5" : "rgba(16,185,129,0.06)",
-                            color: allAvailable ? "#065F46" : "#10B981",
-                            fontSize: 10, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap",
-                            transition: "all 0.15s",
-                        }}
-                    >
-                        All ✓
-                    </button>
-                    <button
-                        onClick={e => handleSetAll(e, false)}
-                        title="Mark all commodities as not available"
-                        style={{
-                            padding: "4px 8px", borderRadius: 7, border: `1.5px solid ${allUnavailable ? "#FCA5A5" : "#FEE2E2"}`,
-                            background: allUnavailable ? "#FEE2E2" : "rgba(239,68,68,0.06)",
-                            color: allUnavailable ? "#991B1B" : "#EF4444",
-                            fontSize: 10, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap",
-                            transition: "all 0.15s",
-                        }}
-                    >
-                        All ✗
-                    </button>
-                </div>
-            </div>
-
-            {open && (
-                <div style={{ borderTop: `1px solid ${T.borderLight}` }}>
-                    {category.commodities.map((c, i) => {
-                        const key = `${deptId}_${c.commodity_id}`;
-                        const val = responses[key];
-                        return (
-                            <div key={c.commodity_id} style={{
-                                padding: "10px 14px",
-                                borderBottom: i < category.commodities.length - 1 ? `1px solid ${T.borderLight}` : "none",
-                                display: "flex", alignItems: "center", gap: 10,
-                                background: val === true ? "rgba(16,185,129,0.03)" : val === false ? "rgba(239,68,68,0.03)" : "transparent",
-                            }}>
-                                <div style={{ flex: 1 }}>
-                                    <div style={{ fontSize: 12, color: T.text, lineHeight: 1.4 }}>{c.name}</div>
-                                    {c.description && <div style={{ fontSize: 10, color: T.textMuted, marginTop: 2 }}>{c.description}</div>}
-                                </div>
-                                <AvailabilityToggle value={val === undefined ? null : val} onChange={v => onChange(key, v)} />
-                            </div>
-                        );
-                    })}
-                </div>
-            )}
+                );
+            })}
         </div>
     );
 }
@@ -428,15 +420,12 @@ export function HealthProductsScreen({ assessment, onBack, onComplete }) {
                             </div>
                         </div>
 
-                        {activeDept.categories.map(cat => (
-                            <CategorySection
-                                key={cat.category_id}
-                                category={cat}
-                                deptId={activeDept.department_id}
-                                responses={responses}
-                                onChange={handleChange}
-                            />
-                        ))}
+                        <CommodityList
+                            department={activeDept}
+                            deptId={activeDept.department_id}
+                            responses={responses}
+                            onChange={handleChange}
+                        />
                     </>
                 ) : (
                     <div style={{ textAlign: "center", padding: 40, color: T.textMuted }}>No departments found.</div>

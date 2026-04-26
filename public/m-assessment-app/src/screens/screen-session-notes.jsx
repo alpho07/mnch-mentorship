@@ -57,25 +57,30 @@ export function SessionNotesScreen({ session, onBack, onSaved }) {
     return (
         <div style={{ display: "flex", flexDirection: "column", height: "100%", background: T.bg }}>
             {/* Header */}
-            <div style={{ background: T.card, borderBottom: `1px solid ${T.border}` }}>
-                <div style={{ height: 3, background: T.gradientPrimary }} />
-                <div style={{ padding: "14px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-                    <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", padding: 4 }}>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={T.text} strokeWidth="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            <div style={{
+                background: "linear-gradient(135deg, #1E1B4B 0%, #3730A3 60%, #6366F1 100%)",
+                padding: "40px 16px 14px",
+                position: "relative", overflow: "hidden",
+            }}>
+                <div style={{ position: "absolute", width: 120, height: 120, borderRadius: "50%", background: "radial-gradient(circle, rgba(165,180,252,0.15) 0%, transparent 70%)", top: -30, right: -20 }} />
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <button onClick={onBack} style={{ background: "rgba(255,255,255,0.12)", border: "none", cursor: "pointer", padding: "6px 10px", borderRadius: 10, display: "flex", alignItems: "center", gap: 4 }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                        <span style={{ fontSize: 12, color: "rgba(255,255,255,0.8)", fontWeight: 600 }}>Back</span>
                     </button>
                     <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 700, fontSize: 15, color: T.text }}>{session.title ?? "Session Notes"}</div>
-                        <div style={{ fontSize: 12, color: T.textSub }}>Session {session.session_number}</div>
+                        <div style={{ fontWeight: 700, fontSize: 15, color: "white" }}>{session.title ?? "Session Notes"}</div>
+                        <div style={{ fontSize: 12, color: "rgba(255,255,255,0.55)" }}>Session {session.session_number}</div>
                     </div>
                     <button
                         onClick={handleSave}
                         disabled={saving}
                         style={{
                             padding: "8px 18px", borderRadius: T.radiusSm,
-                            background: saving ? T.border : T.gradientPrimary,
-                            border: "none", color: "#fff", fontSize: 13, fontWeight: 700,
+                            background: saving ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.95)",
+                            border: "none", color: saving ? "rgba(255,255,255,0.5)" : "#3730A3",
+                            fontSize: 13, fontWeight: 700,
                             cursor: saving ? "not-allowed" : "pointer",
-                            boxShadow: saving ? "none" : `0 4px 12px ${T.primaryGlow}`,
                         }}
                     >
                         {saving ? "Saving…" : "Save"}

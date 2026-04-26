@@ -82,34 +82,53 @@ export function TrainingsListScreen({ user, onOpen }) {
         : filter === "active" ? all.filter(t => ["active","ongoing","upcoming"].includes(t.status))
         : all.filter(t => t.status === filter);
 
+    const activeCount    = all.filter(t => ["active","ongoing","upcoming"].includes(t.status)).length;
+    const completedCount = all.filter(t => t.status === "completed").length;
+
     return (
-        <div style={{ display: "flex", flexDirection: "column", height: "100%", background: T.bg }}>
-            {/* Header */}
-            <div style={{ padding: "20px 20px 12px", background: T.card, borderBottom: `1px solid ${T.border}` }}>
-                <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>🏛️ Trainings</div>
-                <div style={{ fontSize: 13, color: T.textSub, marginTop: 2 }}>National & County programmes</div>
+        <div style={{ height: "100%", overflowY: "auto", background: T.bg }}>
+            {/* ── Gradient Hero ── */}
+            <div style={{
+                background: "linear-gradient(160deg, #1E1B4B 0%, #3730A3 55%, #818CF8 100%)",
+                padding: "52px 20px 22px",
+                borderRadius: "24px 24px 28px 28px",
+                position: "relative", overflow: "hidden",
+            }}>
+                {/* Decorative blobs */}
+                <div style={{ position: "absolute", width: 200, height: 200, borderRadius: "50%", background: "radial-gradient(circle, rgba(165,180,252,0.15) 0%, transparent 70%)", top: -60, right: -60 }} />
+                <div style={{ position: "absolute", width: 110, height: 110, borderRadius: "50%", background: "radial-gradient(circle, rgba(129,140,248,0.1) 0%, transparent 70%)", bottom: 0, left: -20 }} />
+
+                <div style={{ color: "white", fontSize: 22, fontWeight: 800, letterSpacing: -0.3, animation: "fadeInUp 0.4s ease both" }}>
+                    Trainings
+                </div>
+                <div style={{ color: "rgba(255,255,255,0.45)", fontSize: 13, marginTop: 3, fontWeight: 500, animation: "fadeInUp 0.4s ease 0.05s both" }}>
+                    National & County programmes
+                </div>
+
+                {/* Filter pills — doubled as stat pills */}
+                <div style={{ display: "flex", gap: 6, marginTop: 16, animation: "fadeInUp 0.4s ease 0.1s both" }}>
+                    {[
+                        { key: "all",       label: "All",       count: all.length },
+                        { key: "active",    label: "Active",    count: activeCount },
+                        { key: "completed", label: "Completed", count: completedCount },
+                    ].map(f => (
+                        <button key={f.key} onClick={() => setFilter(f.key)} style={{
+                            flex: 1, padding: "9px 6px", borderRadius: 14,
+                            background: filter === f.key ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.08)",
+                            border: filter === f.key ? "none" : "1px solid rgba(255,255,255,0.12)",
+                            color: filter === f.key ? "#3730A3" : "rgba(255,255,255,0.6)",
+                            cursor: "pointer", textAlign: "center",
+                            transition: "all 0.2s cubic-bezier(0.4,0,0.2,1)",
+                            boxShadow: filter === f.key ? "0 4px 12px rgba(0,0,0,0.15)" : "none",
+                        }}>
+                            <div style={{ fontSize: 16, fontWeight: 800, lineHeight: 1 }}>{f.count}</div>
+                            <div style={{ fontSize: 10, fontWeight: 600, marginTop: 2 }}>{f.label}</div>
+                        </button>
+                    ))}
+                </div>
             </div>
 
-            {/* Filter tabs */}
-            <div style={{ background: T.card, padding: "8px 16px", borderBottom: `1px solid ${T.border}`, display: "flex", gap: 6 }}>
-                {[
-                    { key: "all", label: `All (${all.length})` },
-                    { key: "active", label: "Active" },
-                    { key: "completed", label: "Done" },
-                ].map(tab => (
-                    <button key={tab.key} onClick={() => setFilter(tab.key)} style={{
-                        padding: "5px 12px", borderRadius: 20, border: "none", fontSize: 12, fontWeight: 600,
-                        cursor: "pointer",
-                        background: filter === tab.key ? T.primary : T.bg,
-                        color: filter === tab.key ? "#fff" : T.textSub,
-                        transition: "all 0.2s",
-                    }}>
-                        {tab.label}
-                    </button>
-                ))}
-            </div>
-
-            <div style={{ flex: 1, overflowY: "auto", padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ padding: "16px 16px 20px", display: "flex", flexDirection: "column", gap: 10 }}>
                 {loading && <div style={{ color: T.textSub, textAlign: "center", paddingTop: 40 }}>Loading…</div>}
                 {!loading && filtered.length === 0 && (
                     <div style={{ color: T.textSub, textAlign: "center", paddingTop: 60 }}>No trainings found.</div>

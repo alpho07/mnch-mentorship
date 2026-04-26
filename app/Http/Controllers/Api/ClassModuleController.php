@@ -26,6 +26,7 @@ class ClassModuleController extends Controller
             ->get()
             ->map(fn(ClassModule $m) => [
                 'id'                  => $m->id,
+                'program_module_id'   => $m->program_module_id,
                 'name'                => $m->programModule?->name ?? 'Module ' . $m->order_sequence,
                 'status'              => $m->status,
                 'order_sequence'      => $m->order_sequence,
@@ -69,12 +70,15 @@ class ClassModuleController extends Controller
 
         return response()->json([
             'data' => [
-                'id'             => $module->id,
-                'name'           => $programModule->name,
-                'status'         => $module->status,
-                'order_sequence' => $module->order_sequence,
-                'session_count'  => $module->sessions()->count(),
+                'id'                  => $module->id,
+                'program_module_id'   => $module->program_module_id,
+                'name'                => $programModule->name,
+                'status'              => $module->status,
+                'order_sequence'      => $module->order_sequence,
+                'session_count'       => $module->sessions()->count(),
                 'requires_assessment' => (bool) $module->requires_assessment,
+                'started_at'          => $module->started_at?->toIso8601String(),
+                'completed_at'        => $module->completed_at?->toIso8601String(),
             ],
         ], 201);
     }

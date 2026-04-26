@@ -1,499 +1,439 @@
 @extends('layouts.app')
 
-@section('title', 'Welcome to Resource Center')
-@section('meta_description', 'Discover valuable resources, tools, and learning materials to enhance your knowledge and skills.')
+@section('title', 'MNCH Kenya — Training & Resource Hub')
+@section('meta_description', 'Access training resources, upcoming programs, and learning materials for maternal, neonatal, and child health in Kenya.')
 
 @section('content')
 <div x-data="homePage">
-    <!-- Hero Section -->
-    <section class="bg-gradient-to-br from-primary-600 via-primary-700 to-primary-800 text-white">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-            <div class="text-center">
-                <h1 class="text-4xl md:text-6xl font-bold mb-6">
-                   Strengthening Skills,<br>
-                    <span class="text-primary-200">Saving Lives</span>
-                </h1>
-                <p class="text-xl md:text-2xl text-primary-100 mb-8 max-w-3xl mx-auto">
-                    Access a multitude of materials for Short, professional, and resonates with health and learning.
-                </p>
-                <!-- Hero Search -->
-                <div class="max-w-2xl mx-auto mb-8">
-                    <form action="{{ route('resources.search') }}" method="GET" class="relative">
-                        <input type="text"
-                            name="q"
-                            placeholder="What would you like to learn today?"
-                            class="w-full px-6 py-4 text-lg rounded-full border-0 text-gray-900 shadow-lg focus:ring-4 focus:ring-primary-300 focus:outline-none">
-                        <button type="submit" class="absolute right-2 top-2 bg-primary-600 text-white px-6 py-2 rounded-full hover:bg-primary-700 transition-colors">
-                            <i class="fas fa-search mr-2"></i> Search
-                        </button>
-                    </form>
+
+    {{-- ═══════════════════════════════════════════
+         HERO
+    ═══════════════════════════════════════════ --}}
+    <section class="relative overflow-hidden" style="background: linear-gradient(135deg, #004D40 0%, #00695C 25%, #0097A7 70%, #26C6DA 100%);">
+        <div class="absolute top-0 right-0 w-96 h-96 opacity-10"
+             style="background: radial-gradient(circle, #ffffff 0%, transparent 70%); transform: translate(30%, -30%);"></div>
+        <div class="absolute bottom-0 left-0 w-72 h-72 opacity-10"
+             style="background: radial-gradient(circle, #26C6DA 0%, transparent 70%); transform: translate(-30%, 30%);"></div>
+        <div class="absolute inset-0 opacity-5">
+            <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+                <pattern id="hb" x="0" y="0" width="300" height="60" patternUnits="userSpaceOnUse">
+                    <polyline points="0,30 40,30 55,10 65,50 75,30 90,30 100,20 110,40 120,30 300,30"
+                              fill="none" stroke="white" stroke-width="1.5"/>
+                </pattern>
+                <rect width="100%" height="100%" fill="url(#hb)"/>
+            </svg>
+        </div>
+
+        <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
+            <div class="text-center max-w-3xl mx-auto">
+                <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-6 text-sm font-semibold text-white border border-white/20"
+                     style="background: rgba(255,255,255,0.12); backdrop-filter: blur(8px);">
+                    <span class="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></span>
+                    Kenya Ministry of Health · MNCH Program
                 </div>
-                <!-- Quick Stats -->
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
-                    <div class="bg-white/10 backdrop-blur rounded-lg p-4">
-                        <div class="text-2xl md:text-3xl font-bold">{{ number_format(\App\Models\Resource::published()->count()) }}</div>
-                        <div class="text-primary-200 text-sm">Resources</div>
+                <h1 class="text-4xl md:text-5xl lg:text-6xl font-extrabold text-white mb-5 leading-tight tracking-tight">
+                    Strengthening Skills,<br>
+                    <span class="text-cyan-200">Saving Lives</span>
+                </h1>
+                <p class="text-lg md:text-xl text-cyan-100 mb-8 leading-relaxed max-w-2xl mx-auto">
+                    Access training materials, clinical guidelines, and learning resources for frontline health workers across Kenya.
+                </p>
+                <form action="{{ route('resources.search') }}" method="GET" class="max-w-xl mx-auto mb-10">
+                    <div class="relative">
+                        <input type="text" name="q" value="{{ request('q') }}"
+                               placeholder="Search guidelines, protocols, training materials…"
+                               class="w-full pl-12 pr-32 py-4 rounded-2xl text-gray-900 shadow-2xl border-0 outline-none focus:ring-4 focus:ring-white/30"
+                               style="font-size: 15px;">
+                        <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                        <button type="submit"
+                                class="absolute right-2 top-2 bottom-2 px-5 rounded-xl text-white text-sm font-semibold"
+                                style="background: linear-gradient(135deg, #0097A7 0%, #00838F 100%);">
+                            Search
+                        </button>
                     </div>
-                    <div class="bg-white/10 backdrop-blur rounded-lg p-4">
-                        <div class="text-2xl md:text-3xl font-bold">{{ number_format($categories->count()) }}</div>
-                        <div class="text-primary-200 text-sm">Categories</div>
+                </form>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-3xl mx-auto">
+                    @php $heroStats = [
+                        ['value' => number_format(\App\Models\Resource::published()->count()), 'label' => 'Resources'],
+                        ['value' => number_format($categories->count()), 'label' => 'Categories'],
+                        ['value' => number_format(\App\Models\User::count()), 'label' => 'Health Workers'],
+                        ['value' => number_format(\App\Models\ResourceDownload::count()), 'label' => 'Downloads'],
+                    ]; @endphp
+                    @foreach($heroStats as $stat)
+                    <div class="rounded-xl px-4 py-3 text-center border border-white/15"
+                         style="background: rgba(255,255,255,0.1); backdrop-filter: blur(8px);">
+                        <div class="text-2xl md:text-3xl font-extrabold text-white">{{ $stat['value'] }}</div>
+                        <div class="text-xs text-cyan-200 font-medium mt-0.5">{{ $stat['label'] }}</div>
                     </div>
-                    <div class="bg-white/10 backdrop-blur rounded-lg p-4">
-                        <div class="text-2xl md:text-3xl font-bold">{{ number_format(\App\Models\User::count()) }}</div>
-                        <div class="text-primary-200 text-sm">Users</div>
-                    </div>
-                    <div class="bg-white/10 backdrop-blur rounded-lg p-4">
-                        <div class="text-2xl md:text-3xl font-bold">{{ number_format(\App\Models\ResourceDownload::count()) }}</div>
-                        <div class="text-primary-200 text-sm">Downloads</div>
-                    </div>
+                    @endforeach
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Featured Resources -->
-    @if($featuredResources->count() > 0)
-    <section class="py-16 bg-white">
+    {{-- ═══════════════════════════════════════════
+         QUICK LINKS STRIP
+    ═══════════════════════════════════════════ --}}
+    <section class="bg-white border-b border-gray-100">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="text-center mb-12">
-                <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-                    <i class="fas fa-star text-yellow-500 mr-3"></i>
-                    Featured Resources
-                </h2>
-                <p class="text-xl text-gray-600 max-w-2xl mx-auto">
-                    Hand-picked resources that our community loves most
-                </p>
+            <div class="flex items-center gap-2 overflow-x-auto py-3 scrollbar-none" style="-webkit-overflow-scrolling: touch;">
+                @php $quickLinks = [
+                    ['href' => route('resources.index'),                          'icon' => 'fas fa-book-open',   'label' => 'All Resources'],
+                    ['href' => route('categories.index'),                         'icon' => 'fas fa-th-large',    'label' => 'Categories'],
+                    ['href' => url('analytics/dashboard'),                        'icon' => 'fas fa-map',         'label' => 'Training Map'],
+                    ['href' => route('resources.index', ['sort' => 'latest']),    'icon' => 'fas fa-clock',       'label' => 'Recently Added'],
+                    ['href' => route('resources.index', ['sort' => 'popular']),   'icon' => 'fas fa-fire',        'label' => 'Most Popular'],
+                ]; @endphp
+                @foreach($quickLinks as $link)
+                <a href="{{ $link['href'] }}"
+                   class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-gray-600 hover:bg-primary-50 hover:text-primary-700 transition-all whitespace-nowrap flex-shrink-0 border border-transparent hover:border-primary-100">
+                    <i class="{{ $link['icon'] }} text-xs text-primary-500"></i>
+                    {{ $link['label'] }}
+                </a>
+                @endforeach
             </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        </div>
+    </section>
+
+    {{-- ═══════════════════════════════════════════
+         UPCOMING TRAININGS  ← moved to top
+    ═══════════════════════════════════════════ --}}
+    @if(isset($upcomingTrainings) && $upcomingTrainings->count() > 0)
+    <section class="py-14 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-end justify-between mb-8">
+                <div>
+                    <div class="flex items-center gap-2 mb-1">
+                        <div class="w-1 h-5 rounded-full" style="background: linear-gradient(180deg, #0097A7, #26C6DA);"></div>
+                        <span class="text-xs font-semibold text-primary-600 uppercase tracking-widest">Scheduled</span>
+                    </div>
+                    <h2 class="text-2xl md:text-3xl font-extrabold text-gray-900">Upcoming Trainings</h2>
+                    <p class="text-gray-500 text-sm mt-1">Global MOH training programs open for participation</p>
+                </div>
+                <a href="{{ url('analytics/dashboard') }}"
+                   class="hidden md:inline-flex items-center gap-2 text-sm font-semibold text-primary-600 hover:text-primary-700 transition-colors">
+                    View all <i class="fas fa-arrow-right text-xs"></i>
+                </a>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                @foreach($upcomingTrainings as $training)
+                <div class="group relative bg-white rounded-2xl border border-gray-200 p-5 hover:border-primary-300 hover:shadow-lg transition-all duration-200 overflow-hidden">
+                    <div class="absolute top-0 left-0 right-0 h-0.5 rounded-t-2xl"
+                         style="background: linear-gradient(90deg, #0097A7 0%, #26C6DA 100%);"></div>
+                    @if($training->start_date)
+                    <div class="inline-flex items-center gap-2 mb-3">
+                        <div class="w-10 h-10 rounded-xl text-white flex flex-col items-center justify-center leading-none flex-shrink-0"
+                             style="background: linear-gradient(135deg, #0097A7 0%, #26C6DA 100%);">
+                            <span class="text-sm font-extrabold">{{ $training->start_date->format('d') }}</span>
+                            <span class="font-semibold uppercase" style="font-size: 8px; letter-spacing: 0.5px;">{{ $training->start_date->format('M') }}</span>
+                        </div>
+                        <div class="text-xs text-gray-500">
+                            <div class="font-semibold text-gray-700">{{ $training->start_date->format('M d, Y') }}</div>
+                            @if($training->end_date)<div>to {{ $training->end_date->format('M d') }}</div>@endif
+                        </div>
+                    </div>
+                    @endif
+                    <h3 class="font-bold text-gray-900 text-sm leading-snug mb-3 group-hover:text-primary-700 transition-colors line-clamp-2">
+                        {{ $training->title }}
+                    </h3>
+                    <div class="space-y-1.5">
+                        @if($training->county)
+                        <div class="flex items-center gap-1.5 text-xs text-gray-500">
+                            <i class="fas fa-map-marker-alt text-primary-400 w-3.5"></i>
+                            <span class="truncate">{{ $training->county->name }}</span>
+                        </div>
+                        @endif
+                        <div class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold"
+                             style="background: #E0F7FA; color: #006064;">
+                            {{ ucfirst($training->status) }}
+                        </div>
+                    </div>
+                </div>
+                @endforeach
+            </div>
+        </div>
+    </section>
+    @endif
+
+    {{-- ═══════════════════════════════════════════
+         UPCOMING MENTORSHIPS  ← moved to top
+    ═══════════════════════════════════════════ --}}
+    @if(isset($upcomingMentorships) && $upcomingMentorships->count() > 0)
+    <section class="py-14" style="background: linear-gradient(135deg, #E0F7FA 0%, #F0FDFF 100%);">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-end justify-between mb-8">
+                <div>
+                    <div class="flex items-center gap-2 mb-1">
+                        <div class="w-1 h-5 rounded-full" style="background: linear-gradient(180deg, #00838F, #0097A7);"></div>
+                        <span class="text-xs font-semibold text-primary-700 uppercase tracking-widest">Facility-Based</span>
+                    </div>
+                    <h2 class="text-2xl md:text-3xl font-extrabold text-gray-900">Upcoming Mentorships</h2>
+                    <p class="text-gray-500 text-sm mt-1">On-site clinical mentorship programs at facilities near you</p>
+                </div>
+                <a href="{{ url('analytics/dashboard') }}"
+                   class="hidden md:inline-flex items-center gap-2 text-sm font-semibold text-primary-600 hover:text-primary-700 transition-colors">
+                    View all <i class="fas fa-arrow-right text-xs"></i>
+                </a>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                @foreach($upcomingMentorships as $mentorship)
+                <div class="group bg-white rounded-2xl border border-primary-100 p-5 hover:border-primary-300 hover:shadow-lg transition-all duration-200 relative overflow-hidden">
+                    <div class="absolute -top-6 -right-6 w-20 h-20 rounded-full opacity-10"
+                         style="background: radial-gradient(circle, #0097A7 0%, transparent 70%);"></div>
+                    <div class="flex items-start gap-3 mb-3">
+                        <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                             style="background: linear-gradient(135deg, #00838F 0%, #0097A7 100%);">
+                            <i class="fas fa-user-md text-white text-sm"></i>
+                        </div>
+                        @if($mentorship->start_date)
+                        <div class="text-xs text-gray-500">
+                            <div class="font-semibold text-gray-700">{{ $mentorship->start_date->format('M d, Y') }}</div>
+                            @if($mentorship->end_date)<div>to {{ $mentorship->end_date->format('M d') }}</div>@endif
+                        </div>
+                        @endif
+                    </div>
+                    <h3 class="font-bold text-gray-900 text-sm leading-snug mb-3 group-hover:text-primary-700 transition-colors line-clamp-2">
+                        {{ $mentorship->title }}
+                    </h3>
+                    <div class="space-y-1.5">
+                        @if($mentorship->facility)
+                        <div class="flex items-center gap-1.5 text-xs text-gray-500">
+                            <i class="fas fa-hospital text-primary-400 w-3.5"></i>
+                            <span class="truncate">{{ $mentorship->facility->name }}</span>
+                        </div>
+                        @elseif($mentorship->county)
+                        <div class="flex items-center gap-1.5 text-xs text-gray-500">
+                            <i class="fas fa-map-marker-alt text-primary-400 w-3.5"></i>
+                            <span class="truncate">{{ $mentorship->county->name }}</span>
+                        </div>
+                        @endif
+                        <div class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold"
+                             style="background: #D1FAE5; color: #065F46;">
+                            Mentorship
+                        </div>
+                    </div>
+                </div>
+                @endforeach
+            </div>
+        </div>
+    </section>
+    @endif
+
+    {{-- ═══════════════════════════════════════════
+         FEATURED RESOURCES
+    ═══════════════════════════════════════════ --}}
+    @if($featuredResources->count() > 0)
+    <section class="py-14 bg-gray-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-end justify-between mb-8">
+                <div>
+                    <div class="flex items-center gap-2 mb-1">
+                        <div class="w-1 h-5 rounded-full" style="background: linear-gradient(180deg, #0097A7, #26C6DA);"></div>
+                        <span class="text-xs font-semibold text-primary-600 uppercase tracking-widest">Curated</span>
+                    </div>
+                    <h2 class="text-2xl md:text-3xl font-extrabold text-gray-900">Featured Resources</h2>
+                    <p class="text-gray-500 text-sm mt-1">Hand-picked clinical materials our community values most</p>
+                </div>
+                <a href="{{ route('resources.index', ['featured' => 1]) }}"
+                   class="hidden md:inline-flex items-center gap-2 text-sm font-semibold text-primary-600 hover:text-primary-700 transition-colors">
+                    View all <i class="fas fa-arrow-right text-xs"></i>
+                </a>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 @foreach($featuredResources as $resource)
                     @include('components.resource-card', ['resource' => $resource, 'featured' => true])
                 @endforeach
             </div>
-            <div class="text-center mt-12">
-                <a href="{{ route('resources.index', ['featured' => 1]) }}" class="inline-flex items-center px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
-                    <i class="fas fa-star mr-2"></i>
-                    View All Featured Resources
+            <div class="text-center mt-8 md:hidden">
+                <a href="{{ route('resources.index', ['featured' => 1]) }}"
+                   class="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-white text-sm font-semibold shadow-md"
+                   style="background: linear-gradient(135deg, #0097A7 0%, #26C6DA 100%);">
+                    <i class="fas fa-star"></i>View All Featured
                 </a>
             </div>
         </div>
     </section>
     @endif
 
-    <!-- Categories Grid -->
-    <section class="py-16 bg-gray-50">
+    {{-- ═══════════════════════════════════════════
+         CATEGORIES GRID
+    ═══════════════════════════════════════════ --}}
+    <section class="py-14 bg-white">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="text-center mb-12">
-                <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-                    <i class="fas fa-folder-open text-primary-600 mr-3"></i>
-                    Explore Categories
-                </h2>
-                <p class="text-xl text-gray-600 max-w-2xl mx-auto">
-                    Browse resources organized by topics and subjects
-                </p>
+            <div class="flex items-end justify-between mb-8">
+                <div>
+                    <div class="flex items-center gap-2 mb-1">
+                        <div class="w-1 h-5 rounded-full" style="background: linear-gradient(180deg, #0097A7, #26C6DA);"></div>
+                        <span class="text-xs font-semibold text-primary-600 uppercase tracking-widest">Browse by Topic</span>
+                    </div>
+                    <h2 class="text-2xl md:text-3xl font-extrabold text-gray-900">Explore Categories</h2>
+                    <p class="text-gray-500 text-sm mt-1">Resources organised by clinical topics and subject areas</p>
+                </div>
+                <a href="{{ route('categories.index') }}"
+                   class="hidden md:inline-flex items-center gap-2 text-sm font-semibold text-primary-600 hover:text-primary-700 transition-colors">
+                    All categories <i class="fas fa-arrow-right text-xs"></i>
+                </a>
             </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 @foreach($categories as $category)
                 <a href="{{ route('resources.category', $category->slug) }}"
-                    class="group bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 p-6 border border-gray-200 hover:border-primary-300">
-                    <div class="flex items-center mb-4">
-                        <div class="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center group-hover:bg-primary-200 transition-colors">
-                            <i class="{{ $category->icon ?? 'fas fa-folder' }} text-primary-600 text-xl"></i>
+                   class="group bg-white rounded-xl border border-gray-200 p-5 hover:border-primary-200 hover:shadow-md transition-all duration-200">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-10 h-10 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform"
+                             style="background: linear-gradient(135deg, #E0F7FA 0%, #B2EBF2 100%);">
+                            <i class="{{ $category->icon ?? 'fas fa-folder' }} text-primary-600 text-sm"></i>
                         </div>
-                        <div class="ml-4">
-                            <h3 class="font-semibold text-gray-900 group-hover:text-primary-600 transition-colors">
-                                {{ $category->name }}
-                            </h3>
-                            <p class="text-sm text-gray-500">{{ $category->resources_count }} resources</p>
+                        <div>
+                            <h3 class="font-semibold text-gray-900 text-sm group-hover:text-primary-700 transition-colors">{{ $category->name }}</h3>
+                            <p class="text-xs text-gray-400">{{ $category->resources_count }} resources</p>
                         </div>
                     </div>
                     @if($category->description)
-                        <p class="text-gray-600 text-sm mb-4">{{ Str::limit($category->description, 100) }}</p>
+                    <p class="text-gray-500 text-xs line-clamp-2 mb-3">{{ $category->description }}</p>
                     @endif
                     @if($category->children->count() > 0)
-                        <div class="flex flex-wrap gap-2">
-                            @foreach($category->children->take(3) as $child)
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                    {{ $child->name }}
-                                </span>
-                            @endforeach
-                            @if($category->children->count() > 3)
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                    +{{ $category->children->count() - 3 }} more
-                                </span>
-                            @endif
-                        </div>
+                    <div class="flex flex-wrap gap-1.5">
+                        @foreach($category->children->take(3) as $child)
+                        <span class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">{{ $child->name }}</span>
+                        @endforeach
+                        @if($category->children->count() > 3)
+                        <span class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">+{{ $category->children->count() - 3 }}</span>
+                        @endif
+                    </div>
                     @endif
                 </a>
                 @endforeach
             </div>
-            <div class="text-center mt-12">
-                <a href="{{ route('categories.index') }}" class="inline-flex items-center px-6 py-3 bg-white text-primary-600 border border-primary-600 rounded-lg hover:bg-primary-50 transition-colors">
-                    <i class="fas fa-folder mr-2"></i>
-                    View All Categories
-                </a>
-            </div>
         </div>
     </section>
 
-    <!-- Resource Types -->
-    <section class="py-16 bg-white">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="text-center mb-12">
-                <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-                    <i class="fas fa-shapes text-primary-600 mr-3"></i>
-                    Resource Types
-                </h2>
-                <p class="text-xl text-gray-600 max-w-2xl mx-auto">
-                    Find the perfect format for your learning style
-                </p>
-            </div>
-            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
-                @foreach($resourceTypes as $type)
-                <a href="{{ route('resources.type', $type->slug) }}"
-                    class="group text-center p-6 bg-gray-50 rounded-xl hover:bg-primary-50 transition-all duration-300 hover:shadow-lg">
-                    <div class="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-primary-100 transition-colors shadow-sm">
-                        <i class="{{ $type->icon ?? 'fas fa-file' }} text-2xl text-primary-600"></i>
-                    </div>
-                    <h3 class="font-semibold text-gray-900 group-hover:text-primary-600 transition-colors">
-                        {{ $type->name }}
-                    </h3>
-                    <p class="text-sm text-gray-500 mt-1">{{ $type->resources_count }} items</p>
-                </a>
-                @endforeach
-            </div>
-        </div>
-    </section>
-
-    <!-- Recent Resources -->
+    {{-- ═══════════════════════════════════════════
+         RECENTLY ADDED
+    ═══════════════════════════════════════════ --}}
     @if($recentResources->count() > 0)
-    <section class="py-16 bg-gradient-to-br from-gray-50 to-gray-100">
+    <section class="py-14 bg-gray-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between mb-12">
+            <div class="flex items-end justify-between mb-8">
                 <div>
-                    <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-                        <i class="fas fa-clock text-green-600 mr-3"></i>
-                        Recently Added
-                    </h2>
-                    <p class="text-xl text-gray-600">
-                        Fresh content added to our collection
-                    </p>
-                    <div class="w-24 h-1 bg-green-600 mt-4 rounded-full"></div>
+                    <div class="flex items-center gap-2 mb-1">
+                        <div class="w-1 h-5 rounded-full bg-emerald-400"></div>
+                        <span class="text-xs font-semibold text-emerald-600 uppercase tracking-widest">New</span>
+                    </div>
+                    <h2 class="text-2xl md:text-3xl font-extrabold text-gray-900">Recently Added</h2>
+                    <p class="text-gray-500 text-sm mt-1">Latest materials added to our clinical library</p>
                 </div>
                 <a href="{{ route('resources.index', ['sort' => 'latest']) }}"
-                    class="hidden md:inline-flex items-center px-6 py-3 text-green-600 hover:text-green-700 font-medium border-2 border-green-600 rounded-xl hover:bg-green-50 transition-all duration-300">
-                    View All <i class="fas fa-arrow-right ml-2"></i>
+                   class="hidden md:inline-flex items-center gap-2 text-sm font-semibold text-emerald-600 hover:text-emerald-700 transition-colors">
+                    View all <i class="fas fa-arrow-right text-xs"></i>
                 </a>
             </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
                 @foreach($recentResources as $resource)
                     @include('components.resource-card-compact', ['resource' => $resource])
                 @endforeach
             </div>
-            <div class="text-center mt-8 md:hidden">
-                <a href="{{ route('resources.index', ['sort' => 'latest']) }}"
-                    class="inline-flex items-center px-8 py-4 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-all duration-300 transform hover:scale-105 font-semibold shadow-lg">
-                    <i class="fas fa-clock mr-2"></i>
-                    View All Recent
-                </a>
-            </div>
         </div>
     </section>
     @endif
 
-    <!-- Popular Resources -->
+    {{-- ═══════════════════════════════════════════
+         TRENDING
+    ═══════════════════════════════════════════ --}}
     @if($popularResources->count() > 0)
-    <section class="py-16 bg-white">
+    <section class="py-14 bg-white">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between mb-12">
+            <div class="flex items-end justify-between mb-8">
                 <div>
-                    <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-                        <i class="fas fa-fire text-red-500 mr-3"></i>
-                        Trending Now
-                    </h2>
-                    <p class="text-xl text-gray-600">
-                        Most popular resources this month
-                    </p>
-                    <div class="w-24 h-1 bg-red-500 mt-4 rounded-full"></div>
+                    <div class="flex items-center gap-2 mb-1">
+                        <div class="w-1 h-5 rounded-full bg-orange-400"></div>
+                        <span class="text-xs font-semibold text-orange-500 uppercase tracking-widest">Popular</span>
+                    </div>
+                    <h2 class="text-2xl md:text-3xl font-extrabold text-gray-900">Trending Now</h2>
+                    <p class="text-gray-500 text-sm mt-1">Most accessed resources this month</p>
                 </div>
                 <a href="{{ route('resources.index', ['sort' => 'popular']) }}"
-                    class="hidden md:inline-flex items-center px-6 py-3 text-red-600 hover:text-red-700 font-medium border-2 border-red-600 rounded-xl hover:bg-red-50 transition-all duration-300">
-                    View All <i class="fas fa-arrow-right ml-2"></i>
+                   class="hidden md:inline-flex items-center gap-2 text-sm font-semibold text-orange-500 hover:text-orange-600 transition-colors">
+                    View all <i class="fas fa-arrow-right text-xs"></i>
                 </a>
             </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 @foreach($popularResources as $resource)
                     @include('components.resource-card', ['resource' => $resource])
                 @endforeach
             </div>
-            <div class="text-center mt-8 md:hidden">
-                <a href="{{ route('resources.index', ['sort' => 'popular']) }}"
-                    class="inline-flex items-center px-8 py-4 bg-red-500 text-white rounded-xl hover:bg-red-600 transition-all duration-300 transform hover:scale-105 font-semibold shadow-lg">
-                    <i class="fas fa-fire mr-2"></i>
-                    View All Popular
-                </a>
-            </div>
         </div>
     </section>
     @endif
 
-    <!-- Newsletter & Community -->
-    <section class="py-16 bg-gradient-to-r from-purple-600 to-indigo-600">
-        <div class="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
-            <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-8 md:p-12">
-                <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">
-                    Stay Updated with Latest Resources
-                </h2>
-                <p class="text-xl text-purple-100 mb-8">
-                    Get weekly updates on new resources, featured content, and learning opportunities
-                </p>
-                <form class="max-w-md mx-auto mb-8" x-data="{ email: '', subscribed: false }">
-                    <div class="flex gap-3">
-                        <input type="email"
-                            x-model="email"
-                            placeholder="Enter your email address"
-                            class="flex-1 px-4 py-3 rounded-xl border-0 text-gray-900 focus:ring-4 focus:ring-white/30 focus:outline-none">
-                        <button type="submit"
-                            @click.prevent="subscribed = true; email = ''"
-                            class="px-6 py-3 bg-white text-purple-600 rounded-xl hover:bg-gray-100 transition-all duration-300 transform hover:scale-105 font-semibold shadow-lg">
+    {{-- ═══════════════════════════════════════════
+         CTA BANNER
+    ═══════════════════════════════════════════ --}}
+    <section class="py-16 relative overflow-hidden" style="background: linear-gradient(135deg, #004D40 0%, #0097A7 100%);">
+        <div class="absolute inset-0 opacity-[0.04]">
+            <svg width="100%" height="100%"><pattern id="dots" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse"><circle cx="20" cy="20" r="1.5" fill="white"/></pattern><rect width="100%" height="100%" fill="url(#dots)"/></svg>
+        </div>
+        <div class="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <div class="mb-10">
+                <h2 class="text-2xl md:text-3xl font-extrabold text-white mb-2">Stay Informed</h2>
+                <p class="text-cyan-100 text-sm mb-6">Receive updates on new resources, training schedules, and clinical guidelines</p>
+                <form class="max-w-md mx-auto" x-data="{ email: '', subscribed: false }">
+                    <div class="flex gap-2">
+                        <input type="email" x-model="email" placeholder="Your email address"
+                               class="flex-1 px-4 py-3 rounded-xl text-gray-900 text-sm border-0 outline-none focus:ring-2 focus:ring-white/40">
+                        <button type="button" @click.prevent="subscribed = true; email = ''"
+                                class="px-5 py-3 bg-white text-primary-700 rounded-xl text-sm font-bold hover:bg-gray-100 transition-colors flex-shrink-0">
                             Subscribe
                         </button>
                     </div>
-                    <p x-show="subscribed" x-transition class="text-purple-100 text-sm mt-2">
-                        ✓ Thank you for subscribing!
+                    <p x-show="subscribed" x-transition class="text-cyan-200 text-xs mt-2">
+                        <i class="fas fa-check-circle mr-1"></i>Thank you! You're subscribed.
                     </p>
                 </form>
-                <div class="flex items-center justify-center space-x-6 text-purple-100">
-                    <div class="flex items-center">
-                        <i class="fas fa-users mr-2"></i>
-                        <span class="text-sm">Join {{ number_format(\App\Models\User::count()) }}+ learners</span>
-                    </div>
-                    <div class="flex items-center">
-                        <i class="fas fa-envelope mr-2"></i>
-                        <span class="text-sm">Weekly updates</span>
-                    </div>
-                    <div class="flex items-center">
-                        <i class="fas fa-times mr-2"></i>
-                        <span class="text-sm">No spam</span>
-                    </div>
+            </div>
+            <div class="border-t border-white/10 pt-10">
+                <h2 class="text-2xl font-extrabold text-white mb-4">Ready to Start Learning?</h2>
+                <div class="flex flex-col sm:flex-row gap-3 justify-center">
+                    @guest
+                    <a href="{{ url('register') }}"
+                       class="inline-flex items-center justify-center gap-2 px-7 py-3.5 bg-white text-primary-700 rounded-xl font-bold text-sm hover:bg-gray-100 transition-all shadow-lg">
+                        <i class="fas fa-user-plus"></i>Get Started Free
+                    </a>
+                    @endguest
+                    <a href="{{ route('resources.index') }}"
+                       class="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl font-bold text-sm text-white border-2 border-white/30 hover:border-white/60 transition-all"
+                       style="background: rgba(255,255,255,0.12);">
+                        <i class="fas fa-book-open"></i>Explore Resources
+                    </a>
+                    <a href="{{ url('analytics/dashboard') }}"
+                       class="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl font-bold text-sm text-white border-2 border-white/30 hover:border-white/60 transition-all"
+                       style="background: rgba(255,255,255,0.12);">
+                        <i class="fas fa-map"></i>View Training Map
+                    </a>
+                </div>
+                <div class="flex items-center justify-center gap-8 mt-8 text-cyan-200 text-xs">
+                    <div class="flex items-center gap-1.5"><i class="fas fa-shield-alt text-cyan-300"></i>Secure Platform</div>
+                    <div class="flex items-center gap-1.5"><i class="fas fa-mobile-alt text-cyan-300"></i>Mobile Ready</div>
+                    <div class="flex items-center gap-1.5"><i class="fas fa-cloud-download-alt text-cyan-300"></i>Offline Access</div>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Testimonials -->
-    <section class="py-16 bg-gray-50">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="text-center mb-12">
-                <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-                    <i class="fas fa-quote-left text-primary-600 mr-3"></i>
-                    What Our Community Says
-                </h2>
-                <p class="text-xl text-gray-600 max-w-2xl mx-auto">
-                    Hear from learners who have transformed their skills with our resources
-                </p>
-                <div class="w-24 h-1 bg-primary-600 mx-auto mt-4 rounded-full"></div>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <!-- Testimonial 1 -->
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-8 hover:shadow-lg transition-all duration-300">
-                    <div class="flex items-center mb-4">
-                        <div class="flex text-yellow-400">
-                            <i class="fas fa-star"></i><i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i><i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                        </div>
-                    </div>
-                    <blockquote class="text-gray-700 mb-6">
-                        "The quality of resources here is outstanding. I've been able to advance my career significantly thanks to the comprehensive materials available."
-                    </blockquote>
-                    <div class="flex items-center">
-                        <img src="https://ui-avatars.com/api/?name=Sarah+Johnson&size=48&background=3b82f6&color=ffffff" alt="Sarah Johnson" class="w-12 h-12 rounded-full mr-4">
-                        <div>
-                            <div class="font-semibold text-gray-900">Sarah Johnson</div>
-                            <div class="text-sm text-gray-500">Software Developer</div>
-                        </div>
-                    </div>
-                </div>
-                <!-- Testimonial 2 -->
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-8 hover:shadow-lg transition-all duration-300">
-                    <div class="flex items-center mb-4">
-                        <div class="flex text-yellow-400">
-                            <i class="fas fa-star"></i><i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i><i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                        </div>
-                    </div>
-                    <blockquote class="text-gray-700 mb-6">
-                        "Amazing platform! The categorization makes it so easy to find exactly what I need. The download feature is a game-changer for offline learning."
-                    </blockquote>
-                    <div class="flex items-center">
-                        <img src="https://ui-avatars.com/api/?name=Michael+Chen&size=48&background=10b981&color=ffffff" alt="Michael Chen" class="w-12 h-12 rounded-full mr-4">
-                        <div>
-                            <div class="font-semibold text-gray-900">Michael Chen</div>
-                            <div class="text-sm text-gray-500">Data Scientist</div>
-                        </div>
-                    </div>
-                </div>
-                <!-- Testimonial 3 -->
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-8 hover:shadow-lg transition-all duration-300">
-                    <div class="flex items-center mb-4">
-                        <div class="flex text-yellow-400">
-                            <i class="fas fa-star"></i><i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i><i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                        </div>
-                    </div>
-                    <blockquote class="text-gray-700 mb-6">
-                        "The community aspect with comments and discussions really enhances the learning experience. It's like having study buddies everywhere!"
-                    </blockquote>
-                    <div class="flex items-center">
-                        <img src="https://ui-avatars.com/api/?name=Emily+Rodriguez&size=48&background=f59e0b&color=ffffff" alt="Emily Rodriguez" class="w-12 h-12 rounded-full mr-4">
-                        <div>
-                            <div class="font-semibold text-gray-900">Emily Rodriguez</div>
-                            <div class="text-sm text-gray-500">UX Designer</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Call to Action (Footer) -->
-    <section class="py-16 bg-gradient-to-r from-primary-600 to-primary-700 relative overflow-hidden">
-        <!-- Background Pattern -->
-        <div class="absolute inset-0 opacity-10">
-            <svg class="w-full h-full" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000">
-                <defs>
-                    <pattern id="cta-grid" width="100" height="100" patternUnits="userSpaceOnUse">
-                        <circle cx="50" cy="50" r="2" fill="currentColor"/>
-                    </pattern>
-                </defs>
-                <rect width="100%" height="100%" fill="url(#cta-grid)"/>
-            </svg>
-        </div>
-        <div class="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8 relative">
-            <h2 class="text-3xl md:text-4xl font-bold text-white mb-6">
-                Ready to Start Learning?
-            </h2>
-            <p class="text-xl text-primary-100 mb-8 max-w-2xl mx-auto">
-                Join thousands of learners and access our complete resource library. Start your learning journey today!
-            </p>
-            <div class="flex flex-col sm:flex-row gap-4 justify-center">
-                @guest
-                <a href="{{ url('register') }}"
-                    class="inline-flex items-center px-8 py-4 bg-white text-primary-600 rounded-xl hover:bg-gray-50 transition-all duration-300 transform hover:scale-105 font-semibold shadow-xl">
-                    <i class="fas fa-user-plus mr-2"></i>
-                    Get Started Free
-                </a>
-                <a href="{{ route('resources.index') }}"
-                    class="inline-flex items-center px-8 py-4 bg-primary-500 text-white rounded-xl hover:bg-primary-400 transition-all duration-300 transform hover:scale-105 font-semibold border-2 border-primary-400 shadow-xl">
-                    <i class="fas fa-book mr-2"></i>
-                    Browse Resources
-                </a>
-                @else
-                <a href="{{ route('resources.index') }}"
-                    class="inline-flex items-center px-8 py-4 bg-white text-primary-600 rounded-xl hover:bg-gray-50 transition-all duration-300 transform hover:scale-105 font-semibold shadow-xl">
-                    <i class="fas fa-book mr-2"></i>
-                    Explore Resources
-                </a>
-                <a href="{{ route('resources.browse') }}"
-                    class="inline-flex items-center px-8 py-4 bg-primary-500 text-white rounded-xl hover:bg-primary-400 transition-all duration-300 transform hover:scale-105 font-semibold border-2 border-primary-400 shadow-xl">
-                    <i class="fas fa-search mr-2"></i>
-                    Advanced Search
-                </a>
-                @endguest
-            </div>
-            <!-- Trust indicators -->
-            <div class="mt-12 flex items-center justify-center space-x-8 text-primary-200">
-                <div class="flex items-center">
-                    <i class="fas fa-shield-alt mr-2"></i>
-                    <span class="text-sm">Secure & Safe</span>
-                </div>
-                <div class="flex items-center">
-                    <i class="fas fa-mobile-alt mr-2"></i>
-                    <span class="text-sm">Mobile Friendly</span>
-                </div>
-                <div class="flex items-center">
-                    <i class="fas fa-cloud-download-alt mr-2"></i>
-                    <span class="text-sm">Offline Access</span>
-                </div>
-            </div>
-        </div>
-    </section>
 </div>
 
 @push('scripts')
 <script>
     document.addEventListener('alpine:init', () => {
-        Alpine.data('homePage', () => ({
-            init() { this.animateCounters(); },
-            animateCounters() {
-                const counters = document.querySelectorAll('[data-count]');
-                const observer = new IntersectionObserver((entries) => {
-                    entries.forEach(entry => {
-                        if (entry.isIntersecting) {
-                            const counter = entry.target;
-                            const target = parseInt(counter.dataset.count);
-                            let current = 0;
-                            const increment = target / 50;
-                            const updateCounter = () => {
-                                current += increment;
-                                if (current < target) {
-                                    counter.textContent = Math.floor(current).toLocaleString();
-                                    requestAnimationFrame(updateCounter);
-                                } else {
-                                    counter.textContent = target.toLocaleString();
-                                }
-                            };
-                            updateCounter();
-                            observer.unobserve(counter);
-                        }
-                    });
-                });
-                counters.forEach(counter => observer.observe(counter));
-            }
-        }))
+        Alpine.data('homePage', () => ({ init() {} }));
     });
-
-    // Smooth scroll for anchor links
-    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-        anchor.addEventListener('click', function (e) {
-            e.preventDefault();
-            const target = document.querySelector(this.getAttribute('href'));
-            if (target) {
-                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-        });
-    });
-
-    // Add scroll-triggered animations
-    const observerOptions = { threshold: 0.1, rootMargin: '0px 0px -50px 0px' };
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                entry.target.classList.add('animate-fade-in-up');
-            }
-        });
-    }, observerOptions);
-    document.querySelectorAll('section').forEach(section => observer.observe(section));
 </script>
 @endpush
 
 @push('styles')
 <style>
-    @keyframes fadeInUp {
-        from { opacity: 0; transform: translateY(30px);}
-        to   { opacity: 1; transform: translateY(0);}
-    }
-    .animate-fade-in-up { animation: fadeInUp 0.6s ease-out forwards; }
-    .gradient-text {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-        background-clip: text;
-    }
-    .hover-lift:hover { transform: translateY(-4px); box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);}
-    .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;}
-    .line-clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;}
+    .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .scrollbar-none::-webkit-scrollbar { display: none; }
+    .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
 </style>
 @endpush
 @endsection

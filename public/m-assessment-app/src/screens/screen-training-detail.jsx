@@ -91,29 +91,29 @@ export function TrainingDetailScreen({ training, user, onBack }) {
 
     return (
         <div style={{ display: "flex", flexDirection: "column", height: "100%", background: T.bg }}>
-            {/* Header */}
-            <div style={{ background: T.card, borderBottom: `1px solid ${T.border}` }}>
-                <div style={{ height: 3, background: `linear-gradient(90deg, ${s.stripe}, ${s.stripe}66)` }} />
-                <div style={{ padding: "14px 16px 12px", display: "flex", gap: 12, alignItems: "flex-start" }}>
-                    <button onClick={onBack} style={{ border: "none", background: "none", cursor: "pointer", padding: "2px 0", marginTop: 2 }}>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={T.text} strokeWidth="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-                    </button>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 16, fontWeight: 800, color: T.text, lineHeight: 1.3, marginBottom: 6 }}>{data.title}</div>
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
-                            <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 9px", borderRadius: 20, background: s.bg, color: s.color }}>
-                                {data.status}
-                            </span>
-                            {data.program && (
-                                <span style={{ fontSize: 11, color: T.textSub, background: T.bg, padding: "2px 8px", borderRadius: 10, border: `1px solid ${T.border}` }}>
-                                    {data.program}
-                                </span>
-                            )}
-                        </div>
-                    </div>
+            {/* ── Gradient Hero ── */}
+            <div style={{
+                background: "linear-gradient(160deg, #1E1B4B 0%, #3730A3 55%, #818CF8 100%)",
+                padding: "44px 20px 16px",
+                position: "relative", overflow: "hidden",
+            }}>
+                <div style={{ position: "absolute", width: 160, height: 160, borderRadius: "50%", background: "radial-gradient(circle, rgba(165,180,252,0.15) 0%, transparent 70%)", top: -40, right: -40 }} />
+                <button onClick={onBack} style={{ border: "none", background: "rgba(255,255,255,0.12)", cursor: "pointer", padding: "6px 10px", borderRadius: 10, marginBottom: 14, display: "flex", alignItems: "center", gap: 4 }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                    <span style={{ fontSize: 12, color: "rgba(255,255,255,0.8)", fontWeight: 600 }}>Back</span>
+                </button>
+                <div style={{ fontSize: 18, fontWeight: 800, color: "white", lineHeight: 1.25, marginBottom: 8 }}>{data.title}</div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: "rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.9)", border: "1px solid rgba(255,255,255,0.2)" }}>
+                        {data.status}
+                    </span>
+                    {data.program && <span style={{ fontSize: 11, color: "rgba(255,255,255,0.55)" }}>{data.program}</span>}
+                    {data.start_date && <span style={{ fontSize: 11, color: "rgba(255,255,255,0.45)" }}>· {data.start_date}</span>}
                 </div>
+            </div>
 
-                {/* Tabs */}
+            {/* Tabs — on white card below gradient */}
+            <div style={{ background: T.card, borderBottom: `1px solid ${T.border}` }}>
                 <div style={{ display: "flex", paddingInline: 4 }}>
                     {[
                         { key: "info", label: "Details" },

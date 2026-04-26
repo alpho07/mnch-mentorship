@@ -23,13 +23,14 @@ class ParticipantController extends Controller
             ->with(['user', 'moduleProgress'])
             ->get()
             ->map(fn(ClassParticipant $p) => [
-                'id'             => $p->id,
-                'user_id'        => $p->user_id,
-                'name'           => $p->user?->name,
-                'email'          => $p->user?->email,
-                'status'         => $p->status,
-                'enrolled_at'    => $p->enrolled_at?->toIso8601String(),
-                'completion_pct' => $this->calcCompletionPct($p->moduleProgress),
+                'id'                 => $p->id,
+                'user_id'            => $p->user_id,
+                'name'               => $p->user?->name,
+                'email'              => $p->user?->email,
+                'status'             => $p->status,
+                'enrolled_at'        => $p->enrolled_at?->toIso8601String(),
+                'invitation_sent_at' => $p->invitation_sent_at?->toIso8601String(),
+                'completion_pct'     => $this->calcCompletionPct($p->moduleProgress),
             ]);
 
         return response()->json(['data' => $participants]);

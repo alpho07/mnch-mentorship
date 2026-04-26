@@ -2,12 +2,16 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Cadre;
 use App\Models\County;
+use App\Models\Department;
+use App\Models\Facility;
 use App\Models\Program;
 use App\Models\ProgramModule;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class LookupController extends Controller
 {
@@ -30,7 +34,8 @@ class LookupController extends Controller
                 'description'    => $m->description,
                 'order_sequence' => $m->order_sequence,
                 'session_count'  => (int) $m->session_count,
-            ]);
+            ])
+            ->values();
 
         return response()->json(['data' => $modules]);
     }
@@ -41,31 +46,108 @@ class LookupController extends Controller
         return response()->json(['data' => $counties]);
     }
 
+    public function cadres(): JsonResponse
+    {
+        // Match web behavior: use Cadre model source (assessment_cadres table in this project).
+        $cadres = Cadre::query()
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->values();
+
+        return response()->json(['data' => $cadres]);
+    }
+
+    public function departments(): JsonResponse
+    {
+        $departments = Department::orderBy('name')->get(['id', 'name'])->values();
+        return response()->json(['data' => $departments]);
+    }
+
+    public function facilitiesByCounty(County $county): JsonResponse
+    {
+        $facilities = Facility::whereHas('subcounty', fn($q) => $q->where('county_id', $county->id))
+            ->orderBy('name')
+            ->get(['id', 'name', 'mfl_code', 'subcounty_id'])
+            ->map(fn(Facility $f) => [
+                'id'       => $f->id,
+                'name'     => $f->name,
+                'mfl_code' => $f->mfl_code,
+                'label'    => trim(($f->mfl_code ? "{$f->mfl_code} - " : '') . $f->name),
+            ])
+            ->values();
+
+        return response()->json(['data' => $facilities]);
+    }
+
     public function userSearch(Request $request): JsonResponse
     {
         $request->validate([
-            'q'           => 'required|string|min:2',
-            'facility_id' => 'nullable|integer',
+            'q'        => 'required|string|min:2',
+            'per_page' => 'nullable|integer|min:1|max:50',
         ]);
 
+        $term = $request->q;
+        $limit = (int) $request->input('per_page', 20);
+
         $query = User::query()
-            ->where(function ($q) use ($request) {
-                $q->where('first_name', 'like', '%' . $request->q . '%')
-                  ->orWhere('last_name', 'like', '%' . $request->q . '%');
+            ->where('status', 'active')
+            ->where(function ($q) use ($term) {
+                $q->where('first_name', 'like', "%{$term}%")
+                  ->orWhere('last_name', 'like', "%{$term}%")
+                  ->orWhere('name', 'like', "%{$term}%")
+                  ->orWhere('phone', 'like', "%{$term}%")
+                  ->orWhere('email', 'like', "%{$term}%")
+                  ->orWhereHas('facility', function ($facilityQuery) use ($term) {
+                      $facilityQuery->where('name', 'like', "%{$term}%")
+                          ->orWhere('mfl_code', 'like', "%{$term}%");
+                  });
             })
-            ->limit(30);
+            ->with('facility')
+            ->orderBy('first_name')
+            ->limit($limit);
 
-        if ($request->facility_id) {
-            $query->whereHas('facilities', fn($q) => $q->where('facilities.id', $request->facility_id));
-        }
-
-        $users = $query->with('facilities')->get()->map(fn(User $u) => [
+        $users = $query->get()->map(fn(User $u) => [
             'id'            => $u->id,
-            'name'          => $u->full_name,
+            'name'          => $u->full_name ?? $u->name,
             'email'         => $u->email,
-            'facility_name' => $u->facilities->first()?->name ?? '',
+            'phone'         => $u->phone,
+            'facility_id'   => $u->facility_id,
+            'facility_name' => $u->facility?->name ?? '',
+            'mfl_code'      => $u->facility?->mfl_code,
         ]);
 
         return response()->json(['data' => $users]);
+    }
+
+    public function userByEmail(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'email' => 'required|email',
+        ]);
+
+        $user = User::with('facility')
+            ->whereRaw('LOWER(email) = ?', [mb_strtolower(trim($data['email']))])
+            ->first();
+
+        if (!$user) {
+            return response()->json(['data' => null]);
+        }
+
+        return response()->json([
+            'data' => [
+                'id'            => $user->id,
+                'name'          => $user->full_name ?? $user->name,
+                'first_name'    => $user->first_name,
+                'middle_name'   => $user->middle_name,
+                'last_name'     => $user->last_name,
+                'email'         => $user->email,
+                'phone'         => $user->phone,
+                'cadre_id'      => $user->cadre_id,
+                'department_id' => $user->department_id,
+                'facility_id'   => $user->facility_id,
+                'facility_name' => $user->facility?->name ?? '',
+                'mfl_code'      => $user->facility?->mfl_code,
+            ],
+        ]);
     }
 }
