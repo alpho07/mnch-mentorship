@@ -213,7 +213,6 @@ class UserResource extends Resource {
                             // ── Name + email description ───────────────────────────────
                             Tables\Columns\TextColumn::make('name')
                             ->label('Name')
-<<<<<<< HEAD
                             ->searchable(['first_name', 'last_name', 'name', 'email', 'phone', 'id_number'])
                             ->sortable()
                             ->weight('semibold')
@@ -222,79 +221,12 @@ class UserResource extends Resource {
                             Tables\Columns\TextColumn::make('phone')
                             ->label('Phone')
                             ->searchable()
-=======
-                            ->searchable(
-                                ['email', 'first_name', 'last_name', 'name', 'phone', 'id_number'],
-                                query: function (Builder $query, string $search): Builder {
-                                    $search = trim($search);
-
-                                    if ($search === '') {
-                                        return $query;
-                                    }
-
-                                    $likeSearch = static::prepareLikeSearchTerm($search);
-                                    $compactLikeSearch = static::prepareCompactLikeSearchTerm($search);
-                                    $terms = array_values(array_filter(
-                                        preg_split('/\s+/', $search) ?: [],
-                                        fn(string $term): bool => $term !== ''
-                                    ));
-
-                                    return $query->where(function (Builder $query) use ($likeSearch, $compactLikeSearch, $terms): Builder {
-                                        static::applyNormalizedSearchGroup($query, $likeSearch, $compactLikeSearch);
-                                        $query->orWhereHas('facility', function (Builder $facilityQuery) use ($likeSearch, $compactLikeSearch): Builder {
-                                            static::applyNormalizedSearchGroup($facilityQuery, $likeSearch, $compactLikeSearch, ['name', 'mfl_code'], false);
-
-                                            return $facilityQuery;
-                                        });
-
-                                        if (count($terms) > 1) {
-                                            $query->orWhere(function (Builder $query) use ($terms): Builder {
-                                                foreach ($terms as $term) {
-                                                    $likeTerm = static::prepareLikeSearchTerm($term);
-                                                    $compactLikeTerm = static::prepareCompactLikeSearchTerm($term);
-
-                                                    $query->where(function (Builder $query) use ($likeTerm, $compactLikeTerm): Builder {
-                                                        static::applyNormalizedSearchGroup($query, $likeTerm, $compactLikeTerm);
-
-                                                        return $query->orWhereHas('facility', function (Builder $facilityQuery) use ($likeTerm, $compactLikeTerm): Builder {
-                                                            static::applyNormalizedSearchGroup($facilityQuery, $likeTerm, $compactLikeTerm, ['name', 'mfl_code'], false);
-
-                                                            return $facilityQuery;
-                                                        });
-                                                    });
-                                                }
-
-                                                return $query;
-                                            });
-                                        }
-
-                                        return $query;
-                                    });
-                                }
-                            )
-                            ->sortable()
-                            ->weight('semibold')
-                            ->formatStateUsing(fn(User $record) => $record->full_name)
-                            ->description(function (User $record): string {
-                                $parts = array_filter([
-                                    $record->email,
-                                    $record->trashed() ? 'Trashed user' : null,
-                                ]);
-
-                                return $parts ? implode(' · ', $parts) : '—';
-                            }),
-                            Tables\Columns\TextColumn::make('phone')
-                            ->label('Phone')
->>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
                             ->copyable()
                             ->copyMessage('Phone copied')
                             ->placeholder('—'),
                             Tables\Columns\TextColumn::make('id_number')
                             ->label('National ID')
-<<<<<<< HEAD
                             ->searchable()
-=======
->>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
                             ->copyable()
                             ->copyMessage('ID copied')
                             ->placeholder('—')
@@ -305,10 +237,7 @@ class UserResource extends Resource {
                             // or subcounties with no county all render gracefully.
                             Tables\Columns\TextColumn::make('facility.name')
                             ->label('Facility')
-<<<<<<< HEAD
                             ->searchable()
-=======
->>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
                             ->sortable()
                             ->description(function (User $record): ?string {
                                 $parts = array_filter([
@@ -344,22 +273,14 @@ class UserResource extends Resource {
                             Tables\Columns\TextColumn::make('status')
                             ->label('Status')
                             ->badge()
-<<<<<<< HEAD
                             ->color(fn(?string $state): string => match ($state) {
-=======
-                            ->color(fn(User $record, ?string $state): string => $record->trashed() ? 'danger' : match ($state) {
->>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
                                         'active' => 'success',
                                         'inactive' => 'gray',
                                         'suspended' => 'danger',
                                         'trainee' => 'warning',
                                         default => 'gray',
                                     })
-<<<<<<< HEAD
                             ->formatStateUsing(fn(?string $state): string => match ($state) {
-=======
-                            ->formatStateUsing(fn(User $record, ?string $state): string => $record->trashed() ? 'Trashed' : match ($state) {
->>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
                                         'active' => 'Active',
                                         'inactive' => 'Inactive',
                                         'suspended' => 'Suspended',
@@ -435,13 +356,6 @@ class UserResource extends Resource {
                             ->toggle()
                             ->query(fn(Builder $q) => $q->whereMonth('created_at', now()->month)
                                     ->whereYear('created_at', now()->year)),
-<<<<<<< HEAD
-=======
-                            Filter::make('trashed_only')
-                            ->label('Trashed Only')
-                            ->toggle()
-                            ->query(fn(Builder $q) => $q->onlyTrashed()),
->>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
                         ])
                         ->filtersFormColumns(3)
 
@@ -454,30 +368,11 @@ class UserResource extends Resource {
                                 Tables\Actions\EditAction::make()
                                 ->icon('heroicon-o-pencil'),
                                 // ── Quick status toggle ────────────────────────────────
-<<<<<<< HEAD
-=======
-                                Tables\Actions\Action::make('restore')
-                                ->label('Restore')
-                                ->icon('heroicon-o-arrow-uturn-left')
-                                ->color('warning')
-                                ->visible(fn(User $record) => $record->trashed())
-                                ->requiresConfirmation()
-                                ->modalHeading('Restore User')
-                                ->modalDescription(fn(User $record) => "Restore {$record->full_name} and return them to the active user list?")
-                                ->action(function (User $record) {
-                                    $record->restore();
-                                    Notification::make()->success()->title("{$record->full_name} restored")->send();
-                                }),
->>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
                                 Tables\Actions\Action::make('activate')
                                 ->label('Activate')
                                 ->icon('heroicon-o-check-circle')
                                 ->color('success')
-<<<<<<< HEAD
                                 ->visible(fn(User $record) => $record->status !== 'active')
-=======
-                                ->visible(fn(User $record) => ! $record->trashed() && $record->status !== 'active')
->>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
                                 ->action(function (User $record) {
                                     $record->update(['status' => 'active']);
                                     Notification::make()->success()->title("{$record->full_name} activated")->send();
@@ -486,11 +381,7 @@ class UserResource extends Resource {
                                 ->label('Suspend')
                                 ->icon('heroicon-o-no-symbol')
                                 ->color('danger')
-<<<<<<< HEAD
                                 ->visible(fn(User $record) => $record->status === 'active')
-=======
-                                ->visible(fn(User $record) => ! $record->trashed() && $record->status === 'active')
->>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
                                 ->requiresConfirmation()
                                 ->modalHeading('Suspend User')
                                 ->modalDescription(fn(User $record) => "Suspend {$record->full_name}? They will no longer be able to log in.")
@@ -503,11 +394,7 @@ class UserResource extends Resource {
                                 ->label('Reset Password')
                                 ->icon('heroicon-o-key')
                                 ->color('warning')
-<<<<<<< HEAD
                                 ->visible(fn(User $record) => $record->status !== 'trainee')
-=======
-                                ->visible(fn(User $record) => ! $record->trashed() && $record->status !== 'trainee')
->>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
                                 ->requiresConfirmation()
                                 ->modalHeading('Reset Password')
                                 ->modalDescription('A new random password will be generated and displayed once.')
@@ -523,10 +410,6 @@ class UserResource extends Resource {
                                             ->send();
                                 }),
                                 Tables\Actions\DeleteAction::make()
-<<<<<<< HEAD
-=======
-                                ->visible(fn(User $record) => ! $record->trashed())
->>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
                                 ->requiresConfirmation(),
                             ]),
                         ])
@@ -631,10 +514,6 @@ class UserResource extends Resource {
                                 ->requiresConfirmation(),
                             ]),
                         ])
-<<<<<<< HEAD
-=======
-                        ->searchPlaceholder('Search by email, name, phone, or ID')
->>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
                         ->emptyStateHeading('No users found')
                         ->emptyStateDescription('Try adjusting your filters or create a new user.')
                         ->emptyStateIcon('heroicon-o-users');
@@ -676,122 +555,6 @@ class UserResource extends Resource {
         $set('name', implode(' ', $parts));
     }
 
-<<<<<<< HEAD
-=======
-    public static function populateNamePartsFromDisplayName(array $data): array {
-        $firstName = trim((string) ($data['first_name'] ?? ''));
-        $lastName = trim((string) ($data['last_name'] ?? ''));
-        $displayName = trim((string) ($data['name'] ?? ''));
-
-        if ($displayName === '' || $firstName !== '' || $lastName !== '') {
-            return $data;
-        }
-
-        [$derivedFirstName, $derivedLastName] = static::splitDisplayNameForForm($displayName);
-
-        $data['first_name'] = $derivedFirstName;
-        $data['last_name'] = $derivedLastName;
-
-        return $data;
-    }
-
-    /**
-     * Split the stored display name at the first word for edit-form fallback.
-     */
-    protected static function splitDisplayNameForForm(string $displayName): array {
-        $parts = preg_split('/\s+/', trim($displayName), 2) ?: [];
-
-        $firstName = trim($parts[0] ?? '');
-        $lastName = trim($parts[1] ?? '');
-
-        if ($firstName === '') {
-            return ['', ''];
-        }
-
-        if ($lastName === '') {
-            $lastName = $firstName;
-        }
-
-        return [$firstName, $lastName];
-    }
-
-    protected static function applyNormalizedSearchGroup(
-        Builder $query,
-        string $likeSearch,
-        string $compactLikeSearch,
-        array $columns = ['email', 'first_name', 'middle_name', 'last_name', 'name', 'phone', 'id_number'],
-        bool $includeCombinedName = true,
-    ): Builder {
-        foreach ($columns as $index => $column) {
-            static::applyNormalizedLike(
-                $query,
-                $column,
-                $likeSearch,
-                $index === 0 ? 'whereRaw' : 'orWhereRaw',
-            );
-
-            static::applyCompactNormalizedLike($query, $column, $compactLikeSearch, 'orWhereRaw');
-        }
-
-        if (! $includeCombinedName) {
-            return $query;
-        }
-
-        $query->orWhereRaw(
-            static::normalizedLikeExpression("CONCAT_WS(' ', COALESCE(first_name, ''), COALESCE(middle_name, ''), COALESCE(last_name, ''))"),
-            [$likeSearch]
-        );
-
-        return $query->orWhereRaw(
-            static::compactNormalizedLikeExpression("CONCAT_WS(' ', COALESCE(first_name, ''), COALESCE(middle_name, ''), COALESCE(last_name, ''))"),
-            [$compactLikeSearch]
-        );
-    }
-
-    protected static function applyNormalizedLike(
-        Builder $query,
-        string $column,
-        string $likeSearch,
-        string $boolean,
-    ): Builder {
-        return $query->{$boolean}(static::normalizedLikeExpression("COALESCE({$column}, '')"), [$likeSearch]);
-    }
-
-    protected static function normalizedLikeExpression(string $expression): string {
-        return "LOWER(CAST({$expression} AS CHAR CHARACTER SET utf8mb4) COLLATE utf8mb4_unicode_ci) LIKE ?";
-    }
-
-    protected static function compactNormalizedLikeExpression(string $expression): string {
-        $normalized = "LOWER(CAST({$expression} AS CHAR CHARACTER SET utf8mb4) COLLATE utf8mb4_unicode_ci)";
-
-        return "REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE({$normalized}, ' ', ''), '.', ''), '_', ''), '-', ''), '@', ''), '+', '') LIKE ?";
-    }
-
-    protected static function applyCompactNormalizedLike(
-        Builder $query,
-        string $column,
-        string $likeSearch,
-        string $boolean,
-    ): Builder {
-        return $query->{$boolean}(static::compactNormalizedLikeExpression("COALESCE({$column}, '')"), [$likeSearch]);
-    }
-
-    protected static function prepareLikeSearchTerm(string $search): string {
-        $search = mb_strtolower(trim($search));
-        $search = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $search);
-
-        return "%{$search}%";
-    }
-
-    protected static function prepareCompactLikeSearchTerm(string $search): string {
-        $search = mb_strtolower(trim($search));
-        $search = preg_replace('/[\s.\-_@+]+/u', '', $search) ?? $search;
-        $search = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $search);
-
-        return "%{$search}%";
-    }
-
->>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
     // ─────────────────────────────────────────────────────────────────────────
     // afterSave hook
     //

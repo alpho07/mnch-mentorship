@@ -82,7 +82,6 @@ export function TrainingsListScreen({ user, onOpen }) {
         : filter === "active" ? all.filter(t => ["active","ongoing","upcoming"].includes(t.status))
         : all.filter(t => t.status === filter);
 
-<<<<<<< HEAD
     const activeCount    = all.filter(t => ["active","ongoing","upcoming"].includes(t.status)).length;
     const completedCount = all.filter(t => t.status === "completed").length;
 
@@ -130,36 +129,6 @@ export function TrainingsListScreen({ user, onOpen }) {
             </div>
 
             <div style={{ padding: "16px 16px 20px", display: "flex", flexDirection: "column", gap: 10 }}>
-=======
-    return (
-        <div style={{ display: "flex", flexDirection: "column", height: "100%", background: T.bg }}>
-            {/* Header */}
-            <div style={{ padding: "20px 20px 12px", background: T.card, borderBottom: `1px solid ${T.border}` }}>
-                <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>🏛️ Trainings</div>
-                <div style={{ fontSize: 13, color: T.textSub, marginTop: 2 }}>National & County programmes</div>
-            </div>
-
-            {/* Filter tabs */}
-            <div style={{ background: T.card, padding: "8px 16px", borderBottom: `1px solid ${T.border}`, display: "flex", gap: 6 }}>
-                {[
-                    { key: "all", label: `All (${all.length})` },
-                    { key: "active", label: "Active" },
-                    { key: "completed", label: "Done" },
-                ].map(tab => (
-                    <button key={tab.key} onClick={() => setFilter(tab.key)} style={{
-                        padding: "5px 12px", borderRadius: 20, border: "none", fontSize: 12, fontWeight: 600,
-                        cursor: "pointer",
-                        background: filter === tab.key ? T.primary : T.bg,
-                        color: filter === tab.key ? "#fff" : T.textSub,
-                        transition: "all 0.2s",
-                    }}>
-                        {tab.label}
-                    </button>
-                ))}
-            </div>
-
-            <div style={{ flex: 1, overflowY: "auto", padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
->>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
                 {loading && <div style={{ color: T.textSub, textAlign: "center", paddingTop: 40 }}>Loading…</div>}
                 {!loading && filtered.length === 0 && (
                     <div style={{ color: T.textSub, textAlign: "center", paddingTop: 60 }}>No trainings found.</div>

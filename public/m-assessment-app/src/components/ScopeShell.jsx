@@ -42,18 +42,26 @@ function ScopeHeader({ scope, onSwitch, showSwitch, user, onLogout }) {
 
             {showProfile && (
                 <div
-                    style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 200, display: "flex", alignItems: "flex-end" }}
+                    style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 200, display: "flex", alignItems: "flex-end" }}
                     onClick={() => setShowProfile(false)}
                 >
                     <div
-                        style={{ background: "#1e293b", width: "100%", borderRadius: "16px 16px 0 0", padding: 24 }}
+                        style={{ background: "white", width: "100%", borderRadius: "20px 20px 0 0", padding: "8px 20px 40px", boxShadow: "0 -8px 40px rgba(0,0,0,0.12)" }}
                         onClick={e => e.stopPropagation()}
                     >
-                        <p style={{ color: "white", fontWeight: 700, marginBottom: 4 }}>{user?.name}</p>
-                        <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 13, marginBottom: 24 }}>{user?.email}</p>
+                        <div style={{ width: 40, height: 4, borderRadius: 2, background: T.border, margin: "12px auto 20px" }} />
+                        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
+                            <div style={{ width: 48, height: 48, borderRadius: "50%", background: T.gradientPrimary, display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: 700, fontSize: 16, flexShrink: 0 }}>
+                                {user?.initials ?? "?"}
+                            </div>
+                            <div>
+                                <p style={{ color: T.text, fontWeight: 700, fontSize: 15, margin: "0 0 2px" }}>{user?.name}</p>
+                                <p style={{ color: T.textSub, fontSize: 13, margin: 0 }}>{user?.email}</p>
+                            </div>
+                        </div>
                         <button
                             onClick={onLogout}
-                            style={{ width: "100%", padding: "12px 0", background: "#ef4444", color: "white", border: "none", borderRadius: 10, fontWeight: 600, cursor: "pointer" }}
+                            style={{ width: "100%", padding: "13px 0", background: "linear-gradient(135deg, #EF4444, #DC2626)", color: "white", border: "none", borderRadius: 14, fontWeight: 700, fontSize: 15, cursor: "pointer", boxShadow: "0 4px 16px rgba(239,68,68,0.22)" }}
                         >
                             Log Out
                         </button>
@@ -91,19 +99,28 @@ export function ScopeShell({ user, onLogout, onUserUpdate }) {
 
     if (!ready) {
         return (
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", background: "#0f172a" }}>
-                <div style={{ color: "white", fontSize: 14, opacity: 0.6 }}>Loading…</div>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", background: T.bg }}>
+                <div style={{ color: T.textSub, fontSize: 14 }}>Loading…</div>
             </div>
         );
     }
 
     if (scopes.length === 0) {
         return (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100vh", background: "#0f172a", padding: 32, textAlign: "center" }}>
-                <div style={{ fontSize: 48, marginBottom: 16 }}>🔒</div>
-                <p style={{ color: "white", fontWeight: 700, fontSize: 18, marginBottom: 8 }}>No areas configured</p>
-                <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 14, marginBottom: 32 }}>Contact your administrator to get access.</p>
-                <button onClick={onLogout} style={{ padding: "10px 24px", background: "#374151", color: "white", border: "none", borderRadius: 8, cursor: "pointer" }}>Log Out</button>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100vh", background: T.bg, padding: 32, textAlign: "center" }}>
+                <div style={{
+                    width: 72, height: 72, borderRadius: 22, marginBottom: 20,
+                    background: T.primaryGhost, border: `2px solid ${T.border}`,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={T.primary} strokeWidth="1.8" strokeLinecap="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" />
+                        <path d="M7 11V7a5 5 0 0110 0v4" />
+                    </svg>
+                </div>
+                <p style={{ color: T.text, fontWeight: 700, fontSize: 18, marginBottom: 8 }}>No areas configured</p>
+                <p style={{ color: T.textSub, fontSize: 14, marginBottom: 32 }}>Contact your administrator to get access.</p>
+                <button onClick={onLogout} style={{ padding: "12px 28px", background: T.gradientPrimary, color: "white", border: "none", borderRadius: 12, fontWeight: 600, fontSize: 15, cursor: "pointer", boxShadow: `0 4px 16px ${T.primaryGlow}` }}>Log Out</button>
             </div>
         );
     }

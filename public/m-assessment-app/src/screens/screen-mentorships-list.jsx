@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { T, MENTOR_META } from "../constants.js";
+import { useState, useEffect, useMemo } from "react";
+import { T } from "../constants.js";
 import api from "../services/api.service.js";
 
 const STATUS_MAP = {
@@ -9,7 +9,14 @@ const STATUS_MAP = {
     cancelled: { bg: "#FEE2E2", color: "#991B1B", stripe: "#EF4444" },
 };
 
-function MentorshipCard({ m, onOpen }) {
+const FILTER_TABS = [
+    { key: "all",       label: "All" },
+    { key: "active",    label: "Active" },
+    { key: "draft",     label: "Draft" },
+    { key: "completed", label: "Completed" },
+];
+
+function MentorshipCard({ m, onOpen, onEdit }) {
     const s = STATUS_MAP[m.status] ?? STATUS_MAP.draft;
     return (
         <button
@@ -22,16 +29,33 @@ function MentorshipCard({ m, onOpen }) {
         >
             <div style={{ height: 3, background: `linear-gradient(90deg, ${s.stripe}, ${s.stripe}88)` }} />
             <div style={{ padding: "14px 16px" }}>
-                {/* Top row: status + program */}
+                {/* Top row: status + program + edit */}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8, gap: 8 }}>
                     <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 8px", borderRadius: 20, background: s.bg, color: s.color, flexShrink: 0 }}>
                         {m.status}
                     </span>
-                    {m.program && (
-                        <span style={{ fontSize: 11, color: T.textSub, background: T.bg, padding: "2px 8px", borderRadius: 10, border: `1px solid ${T.border}` }}>
-                            {m.program}
-                        </span>
-                    )}
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, justifyContent: "flex-end" }}>
+                        {m.program && (
+                            <span style={{ fontSize: 11, color: T.textSub, background: T.bg, padding: "2px 8px", borderRadius: 10, border: `1px solid ${T.border}` }}>
+                                {m.program}
+                            </span>
+                        )}
+                        {onEdit && (
+                            <button
+                                onClick={(e) => { e.stopPropagation(); onEdit(m); }}
+                                style={{
+                                    padding: "4px 8px", borderRadius: 8, border: `1px solid ${T.border}`,
+                                    background: T.bg, cursor: "pointer", display: "flex", alignItems: "center",
+                                    flexShrink: 0,
+                                }}
+                            >
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={T.textSub} strokeWidth="2.5">
+                                    <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+                                    <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                </svg>
+                            </button>
+                        )}
+                    </div>
                 </div>
 
                 {/* Title */}
@@ -66,10 +90,12 @@ function MentorshipCard({ m, onOpen }) {
     );
 }
 
-export function MentorshipsListScreen({ user, onOpen, onNew }) {
+export function MentorshipsListScreen({ user, onOpen, onNew, onEdit }) {
     const [mentorships, setMentorships] = useState(null);
     const [loading, setLoading]         = useState(true);
     const [error, setError]             = useState(null);
+    const [search, setSearch]           = useState("");
+    const [activeTab, setActiveTab]     = useState("all");
 
     useEffect(() => {
         api.mentorships.list()
@@ -78,38 +104,56 @@ export function MentorshipsListScreen({ user, onOpen, onNew }) {
             .finally(() => setLoading(false));
     }, []);
 
-<<<<<<< HEAD
     const all = mentorships ?? [];
-    const active    = all.filter(m => m.status === "active");
-    const draft     = all.filter(m => m.status === "draft");
-    const completed = all.filter(m => m.status === "completed");
+
+    const counts = useMemo(() => ({
+        all:       all.length,
+        active:    all.filter(m => m.status === "active").length,
+        draft:     all.filter(m => m.status === "draft").length,
+        completed: all.filter(m => m.status === "completed").length,
+    }), [all]);
+
+    const displayed = useMemo(() => {
+        const q = search.trim().toLowerCase();
+        let result = q
+            ? all.filter(m =>
+                (m.title ?? "").toLowerCase().includes(q) ||
+                (m.program ?? "").toLowerCase().includes(q) ||
+                (m.facility ?? "").toLowerCase().includes(q) ||
+                (m.county ?? "").toLowerCase().includes(q) ||
+                (m.mentor_name ?? "").toLowerCase().includes(q)
+              )
+            : all;
+        if (activeTab !== "all") result = result.filter(m => m.status === activeTab);
+        return result;
+    }, [all, search, activeTab]);
 
     return (
         <div style={{ height: "100%", overflowY: "auto", background: T.bg, position: "relative" }}>
             {/* ── Gradient Hero ── */}
+            <div style={{ height: 6, background: T.bg }} />
             <div style={{
-                background: "linear-gradient(160deg, #1E1B4B 0%, #3730A3 55%, #818CF8 100%)",
-                padding: "52px 20px 22px",
-                borderRadius: "24px 24px 28px 28px",
+                background: T.gradientHero,
+                padding: "28px 20px 22px",
+                borderRadius: "0 0 28px 28px",
+                margin: "0 6px",
                 position: "relative", overflow: "hidden",
             }}>
-                {/* Decorative blobs */}
-                <div style={{ position: "absolute", width: 180, height: 180, borderRadius: "50%", background: "radial-gradient(circle, rgba(165,180,252,0.15) 0%, transparent 70%)", top: -50, right: -50 }} />
-                <div style={{ position: "absolute", width: 100, height: 100, borderRadius: "50%", background: "radial-gradient(circle, rgba(129,140,248,0.1) 0%, transparent 70%)", bottom: 0, left: -20 }} />
+                <div style={{ position: "absolute", width: 180, height: 180, borderRadius: "50%", background: "radial-gradient(circle, rgba(38,198,218,0.15) 0%, transparent 70%)", top: -50, right: -50 }} />
+                <div style={{ position: "absolute", width: 100, height: 100, borderRadius: "50%", background: "radial-gradient(circle, rgba(0,151,167,0.12) 0%, transparent 70%)", bottom: 0, left: -20 }} />
 
                 <div style={{ color: "white", fontSize: 22, fontWeight: 800, letterSpacing: -0.3, animation: "fadeInUp 0.4s ease both" }}>
                     My Mentorships
                 </div>
                 <div style={{ color: "rgba(255,255,255,0.45)", fontSize: 13, marginTop: 3, fontWeight: 500, animation: "fadeInUp 0.4s ease 0.05s both" }}>
-                    {all.length} total · {active.length} active
+                    {counts.all} total · {counts.active} active
                 </div>
 
-                {/* Stat pills */}
                 <div style={{ display: "flex", gap: 8, marginTop: 16, animation: "fadeInUp 0.4s ease 0.1s both" }}>
                     {[
-                        { label: "Active",    count: active.length,    bg: "rgba(129,140,248,0.25)", border: "rgba(165,180,252,0.3)" },
-                        { label: "Draft",     count: draft.length,     bg: "rgba(255,255,255,0.08)", border: "rgba(255,255,255,0.12)" },
-                        { label: "Completed", count: completed.length, bg: "rgba(255,255,255,0.08)", border: "rgba(255,255,255,0.12)" },
+                        { label: "Active",    count: counts.active,    bg: "rgba(38,198,218,0.25)", border: "rgba(0,151,167,0.3)" },
+                        { label: "Draft",     count: counts.draft,     bg: "rgba(255,255,255,0.08)", border: "rgba(255,255,255,0.12)" },
+                        { label: "Completed", count: counts.completed, bg: "rgba(255,255,255,0.08)", border: "rgba(255,255,255,0.12)" },
                     ].map(p => (
                         <div key={p.label} style={{
                             flex: 1, padding: "10px 8px", borderRadius: 14, textAlign: "center",
@@ -123,45 +167,89 @@ export function MentorshipsListScreen({ user, onOpen, onNew }) {
                 </div>
             </div>
 
-            <div style={{ padding: "16px 16px 80px", display: "flex", flexDirection: "column", gap: 10 }}>
+            {/* ── Search ── */}
+            <div style={{ padding: "12px 16px 0" }}>
+                <div style={{ position: "relative" }}>
+                    <input
+                        type="text"
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                        placeholder="Search by title, program, facility, county…"
+                        style={{
+                            width: "100%", padding: "10px 36px 10px 38px",
+                            borderRadius: T.radiusSm, border: `1px solid ${T.border}`,
+                            fontSize: 14, background: T.card, color: T.text,
+                            boxSizing: "border-box", outline: "none", fontFamily: "inherit",
+                        }}
+                    />
+                    <svg style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}
+                        width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={T.textMuted} strokeWidth="2">
+                        <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+                    </svg>
+                    {search && (
+                        <button onClick={() => setSearch("")} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: T.textMuted, fontSize: 18, lineHeight: 1, padding: 2 }}>×</button>
+                    )}
+                </div>
+            </div>
+
+            {/* ── Filter Tabs ── */}
+            <div style={{ display: "flex", gap: 6, padding: "10px 16px 0", overflowX: "auto" }}>
+                {FILTER_TABS.map(tab => {
+                    const isActive = activeTab === tab.key;
+                    const count = counts[tab.key];
+                    return (
+                        <button
+                            key={tab.key}
+                            onClick={() => setActiveTab(tab.key)}
+                            style={{
+                                padding: "7px 14px", borderRadius: 20, cursor: "pointer", flexShrink: 0,
+                                border: isActive ? "none" : `1px solid ${T.border}`,
+                                background: isActive ? T.primary : T.card,
+                                color: isActive ? "#fff" : T.textSub,
+                                fontWeight: isActive ? 700 : 500, fontSize: 13,
+                                fontFamily: "inherit",
+                                boxShadow: isActive ? `0 2px 8px ${T.primaryGlow}` : "none",
+                            }}
+                        >
+                            {tab.label}
+                            {count > 0 && (
+                                <span style={{
+                                    marginLeft: 6, fontSize: 11, fontWeight: 700,
+                                    background: isActive ? "rgba(255,255,255,0.25)" : T.bg,
+                                    color: isActive ? "#fff" : T.textSub,
+                                    padding: "1px 6px", borderRadius: 10,
+                                }}>
+                                    {count}
+                                </span>
+                            )}
+                        </button>
+                    );
+                })}
+            </div>
+
+            {/* ── List ── */}
+            <div style={{ padding: "12px 16px 80px", display: "flex", flexDirection: "column", gap: 10 }}>
                 {loading && <div style={{ color: T.textSub, textAlign: "center", paddingTop: 40 }}>Loading…</div>}
-                {error && <div style={{ color: "#EF4444", textAlign: "center", paddingTop: 40 }}>{error}</div>}
+                {error   && <div style={{ color: "#EF4444", textAlign: "center", paddingTop: 40 }}>{error}</div>}
                 {!loading && !error && all.length === 0 && (
                     <div style={{ color: T.textSub, textAlign: "center", paddingTop: 60 }}>No mentorships assigned yet.</div>
                 )}
-                {all.map(m => <MentorshipCard key={m.id} m={m} onOpen={onOpen} />)}
-=======
-    return (
-        <div style={{ display: "flex", flexDirection: "column", height: "100%", background: T.bg, position: "relative" }}>
-            <div style={{ padding: "20px 20px 12px", background: T.card, borderBottom: `1px solid ${T.border}` }}>
-                <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>{MENTOR_META.icon} Mentorships</div>
-                <div style={{ fontSize: 13, color: T.textSub, marginTop: 2 }}>{user?.name ?? ""}</div>
-            </div>
-
-            <div style={{ flex: 1, overflowY: "auto", padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
-                {loading && <div style={{ color: T.textSub, textAlign: "center", paddingTop: 40 }}>Loading…</div>}
-                {error && <div style={{ color: "#EF4444", textAlign: "center", paddingTop: 40 }}>{error}</div>}
-                {!loading && !error && mentorships?.length === 0 && (
-                    <div style={{ color: T.textSub, textAlign: "center", paddingTop: 60 }}>No mentorships assigned yet.</div>
+                {!loading && !error && all.length > 0 && displayed.length === 0 && (
+                    <div style={{ color: T.textSub, textAlign: "center", paddingTop: 40 }}>
+                        {search ? "No mentorships match your search." : `No ${activeTab} mentorships.`}
+                    </div>
                 )}
-                {(mentorships ?? []).map(m => <MentorshipCard key={m.id} m={m} onOpen={onOpen} />)}
->>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
+                {displayed.map(m => <MentorshipCard key={m.id} m={m} onOpen={onOpen} onEdit={onEdit} />)}
             </div>
 
             {onNew && (
                 <button onClick={onNew} style={{
-<<<<<<< HEAD
                     position: "fixed", bottom: 80, right: 16, zIndex: 10,
                     width: 52, height: 52, borderRadius: "50%",
-                    background: "linear-gradient(135deg,#4F46E5,#818CF8)",
+                    background: T.gradientPrimary,
                     border: "none", color: "#fff", fontSize: 26, cursor: "pointer",
-                    boxShadow: "0 6px 20px rgba(79,70,229,0.4)",
+                    boxShadow: `0 6px 20px ${T.primaryGlow}`,
                     display: "flex", alignItems: "center", justifyContent: "center",
-=======
-                    position: "absolute", bottom: 80, right: 16, zIndex: 10,
-                    width: 48, height: 48, borderRadius: "50%", background: T.primary,
-                    border: "none", color: "#fff", fontSize: 24, cursor: "pointer", boxShadow: T.shadowMd,
->>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
                 }}>+</button>
             )}
         </div>

@@ -91,7 +91,6 @@ export function TrainingDetailScreen({ training, user, onBack }) {
 
     return (
         <div style={{ display: "flex", flexDirection: "column", height: "100%", background: T.bg }}>
-<<<<<<< HEAD
             {/* ── Gradient Hero ── */}
             <div style={{
                 background: "linear-gradient(160deg, #1E1B4B 0%, #3730A3 55%, #818CF8 100%)",
@@ -115,31 +114,6 @@ export function TrainingDetailScreen({ training, user, onBack }) {
 
             {/* Tabs — on white card below gradient */}
             <div style={{ background: T.card, borderBottom: `1px solid ${T.border}` }}>
-=======
-            {/* Header */}
-            <div style={{ background: T.card, borderBottom: `1px solid ${T.border}` }}>
-                <div style={{ height: 3, background: `linear-gradient(90deg, ${s.stripe}, ${s.stripe}66)` }} />
-                <div style={{ padding: "14px 16px 12px", display: "flex", gap: 12, alignItems: "flex-start" }}>
-                    <button onClick={onBack} style={{ border: "none", background: "none", cursor: "pointer", padding: "2px 0", marginTop: 2 }}>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={T.text} strokeWidth="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-                    </button>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 16, fontWeight: 800, color: T.text, lineHeight: 1.3, marginBottom: 6 }}>{data.title}</div>
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
-                            <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 9px", borderRadius: 20, background: s.bg, color: s.color }}>
-                                {data.status}
-                            </span>
-                            {data.program && (
-                                <span style={{ fontSize: 11, color: T.textSub, background: T.bg, padding: "2px 8px", borderRadius: 10, border: `1px solid ${T.border}` }}>
-                                    {data.program}
-                                </span>
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Tabs */}
->>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
                 <div style={{ display: "flex", paddingInline: 4 }}>
                     {[
                         { key: "info", label: "Details" },

@@ -1,36 +1,36 @@
-// ─── Design Tokens ────────────────────────────────────────────────────────────
+// ─── Design Tokens — Teal Wellness (Enterprise Healthcare) ───────────────────
 export const T = {
     // Backgrounds
-    bg: "#F4F6FB",
+    bg: "#F0F9FA",
     card: "#FFFFFF",
-    cardHover: "#FAFAFF",
+    cardHover: "#F7FDFD",
 
-    // Primary palette — baby purple / indigo
-    primary: "#6C5CE7",
-    primaryLight: "#A29BFE",
-    primaryDark: "#4A3DC7",
-    primaryGhost: "rgba(108,92,231,0.08)",
-    primaryGlow: "rgba(108,92,231,0.18)",
+    // Primary palette — clinical teal
+    primary: "#0097A7",
+    primaryLight: "#26C6DA",
+    primaryDark: "#00565A",
+    primaryGhost: "rgba(0,151,167,0.08)",
+    primaryGlow: "rgba(0,151,167,0.18)",
 
     // Accent — sky blue
     accent: "#0EA5E9",
     accentLight: "#7DD3FC",
     accentGhost: "rgba(14,165,233,0.08)",
 
-    // Success — teal green
+    // Success — health green
     success: "#10B981",
     successLight: "#6EE7B7",
     successGhost: "rgba(16,185,129,0.08)",
 
     // Text hierarchy
-    text: "#1A1A2E",
-    textMid: "#3D3D5C",
-    textSub: "#6B7194",
-    textMuted: "#A0A3BD",
+    text: "#1A3A3A",
+    textMid: "#2A4A4A",
+    textSub: "#4A8080",
+    textMuted: "#8BC8C8",
 
     // Borders
-    border: "#E2E4F0",
-    borderLight: "#F0F1F8",
+    border: "#B2EBF2",
+    borderLight: "#E0F2F1",
 
     // Radii
     radius: 18,
@@ -38,19 +38,19 @@ export const T = {
     radiusXs: 8,
 
     // Shadows
-    shadow: "0 2px 16px rgba(108,92,231,0.06)",
-    shadowMd: "0 8px 32px rgba(108,92,231,0.10)",
-    shadowLg: "0 12px 48px rgba(108,92,231,0.14)",
-    shadowCard: "0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(108,92,231,0.06)",
+    shadow: "0 2px 16px rgba(0,151,167,0.06)",
+    shadowMd: "0 8px 32px rgba(0,151,167,0.10)",
+    shadowLg: "0 12px 48px rgba(0,151,167,0.14)",
+    shadowCard: "0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,151,167,0.06)",
 
     // Gradients
-    gradientPrimary: "linear-gradient(135deg, #6C5CE7 0%, #A29BFE 100%)",
-    gradientHero: "linear-gradient(160deg, #064E3B 0%, #059669 50%, #34D399 100%)",
-    gradientSky: "linear-gradient(135deg, #0EA5E9 0%, #7DD3FC 100%)",
+    gradientPrimary: "linear-gradient(135deg, #0097A7 0%, #26C6DA 100%)",
+    gradientHero:    "linear-gradient(160deg, #00565A 0%, #0097A7 55%, #26C6DA 100%)",
+    gradientSky:     "linear-gradient(135deg, #0EA5E9 0%, #7DD3FC 100%)",
     gradientSuccess: "linear-gradient(135deg, #059669 0%, #6EE7B7 100%)",
-    gradientDark: "linear-gradient(160deg, #022C22 0%, #064E3B 50%, #059669 100%)",
-    gradientGlass: "linear-gradient(135deg, rgba(255,255,255,0.95), rgba(255,255,255,0.8))",
-    gradientWarm: "linear-gradient(135deg, #F59E0B 0%, #FBBF24 100%)",
+    gradientDark:    "linear-gradient(160deg, #00565A 0%, #0097A7 55%, #26C6DA 100%)",
+    gradientGlass:   "linear-gradient(135deg, rgba(255,255,255,0.95), rgba(255,255,255,0.8))",
+    gradientWarm:    "linear-gradient(135deg, #F59E0B 0%, #FBBF24 100%)",
 };
 
 // ─── Grade System ─────────────────────────────────────────────────────────────

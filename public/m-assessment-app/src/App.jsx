@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { LoginScreen } from "./screens/screen-login.jsx";
 import { ScopeShell } from "./components/ScopeShell.jsx";
+import { T } from "./constants.js";
 import api from "./services/api.service.js";
 
 // ── normaliseUser ─────────────────────────────────────────────────────────────
@@ -39,8 +40,8 @@ export default function App() {
 
     if (loading) {
         return (
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", background: "#0f172a" }}>
-                <div style={{ color: "white", fontSize: 14, opacity: 0.6 }}>Loading…</div>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", background: T.bg }}>
+                <div style={{ color: T.textSub, fontSize: 14 }}>Loading…</div>
             </div>
         );
     }

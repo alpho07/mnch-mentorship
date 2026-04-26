@@ -1,7 +1,7 @@
-<<<<<<< HEAD
 import { useState, useEffect } from "react";
 import { T, GRADE_COLOR, GRADE_BG, GRADE_TEXT } from "../constants.js";
 import { GradeBadge, StatusChip, ProgressBar } from "../components/shared-components.jsx";
+import { SectionIcon } from "../components/section-icons.jsx";
 import { NewAssessmentSheet } from "./screen-new-assessment.jsx";
 
 export function AssessmentsListScreen({ assessments, sections, onView, loading, onCreate, facilities, user, openSheet, onSheetClose }) {
@@ -12,29 +12,20 @@ export function AssessmentsListScreen({ assessments, sections, onView, loading, 
     useEffect(() => {
         if (openSheet) setShowSheet(true);
     }, [openSheet]);
-=======
-import { useState } from "react";
-import { T, GRADE_COLOR, GRADE_BG } from "../constants.js";
-import { GradeBadge, StatusChip, ProgressBar } from "../components/shared-components.jsx";
-
-export function AssessmentsListScreen({ assessments, sections, onView, loading }) {
-    const [filter, setFilter] = useState("all");
->>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
 
     const list = filter === "all"
         ? (assessments || [])
         : (assessments || []).filter(a => a.status === filter);
 
     return (
-<<<<<<< HEAD
         <div style={{ height: "100%", overflowY: "auto", background: T.bg, position: "relative" }}>
-=======
-        <div style={{ height: "100%", overflowY: "auto", background: T.bg }}>
->>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
+            {/* 6px breathing gap between status bar and gradient card */}
+            <div style={{ height: 6, background: T.bg }} />
             <div style={{
                 background: T.gradientDark,
-                padding: "52px 20px 22px",
-                borderRadius: "24px 24px 28px 28px",
+                padding: "28px 20px 22px",
+                borderRadius: "0 0 28px 28px",
+                margin: "0 6px",
                 position: "relative", overflow: "hidden",
             }}>
                 <div style={{ position: "absolute", width: 160, height: 160, borderRadius: "50%", background: "radial-gradient(circle, rgba(52,211,153,0.1) 0%, transparent 70%)", top: -40, right: -40 }} />
@@ -98,11 +89,7 @@ export function AssessmentsListScreen({ assessments, sections, onView, loading }
                         <div style={{ fontSize: 56, marginBottom: 16 }}>📋</div>
                         <div style={{ fontSize: 17, fontWeight: 700, color: T.textMid, marginBottom: 8 }}>No assessments yet</div>
                         <div style={{ fontSize: 13, color: T.textSub, lineHeight: 1.6 }}>
-<<<<<<< HEAD
                             No assessments yet. Tap + to start one.
-=======
-                            Your assessments will appear here once assigned by an administrator.
->>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
                         </div>
                     </div>
                 )}
@@ -116,7 +103,6 @@ export function AssessmentsListScreen({ assessments, sections, onView, loading }
                         transition: "all 0.25s cubic-bezier(0.4,0,0.2,1)",
                         animation: `fadeInUp 0.4s ease ${i * 0.05}s both`,
                     }}>
-<<<<<<< HEAD
                         {a._isOffline && (
                             <div style={{
                                 display: "inline-flex",
@@ -134,8 +120,6 @@ export function AssessmentsListScreen({ assessments, sections, onView, loading }
                                 Pending sync
                             </div>
                         )}
-=======
->>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                             <div style={{ flex: 1, minWidth: 0 }}>
                                 <div style={{
@@ -179,7 +163,9 @@ export function AssessmentsListScreen({ assessments, sections, onView, loading }
                                     const sc = (a.section_scores || {})[s.code];
                                     return (
                                         <div key={s.code} style={{ flex: 1, textAlign: "center" }}>
-                                            <div style={{ fontSize: 10, marginBottom: 4 }}>{s.icon}</div>
+                                            <div style={{ display: "flex", justifyContent: "center", marginBottom: 4 }}>
+                                <SectionIcon code={s.code} size={11} />
+                            </div>
                                             <ProgressBar
                                                 pct={sc ? sc.percentage : 0}
                                                 color={sc ? GRADE_COLOR[sc.grade] : T.border}
@@ -193,7 +179,6 @@ export function AssessmentsListScreen({ assessments, sections, onView, loading }
                     </button>
                 ))}
             </div>
-<<<<<<< HEAD
 
             {/* FAB — create new assessment */}
             <button
@@ -235,8 +220,6 @@ export function AssessmentsListScreen({ assessments, sections, onView, loading }
                     onClose={() => { setShowSheet(false); onSheetClose?.(); }}
                 />
             )}
-=======
->>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
         </div>
     );
 }

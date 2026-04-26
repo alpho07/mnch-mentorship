@@ -34,29 +34,39 @@ export function LoginScreen({ onLogin }) {
                 @keyframes btnShine{0%{left:-100%}100%{left:100%}}
             `}</style>
 
+            {/* Status bar gap */}
+            <div style={{ height: 6, background: T.bg }} />
+
             {/* Hero */}
             <div style={{
                 background: T.gradientDark,
                 backgroundSize: "200% 200%",
                 animation: "gradientBg 8s ease infinite",
-                padding: "56px 28px 44px", position: "relative", overflow: "hidden",
-                borderRadius: "24px 24px 28px 28px",
+                padding: "36px 28px 40px", position: "relative", overflow: "hidden",
+                borderRadius: "0 0 28px 28px",
+                margin: "0 6px",
             }}>
                 {/* Decorative orbs */}
-                <div style={{ position: "absolute", width: 200, height: 200, borderRadius: "50%", background: "radial-gradient(circle, rgba(16,185,129,0.15) 0%, transparent 70%)", top: -60, right: -60 }} />
-                <div style={{ position: "absolute", width: 120, height: 120, borderRadius: "50%", background: "radial-gradient(circle, rgba(52,211,153,0.1) 0%, transparent 70%)", bottom: -30, left: 20 }} />
-                <div style={{ position: "absolute", width: 80, height: 80, borderRadius: "50%", background: "radial-gradient(circle, rgba(52,211,153,0.08) 0%, transparent 70%)", top: 40, left: -20 }} />
+                <div style={{ position: "absolute", width: 200, height: 200, borderRadius: "50%", background: "radial-gradient(circle, rgba(38,198,218,0.15) 0%, transparent 70%)", top: -60, right: -60 }} />
+                <div style={{ position: "absolute", width: 120, height: 120, borderRadius: "50%", background: "radial-gradient(circle, rgba(0,151,167,0.1) 0%, transparent 70%)", bottom: -30, left: 20 }} />
+                <div style={{ position: "absolute", width: 80, height: 80, borderRadius: "50%", background: "radial-gradient(circle, rgba(38,198,218,0.08) 0%, transparent 70%)", top: 40, left: -20 }} />
 
-                {/* Logo */}
+                {/* Logo mark */}
                 <div style={{
                     width: 64, height: 64, borderRadius: 20,
                     background: "rgba(255,255,255,0.1)",
                     backdropFilter: "blur(8px)",
-                    border: "1px solid rgba(255,255,255,0.15)",
+                    border: "1px solid rgba(255,255,255,0.18)",
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: 32, marginBottom: 20,
+                    marginBottom: 20,
                     animation: "heroFloat 4s ease-in-out infinite",
-                }}>🩺</div>
+                }}>
+                    <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+                        <rect x="14" y="2" width="8" height="32" rx="4" fill="white" fillOpacity="0.9" />
+                        <rect x="2" y="14" width="32" height="8" rx="4" fill="white" fillOpacity="0.9" />
+                        <circle cx="18" cy="18" r="5" fill="white" />
+                    </svg>
+                </div>
 
                 <div style={{
                     color: "white", fontSize: 28, fontWeight: 800,
@@ -66,7 +76,7 @@ export function LoginScreen({ onLogin }) {
                     MNCH Kenya
                 </div>
                 <div style={{
-                    color: "#6EE7B7", fontSize: 18, fontWeight: 600,
+                    color: "#67E8F9", fontSize: 18, fontWeight: 600,
                     marginTop: 2, letterSpacing: -0.3,
                     animation: "loginFade 0.6s ease 0.2s both",
                 }}>

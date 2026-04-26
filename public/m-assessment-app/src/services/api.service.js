@@ -73,9 +73,10 @@ const get = (path, params) => {
             ? '?' + new URLSearchParams(params).toString() : '';
     return request('GET', path + qs);
 };
-const post = (path, body) => request('POST', path, body);
-const put = (path, body) => request('PUT', path, body);
-const del = (path) => request('DELETE', path);
+const post  = (path, body) => request('POST',  path, body);
+const put   = (path, body) => request('PUT',   path, body);
+const patch = (path, body) => request('PATCH', path, body);
+const del   = (path)       => request('DELETE', path);
 
 // ── Helper: is a fetch error a network error? ───────────────────────────────
 function isNetworkError(e) {
@@ -202,6 +203,8 @@ export const _rawApi = {
         start: (moduleId) => post('/modules/' + moduleId + '/start'),
         complete: (moduleId) => post('/modules/' + moduleId + '/complete'),
         sessions: (moduleId) => get('/modules/' + moduleId + '/sessions'),
+        sessionTemplates: (moduleId) => get('/modules/' + moduleId + '/sessions/available-templates'),
+        addSession: (moduleId, moduleSessionId) => post('/modules/' + moduleId + '/sessions', { module_session_id: moduleSessionId }),
     },
     attendance: {
         roster: (moduleId) => get('/modules/' + moduleId + '/attendance'),
@@ -243,15 +246,19 @@ export const _rawApi = {
     classLifecycle: {
         start: (classId) => post('/classes/' + classId + '/start'),
         end: (classId) => post('/classes/' + classId + '/end'),
+        report: (classId) => get('/classes/' + classId + '/report'),
         enrollMentee: (classId, userId) => post('/classes/' + classId + '/mentees', { user_id: userId }),
         createMentee: (classId, payload) => post('/classes/' + classId + '/mentees/create', payload),
         removeMentee: (classId, participantId) => del('/classes/' + classId + '/mentees/' + participantId),
+        updateMentee: (classId, participantId, data) => patch('/classes/' + classId + '/mentees/' + participantId, data),
+        markInvited: (classId, participantId) => post('/classes/' + classId + '/mentees/' + participantId + '/invite'),
         enrollmentLink: (classId) => get('/classes/' + classId + '/enrollment-link'),
         regenerateToken: (classId) => post('/classes/' + classId + '/regenerate-token'),
         addModule: (classId, programModuleId) => post('/classes/' + classId + '/modules', { program_module_id: programModuleId }),
     },
     sessions: {
         update: (sessionId, payload) => put('/sessions/' + sessionId, payload),
+        remove: (sessionId) => del('/sessions/' + sessionId),
     },
     trainingActions: {
         enroll: (trainingId) => post('/trainings/' + trainingId + '/enroll'),
@@ -863,6 +870,8 @@ const api = {
         add: _rawApi.modules.add,
         remove: _rawApi.modules.remove,
         sessions: _rawApi.modules.sessions,
+        sessionTemplates: _rawApi.modules.sessionTemplates,
+        addSession: _rawApi.modules.addSession,
     },
 
     // ── Attendance ────────────────────────────────────────────────────────────
@@ -1092,6 +1101,7 @@ const api = {
             }
         },
         end: (classId) => _rawApi.classLifecycle.end(classId),
+        report: (classId) => _rawApi.classLifecycle.report(classId),
         enrollmentLink: (classId) => _rawApi.classLifecycle.enrollmentLink(classId),
         regenerateToken: (classId) => _rawApi.classLifecycle.regenerateToken(classId),
         addModule: (classId, programModuleId) => _rawApi.classLifecycle.addModule(classId, programModuleId),
@@ -1107,6 +1117,8 @@ const api = {
             }
         },
         createMentee: (classId, payload) => _rawApi.classLifecycle.createMentee(classId, payload),
+        updateMentee: (classId, participantId, data) => _rawApi.classLifecycle.updateMentee(classId, participantId, data),
+        markInvited: (classId, participantId) => _rawApi.classLifecycle.markInvited(classId, participantId),
         removeMentee: async (classId, participantId) => {
             try {
                 return await _rawApi.classLifecycle.removeMentee(classId, participantId);
@@ -1120,8 +1132,9 @@ const api = {
         },
     },
 
-    // ── Session notes (online→queue, never discard) ──────────────────────────
+    // ── Session notes / lifecycle ────────────────────────────────────────────
     sessions: {
+        remove: _rawApi.sessions.remove,
         update: async (sessionId, payload) => {
             try {
                 const data = await _rawApi.sessions.update(sessionId, payload);

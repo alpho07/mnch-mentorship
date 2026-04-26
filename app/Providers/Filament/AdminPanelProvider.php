@@ -20,6 +20,8 @@ use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use Illuminate\Support\HtmlString;
+use Filament\View\PanelsRenderHook;
 use App\Livewire\Auth\{
     CustomLogin,
     CustomRegister,
@@ -39,8 +41,15 @@ class AdminPanelProvider extends PanelProvider {
                        // ->passwordResetRequest(CustomRequestPasswordReset::class)
                         ->passwordReset(CustomRequestPasswordReset::class)
                         ->colors([
-                            'primary' => Color::Blue,
+                            'primary' => Color::Cyan,
                         ])
+                        ->darkMode(true)
+                        ->renderHook(
+                            PanelsRenderHook::HEAD_END,
+                            fn (): HtmlString => new HtmlString(
+                                '<link rel="stylesheet" href="' . asset('css/filament-admin-theme.css') . '?v=' . filemtime(public_path('css/filament-admin-theme.css')) . '">'
+                            ),
+                        )
                         ->navigationGroups([
                             'Dashboards',
                             'Training Management',

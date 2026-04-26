@@ -20,14 +20,15 @@ class MentorshipCreateController extends Controller
         $request->validate([
             'program_id'       => 'required|integer|exists:programs,id',
             'facility_id'      => 'required|integer|exists:facilities,id',
-<<<<<<< HEAD
             'county_id'        => 'nullable|integer|exists:counties,id',
-=======
->>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
             'start_date'       => 'required|date',
             'end_date'         => 'required|date|after_or_equal:start_date',
             'max_participants' => 'nullable|integer|min:1',
             'title'            => 'nullable|string|max:255',
+            'class_name'       => 'nullable|string|max:255',
+            'class_start_date' => 'nullable|date',
+            'class_end_date'   => 'nullable|date|after_or_equal:class_start_date',
+            'class_notes'      => 'nullable|string',
             'module_ids'       => 'nullable|array',
             'module_ids.*'     => 'integer|exists:program_modules,id',
         ]);
@@ -38,10 +39,7 @@ class MentorshipCreateController extends Controller
             'type'             => 'facility_mentorship',
             'program_id'       => $request->program_id,
             'facility_id'      => $request->facility_id,
-<<<<<<< HEAD
             'county_id'        => $request->county_id,
-=======
->>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
             'mentor_id'        => $user->id,
             'start_date'       => $request->start_date,
             'end_date'         => $request->end_date,
@@ -53,10 +51,13 @@ class MentorshipCreateController extends Controller
 
         $class = MentorshipClass::create([
             'training_id' => $training->id,
-            'name'        => ($training->program?->name ?? 'Class') . ' - Class 1',
+            'name'        => $request->class_name ?: (($training->program?->name ?? 'Class') . ' - Class 1'),
             'status'      => 'draft',
-            'start_date'  => $request->start_date,
-            'end_date'    => $request->end_date,
+            'start_date'  => $request->class_start_date ?: $request->start_date,
+            'end_date'    => $request->class_end_date ?: $request->end_date,
+            'notes'       => $request->class_notes,
+            'created_by'  => $user->id,
+            'enrollment_token' => (string) Str::uuid(),
         ]);
 
         if (!empty($request->module_ids)) {
@@ -80,6 +81,9 @@ class MentorshipCreateController extends Controller
                     'id'      => $class->id,
                     'name'    => $class->name,
                     'status'  => $class->status,
+                    'start_date' => $class->start_date?->toDateString(),
+                    'end_date'   => $class->end_date?->toDateString(),
+                    'notes'      => $class->notes,
                     'modules' => $class->classModules->map(fn($m) => [
                         'id'             => $m->id,
                         'name'           => $m->programModule?->name ?? 'Module',

@@ -1,10 +1,7 @@
-<<<<<<< HEAD
 import { useState, useEffect, useRef } from "react";
-=======
-import { useState, useEffect } from "react";
->>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
 import { T, GRADE_COLOR, GRADE_BG, calcGrade } from "../constants.js";
 import { BackButton, GradeBadge, StatusChip, ProgressBar } from "../components/shared-components.jsx";
+import { SectionIcon } from "../components/section-icons.jsx";
 import api from "../services/api.service.js";
 import offlineStore from "../services/offline-store.js";
 
@@ -153,9 +150,9 @@ function OverviewTab({ assessment, sections }) {
                                     <div style={{
                                         width: 38, height: 38, borderRadius: 12,
                                         background: `${g1}12`, display: "flex", alignItems: "center", justifyContent: "center",
-                                        fontSize: 18, flexShrink: 0, border: `1px solid ${g1}20`,
+                                        flexShrink: 0, border: `1px solid ${g1}20`,
                                     }}>
-                                        {s.icon ?? "📋"}
+                                        <SectionIcon code={s.code} size={18} />
                                     </div>
                                     <div style={{ flex: 1, minWidth: 0 }}>
                                         <div style={{ fontWeight: 700, fontSize: 13, color: T.text }}>{s.name}</div>
@@ -350,7 +347,7 @@ function ResponsesTab({ assessment, sections }) {
                             width: "100%", padding: "13px 16px", border: "none", background: "none",
                             cursor: "pointer", display: "flex", alignItems: "center", gap: 10, textAlign: "left",
                         }}>
-                            <span style={{ fontSize: 20 }}>{s.icon ?? "📋"}</span>
+                            <SectionIcon code={s.code} size={20} />
                             <div style={{ flex: 1 }}>
                                 <div style={{ fontWeight: 700, fontSize: 13, color: T.text }}>{s.name}</div>
                                 <div style={{ fontSize: 11, color: T.textMuted, marginTop: 2 }}>
@@ -488,7 +485,6 @@ function HpResponsesView({ data }) {
     );
 }
 
-<<<<<<< HEAD
 // ── Delete confirmation modal ─────────────────────────────────────────────────
 function DeleteConfirmModal({ assessment, onCancel, onConfirmed }) {
     const COUNTDOWN = 4;
@@ -653,18 +649,12 @@ export function AssessmentDetailScreen({ assessment, sections, onBack, onContinu
     const [tab, setTab] = useState("overview");
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-=======
-// ── Main screen ───────────────────────────────────────────────────────────────
-export function AssessmentDetailScreen({ assessment, sections, onBack, onContinue, onViewReport }) {
-    const [tab, setTab] = useState("overview");
->>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
     const tabs = assessment.status === "completed"
         ? ["overview", "responses", "report"]
         : ["overview", "responses"];
     const headerPct = calcOverallFromSections(assessment.section_scores ?? {}) ?? assessment.overall_percentage;
     const headerGrade = headerPct != null ? calcGrade(headerPct) : assessment.overall_grade;
 
-<<<<<<< HEAD
     // Show delete only when assessment is not completed (may have partial/no data)
     const canDelete = assessment.status !== "completed" && onDelete;
 
@@ -681,18 +671,16 @@ export function AssessmentDetailScreen({ assessment, sections, onBack, onContinu
                 />
             )}
 
-=======
-    return (
-        <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
->>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
+            {/* 6px breathing gap between status bar and gradient card */}
+            <div style={{ height: 6, background: T.bg }} />
             {/* Header */}
             <div style={{
-                background: T.gradientDark, padding: "20px 20px 24px",
+                background: T.gradientDark, padding: "14px 20px 24px",
                 position: "relative", overflow: "hidden",
-                borderRadius: "24px 24px 28px 28px",
+                borderRadius: "0 0 28px 28px",
+                margin: "0 6px",
             }}>
                 <div style={{ position: "absolute", width: 140, height: 140, borderRadius: "50%", background: "radial-gradient(circle, rgba(16,185,129,0.1) 0%, transparent 70%)", top: -40, right: -30 }} />
-<<<<<<< HEAD
 
                 {/* Top row: back + delete */}
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -721,9 +709,6 @@ export function AssessmentDetailScreen({ assessment, sections, onBack, onContinu
                     )}
                 </div>
 
-=======
-                <BackButton onBack={onBack} light />
->>>>>>> 6110d4f9a08611bc561e3ac5a9f1b325f93a88e5
                 <div style={{ marginTop: 12, color: "white", fontSize: 18, fontWeight: 800, letterSpacing: -0.3, animation: "fadeInUp 0.4s ease both" }}>
                     {assessment.facility_name || "Assessment"}
                 </div>

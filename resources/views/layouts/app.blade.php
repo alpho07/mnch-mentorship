@@ -3,7 +3,7 @@
 
     <head>
         <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
         <title>@yield('title', 'Resource Center') - {{ config('app.name') }}</title>
@@ -18,11 +18,9 @@
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-        <script src="https://cdn.tailwindcss.com"></script>
+        <link rel="stylesheet" href="{{ asset('css/map.css') }}">
 
-        <!-- Styles -->
         <script src="https://cdn.tailwindcss.com"></script>
-         <link rel="stylesheet" href="{{ asset('css/map.css') }}">
         <script>
             tailwind.config = {
                 theme: {
@@ -32,16 +30,16 @@
                         },
                         colors: {
                             primary: {
-                                50: '#eff6ff',
-                                100: '#dbeafe',
-                                200: '#bfdbfe',
-                                300: '#93c5fd',
-                                400: '#60a5fa',
-                                500: '#3b82f6',
-                                600: '#2563eb',
-                                700: '#1d4ed8',
-                                800: '#1e40af',
-                                900: '#1e3a8a',
+                                50:  '#E0F7FA',
+                                100: '#B2EBF2',
+                                200: '#80DEEA',
+                                300: '#4DD0E1',
+                                400: '#26C6DA',
+                                500: '#00BCD4',
+                                600: '#0097A7',
+                                700: '#00838F',
+                                800: '#006064',
+                                900: '#004D40',
                             }
                         }
                     }
@@ -49,231 +47,360 @@
             }
         </script>
 
+        <style>
+            .nav-link {
+                @apply text-gray-600 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-150;
+            }
+            .nav-link.active {
+                @apply text-primary-600 bg-primary-50 font-semibold;
+            }
+            .mobile-nav-link {
+                @apply flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-primary-50 hover:text-primary-700 rounded-xl text-base font-medium transition-colors duration-150;
+            }
+            .mobile-nav-link.active {
+                @apply bg-primary-50 text-primary-700 font-semibold;
+            }
+            /* iOS safe area */
+            .safe-area-inset-top    { padding-top: env(safe-area-inset-top, 0px); }
+            .safe-area-inset-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
+        </style>
+
         @stack('styles')
     </head>
 
     <body class="bg-gray-50 font-sans antialiased">
-        <!-- Navigation -->
-    <nav class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between items-center h-16">
-                    <!-- Logo -->
-                <div class="flex items-center">
-                    <a href="{{ route('home') }}" class="flex items-center">
-                        <div class="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
-                            <i class="fas fa-graduation-cap text-white text-sm"></i>
-                        </div>
-                        <span class="ml-3 text-xl font-bold text-gray-900">{{ config('app.name') }}</span>
-                    </a>
-                </div>
 
-                    <!-- Main Navigation -->
-                <div class="hidden md:block">
-                    <div class="ml-10 flex items-baseline space-x-8">
-                        <a href="{{ route('home') }}" class="nav-link {{ request()->routeIs('home') ? 'active' : '' }}">
-                            <i class="fas fa-home mr-1"></i> Home
+        <!-- ═══ NAVIGATION ═══ -->
+        <nav x-data="{ mobileOpen: false, trainingOpen: false }"
+             class="bg-white border-b border-gray-100 sticky top-0 z-50 shadow-sm safe-area-inset-top"
+             style="padding-top: env(safe-area-inset-top, 0px);">
+
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex items-center justify-between h-16">
+
+                    <!-- Logo -->
+                    <div class="flex items-center flex-shrink-0">
+                        <a href="{{ route('home') }}" class="flex items-center gap-2.5">
+                            <div class="w-9 h-9 rounded-xl flex items-center justify-center"
+                                 style="background: linear-gradient(135deg, #0097A7 0%, #26C6DA 100%);">
+                                <i class="fas fa-stethoscope text-white text-sm"></i>
+                            </div>
+                            <span class="text-lg font-bold text-gray-900 leading-tight">
+                                <span class="text-primary-600">MNCH</span> Kenya
+                            </span>
+                        </a>
+                    </div>
+
+                    <!-- Desktop Nav -->
+                    <div class="hidden md:flex items-center gap-1">
+                        <a href="{{ route('home') }}"
+                           class="nav-link {{ request()->routeIs('home') ? 'active' : '' }}">
+                            <i class="fas fa-home mr-1.5 text-xs"></i>Home
                         </a>
                         <a href="{{ route('resources.index') }}"
-                               class="nav-link {{ request()->routeIs('resources.*') ? 'active' : '' }}">
-                            <i class="fas fa-book mr-1"></i> Resources
+                           class="nav-link {{ request()->routeIs('resources.*') ? 'active' : '' }}">
+                            <i class="fas fa-book-open mr-1.5 text-xs"></i>Resources
                         </a>
                         <a href="{{ route('categories.index') }}"
-                               class="nav-link {{ request()->routeIs('categories.*') ? 'active' : '' }}">
-                            <i class="fas fa-folder mr-1"></i> Categories
+                           class="nav-link {{ request()->routeIs('categories.*') ? 'active' : '' }}">
+                            <i class="fas fa-th-large mr-1.5 text-xs"></i>Categories
                         </a>
 
-                            <!-- NEW: Enhanced Training Dropdown for Desktop -->
-                        <div x-data="{ open: false }" class="relative">
-                            <button @click="open = !open" 
-                                               class="nav-link {{ request()->routeIs('training.*') ? 'active' : '' }} inline-flex items-center">
-                                <i class="fas fa-graduation-cap mr-1"></i> Training & Mentorships
-                                <svg class="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                                </svg>
-                            </button> 
-
-                            <div x-show="open" @click.outside="open = false" x-transition
-                                     class="absolute left-0 mt-2 w-72 bg-white rounded-xl shadow-lg py-2 z-50 border border-gray-200">
-
-                                    <!-- Core Training Section -->
-                                <!--div class="px-4 py-2 border-b border-gray-100">
-                                    <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Training Programs</h3>
-                                </div>
-                                <a href="{{ url('training.moh') }}" 
-                                       class="flex items-center px-4 py-3 text-sm hover:bg-blue-50 hover:text-blue-700 transition-colors">
-                                    <i class="fas fa-hospital w-5 text-blue-500 mr-3"></i>
-                                    <div>
-                                        <div class="font-medium">MOH Training</div>
-                                        <div class="text-xs text-gray-500">Global training programs</div>
-                                    </div>
-                                </a>
-                                <a href="{{ url('training.mentorship') }}" 
-                                       class="flex items-center px-4 py-3 text-sm hover:bg-green-50 hover:text-green-700 transition-colors">
-                                    <i class="fas fa-user-friends w-5 text-green-500 mr-3"></i>
-                                    <div>
-                                        <div class="font-medium">Mentorship Programs</div>
-                                        <div class="text-xs text-gray-500">Facility-based mentorship</div>
-                                    </div>
-                                </a-->
-
-                                    <!-- Interactive Dashboards Section -->
-                                <div class="px-4 py-2 border-b border-t border-gray-100 mt-2">
-                                    <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Interactive Analytics</h3>
-                                </div>
-                                <a href="{{ url('analytics/dashboard') }}" 
-                                       class="flex items-center px-4 py-3 text-sm hover:bg-blue-50 hover:text-blue-700 transition-colors">
-                                    <i class="fas fa-map w-5 text-blue-500 mr-3"></i>
-                                    <div>
-                                        <div class="font-medium flex items-center">
-                                                🗺️ Trainings & Mentorships
-                                            <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">New</span>
-                                        </div>
-                                        <div class="text-xs text-gray-500">County-level drill-down with participant insights</div>
-                                    </div>
-                                </a>
-                          
-
-                                    <!-- Overview Section -->
-                                <!--div class="border-t border-gray-100 mt-2">
-                                    <a href="{{ url('training.index') }}" 
-                                           class="flex items-center px-4 py-3 text-sm hover:bg-gray-50 transition-colors">
-                                        <i class="fas fa-list w-5 text-gray-500 mr-3"></i>
-                                        <div>
-                                            <div class="font-medium">All Training Programs</div>
-                                            <div class="text-xs text-gray-500">Complete training overview</div>
-                                        </div>
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-
-                        <a href="{{ route('resources.browse') }}" class="nav-link">
-                            <i class="fas fa-search mr-1"></i> Browse
-                        </a-->
-                    </div>
-                </div>
-
-                    <!-- Search Bar -->
-                <div class="hidden lg:block flex-1 max-w-md mx-8">
-                    <form action="{{ route('resources.search') }}" method="GET" class="relative">
-                        <div class="relative">
-                            <input type="text" name="q" value="{{ request('q') }}"
-                                       placeholder="Search resources..."
-                                       class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
-                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <i class="fas fa-search text-gray-400"></i>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-
-                    <!-- User Menu -->
-                <div class="flex items-center space-x-4">
-                    @auth
+                        <!-- Training dropdown -->
                         <div class="relative" x-data="{ open: false }">
-                            <button @click="open = !open" class="flex items-center text-gray-700 hover:text-gray-900">
-                                <div class="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
-                                    <span class="text-sm font-medium text-primary-600">
-                                        {{ substr(auth()->user()->full_name, 0, 1) }}
-                                    </span>
-                                </div>
-                                <i class="fas fa-chevron-down ml-1 text-xs"></i>
+                            <button @click="open = !open"
+                                    class="nav-link {{ request()->routeIs('training.*') || request()->is('analytics*') ? 'active' : '' }} inline-flex items-center gap-1">
+                                <i class="fas fa-graduation-cap text-xs"></i>
+                                Training
+                                <svg class="w-3.5 h-3.5 transition-transform duration-150" :class="open ? 'rotate-180' : ''"
+                                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/>
+                                </svg>
                             </button>
-
-                            <div x-show="open" @click.away="open = false" x-transition
-                                 class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
-                                  <a href="{{url('/admin') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                    <i class="fas fa-user mr-2"></i> Admin Area
+                            <div x-show="open" @click.outside="open = false"
+                                 x-transition:enter="transition ease-out duration-150"
+                                 x-transition:enter-start="opacity-0 scale-95 -translate-y-1"
+                                 x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+                                 x-transition:leave="transition ease-in duration-100"
+                                 x-transition:leave-start="opacity-100 scale-100"
+                                 x-transition:leave-end="opacity-0 scale-95"
+                                 class="absolute left-0 mt-2 w-72 bg-white rounded-2xl shadow-xl py-2 z-50 border border-gray-100 origin-top-left">
+                                <div class="px-4 py-2.5 border-b border-gray-100">
+                                    <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Analytics</p>
+                                </div>
+                                <a href="{{ url('analytics/dashboard') }}"
+                                   class="flex items-center gap-3 px-4 py-3 hover:bg-primary-50 transition-colors" @click="open=false">
+                                    <div class="w-9 h-9 rounded-xl bg-primary-100 flex items-center justify-center flex-shrink-0">
+                                        <i class="fas fa-map text-primary-600 text-sm"></i>
+                                    </div>
+                                    <div>
+                                        <div class="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                                            Trainings & Mentorships
+                                            <span class="text-xs bg-primary-100 text-primary-700 px-1.5 py-0.5 rounded-full font-medium">New</span>
+                                        </div>
+                                        <div class="text-xs text-gray-500 mt-0.5">County-level drill-down map</div>
+                                    </div>
                                 </a>
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                    <i class="fas fa-user mr-2"></i> Profile
-                                </a>
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                    <i class="fas fa-bookmark mr-2"></i> Bookmarks
-                                </a>
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                    <i class="fas fa-download mr-2"></i> Downloads
-                                </a>
-                                <hr class="my-1">
-                                <form method="POST" action="{{ url('admin/logout') }}">
-                                    @csrf
-                                    <button type="submit"
-                                            class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                        <i class="fas fa-sign-out-alt mr-2"></i> Logout
-                                    </button>
-                                </form>
                             </div>
                         </div>
-                    @else
-                        <a href="{{ url('admin/login') }}" class="text-gray-700 hover:text-gray-900">
-                            <i class="fas fa-sign-in-alt mr-1"></i> Admin
-                        </a>
-<!--                            <a href="{{ url('register') }}"
-                               class="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors">
-                                <i class="fas fa-user-plus mr-1"></i> Register
-                            </a>-->
-                    @endauth
-                </div>
+                    </div>
 
-                    <!-- Mobile menu button -->
-                <div class="md:hidden">
-                    <button @click="mobileOpen = !mobileOpen" class="text-gray-700 hover:text-gray-900">
-                        <i class="fas fa-bars"></i>
-                    </button>
-                </div>
-            </div>
-        </div>
+                    <!-- Search (desktop lg+) -->
+                    <div class="hidden lg:block flex-1 max-w-xs mx-6">
+                        <form action="{{ route('resources.search') }}" method="GET">
+                            <div class="relative">
+                                <input type="text" name="q" value="{{ request('q') }}"
+                                       placeholder="Search resources…"
+                                       class="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-primary-400 focus:border-transparent outline-none transition-all">
+                                <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                            </div>
+                        </form>
+                    </div>
 
-            <!-- Mobile Navigation -->
-        <div x-show="mobileOpen" x-transition class="md:hidden bg-white border-t border-gray-200">
-            <div class="px-2 pt-2 pb-3 space-y-1">
-                <a href="{{ route('home') }}" class="mobile-nav-link">
-                    <i class="fas fa-home mr-2"></i> Home
-                </a>
-                <a href="{{ route('resources.index') }}" class="mobile-nav-link">
-                    <i class="fas fa-book mr-2"></i> Resources
-                </a>
-                <a href="{{ route('categories.index') }}" class="mobile-nav-link">
-                    <i class="fas fa-folder mr-2"></i> Categories
-                </a>
-                <a href="{{ route('resources.browse') }}" class="mobile-nav-link">
-                    <i class="fas fa-search mr-2"></i> Browse
-                </a>
-                    <!-- Training dropdown -->
-                <div x-data="{ open:false }" class="relative">
-                    <button @click="open = !open" class="inline-flex items-center gap-2 hover:text-indigo-700">
-                            Training
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 9l6 6 6-6"/></svg>
-                    </button>
-                    <div x-cloak x-show="open" @click.outside="open=false" class="absolute right-0 mt-2 w-56 rounded-xl border bg-white shadow-lg p-2">
-                        <a href="{{ url('training.moh') }}" class="block rounded-lg px-3 py-2 hover:bg-gray-50">MOH</a>
-                        <a href="{{ url('training.mentorship') }}" class="block rounded-lg px-3 py-2 hover:bg-gray-50">Mentorship</a>
-                        <div class="border-t my-2"></div>
-                        <a href="{{ url('training.index') }}" class="block rounded-lg px-3 py-2 hover:bg-gray-50">All Training</a>
-                        <a href="{{ url('training.heatmap') }}" class="block rounded-lg px-3 py-2 hover:bg-gray-50">MOH Heatmap</a>
+                    <!-- User menu + hamburger -->
+                    <div class="flex items-center gap-3">
+                        @auth
+                            <div class="relative" x-data="{ open: false }">
+                                <button @click="open = !open"
+                                        class="flex items-center gap-2 rounded-xl px-2 py-1.5 hover:bg-gray-100 transition-colors">
+                                    <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold"
+                                         style="background: linear-gradient(135deg, #0097A7 0%, #26C6DA 100%);">
+                                        {{ strtoupper(substr(auth()->user()->full_name, 0, 1)) }}
+                                    </div>
+                                    <i class="fas fa-chevron-down text-xs text-gray-500 hidden sm:block"></i>
+                                </button>
+                                <div x-show="open" @click.away="open = false"
+                                     x-transition:enter="transition ease-out duration-150"
+                                     x-transition:enter-start="opacity-0 scale-95"
+                                     x-transition:enter-end="opacity-100 scale-100"
+                                     x-transition:leave="transition ease-in duration-100"
+                                     x-transition:leave-start="opacity-100"
+                                     x-transition:leave-end="opacity-0 scale-95"
+                                     class="absolute right-0 mt-2 w-52 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 z-50 origin-top-right">
+                                    <div class="px-4 py-2 border-b border-gray-100 mb-1">
+                                        <p class="text-sm font-semibold text-gray-900 truncate">{{ auth()->user()->full_name }}</p>
+                                        <p class="text-xs text-gray-500 truncate">{{ auth()->user()->email }}</p>
+                                    </div>
+                                    <a href="{{ url('/admin') }}" class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
+                                        <i class="fas fa-cog w-4 text-gray-400"></i>Admin Panel
+                                    </a>
+                                    <a href="#" class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
+                                        <i class="fas fa-bookmark w-4 text-gray-400"></i>Bookmarks
+                                    </a>
+                                    <div class="border-t border-gray-100 my-1"></div>
+                                    <form method="POST" action="{{ url('admin/logout') }}">
+                                        @csrf
+                                        <button type="submit" class="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50">
+                                            <i class="fas fa-sign-out-alt w-4"></i>Logout
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        @else
+                            <a href="{{ url('admin/login') }}"
+                               class="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-primary-600 border border-primary-200 rounded-xl hover:bg-primary-50 transition-colors">
+                                <i class="fas fa-sign-in-alt text-xs"></i>Sign In
+                            </a>
+                        @endauth
+
+                        <!-- Hamburger (mobile) -->
+                        <button @click="mobileOpen = true"
+                                class="md:hidden p-2 rounded-xl text-gray-600 hover:bg-gray-100 transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                            </svg>
+                        </button>
                     </div>
                 </div>
             </div>
 
-                <!-- Mobile Search -->
-            <div class="px-4 pb-4">
-                <form action="{{ route('resources.search') }}" method="GET">
-                    <input type="text" name="q" placeholder="Search resources..."
-                               class="w-full px-3 py-2 border border-gray-300 rounded-md">
-                </form>
+            <!-- ── Mobile Nav Drawer ── -->
+            <div x-show="mobileOpen"
+                 x-transition:enter="transition ease-out duration-200"
+                 x-transition:enter-start="opacity-0"
+                 x-transition:enter-end="opacity-100"
+                 x-transition:leave="transition ease-in duration-150"
+                 x-transition:leave-start="opacity-100"
+                 x-transition:leave-end="opacity-0"
+                 class="fixed inset-0 z-[60] md:hidden"
+                 style="display: none;">
+                <!-- Backdrop -->
+                <div @click="mobileOpen = false" class="absolute inset-0 bg-gray-900/50 backdrop-blur-sm"></div>
+
+                <!-- Drawer Panel -->
+                <div x-show="mobileOpen"
+                     x-transition:enter="transition ease-out duration-250"
+                     x-transition:enter-start="translate-x-full"
+                     x-transition:enter-end="translate-x-0"
+                     x-transition:leave="transition ease-in duration-200"
+                     x-transition:leave-start="translate-x-0"
+                     x-transition:leave-end="translate-x-full"
+                     class="absolute right-0 top-0 bottom-0 w-80 bg-white overflow-y-auto flex flex-col"
+                     style="padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 16px);">
+
+                    <!-- Drawer header -->
+                    <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+                        <div class="flex items-center gap-2">
+                            <div class="w-7 h-7 rounded-lg flex items-center justify-center"
+                                 style="background: linear-gradient(135deg, #0097A7 0%, #26C6DA 100%);">
+                                <i class="fas fa-stethoscope text-white text-xs"></i>
+                            </div>
+                            <span class="font-bold text-gray-900 text-sm">MNCH Kenya</span>
+                        </div>
+                        <button @click="mobileOpen = false"
+                                class="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- Mobile search -->
+                    <div class="px-4 py-3 border-b border-gray-100">
+                        <form action="{{ route('resources.search') }}" method="GET">
+                            <div class="relative">
+                                <input type="text" name="q" value="{{ request('q') }}"
+                                       placeholder="Search resources…"
+                                       class="w-full pl-9 pr-4 py-2.5 text-sm border border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-primary-400 focus:border-transparent outline-none">
+                                <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Nav links -->
+                    @php
+                        $navHome       = request()->routeIs('home');
+                        $navResources  = request()->routeIs('resources.*');
+                        $navCategories = request()->routeIs('categories.*');
+                        $navTraining   = request()->routeIs('training.*') || request()->is('analytics*');
+                    @endphp
+                    <nav class="flex-1 px-4 py-4 space-y-1.5">
+
+                        <p class="px-2 mb-3 text-xs font-bold text-gray-400 uppercase tracking-widest">Menu</p>
+
+                        {{-- Home --}}
+                        <a href="{{ route('home') }}" @click="mobileOpen = false"
+                           class="flex items-center gap-4 px-3 py-3 rounded-2xl transition-all duration-150 {{ $navHome ? 'bg-primary-50' : 'hover:bg-gray-50' }}">
+                            <div class="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-sm"
+                                 style="{{ $navHome ? 'background: linear-gradient(135deg,#0097A7 0%,#26C6DA 100%);' : 'background:#F3F4F6;' }}">
+                                <i class="fas fa-home {{ $navHome ? 'text-white' : 'text-gray-500' }}" style="font-size:15px;"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="font-semibold text-[15px] leading-none {{ $navHome ? 'text-primary-700' : 'text-gray-800' }}">Home</p>
+                                <p class="text-xs text-gray-400 mt-0.5">Dashboard &amp; overview</p>
+                            </div>
+                            @if($navHome)
+                            <span class="w-2 h-2 rounded-full flex-shrink-0" style="background:#0097A7;"></span>
+                            @endif
+                        </a>
+
+                        {{-- Resources --}}
+                        <a href="{{ route('resources.index') }}" @click="mobileOpen = false"
+                           class="flex items-center gap-4 px-3 py-3 rounded-2xl transition-all duration-150 {{ $navResources ? 'bg-primary-50' : 'hover:bg-gray-50' }}">
+                            <div class="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-sm"
+                                 style="{{ $navResources ? 'background: linear-gradient(135deg,#0097A7 0%,#26C6DA 100%);' : 'background:#F3F4F6;' }}">
+                                <i class="fas fa-book-open {{ $navResources ? 'text-white' : 'text-gray-500' }}" style="font-size:15px;"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="font-semibold text-[15px] leading-none {{ $navResources ? 'text-primary-700' : 'text-gray-800' }}">Resources</p>
+                                <p class="text-xs text-gray-400 mt-0.5">Guidelines &amp; materials</p>
+                            </div>
+                            @if($navResources)
+                            <span class="w-2 h-2 rounded-full flex-shrink-0" style="background:#0097A7;"></span>
+                            @endif
+                        </a>
+
+                        {{-- Categories --}}
+                        <a href="{{ route('categories.index') }}" @click="mobileOpen = false"
+                           class="flex items-center gap-4 px-3 py-3 rounded-2xl transition-all duration-150 {{ $navCategories ? 'bg-primary-50' : 'hover:bg-gray-50' }}">
+                            <div class="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-sm"
+                                 style="{{ $navCategories ? 'background: linear-gradient(135deg,#0097A7 0%,#26C6DA 100%);' : 'background:#F3F4F6;' }}">
+                                <i class="fas fa-th-large {{ $navCategories ? 'text-white' : 'text-gray-500' }}" style="font-size:15px;"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="font-semibold text-[15px] leading-none {{ $navCategories ? 'text-primary-700' : 'text-gray-800' }}">Categories</p>
+                                <p class="text-xs text-gray-400 mt-0.5">Browse by topic</p>
+                            </div>
+                            @if($navCategories)
+                            <span class="w-2 h-2 rounded-full flex-shrink-0" style="background:#0097A7;"></span>
+                            @endif
+                        </a>
+
+                        {{-- Training (expandable) --}}
+                        <div>
+                            <button @click="trainingOpen = !trainingOpen"
+                                    class="w-full flex items-center gap-4 px-3 py-3 rounded-2xl transition-all duration-150 {{ $navTraining ? 'bg-primary-50' : 'hover:bg-gray-50' }}">
+                                <div class="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-sm"
+                                     style="{{ $navTraining ? 'background: linear-gradient(135deg,#0097A7 0%,#26C6DA 100%);' : 'background:#F3F4F6;' }}">
+                                    <i class="fas fa-graduation-cap {{ $navTraining ? 'text-white' : 'text-gray-500' }}" style="font-size:15px;"></i>
+                                </div>
+                                <div class="flex-1 min-w-0 text-left">
+                                    <p class="font-semibold text-[15px] leading-none {{ $navTraining ? 'text-primary-700' : 'text-gray-800' }}">Training</p>
+                                    <p class="text-xs text-gray-400 mt-0.5">Programs &amp; analytics</p>
+                                </div>
+                                <svg class="w-4 h-4 flex-shrink-0 transition-transform duration-200 {{ $navTraining ? 'text-primary-500' : 'text-gray-400' }}"
+                                     :class="trainingOpen ? 'rotate-180' : ''"
+                                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/>
+                                </svg>
+                            </button>
+                            <div x-show="trainingOpen" x-transition class="mt-1 space-y-0.5" style="padding-left: 59px;">
+                                <a href="{{ url('analytics/dashboard') }}" @click="mobileOpen = false"
+                                   class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-primary-50 hover:text-primary-700 transition-colors">
+                                    <i class="fas fa-map text-primary-400" style="font-size:13px; width:16px; text-align:center;"></i>
+                                    <span>Trainings &amp; Mentorships Map</span>
+                                </a>
+                            </div>
+                        </div>
+
+                    </nav>
+
+                    <!-- User section at bottom -->
+                    <div class="border-t border-gray-100 px-4 py-3">
+                        @auth
+                            <div class="flex items-center gap-3 mb-3">
+                                <div class="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
+                                     style="background: linear-gradient(135deg, #0097A7 0%, #26C6DA 100%);">
+                                    {{ strtoupper(substr(auth()->user()->full_name, 0, 1)) }}
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-sm font-semibold text-gray-900 truncate">{{ auth()->user()->full_name }}</p>
+                                    <p class="text-xs text-gray-500 truncate">{{ auth()->user()->email }}</p>
+                                </div>
+                            </div>
+                            <a href="{{ url('/admin') }}"
+                               class="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-xl mb-1"
+                               @click="mobileOpen = false">
+                                <i class="fas fa-cog w-4 text-gray-400"></i>Admin Panel
+                            </a>
+                            <form method="POST" action="{{ url('admin/logout') }}">
+                                @csrf
+                                <button type="submit" class="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-xl">
+                                    <i class="fas fa-sign-out-alt w-4"></i>Logout
+                                </button>
+                            </form>
+                        @else
+                            <a href="{{ url('admin/login') }}"
+                               class="flex items-center justify-center gap-2 w-full px-4 py-3 text-sm font-semibold text-white rounded-xl transition-all"
+                               style="background: linear-gradient(135deg, #0097A7 0%, #26C6DA 100%);"
+                               @click="mobileOpen = false">
+                                <i class="fas fa-sign-in-alt"></i>Sign In
+                            </a>
+                        @endauth
+                    </div>
+                </div>
             </div>
-        </div>
-    </nav>
+        </nav>
 
         <!-- Breadcrumbs -->
-    @if (!request()->routeIs('home'))
-        <div class="bg-gray-100 border-b border-gray-200">
+        @if (!request()->routeIs('home'))
+        <div class="bg-white border-b border-gray-100">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
                 <nav class="flex" aria-label="Breadcrumb">
                     <ol class="inline-flex items-center space-x-1 md:space-x-3">
                         <li class="inline-flex items-center">
-                            <a href="{{ route('home') }}" class="text-gray-500 hover:text-gray-700">
-                                <i class="fas fa-home"></i>
+                            <a href="{{ route('home') }}" class="text-gray-400 hover:text-primary-600 transition-colors">
+                                <i class="fas fa-home text-sm"></i>
                             </a>
                         </li>
                         @yield('breadcrumbs')
@@ -281,140 +408,139 @@
                 </nav>
             </div>
         </div>
-    @endif
+        @endif
 
         <!-- Page Header -->
-    @hasSection('page_header')
-        <div class="bg-white border-b border-gray-200">
+        @hasSection('page_header')
+        <div class="bg-white border-b border-gray-100">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 @yield('page_header')
             </div>
         </div>
-    @endif
+        @endif
 
         <!-- Flash Messages -->
-    @if (session('success'))
-        <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative max-w-7xl mx-auto mt-4"
-             role="alert">
-            <span class="block sm:inline">{{ session('success') }}</span>
-            <span class="absolute top-0 bottom-0 right-0 px-4 py-3" onclick="this.parentElement.style.display='none'">
-                <i class="fas fa-times cursor-pointer"></i>
-            </span>
+        @if (session('success'))
+        <div class="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-xl relative max-w-7xl mx-auto mt-4 flex items-start gap-3" role="alert">
+            <i class="fas fa-check-circle text-green-500 mt-0.5 flex-shrink-0"></i>
+            <span>{{ session('success') }}</span>
+            <button onclick="this.parentElement.style.display='none'" class="ml-auto text-green-400 hover:text-green-600">
+                <i class="fas fa-times"></i>
+            </button>
         </div>
-    @endif
+        @endif
 
-    @if ($errors->any())
-        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative max-w-7xl mx-auto mt-4"
-             role="alert">
-            <strong class="font-bold">There were some problems:</strong>
-            <ul class="mt-2">
+        @if ($errors->any())
+        <div class="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-xl relative max-w-7xl mx-auto mt-4" role="alert">
+            <div class="flex items-center gap-2 mb-2">
+                <i class="fas fa-exclamation-circle text-red-500"></i>
+                <strong class="font-semibold">Please fix the following:</strong>
+            </div>
+            <ul class="space-y-1 ml-6">
                 @foreach ($errors->all() as $error)
-                    <li>• {{ $error }}</li>
+                    <li class="text-sm list-disc">{{ $error }}</li>
                 @endforeach
             </ul>
         </div>
-    @endif
+        @endif
 
         <!-- Main Content -->
-    <main class="min-h-screen">
-        @yield('content')
-    </main>
+        <main class="min-h-screen">
+            @yield('content')
+        </main>
 
         <!-- Footer -->
-    <footer class="bg-gray-900 text-white">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+        <footer class="bg-gray-900 text-white">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-10">
                     <!-- About -->
-                <div>
-                    <h3 class="text-lg font-semibold mb-4">{{ config('app.name') }}</h3>
-                    <p class="text-gray-400 mb-4">
-                            Your comprehensive resource center for learning materials, tools, and knowledge sharing.
-                    </p>
-                    <div class="flex space-x-4">
-                        <a href="#" class="text-gray-400 hover:text-white">
-                            <i class="fab fa-facebook"></i>
-                        </a>
-                        <a href="#" class="text-gray-400 hover:text-white">
-                            <i class="fab fa-twitter"></i>
-                        </a>
-                        <a href="#" class="text-gray-400 hover:text-white">
-                            <i class="fab fa-linkedin"></i>
-                        </a>
+                    <div class="md:col-span-1">
+                        <div class="flex items-center gap-2.5 mb-4">
+                            <div class="w-9 h-9 rounded-xl flex items-center justify-center"
+                                 style="background: linear-gradient(135deg, #0097A7 0%, #26C6DA 100%);">
+                                <i class="fas fa-stethoscope text-white text-sm"></i>
+                            </div>
+                            <span class="text-lg font-bold"><span class="text-primary-400">MNCH</span> Kenya</span>
+                        </div>
+                        <p class="text-gray-400 text-sm mb-4 leading-relaxed">
+                            Kenya's comprehensive platform for maternal, neonatal, and child health training resources.
+                        </p>
+                        <div class="flex gap-3">
+                            <a href="#" class="w-8 h-8 rounded-lg bg-gray-800 hover:bg-primary-700 flex items-center justify-center text-gray-400 hover:text-white transition-all">
+                                <i class="fab fa-twitter text-sm"></i>
+                            </a>
+                            <a href="#" class="w-8 h-8 rounded-lg bg-gray-800 hover:bg-primary-700 flex items-center justify-center text-gray-400 hover:text-white transition-all">
+                                <i class="fab fa-linkedin text-sm"></i>
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Quick Links -->
+                    <div>
+                        <h3 class="text-sm font-semibold text-gray-200 uppercase tracking-wider mb-4">Quick Links</h3>
+                        <ul class="space-y-2.5">
+                            <li><a href="{{ route('resources.index') }}" class="text-gray-400 hover:text-primary-400 text-sm transition-colors">All Resources</a></li>
+                            <li><a href="{{ route('categories.index') }}" class="text-gray-400 hover:text-primary-400 text-sm transition-colors">Categories</a></li>
+                            <li><a href="{{ route('resources.browse') }}" class="text-gray-400 hover:text-primary-400 text-sm transition-colors">Browse</a></li>
+                            <li><a href="{{ url('analytics/dashboard') }}" class="text-gray-400 hover:text-primary-400 text-sm transition-colors">Analytics Map</a></li>
+                        </ul>
+                    </div>
+
+                    <!-- Categories -->
+                    <div>
+                        <h3 class="text-sm font-semibold text-gray-200 uppercase tracking-wider mb-4">Top Categories</h3>
+                        <ul class="space-y-2.5">
+                            @foreach (\App\Models\ResourceCategory::active()->parent()->withCount('resources')->orderByDesc('resources_count')->limit(5)->get() as $category)
+                            <li>
+                                <a href="{{ route('resources.category', $category->slug) }}" class="text-gray-400 hover:text-primary-400 text-sm transition-colors">
+                                    {{ $category->name }}
+                                    <span class="text-gray-600 text-xs">({{ $category->resources_count }})</span>
+                                </a>
+                            </li>
+                            @endforeach
+                        </ul>
+                    </div>
+
+                    <!-- Contact -->
+                    <div>
+                        <h3 class="text-sm font-semibold text-gray-200 uppercase tracking-wider mb-4">Contact</h3>
+                        <ul class="space-y-3 text-sm text-gray-400">
+                            <li class="flex items-center gap-2.5">
+                                <div class="w-7 h-7 rounded-lg bg-gray-800 flex items-center justify-center flex-shrink-0">
+                                    <i class="fas fa-envelope text-primary-400 text-xs"></i>
+                                </div>
+                                mnch@health.go.ke
+                            </li>
+                            <li class="flex items-center gap-2.5">
+                                <div class="w-7 h-7 rounded-lg bg-gray-800 flex items-center justify-center flex-shrink-0">
+                                    <i class="fas fa-phone text-primary-400 text-xs"></i>
+                                </div>
+                                +254 700 000 000
+                            </li>
+                            <li class="flex items-center gap-2.5">
+                                <div class="w-7 h-7 rounded-lg bg-gray-800 flex items-center justify-center flex-shrink-0">
+                                    <i class="fas fa-map-marker-alt text-primary-400 text-xs"></i>
+                                </div>
+                                Nairobi, Kenya
+                            </li>
+                        </ul>
                     </div>
                 </div>
 
-                    <!-- Quick Links -->
-                <div>
-                    <h3 class="text-lg font-semibold mb-4">Quick Links</h3>
-                    <ul class="space-y-2">
-                        <li><a href="{{ route('resources.index') }}" class="text-gray-400 hover:text-white">All
-                        Resources</a></li>
-                        <li><a href="{{ route('categories.index') }}"
-                        class="text-gray-400 hover:text-white">Categories</a></li>
-                        <li><a href="{{ route('resources.browse') }}"
-                        class="text-gray-400 hover:text-white">Browse</a></li>
-                        <li><a href="{{ route('feed') }}" class="text-gray-400 hover:text-white">RSS Feed</a></li>
-                    </ul>
-                </div>
-
-                    <!-- Categories -->
-                <div>
-                    <h3 class="text-lg font-semibold mb-4">Popular Categories</h3>
-                    <ul class="space-y-2">
-                        @foreach (\App\Models\ResourceCategory::active()->parent()->withCount('resources')->orderByDesc('resources_count')->limit(5)->get() as $category)
-                            <li>
-                                <a href="{{ route('resources.category', $category->slug) }}"
-                                   class="text-gray-400 hover:text-white">
-                                    {{ $category->name }} ({{ $category->resources_count }})
-                                </a>
-                            </li>
-                        @endforeach
-                    </ul>
-                </div>
-
-                    <!-- Contact -->
-                <div>
-                    <h3 class="text-lg font-semibold mb-4">Contact</h3>
-                    <ul class="space-y-2 text-gray-400">
-                        <li><i class="fas fa-envelope mr-2"></i> mnch@example.com</li>
-                        <li><i class="fas fa-phone mr-2"></i> +254 700 000 000</li>
-                        <li><i class="fas fa-map-marker-alt mr-2"></i> Nairobi 00100, City</li>
-                    </ul>
+                <div class="border-t border-gray-800 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-gray-500">
+                    <p>&copy; {{ date('Y') }} {{ config('app.name') }}. All rights reserved.</p>
+                    <p class="flex items-center gap-1.5">
+                        <i class="fas fa-heart text-primary-500 text-xs"></i>
+                        Strengthening Healthcare in Kenya
+                    </p>
                 </div>
             </div>
+        </footer>
 
-            <div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
-                <p>&copy; {{ date('Y') }} {{ config('app.name') }}. All rights reserved.</p>
-            </div>
-        </div>
-    </footer>
+        <!-- Alpine.js -->
+        <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
 
-        <!-- Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
-
-    <script>
-                        document.addEventListener('alpine:init', () => {
-                            Alpine.data('app', () => ({
-                                mobileOpen: false
-                            }))
-                        })
-    </script>
-
-    @stack('scripts')
-
-    <style>
-            .nav-link {
-                @apply text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium transition-colors;
-            }
-
-            .nav-link.active {
-                @apply text-primary-600 bg-primary-50;
-            }
-
-            .mobile-nav-link {
-                @apply text-gray-600 hover:text-gray-900 hover:bg-gray-50 block px-3 py-2 rounded-md text-base font-medium;
-            }
-    </style>
-</body>
+        @stack('scripts')
+    </body>
 
 </html>

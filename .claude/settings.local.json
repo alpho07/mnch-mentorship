@@ -4,7 +4,23 @@
       "Bash(head:*)",
       "Bash(grep:*)",
       "Bash(wc:*)",
-      "Bash(composer install:*)"
+      "Bash(composer install:*)",
+      "Bash(bash *)",
+      "Bash(npm run *)",
+      "Bash(php artisan *)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"MNCH-Master project memory profiles exist and are up to date. Before doing any Glob/Grep/file scans for project structure, models, services, controllers, routes, screens, or components — READ MEMORY FIRST:\\n- ~/.claude/projects/C--xampp-htdocs-MNCH-Master/memory/project_backend_profile.md (all models, services, controllers, API + web routes, RBAC)\\n- ~/.claude/projects/C--xampp-htdocs-MNCH-Master/memory/project_mobile_app_profile.md (all screens, components, offline layer, design tokens, API client)\\n- ~/.claude/projects/C--xampp-htdocs-MNCH-Master/memory/project_filament_admin_profile.md (all Filament resources, pages, widgets, Livewire charts)\\nOnly do fresh file scans when the profiles do not have the specific detail you need.\"}}'",
+            "statusMessage": "Loading MNCH project profiles..."
+          }
+        ]
+      }
     ]
   }
 }
