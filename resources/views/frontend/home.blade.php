@@ -7,71 +7,6 @@
 <div x-data="homePage">
 
     {{-- ═══════════════════════════════════════════
-         HERO
-    ═══════════════════════════════════════════ --}}
-    <section class="relative overflow-hidden" style="background: linear-gradient(135deg, #004D40 0%, #00695C 25%, #0097A7 70%, #26C6DA 100%);">
-        <div class="absolute top-0 right-0 w-96 h-96 opacity-10"
-             style="background: radial-gradient(circle, #ffffff 0%, transparent 70%); transform: translate(30%, -30%);"></div>
-        <div class="absolute bottom-0 left-0 w-72 h-72 opacity-10"
-             style="background: radial-gradient(circle, #26C6DA 0%, transparent 70%); transform: translate(-30%, 30%);"></div>
-        <div class="absolute inset-0 opacity-5">
-            <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
-                <pattern id="hb" x="0" y="0" width="300" height="60" patternUnits="userSpaceOnUse">
-                    <polyline points="0,30 40,30 55,10 65,50 75,30 90,30 100,20 110,40 120,30 300,30"
-                              fill="none" stroke="white" stroke-width="1.5"/>
-                </pattern>
-                <rect width="100%" height="100%" fill="url(#hb)"/>
-            </svg>
-        </div>
-
-        <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
-            <div class="text-center max-w-3xl mx-auto">
-                <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-6 text-sm font-semibold text-white border border-white/20"
-                     style="background: rgba(255,255,255,0.12); backdrop-filter: blur(8px);">
-                    <span class="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></span>
-                    Kenya Ministry of Health · MNCH Program
-                </div>
-                <h1 class="text-4xl md:text-5xl lg:text-6xl font-extrabold text-white mb-5 leading-tight tracking-tight">
-                    Strengthening Skills,<br>
-                    <span class="text-cyan-200">Saving Lives</span>
-                </h1>
-                <p class="text-lg md:text-xl text-cyan-100 mb-8 leading-relaxed max-w-2xl mx-auto">
-                    Access training materials, clinical guidelines, and learning resources for frontline health workers across Kenya.
-                </p>
-                <form action="{{ route('resources.search') }}" method="GET" class="max-w-xl mx-auto mb-10">
-                    <div class="relative">
-                        <input type="text" name="q" value="{{ request('q') }}"
-                               placeholder="Search guidelines, protocols, training materials…"
-                               class="w-full pl-12 pr-32 py-4 rounded-2xl text-gray-900 shadow-2xl border-0 outline-none focus:ring-4 focus:ring-white/30"
-                               style="font-size: 15px;">
-                        <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
-                        <button type="submit"
-                                class="absolute right-2 top-2 bottom-2 px-5 rounded-xl text-white text-sm font-semibold"
-                                style="background: linear-gradient(135deg, #0097A7 0%, #00838F 100%);">
-                            Search
-                        </button>
-                    </div>
-                </form>
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-3xl mx-auto">
-                    @php $heroStats = [
-                        ['value' => number_format(\App\Models\Resource::published()->count()), 'label' => 'Resources'],
-                        ['value' => number_format($categories->count()), 'label' => 'Categories'],
-                        ['value' => number_format(\App\Models\User::count()), 'label' => 'Health Workers'],
-                        ['value' => number_format(\App\Models\ResourceDownload::count()), 'label' => 'Downloads'],
-                    ]; @endphp
-                    @foreach($heroStats as $stat)
-                    <div class="rounded-xl px-4 py-3 text-center border border-white/15"
-                         style="background: rgba(255,255,255,0.1); backdrop-filter: blur(8px);">
-                        <div class="text-2xl md:text-3xl font-extrabold text-white">{{ $stat['value'] }}</div>
-                        <div class="text-xs text-cyan-200 font-medium mt-0.5">{{ $stat['label'] }}</div>
-                    </div>
-                    @endforeach
-                </div>
-            </div>
-        </div>
-    </section>
-
-    {{-- ═══════════════════════════════════════════
          QUICK LINKS STRIP
     ═══════════════════════════════════════════ --}}
     <section class="bg-white border-b border-gray-100">
@@ -94,6 +29,79 @@
             </div>
         </div>
     </section>
+
+    {{-- ═══════════════════════════════════════════
+         TRAINING + MENTORSHIP INSIGHTS
+    ═══════════════════════════════════════════ --}}
+    @if($trainingInsights['has_data'] ?? false)
+    <section class="relative overflow-hidden py-14" style="background: linear-gradient(135deg, #062F2F 0%, #004D40 48%, #0F766E 100%);">
+        <div class="absolute inset-0 opacity-[0.07]">
+            <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+                <pattern id="insight-grid" width="42" height="42" patternUnits="userSpaceOnUse">
+                    <path d="M 42 0 L 0 0 0 42" fill="none" stroke="white" stroke-width="1"/>
+                </pattern>
+                <rect width="100%" height="100%" fill="url(#insight-grid)"/>
+            </svg>
+        </div>
+        <div class="absolute -right-24 -top-24 h-72 w-72 rounded-full opacity-20" style="background: radial-gradient(circle, #67E8F9 0%, transparent 68%);"></div>
+        <div class="absolute -left-20 bottom-0 h-64 w-64 rounded-full opacity-10" style="background: radial-gradient(circle, #FCD34D 0%, transparent 70%);"></div>
+
+        <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5 mb-8">
+                <div class="max-w-3xl">
+                    <div class="inline-flex items-center gap-2 rounded-full border border-cyan-200/20 px-3 py-1 text-xs font-bold uppercase tracking-widest text-cyan-100"
+                         style="background: rgba(255,255,255,0.08);">
+                        <i class="fas fa-chart-line text-cyan-200"></i>
+                        Program Intelligence
+                    </div>
+                    <h2 class="mt-4 text-2xl md:text-4xl font-extrabold text-white tracking-tight">
+                        Training and mentorship signals that need attention
+                    </h2>
+                    <p class="mt-2 text-sm md:text-base text-cyan-100/90 leading-relaxed">
+                        A live readout from scheduled trainings, facility mentorships, class enrollments, and participant records.
+                    </p>
+                </div>
+                <a href="{{ url('analytics/dashboard') }}"
+                   class="inline-flex w-fit items-center gap-2 rounded-xl border border-white/20 px-5 py-3 text-sm font-bold text-white transition-all hover:border-white/40"
+                   style="background: rgba(255,255,255,0.1);">
+                    Open analytics map <i class="fas fa-arrow-right text-xs"></i>
+                </a>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                @foreach(($trainingInsights['cards'] ?? []) as $card)
+                <div class="group rounded-2xl border border-white/12 p-5 shadow-2xl transition-all hover:-translate-y-1 hover:border-white/25"
+                     style="background: rgba(255,255,255,0.96);">
+                    <div class="flex items-start justify-between gap-4">
+                        <div>
+                            <p class="text-xs font-extrabold uppercase tracking-widest text-gray-500">{{ $card['label'] }}</p>
+                            <div class="mt-2 text-3xl font-black tracking-tight text-gray-950">{{ $card['value'] }}</div>
+                        </div>
+                        <div class="flex h-11 w-11 items-center justify-center rounded-2xl"
+                             style="background: {{ $card['bg'] }}; color: {{ $card['accent'] }};">
+                            <i class="{{ $card['icon'] }}"></i>
+                        </div>
+                    </div>
+                    <p class="mt-4 text-sm leading-relaxed text-gray-600">{{ $card['detail'] }}</p>
+                </div>
+                @endforeach
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                @foreach(($trainingInsights['signals'] ?? []) as $signal)
+                <div class="rounded-2xl border border-white/15 p-5 text-white"
+                     style="background: rgba(255,255,255,0.09); backdrop-filter: blur(10px);">
+                    <div class="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-cyan-100">
+                        <span class="h-2 w-2 rounded-full bg-cyan-300"></span>
+                        {{ $signal['title'] }}
+                    </div>
+                    <p class="text-sm leading-relaxed text-white/88">{{ $signal['text'] }}</p>
+                </div>
+                @endforeach
+            </div>
+        </div>
+    </section>
+    @endif
 
     {{-- ═══════════════════════════════════════════
          UPCOMING TRAININGS  ← moved to top

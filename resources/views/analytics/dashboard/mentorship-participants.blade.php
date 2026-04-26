@@ -103,8 +103,17 @@
                                             <small class="text-muted d-block mb-1">Assessment Status</small>
                                             <div class="d-flex align-items-center flex-wrap">
                                                 @foreach($participant->assessmentResults->take(3) as $assessment)
-                                                <span class="small me-2">{{ Str::limit($assessment->assessmentCategory->name ?? 'Assessment', 8) }}</span>
-                                                <span class="assessment-indicator assessment-{{ strtolower($assessment->result ?? 'pending') }}"></span>
+                                                @php
+                                                    $assessmentLabel = $assessment->assessmentCategory->name
+                                                        ?? $assessment->moduleAssessment->title
+                                                        ?? 'Assessment';
+                                                    $rawStatus = strtolower($assessment->result ?? $assessment->status ?? 'pending');
+                                                    $normalizedStatus = in_array($rawStatus, ['pass', 'passed', 'completed'], true)
+                                                        ? 'pass'
+                                                        : (in_array($rawStatus, ['fail', 'failed'], true) ? 'fail' : 'pending');
+                                                @endphp
+                                                <span class="small me-2">{{ Str::limit($assessmentLabel, 8) }}</span>
+                                                <span class="assessment-indicator assessment-{{ $normalizedStatus }}"></span>
                                                 @if(!$loop->last && $loop->index < 2)
                                                     <span class="mx-1">•</span>
                                                 @endif

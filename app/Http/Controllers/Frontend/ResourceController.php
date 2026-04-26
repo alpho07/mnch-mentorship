@@ -3,11 +3,14 @@
 namespace App\Http\Controllers\Frontend;
 
 use App\Http\Controllers\Controller;
+use App\Models\ClassParticipant;
+use App\Models\MentorshipClass;
 use App\Models\Resource;
 use App\Models\ResourceType;
 use App\Models\ResourceCategory;
 use App\Models\Tag;
 use App\Models\Training;
+use App\Models\TrainingParticipant;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -84,10 +87,165 @@ class ResourceController extends Controller
                 ->limit(4)
                 ->get();
 
-            return compact('featuredResources', 'recentResources', 'popularResources', 'categories', 'resourceTypes', 'upcomingTrainings', 'upcomingMentorships');
+            $trainingInsights = $this->buildTrainingInsights();
+
+            return compact('featuredResources', 'recentResources', 'popularResources', 'categories', 'resourceTypes', 'upcomingTrainings', 'upcomingMentorships', 'trainingInsights');
         });
 
         return view('frontend.home', $data);
+    }
+
+    private function buildTrainingInsights(): array
+    {
+        $today = now()->startOfDay();
+        $nextThirtyDays = now()->addDays(30)->endOfDay();
+
+        $upcomingBase = Training::query()
+            ->whereIn('type', ['global_training', 'facility_mentorship'])
+            ->whereNotIn('status', ['cancelled', 'completed'])
+            ->whereDate('start_date', '>=', $today);
+
+        $upcomingTrainingsCount = (clone $upcomingBase)
+            ->where('type', 'global_training')
+            ->count();
+
+        $upcomingMentorshipsCount = (clone $upcomingBase)
+            ->where('type', 'facility_mentorship')
+            ->count();
+
+        $nextThirtyDayPrograms = (clone $upcomingBase)
+            ->whereDate('start_date', '<=', $nextThirtyDays)
+            ->count();
+
+        $countiesCovered = (clone $upcomingBase)
+            ->whereNotNull('county_id')
+            ->distinct('county_id')
+            ->count('county_id');
+
+        $activeMentorships = Training::query()
+            ->where('type', 'facility_mentorship')
+            ->whereNotIn('status', ['cancelled', 'completed'])
+            ->where(function ($query) {
+                $query->whereIn('status', ['active', 'ongoing'])
+                    ->orWhereHas('mentorshipClasses', fn($classQuery) => $classQuery->where('status', 'active'));
+            })
+            ->count();
+
+        $activeClasses = MentorshipClass::query()
+            ->where('status', 'active')
+            ->whereHas('training', fn($query) => $query->where('type', 'facility_mentorship'))
+            ->count();
+
+        $mentorshipMentees = ClassParticipant::query()
+            ->whereHas('mentorshipClass.training', fn($query) => $query->where('type', 'facility_mentorship'))
+            ->distinct('class_participants.user_id')
+            ->count('class_participants.user_id');
+
+        $mentoredFacilities = Training::query()
+            ->where('type', 'facility_mentorship')
+            ->whereNotNull('facility_id')
+            ->distinct('facility_id')
+            ->count('facility_id');
+
+        $trainingParticipants = TrainingParticipant::query()
+            ->whereHas('training', fn($query) => $query->where('type', 'global_training'))
+            ->distinct('training_participants.user_id')
+            ->count('training_participants.user_id');
+
+        $completedParticipants = TrainingParticipant::query()
+            ->whereHas('training', fn($query) => $query->where('type', 'global_training'))
+            ->where('completion_status', 'completed')
+            ->count();
+
+        $totalParticipantRecords = TrainingParticipant::query()
+            ->whereHas('training', fn($query) => $query->where('type', 'global_training'))
+            ->count();
+
+        $completionRate = $totalParticipantRecords > 0
+            ? round(($completedParticipants / $totalParticipantRecords) * 100)
+            : 0;
+
+        $topCounty = (clone $upcomingBase)
+            ->whereNotNull('county_id')
+            ->select('county_id', DB::raw('COUNT(*) as scheduled_count'))
+            ->with('county:id,name')
+            ->groupBy('county_id')
+            ->orderByDesc('scheduled_count')
+            ->first();
+
+        $topProgram = (clone $upcomingBase)
+            ->whereNotNull('program_id')
+            ->select('program_id', DB::raw('COUNT(*) as scheduled_count'))
+            ->with('program:id,name')
+            ->groupBy('program_id')
+            ->orderByDesc('scheduled_count')
+            ->first();
+
+        $nextProgram = (clone $upcomingBase)
+            ->with(['county:id,name', 'facility:id,name'])
+            ->orderBy('start_date')
+            ->first();
+
+        $pipelineTotal = $upcomingTrainingsCount + $upcomingMentorshipsCount;
+        $mentorshipShare = $pipelineTotal > 0 ? round(($upcomingMentorshipsCount / $pipelineTotal) * 100) : 0;
+
+        return [
+            'has_data' => $pipelineTotal > 0 || $activeMentorships > 0 || $mentorshipMentees > 0 || $trainingParticipants > 0,
+            'cards' => [
+                [
+                    'label' => 'Learning Pipeline',
+                    'value' => number_format($pipelineTotal),
+                    'detail' => number_format($nextThirtyDayPrograms) . ' scheduled in the next 30 days across ' . number_format($countiesCovered) . ' counties.',
+                    'icon' => 'fas fa-calendar-check',
+                    'accent' => '#0097A7',
+                    'bg' => '#E0F7FA',
+                ],
+                [
+                    'label' => 'Mentorship Reach',
+                    'value' => number_format($mentorshipMentees),
+                    'detail' => number_format($activeMentorships) . ' active mentorships, ' . number_format($activeClasses) . ' active classes, ' . number_format($mentoredFacilities) . ' facilities reached.',
+                    'icon' => 'fas fa-user-md',
+                    'accent' => '#059669',
+                    'bg' => '#D1FAE5',
+                ],
+                [
+                    'label' => 'Training Coverage',
+                    'value' => number_format($trainingParticipants),
+                    'detail' => $completionRate . '% completion across global training participant records.',
+                    'icon' => 'fas fa-users',
+                    'accent' => '#2563EB',
+                    'bg' => '#DBEAFE',
+                ],
+                [
+                    'label' => 'Mentorship Mix',
+                    'value' => $mentorshipShare . '%',
+                    'detail' => number_format($upcomingMentorshipsCount) . ' of ' . number_format($pipelineTotal) . ' upcoming programs are facility-based mentorships.',
+                    'icon' => 'fas fa-chart-pie',
+                    'accent' => '#F59E0B',
+                    'bg' => '#FEF3C7',
+                ],
+            ],
+            'signals' => [
+                [
+                    'title' => 'Highest upcoming demand',
+                    'text' => $topCounty?->county
+                        ? "{$topCounty->county->name} leads the upcoming schedule with {$topCounty->scheduled_count} planned program" . ($topCounty->scheduled_count == 1 ? '.' : 's.')
+                        : 'No county-level upcoming schedule has been mapped yet.',
+                ],
+                [
+                    'title' => 'Program focus',
+                    'text' => $topProgram?->program
+                        ? "{$topProgram->program->name} is the strongest upcoming program focus with {$topProgram->scheduled_count} scheduled " . ($topProgram->scheduled_count == 1 ? 'activity.' : 'activities.')
+                        : 'Upcoming activities are not yet consistently linked to programs.',
+                ],
+                [
+                    'title' => 'Next action window',
+                    'text' => $nextProgram
+                        ? ($nextProgram->type === 'facility_mentorship' ? 'Next mentorship: ' : 'Next training: ') . $nextProgram->title . ' starts ' . $nextProgram->start_date?->format('M d, Y') . '.'
+                        : 'No upcoming training or mentorship has a future start date.',
+                ],
+            ],
+        ];
     }
 
     /**

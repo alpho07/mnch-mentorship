@@ -245,15 +245,16 @@ html:not(.dark) .fi-sidebar-item-label {
 
 /* Cells */
 .fi-ta-cell {
-    padding: 11px 16px !important;
+    padding: 7px 14px !important;
     border-bottom: 1px solid #EAF7F8 !important;
     color: #1A3030 !important;
     font-size: 13.5px !important;
+    line-height: 1.25 !important;
     vertical-align: middle !important;
 }
 
 /* Actions cell */
-.fi-ta-actions-cell { padding: 8px 16px !important; border-bottom: 1px solid #EAF7F8 !important; }
+.fi-ta-actions-cell { padding: 6px 14px !important; border-bottom: 1px solid #EAF7F8 !important; }
 
 /* Table content wrapper inside fi-ta-ctn */
 .fi-ta-content { border-radius: 0 !important; }
