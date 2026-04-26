@@ -125,11 +125,7 @@
                                         </div>
                                         @endif
                                         
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <small class="text-muted">
-                                                <i class="fas fa-phone me-1"></i>
-                                                {{ $participant->user->phone ?? 'N/A' }}
-                                            </small>
+                                        <div class="d-flex justify-content-end align-items-center">
                                             <i class="fas fa-arrow-right text-success"></i>
                                         </div>
                                     </div>

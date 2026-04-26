@@ -300,11 +300,7 @@
                 </div>
                 @endif
                 
-                <div class="d-flex justify-content-between align-items-center">
-                    <small class="text-muted">
-                        <i class="fas fa-phone me-1"></i>
-                        {{ $participant->user->phone ?? 'N/A' }}
-                    </small>
+                <div class="d-flex justify-content-end align-items-center">
                     <div>
                         <a href="{{ route('participants.show', $participant->id) }}" 
                            class="btn btn-sm btn-outline-primary me-1" title="View Profile">

@@ -29,13 +29,6 @@
                         </div>
                     </div>
                     <div class="info-item">
-                        <i class="fas fa-phone"></i>
-                        <div>
-                            <small class="d-block opacity-75">Phone</small>
-                            <span class="fw-semibold">{{ $participant->user->phone ?? 'N/A' }}</span>
-                        </div>
-                    </div>
-                    <div class="info-item">
                         <i class="fas fa-building"></i>
                         <div>
                             <small class="d-block opacity-75">Department</small>

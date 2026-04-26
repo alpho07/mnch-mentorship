@@ -218,16 +218,19 @@
 
 @section('page-scripts')
 // Year filter
-document.getElementById('yearFilter').addEventListener('change', function() {
-    const url = new URL(window.location);
-    if (this.value) {
-        url.searchParams.set('year', this.value);
-    } else {
-        url.searchParams.delete('year');
-    }
-    url.searchParams.set('mode', 'training');
-    window.location.href = url.toString();
-});
+const _yearFilter = document.getElementById('yearFilter');
+if (_yearFilter) {
+    _yearFilter.addEventListener('change', function() {
+        const url = new URL(window.location);
+        if (this.value) {
+            url.searchParams.set('year', this.value);
+        } else {
+            url.searchParams.delete('year');
+        }
+        url.searchParams.set('mode', 'training');
+        window.location.href = url.toString();
+    });
+}
 
 // Facility cards click
 document.querySelectorAll('.facility-card').forEach(card => {
