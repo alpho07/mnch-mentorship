@@ -74,7 +74,7 @@ class ResourceController extends Controller
 
             $upcomingTrainings = Training::where('type', 'global_training')
                 ->whereNotIn('status', ['cancelled', 'completed'])
-                ->where('start_date', '>=', now())
+                ->where('start_date', '>=', $now)
                 ->with(['county'])
                 ->orderBy('start_date')
                 ->limit(4)
