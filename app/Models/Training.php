@@ -506,8 +506,7 @@ class Training extends Model {
     /**
      * Get human-readable duration label
      */
-    public function getDurationLabelAttribute(): ?string
-    {
+    public function getDurationLabelAttribute(): ?string {
         $days = $this->duration_days; // reuses existing accessor
         if ($days <= 0) {
             return null;
@@ -519,7 +518,7 @@ class Training extends Model {
             return '1 week';
         }
         if ($days < 28) {
-            $weeks = (int) ceil($days / 7);
+            $weeks = (int) floor($days / 7);
             return $weeks . ' weeks';
         }
         if ($days < 60) {
