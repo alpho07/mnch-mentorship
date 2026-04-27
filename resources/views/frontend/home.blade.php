@@ -172,7 +172,7 @@
             <div class="flex items-end justify-between mb-8">
                 <div>
                     <div class="flex items-center gap-2 mb-1">
-                        <span class="inline-block w-2 h-2 rounded-full bg-green-400" style="animation:pulse 2s cubic-bezier(.4,0,.6,1) infinite;box-shadow:0 0 6px #4ade80;"></span>
+                        <span class="animate-pulse inline-block w-2 h-2 rounded-full bg-green-400" style="box-shadow:0 0 6px #4ade80;"></span>
                         <span class="text-xs font-semibold text-primary-700 uppercase tracking-widest">Live Now · {{ $ongoingMentorships->count() }}</span>
                     </div>
                     <h2 class="text-2xl md:text-3xl font-extrabold text-gray-900">Ongoing Mentorships</h2>
@@ -303,15 +303,15 @@
                         <span class="text-xs font-semibold text-gray-400 uppercase tracking-widest">Recently Closed · {{ $closedMentorships->count() }}</span>
                     </div>
                     <h2 class="text-xl md:text-2xl font-extrabold text-gray-500">Completed Mentorships</h2>
-                    <p class="text-gray-400 text-sm mt-1">Programs that wrapped up in the last 30 days</p>
+                    <p class="text-gray-500 text-sm mt-1">Programs that wrapped up in the last 30 days</p>
                 </div>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 @foreach($closedMentorships as $mentorship)
-                <div class="bg-white rounded-2xl border border-gray-100 p-5 opacity-75 relative overflow-hidden">
+                <div class="bg-white rounded-2xl border border-gray-100 p-5 relative overflow-hidden">
                     <div class="absolute top-0 left-0 right-0 h-1 rounded-t-2xl bg-gray-300"></div>
                     <div class="flex items-start justify-between mb-3 mt-1">
-                        <div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-gray-200">
+                        <div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-gray-200 opacity-75">
                             <i class="fas fa-user-md text-gray-400 text-xs"></i>
                         </div>
                         <div class="text-right text-xs text-gray-400 leading-tight">
@@ -323,7 +323,7 @@
                             @endif
                         </div>
                     </div>
-                    <h3 class="font-semibold text-gray-500 text-sm leading-snug mb-3 line-clamp-2">
+                    <h3 class="font-semibold text-gray-500 text-sm leading-snug mb-3 line-clamp-2 opacity-75">
                         {{ $mentorship->title }}
                     </h3>
                     <div class="space-y-1.5">
