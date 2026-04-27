@@ -32,6 +32,7 @@ class ResourceController extends Controller
         $cacheKey = 'homepage_data_' . (auth()->check() ? auth()->id() : 'guest');
         
         $data = Cache::remember($cacheKey, 300, function () { // 5 minutes cache
+            $now = now();
             // Apply consistent access control for authenticated users
             $baseQuery = Resource::published()->with(['resourceType', 'category', 'author', 'tags']);
             
@@ -81,8 +82,8 @@ class ResourceController extends Controller
 
             $ongoingMentorships = Training::where('type', 'facility_mentorship')
                 ->where('status', '!=', 'cancelled')
-                ->where('start_date', '<=', now())
-                ->where('end_date', '>=', now())
+                ->where('start_date', '<=', $now)
+                ->where('end_date', '>=', $now)
                 ->with(['county', 'facility'])
                 ->orderBy('end_date')
                 ->limit(6)
@@ -90,7 +91,7 @@ class ResourceController extends Controller
 
             $upcomingMentorships = Training::where('type', 'facility_mentorship')
                 ->where('status', '!=', 'cancelled')
-                ->where('start_date', '>', now())
+                ->where('start_date', '>', $now)
                 ->with(['county', 'facility'])
                 ->orderBy('start_date')
                 ->limit(4)
@@ -98,8 +99,8 @@ class ResourceController extends Controller
 
             $closedMentorships = Training::where('type', 'facility_mentorship')
                 ->where('status', '!=', 'cancelled')
-                ->where('end_date', '<', now())
-                ->where('end_date', '>=', now()->subDays(30))
+                ->where('end_date', '<', $now)
+                ->where('end_date', '>=', $now->copy()->subDays(30))
                 ->with(['county', 'facility'])
                 ->orderBy('end_date', 'desc')
                 ->limit(4)
