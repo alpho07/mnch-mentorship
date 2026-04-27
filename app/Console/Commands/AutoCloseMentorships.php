@@ -14,7 +14,7 @@ class AutoCloseMentorships extends Command
     {
         $count = Training::where('type', 'facility_mentorship')
             ->whereNotNull('end_date')
-            ->where('end_date', '<', now()->startOfDay())
+            ->where('end_date', '<=', now()->toDateString())
             ->whereNotIn('status', ['completed', 'cancelled'])
             ->update(['status' => 'completed']);
 
