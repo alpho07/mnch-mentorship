@@ -235,6 +235,10 @@ Route::prefix('analytics/dashboard')->name('analytics.dashboard.')->group(functi
     Route::post('/ajax/county-data', [AnalyticsDashboardController::class, 'getCountyData'])->name('ajax.county-data');
     Route::post('/ajax/coverage-charts', [AnalyticsDashboardController::class, 'getCoverageCharts'])->name('ajax.coverage-charts');
     Route::post('/ajax/export-data', [AnalyticsDashboardController::class, 'exportData'])->name('ajax.export-data');
+
+    Route::get('/facility/{facility}/mentorship-breakdown',
+        [AnalyticsDashboardController::class, 'facilityMentorshipBreakdown'])
+        ->name('facility.mentorship-breakdown');
 });
 // Healthcare Training Dashboard Routes
 Route::prefix('training-dashboard')->name('dashboard.')->group(function () {
