@@ -3,12 +3,14 @@
 namespace App\Filament\Resources\MentorshipResource\Pages;
 
 use App\Filament\Resources\MentorshipTrainingResource;
+use App\Models\ClassParticipant;
 use App\Models\Training;
 use App\Models\FacilityAssessment;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Resources\Components\Tab;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class ListMentorshipTrainings extends ListRecords {
 
@@ -31,7 +33,7 @@ class ListMentorshipTrainings extends ListRecords {
 
     public function getSubheading(): ?string {
         $stats = $this->getQuickStats();
-        return "Facility-based mentorships • {$stats['total']} total • {$stats['ongoing']} active • {$stats['mentees']} mentees";
+        return "Facility-based mentorships • {$stats['total']} total • {$stats['active']} active • {$stats['mentees']} mentees";
     }
 
     // REMOVE the getHeaderWidgets method entirely or fix it like this:
@@ -46,27 +48,24 @@ class ListMentorshipTrainings extends ListRecords {
         return 1;
     }
 
-    public function getTabs1(): array {
+    public function getTabs(): array {
+        if (!auth()->user()->hasRole('super_admin')) {
+            return [];
+        }
+
+        $trashCount = Training::onlyTrashed()
+            ->where('type', 'facility_mentorship')
+            ->count();
+
         return [
-            'all' => Tab::make('All Mentorships')
-                    ->badge($this->getTabCount('all'))
-                    ->badgeColor('gray'),
-            'ongoing' => Tab::make('Ongoing')
-                    ->modifyQueryUsing(fn(Builder $query) => $query->where('status', 'ongoing'))
-                    ->badge($this->getTabCount('ongoing'))
-                    ->badgeColor('success'),
-            'repeat' => Tab::make('Repeat')
-                    ->modifyQueryUsing(fn(Builder $query) => $query->where('status', 'ongoing'))
-                    ->badge($this->getTabCount('repeat'))
-                    ->badgeColor('info'),
-            'completed' => Tab::make('Completed')
-                    ->modifyQueryUsing(fn(Builder $query) => $query->where('status', 'completed'))
-                    ->badge($this->getTabCount('completed'))
-                    ->badgeColor('primary'),
-            'new' => Tab::make('New')
-                    ->modifyQueryUsing(fn(Builder $query) => $query->where('status', 'new'))
-                    ->badge($this->getTabCount('new'))
-                    ->badgeColor('secondary'),
+            'active' => Tab::make('Active')
+                ->icon('heroicon-o-academic-cap'),
+            'trash' => Tab::make('Trash')
+                ->icon('heroicon-o-trash')
+                ->badge($trashCount ?: null)
+                ->badgeColor('danger')
+                ->modifyQueryUsing(fn(Builder $q) => $q->withoutGlobalScope(SoftDeletingScope::class)
+                    ->whereNotNull('trainings.deleted_at')),
         ];
     }
 
@@ -87,12 +86,30 @@ class ListMentorshipTrainings extends ListRecords {
     protected function getQuickStats(): array {
         return [
             'total' => $this->getScopedBaseQuery()->count(),
-            'ongoing' => $this->getScopedBaseQuery()->where('status', 'ongoing')->count(),
+            'active' => $this->getScopedBaseQuery()
+                    ->where(function (Builder $query) {
+                        $query->whereIn('status', ['active', 'ongoing'])
+                                ->orWhereHas('mentorshipClasses', fn(Builder $classQuery) => $classQuery->where('status', 'active'));
+                    })
+                    ->count(),
             'completed' => $this->getScopedBaseQuery()->where('status', 'completed')->count(),
-            'new' => $this->getScopedBaseQuery()->where('status', 'new')->count(),
+            'draft' => $this->getScopedBaseQuery()->whereIn('status', ['draft', 'new'])->count(),
             'upcoming' => $this->getScopedBaseQuery()->where('start_date', '>', now())->count(),
-            'mentees' => $this->getScopedBaseQuery()->withCount('participants')->get()->sum('participants_count'),
+            'mentees' => $this->getScopedMenteesQuery()->distinct('class_participants.user_id')->count('class_participants.user_id'),
         ];
+    }
+
+    protected function getScopedMenteesQuery(): Builder {
+        $user = auth()->user();
+
+        return ClassParticipant::query()
+                ->whereHas('mentorshipClass.training', function (Builder $query) use ($user) {
+                    $query->where('type', 'facility_mentorship');
+
+                    if (!$user->hasRole(['super_admin', 'admin', 'division'])) {
+                        $query->where('mentor_id', $user->id);
+                    }
+                });
     }
 
     protected function getTabCount(string $tab): int {

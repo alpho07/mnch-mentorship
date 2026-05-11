@@ -46,6 +46,8 @@ class Training extends Model {
         'provide_materials',
         'location_type', // 'hospital', 'hotel', 'online'
         'online_link', // for online trainings
+        'deleted_by',
+        'deletion_reason',
     ];
     protected $casts = [
         'start_date' => 'date',
@@ -131,6 +133,13 @@ class Training extends Model {
      */
     public function mentor(): BelongsTo {
         return $this->belongsTo(User::class, 'mentor_id');
+    }
+
+    /**
+     * User who soft-deleted this mentorship
+     */
+    public function deletedBy(): BelongsTo {
+        return $this->belongsTo(User::class, 'deleted_by');
     }
 
     // ============================================
@@ -359,6 +368,22 @@ class Training extends Model {
      */
     public function canUserFacilitate(int $userId): bool {
         return $this->mentor_id === $userId || $this->isCoMentor($userId);
+    }
+
+    public function hasEnrolledMentees(): bool {
+        return ClassParticipant::whereHas(
+            'mentorshipClass', fn($q) => $q->where('training_id', $this->id)
+        )->exists();
+    }
+
+    public function hasActiveOrCompletedClasses(): bool {
+        return $this->mentorshipClasses()
+            ->whereIn('status', ['active', 'completed'])
+            ->exists();
+    }
+
+    public function canBeDeleted(): bool {
+        return !$this->hasEnrolledMentees() && !$this->hasActiveOrCompletedClasses();
     }
 
     /**

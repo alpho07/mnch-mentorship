@@ -16,10 +16,12 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\HtmlString;
 
 class MentorshipTrainingResource extends Resource {
 
@@ -56,9 +58,6 @@ class MentorshipTrainingResource extends Resource {
 
     public static function getEloquentQuery(): Builder {
         $query = parent::getEloquentQuery()
-                ->withoutGlobalScopes([
-                    \Illuminate\Database\Eloquent\SoftDeletingScope::class,
-                ])
                 ->where('type', 'facility_mentorship')
                 ->with(['facility', 'program', 'county', 'mentor']);
 
@@ -292,19 +291,135 @@ class MentorshipTrainingResource extends Resource {
                                 ->label('Manage Classes')
                                 ->icon('heroicon-o-rectangle-stack')
                                 ->color('primary')
-                                ->url(fn(Training $r) => static::getUrl('classes', ['record' => $r->id])),
+                                ->url(fn(Training $r) => static::getUrl('classes', ['record' => $r->id]))
+                                ->visible(fn(Training $r) => $r->deleted_at === null),
                                 Tables\Actions\Action::make('co_mentors')
                                 ->label('Co-Mentors')
                                 ->icon('heroicon-o-user-group')
                                 ->color('info')
-                                ->url(fn(Training $r) => static::getUrl('co-mentors', ['record' => $r->id])),
+                                ->url(fn(Training $r) => static::getUrl('co-mentors', ['record' => $r->id]))
+                                ->visible(fn(Training $r) => $r->deleted_at === null),
                                 Tables\Actions\Action::make('mentees')
                                 ->label('Mentees')
                                 ->icon('heroicon-o-users')
                                 ->color('success')
-                                ->url(fn(Training $r) => static::getUrl('mentees', ['record' => $r->id])),
-                                Tables\Actions\EditAction::make(),
-                                Tables\Actions\ViewAction::make(),
+                                ->url(fn(Training $r) => static::getUrl('mentees', ['record' => $r->id]))
+                                ->visible(fn(Training $r) => $r->deleted_at === null),
+                                Tables\Actions\EditAction::make()
+                                ->visible(fn(Training $r) => $r->deleted_at === null),
+                                Tables\Actions\ViewAction::make()
+                                ->visible(fn(Training $r) => $r->deleted_at === null),
+
+                                // ── Delete (all authorized users) ──────────────────────
+                                Tables\Actions\Action::make('delete')
+                                ->label('Delete')
+                                ->icon('heroicon-o-trash')
+                                ->color('danger')
+                                ->visible(fn(Training $r) => $r->deleted_at === null)
+                                ->disabled(fn(Training $r) => !$r->canBeDeleted())
+                                ->tooltip(fn(Training $r) => !$r->canBeDeleted()
+                                    ? (auth()->user()->hasRole('super_admin')
+                                        ? 'Has enrolled mentees — use Force Delete to override'
+                                        : 'Cannot delete — has enrolled mentees or active/completed classes')
+                                    : null
+                                )
+                                ->requiresConfirmation()
+                                ->modalHeading(fn(Training $r) => "Delete {$r->identifier}?")
+                                ->modalDescription(fn(Training $r) => new HtmlString(
+                                    '<p class="text-sm">This will move <strong>' . e($r->identifier) . '</strong> to the trash. ' .
+                                    (auth()->user()->hasRole('super_admin')
+                                        ? 'It can be restored from the <strong>Trash</strong> tab.'
+                                        : 'A Super Admin can restore it if needed.')
+                                    . '</p>'
+                                ))
+                                ->modalSubmitActionLabel('Yes, Delete')
+                                ->action(function (Training $record) {
+                                    $record->deleted_by = auth()->id();
+                                    $record->save();
+                                    $record->delete();
+
+                                    Notification::make()
+                                        ->success()
+                                        ->title('Mentorship moved to trash')
+                                        ->body("{$record->identifier} has been deleted and can be restored by a Super Admin.")
+                                        ->send();
+                                }),
+
+                                // ── Force Delete (super_admin only, when blocked) ───────
+                                Tables\Actions\Action::make('forceDelete')
+                                ->label('Force Delete')
+                                ->icon('heroicon-o-shield-exclamation')
+                                ->color('danger')
+                                ->visible(fn(Training $r) =>
+                                    $r->deleted_at === null &&
+                                    auth()->user()->hasRole('super_admin') &&
+                                    !$r->canBeDeleted()
+                                )
+                                ->modalHeading('⚠️ Super Admin Override Delete')
+                                ->modalDescription(fn(Training $r) => new HtmlString(
+                                    '<div class="space-y-2 text-sm">' .
+                                    '<p class="text-amber-600 font-semibold">This mentorship has enrolled mentees or active/completed classes.</p>' .
+                                    '<p>Deleting it will move it to trash. All associated records (classes, participants, progress) remain in the database. This action will be <strong>logged</strong>.</p>' .
+                                    '</div>'
+                                ))
+                                ->form([
+                                    Forms\Components\Textarea::make('deletion_reason')
+                                    ->label('Reason for override')
+                                    ->required()
+                                    ->rows(3)
+                                    ->placeholder('Explain why this mentorship must be deleted despite having active data...'),
+                                ])
+                                ->requiresConfirmation()
+                                ->modalSubmitActionLabel('Force Delete')
+                                ->action(function (Training $record, array $data) {
+                                    $menteesCount = ClassParticipant::whereHas(
+                                        'mentorshipClass', fn($q) => $q->where('training_id', $record->id)
+                                    )->count();
+
+                                    $record->deleted_by     = auth()->id();
+                                    $record->deletion_reason = $data['deletion_reason'];
+                                    $record->save();
+                                    $record->delete();
+
+                                    \Log::channel('daily')->warning('Super admin force-deleted mentorship', [
+                                        'training_id'      => $record->id,
+                                        'identifier'       => $record->identifier,
+                                        'deleted_by_id'    => auth()->id(),
+                                        'deleted_by_name'  => auth()->user()->name,
+                                        'reason'           => $data['deletion_reason'],
+                                        'mentees_affected' => $menteesCount,
+                                        'timestamp'        => now()->toIso8601String(),
+                                    ]);
+
+                                    Notification::make()
+                                        ->warning()
+                                        ->title('Mentorship force-deleted')
+                                        ->body("{$record->identifier} has been deleted. Action has been logged.")
+                                        ->send();
+                                }),
+
+                                // ── Restore (super_admin only, trash tab) ───────────────
+                                Tables\Actions\Action::make('restore')
+                                ->label('Restore')
+                                ->icon('heroicon-o-arrow-path')
+                                ->color('success')
+                                ->visible(fn(Training $r) =>
+                                    $r->deleted_at !== null &&
+                                    auth()->user()->hasRole('super_admin')
+                                )
+                                ->requiresConfirmation()
+                                ->modalHeading(fn(Training $r) => "Restore {$r->identifier}?")
+                                ->modalDescription('This will restore the mentorship and make it active again.')
+                                ->modalSubmitActionLabel('Yes, Restore')
+                                ->action(function (Training $record) {
+                                    $record->restore();
+
+                                    Notification::make()
+                                        ->success()
+                                        ->title('Mentorship restored')
+                                        ->body("{$record->identifier} is now active again.")
+                                        ->send();
+                                }),
                             ]),
                         ])
                         ->defaultSort('created_at', 'desc')
