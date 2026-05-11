@@ -324,6 +324,7 @@ class MentorshipTrainingResource extends Resource {
                                 ->label('Delete')
                                 ->icon('heroicon-o-trash')
                                 ->color('danger')
+                                ->model(Training::class)
                                 ->visible(fn(Training $r) => $r->deleted_at === null)
                                 ->disabled(fn(Training $r) => !$r->canBeDeleted())
                                 ->tooltip(fn(Training $r) => !$r->canBeDeleted()
@@ -359,6 +360,7 @@ class MentorshipTrainingResource extends Resource {
                                 ->label('Force Delete')
                                 ->icon('heroicon-o-shield-exclamation')
                                 ->color('danger')
+                                ->model(Training::class)
                                 ->visible(fn(Training $r) =>
                                     $r->deleted_at === null &&
                                     auth()->user()->hasRole('super_admin') &&
@@ -412,6 +414,7 @@ class MentorshipTrainingResource extends Resource {
                                 ->label('Restore')
                                 ->icon('heroicon-o-arrow-path')
                                 ->color('success')
+                                ->model(Training::class)
                                 ->visible(fn(Training $r) =>
                                     $r->deleted_at !== null &&
                                     auth()->user()->hasRole('super_admin')
