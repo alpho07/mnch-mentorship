@@ -1,0 +1,185 @@
+<h2>How should the 3-section mentorship view be laid out?</h2>
+<p class="subtitle">Choose the layout pattern for Upcoming / Ongoing / Closed on the homepage</p>
+
+<div class="cards">
+
+  <!-- Option A: 3 Stacked Sections -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#f8fafc;padding:16px 12px;font-family:system-ui,sans-serif;">
+      <!-- Ongoing strip -->
+      <div style="background:#0097A7;border-radius:8px 8px 0 0;padding:7px 12px;display:flex;align-items:center;gap:6px;">
+        <span style="width:8px;height:8px;background:#4ade80;border-radius:50%;display:inline-block;box-shadow:0 0 5px #4ade80"></span>
+        <span style="color:#fff;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;">Ongoing · 24</span>
+      </div>
+      <div style="display:flex;gap:6px;background:#E0F7FA;padding:8px;border-radius:0 0 0 0;">
+        <div style="flex:1;background:#fff;border-radius:6px;padding:8px;border:1px solid #B2EBF2;font-size:9px;">
+          <div style="background:#0097A7;color:#fff;border-radius:3px;font-size:8px;padding:2px 5px;margin-bottom:4px;display:inline-block;">ONGOING</div>
+          <div style="font-weight:700;color:#111;margin-bottom:3px;line-height:1.3">Newborn Care – KNH</div>
+          <div style="color:#6b7280;">🏥 Kenyatta National</div>
+          <div style="color:#6b7280;margin-top:2px;">⏱ 6 weeks · ends May 30</div>
+        </div>
+        <div style="flex:1;background:#fff;border-radius:6px;padding:8px;border:1px solid #B2EBF2;font-size:9px;">
+          <div style="background:#0097A7;color:#fff;border-radius:3px;font-size:8px;padding:2px 5px;margin-bottom:4px;display:inline-block;">ONGOING</div>
+          <div style="font-weight:700;color:#111;margin-bottom:3px;line-height:1.3">Infant Care – Vihiga</div>
+          <div style="color:#6b7280;">🏥 Vihiga County Ref.</div>
+          <div style="color:#6b7280;margin-top:2px;">⏱ 1 month · ends May 15</div>
+        </div>
+        <div style="flex:1;background:#fff;border-radius:6px;padding:8px;border:1px solid #B2EBF2;font-size:9px;opacity:.4">
+          <div style="background:#0097A7;color:#fff;border-radius:3px;font-size:8px;padding:2px 5px;margin-bottom:4px;display:inline-block;">ONGOING</div>
+          <div style="font-weight:700;color:#111;margin-bottom:3px;line-height:1.3">Newborn Care – Kisumu</div>
+          <div style="color:#6b7280;">🏥 Kisumu County</div>
+          <div style="color:#6b7280;margin-top:2px;">⏱ 3 weeks · ends May 8</div>
+        </div>
+      </div>
+      <!-- Upcoming strip -->
+      <div style="background:#004D40;padding:7px 12px;display:flex;align-items:center;gap:6px;margin-top:6px;border-radius:8px 8px 0 0;">
+        <span style="color:#fff;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;">📅 Upcoming · 3</span>
+      </div>
+      <div style="display:flex;gap:6px;background:#E8F5E9;padding:8px;border-radius:0 0 0 0;">
+        <div style="flex:1;background:#fff;border-radius:6px;padding:8px;border:1px solid #C8E6C9;font-size:9px;">
+          <div style="background:#15803d;color:#fff;border-radius:3px;font-size:8px;padding:2px 5px;margin-bottom:4px;display:inline-block;">UPCOMING</div>
+          <div style="font-weight:700;color:#111;margin-bottom:3px;line-height:1.3">MNCH Mentorship – Mombasa</div>
+          <div style="color:#6b7280;">📅 Starts Jun 2, 2026</div>
+          <div style="color:#6b7280;margin-top:2px;">⏱ 2 months duration</div>
+        </div>
+        <div style="flex:1;background:#fff;border-radius:6px;padding:8px;border:1px solid #C8E6C9;font-size:9px;opacity:.5">
+          <div style="background:#15803d;color:#fff;border-radius:3px;font-size:8px;padding:2px 5px;margin-bottom:4px;display:inline-block;">UPCOMING</div>
+          <div style="font-weight:700;color:#111;margin-bottom:3px;line-height:1.3">Child Care – Nakuru</div>
+          <div style="color:#6b7280;">📅 Starts Jun 15, 2026</div>
+          <div style="color:#6b7280;margin-top:2px;">⏱ 6 weeks duration</div>
+        </div>
+        <div style="flex:1;background:#fff;border-radius:6px;padding:8px;border:1px solid #C8E6C9;font-size:9px;opacity:.3">
+          <div style="background:#15803d;color:#fff;border-radius:3px;font-size:8px;padding:2px 5px;margin-bottom:4px;display:inline-block;">UPCOMING</div>
+          <div style="font-weight:700;color:#111;margin-bottom:3px">Newborn – Kisii</div>
+          <div style="color:#6b7280;">📅 Starts Jul 1, 2026</div>
+          <div style="color:#6b7280;margin-top:2px;">⏱ 1 month duration</div>
+        </div>
+      </div>
+      <!-- Closed strip -->
+      <div style="background:#6b7280;padding:7px 12px;display:flex;align-items:center;gap:6px;margin-top:6px;border-radius:8px 8px 0 0;">
+        <span style="color:#fff;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;">✓ Recently Closed · 5</span>
+      </div>
+      <div style="display:flex;gap:6px;background:#F3F4F6;padding:8px;border-radius:0 0 6px 6px;">
+        <div style="flex:1;background:#fff;border-radius:6px;padding:8px;border:1px solid #e5e7eb;font-size:9px;opacity:.7">
+          <div style="background:#6b7280;color:#fff;border-radius:3px;font-size:8px;padding:2px 5px;margin-bottom:4px;display:inline-block;">CLOSED</div>
+          <div style="font-weight:700;color:#374151;margin-bottom:3px;line-height:1.3">MNCH – Machakos</div>
+          <div style="color:#9ca3af;">Ended Apr 24, 2026</div>
+          <div style="color:#9ca3af;margin-top:2px;">⏱ 2 weeks</div>
+        </div>
+        <div style="flex:1;background:#fff;border-radius:6px;padding:8px;border:1px solid #e5e7eb;font-size:9px;opacity:.4">
+          <div style="background:#6b7280;color:#fff;border-radius:3px;font-size:8px;padding:2px 5px;margin-bottom:4px;display:inline-block;">CLOSED</div>
+          <div style="font-weight:700;color:#374151;margin-bottom:3px">Infant – Embu</div>
+          <div style="color:#9ca3af;">Ended Apr 17, 2026</div>
+          <div style="color:#9ca3af;margin-top:2px;">⏱ 1 week</div>
+        </div>
+        <div style="flex:1;background:#fff;border-radius:6px;padding:8px;border:1px solid #e5e7eb;font-size:9px;opacity:.2">
+          <div style="background:#6b7280;color:#fff;border-radius:3px;font-size:8px;padding:2px 5px;margin-bottom:4px;display:inline-block;">CLOSED</div>
+          <div style="font-weight:700;color:#374151;margin-bottom:3px">NBC – Kakamega</div>
+          <div style="color:#9ca3af;">Ended Apr 11, 2026</div>
+          <div style="color:#9ca3af;margin-top:2px;">⏱ 3 weeks</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Three stacked sections</h3>
+      <p>Ongoing → Upcoming → Closed each get their own row with distinct background color. Everything visible at once, no interaction needed. Best when all three groups have data.</p>
+    </div>
+  </div>
+
+  <!-- Option B: Tabbed -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#f8fafc;padding:14px 12px;font-family:system-ui,sans-serif;">
+      <!-- Tab bar -->
+      <div style="display:flex;gap:0;border-bottom:2px solid #e5e7eb;margin-bottom:10px;">
+        <div style="padding:6px 14px;border-bottom:2px solid #0097A7;margin-bottom:-2px;font-size:10px;font-weight:700;color:#0097A7;display:flex;align-items:center;gap:4px;">
+          <span style="width:7px;height:7px;background:#4ade80;border-radius:50%;display:inline-block"></span> Ongoing <span style="background:#0097A7;color:#fff;border-radius:9px;padding:0 5px;font-size:8px;margin-left:2px;">24</span>
+        </div>
+        <div style="padding:6px 14px;font-size:10px;color:#6b7280;font-weight:600;">📅 Upcoming <span style="background:#e5e7eb;color:#374151;border-radius:9px;padding:0 5px;font-size:8px;margin-left:2px;">3</span></div>
+        <div style="padding:6px 14px;font-size:10px;color:#6b7280;font-weight:600;">✓ Closed <span style="background:#e5e7eb;color:#374151;border-radius:9px;padding:0 5px;font-size:8px;margin-left:2px;">12</span></div>
+      </div>
+      <!-- Active tab content (Ongoing) -->
+      <div style="display:flex;gap:6px;">
+        <div style="flex:1;background:#fff;border-radius:6px;padding:8px;border:1px solid #B2EBF2;font-size:9px;">
+          <div style="font-weight:700;color:#111;margin-bottom:3px;line-height:1.3">Newborn Care – KNH</div>
+          <div style="color:#6b7280;">🏥 Kenyatta National Hospital</div>
+          <div style="color:#6b7280;margin-top:2px;">⏱ 6 weeks · ends May 30</div>
+          <div style="margin-top:5px;background:#E0F7FA;color:#0097A7;border-radius:9px;padding:2px 6px;font-size:8px;font-weight:600;display:inline-block;">● Live now</div>
+        </div>
+        <div style="flex:1;background:#fff;border-radius:6px;padding:8px;border:1px solid #B2EBF2;font-size:9px;">
+          <div style="font-weight:700;color:#111;margin-bottom:3px;line-height:1.3">Infant Care – Vihiga</div>
+          <div style="color:#6b7280;">🏥 Vihiga County Referral</div>
+          <div style="color:#6b7280;margin-top:2px;">⏱ 1 month · ends May 15</div>
+          <div style="margin-top:5px;background:#E0F7FA;color:#0097A7;border-radius:9px;padding:2px 6px;font-size:8px;font-weight:600;display:inline-block;">● Live now</div>
+        </div>
+        <div style="flex:1;background:#fff;border-radius:6px;padding:8px;border:1px solid #B2EBF2;font-size:9px;">
+          <div style="font-weight:700;color:#111;margin-bottom:3px;line-height:1.3">Newborn Care – Kisumu</div>
+          <div style="color:#6b7280;">🏥 Kisumu County Ref.</div>
+          <div style="color:#6b7280;margin-top:2px;">⏱ 3 weeks · ends May 8</div>
+          <div style="margin-top:5px;background:#E0F7FA;color:#0097A7;border-radius:9px;padding:2px 6px;font-size:8px;font-weight:600;display:inline-block;">● Live now</div>
+        </div>
+      </div>
+      <p style="font-size:8px;color:#9ca3af;text-align:center;margin-top:8px;">Click tabs to switch between Upcoming / Ongoing / Closed</p>
+    </div>
+    <div class="card-body">
+      <h3>B — Tabbed single section</h3>
+      <p>One section with 3 tabs (Ongoing, Upcoming, Closed). Compact, uses less vertical space. Good if the page is already long. Requires a click to see each group, but shows counts on tab badges.</p>
+    </div>
+  </div>
+
+  <!-- Option C: Single grid with status badges -->
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#f8fafc;padding:14px 12px;font-family:system-ui,sans-serif;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <span style="font-size:10px;font-weight:700;color:#111;">All Mentorships</span>
+        <div style="display:flex;gap:4px;">
+          <span style="background:#E0F7FA;color:#0097A7;border-radius:9px;padding:2px 7px;font-size:8px;font-weight:600;">● 24 ongoing</span>
+          <span style="background:#DCFCE7;color:#15803d;border-radius:9px;padding:2px 7px;font-size:8px;font-weight:600;">3 upcoming</span>
+          <span style="background:#F3F4F6;color:#6b7280;border-radius:9px;padding:2px 7px;font-size:8px;font-weight:600;">12 closed</span>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;">
+        <div style="background:#fff;border-radius:6px;padding:8px;border:1.5px solid #0097A7;font-size:9px;">
+          <div style="background:#0097A7;color:#fff;border-radius:3px;font-size:8px;padding:2px 5px;margin-bottom:4px;display:inline-block;">● ONGOING</div>
+          <div style="font-weight:700;color:#111;line-height:1.3;margin-bottom:3px">Newborn Care – KNH</div>
+          <div style="color:#6b7280;">🏥 Kenyatta National</div>
+          <div style="color:#6b7280;margin-top:2px;">⏱ 6 weeks · ends May 30</div>
+        </div>
+        <div style="background:#fff;border-radius:6px;padding:8px;border:1.5px solid #15803d;font-size:9px;">
+          <div style="background:#15803d;color:#fff;border-radius:3px;font-size:8px;padding:2px 5px;margin-bottom:4px;display:inline-block;">UPCOMING</div>
+          <div style="font-weight:700;color:#111;line-height:1.3;margin-bottom:3px">MNCH – Mombasa</div>
+          <div style="color:#6b7280;">📅 Starts Jun 2, 2026</div>
+          <div style="color:#6b7280;margin-top:2px;">⏱ 2 months duration</div>
+        </div>
+        <div style="background:#f9fafb;border-radius:6px;padding:8px;border:1px solid #e5e7eb;font-size:9px;opacity:.65">
+          <div style="background:#6b7280;color:#fff;border-radius:3px;font-size:8px;padding:2px 5px;margin-bottom:4px;display:inline-block;">CLOSED</div>
+          <div style="font-weight:700;color:#374151;line-height:1.3;margin-bottom:3px">NBC – Machakos</div>
+          <div style="color:#9ca3af;">Ended Apr 24, 2026</div>
+          <div style="color:#9ca3af;margin-top:2px;">⏱ 2 weeks</div>
+        </div>
+        <div style="background:#fff;border-radius:6px;padding:8px;border:1.5px solid #0097A7;font-size:9px;">
+          <div style="background:#0097A7;color:#fff;border-radius:3px;font-size:8px;padding:2px 5px;margin-bottom:4px;display:inline-block;">● ONGOING</div>
+          <div style="font-weight:700;color:#111;line-height:1.3;margin-bottom:3px">Infant Care – Vihiga</div>
+          <div style="color:#6b7280;">🏥 Vihiga County Ref.</div>
+          <div style="color:#6b7280;margin-top:2px;">⏱ 1 month · ends May 15</div>
+        </div>
+        <div style="background:#fff;border-radius:6px;padding:8px;border:1.5px solid #0097A7;font-size:9px;">
+          <div style="background:#0097A7;color:#fff;border-radius:3px;font-size:8px;padding:2px 5px;margin-bottom:4px;display:inline-block;">● ONGOING</div>
+          <div style="font-weight:700;color:#111;line-height:1.3;margin-bottom:3px">NBC – Kisumu</div>
+          <div style="color:#6b7280;">🏥 Kisumu County</div>
+          <div style="color:#6b7280;margin-top:2px;">⏱ 3 weeks · ends May 8</div>
+        </div>
+        <div style="background:#f9fafb;border-radius:6px;padding:8px;border:1px solid #e5e7eb;font-size:9px;opacity:.5">
+          <div style="background:#6b7280;color:#fff;border-radius:3px;font-size:8px;padding:2px 5px;margin-bottom:4px;display:inline-block;">CLOSED</div>
+          <div style="font-weight:700;color:#374151;line-height:1.3;margin-bottom:3px">Infant – Embu</div>
+          <div style="color:#9ca3af;">Ended Apr 17, 2026</div>
+          <div style="color:#9ca3af;margin-top:2px;">⏱ 1 week</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Mixed grid with status badges</h3>
+      <p>One grid, all statuses mixed in with colour-coded border + badge per card (teal = ongoing, green = upcoming, grey = closed). Compact but less scannable — harder to see "what's happening now" at a glance.</p>
+    </div>
+  </div>
+
+</div>

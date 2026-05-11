@@ -164,41 +164,42 @@
     @endif
 
     {{-- ═══════════════════════════════════════════
-         UPCOMING MENTORSHIPS  ← moved to top
+         ONGOING MENTORSHIPS
     ═══════════════════════════════════════════ --}}
-    @if(isset($upcomingMentorships) && $upcomingMentorships->count() > 0)
+    @if(isset($ongoingMentorships) && $ongoingMentorships->count() > 0)
     <section class="py-14" style="background: linear-gradient(135deg, #E0F7FA 0%, #F0FDFF 100%);">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-end justify-between mb-8">
                 <div>
                     <div class="flex items-center gap-2 mb-1">
-                        <div class="w-1 h-5 rounded-full" style="background: linear-gradient(180deg, #00838F, #0097A7);"></div>
-                        <span class="text-xs font-semibold text-primary-700 uppercase tracking-widest">Facility-Based</span>
+                        <span class="animate-pulse inline-block w-2 h-2 rounded-full bg-green-400" style="box-shadow:0 0 6px #4ade80;"></span>
+                        <span class="text-xs font-semibold text-primary-700 uppercase tracking-widest">Live Now · {{ $ongoingMentorships->count() }}</span>
                     </div>
-                    <h2 class="text-2xl md:text-3xl font-extrabold text-gray-900">Upcoming Mentorships</h2>
-                    <p class="text-gray-500 text-sm mt-1">On-site clinical mentorship programs at facilities near you</p>
+                    <h2 class="text-2xl md:text-3xl font-extrabold text-gray-900">Ongoing Mentorships</h2>
+                    <p class="text-gray-500 text-sm mt-1">Currently running at facilities across Kenya</p>
                 </div>
                 <a href="{{ url('analytics/dashboard') }}"
                    class="hidden md:inline-flex items-center gap-2 text-sm font-semibold text-primary-600 hover:text-primary-700 transition-colors">
                     View all <i class="fas fa-arrow-right text-xs"></i>
                 </a>
             </div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                @foreach($upcomingMentorships as $mentorship)
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                @foreach($ongoingMentorships as $mentorship)
                 <div class="group bg-white rounded-2xl border border-primary-100 p-5 hover:border-primary-300 hover:shadow-lg transition-all duration-200 relative overflow-hidden">
-                    <div class="absolute -top-6 -right-6 w-20 h-20 rounded-full opacity-10"
-                         style="background: radial-gradient(circle, #0097A7 0%, transparent 70%);"></div>
-                    <div class="flex items-start gap-3 mb-3">
-                        <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                    <div class="absolute top-0 left-0 right-0 h-1 rounded-t-2xl" style="background: linear-gradient(90deg, #00838F, #0097A7);"></div>
+                    <div class="flex items-start justify-between mb-3 mt-1">
+                        <div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
                              style="background: linear-gradient(135deg, #00838F 0%, #0097A7 100%);">
-                            <i class="fas fa-user-md text-white text-sm"></i>
+                            <i class="fas fa-user-md text-white text-xs"></i>
                         </div>
-                        @if($mentorship->start_date)
-                        <div class="text-xs text-gray-500">
-                            <div class="font-semibold text-gray-700">{{ $mentorship->start_date->format('M d, Y') }}</div>
-                            @if($mentorship->end_date)<div>to {{ $mentorship->end_date->format('M d') }}</div>@endif
+                        <div class="text-right text-xs text-gray-500 leading-tight">
+                            @if($mentorship->end_date)
+                            <div class="font-semibold text-gray-700">ends {{ $mentorship->end_date->format('M d, Y') }}</div>
+                            @endif
+                            @if($mentorship->duration_label)
+                            <div class="text-primary-600 mt-0.5">⏱ {{ $mentorship->duration_label }}</div>
+                            @endif
                         </div>
-                        @endif
                     </div>
                     <h3 class="font-bold text-gray-900 text-sm leading-snug mb-3 group-hover:text-primary-700 transition-colors line-clamp-2">
                         {{ $mentorship->title }}
@@ -215,9 +216,130 @@
                             <span class="truncate">{{ $mentorship->county->name }}</span>
                         </div>
                         @endif
+                        <div class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold"
+                             style="background: #E0F7FA; color: #0097A7;">
+                            <span class="w-1.5 h-1.5 rounded-full bg-green-400 inline-block"></span>
+                            Ongoing
+                        </div>
+                    </div>
+                </div>
+                @endforeach
+            </div>
+        </div>
+    </section>
+    @endif
+
+    {{-- ═══════════════════════════════════════════
+         UPCOMING MENTORSHIPS
+    ═══════════════════════════════════════════ --}}
+    @if(isset($upcomingMentorships) && $upcomingMentorships->count() > 0)
+    <section class="py-14" style="background: linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%);">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-end justify-between mb-8">
+                <div>
+                    <div class="flex items-center gap-2 mb-1">
+                        <i class="fas fa-calendar-alt text-xs" style="color:#15803d;"></i>
+                        <span class="text-xs font-semibold uppercase tracking-widest" style="color:#15803d;">Coming Up · {{ $upcomingMentorships->count() }}</span>
+                    </div>
+                    <h2 class="text-2xl md:text-3xl font-extrabold text-gray-900">Upcoming Mentorships</h2>
+                    <p class="text-gray-500 text-sm mt-1">Facility mentorships scheduled to begin soon</p>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                @foreach($upcomingMentorships as $mentorship)
+                <div class="group bg-white rounded-2xl border border-green-100 p-5 hover:border-green-300 hover:shadow-lg transition-all duration-200 relative overflow-hidden">
+                    <div class="absolute top-0 left-0 right-0 h-1 rounded-t-2xl" style="background: linear-gradient(90deg, #15803d, #22c55e);"></div>
+                    <div class="flex items-start justify-between mb-3 mt-1">
+                        <div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                             style="background: linear-gradient(135deg, #15803d 0%, #22c55e 100%);">
+                            <i class="fas fa-calendar-check text-white text-xs"></i>
+                        </div>
+                        <div class="text-right text-xs text-gray-500 leading-tight">
+                            @if($mentorship->start_date)
+                            <div class="font-semibold text-gray-700">starts {{ $mentorship->start_date->format('M d, Y') }}</div>
+                            @endif
+                            @if($mentorship->duration_label)
+                            <div class="mt-0.5" style="color:#15803d;">⏱ {{ $mentorship->duration_label }}</div>
+                            @endif
+                        </div>
+                    </div>
+                    <h3 class="font-bold text-gray-900 text-sm leading-snug mb-3 group-hover:text-green-700 transition-colors line-clamp-2">
+                        {{ $mentorship->title }}
+                    </h3>
+                    <div class="space-y-1.5">
+                        @if($mentorship->facility)
+                        <div class="flex items-center gap-1.5 text-xs text-gray-500">
+                            <i class="fas fa-hospital text-green-400 w-3.5"></i>
+                            <span class="truncate">{{ $mentorship->facility->name }}</span>
+                        </div>
+                        @elseif($mentorship->county)
+                        <div class="flex items-center gap-1.5 text-xs text-gray-500">
+                            <i class="fas fa-map-marker-alt text-green-400 w-3.5"></i>
+                            <span class="truncate">{{ $mentorship->county->name }}</span>
+                        </div>
+                        @endif
                         <div class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold"
-                             style="background: #D1FAE5; color: #065F46;">
-                            Mentorship
+                             style="background: #DCFCE7; color: #15803d;">
+                            Upcoming
+                        </div>
+                    </div>
+                </div>
+                @endforeach
+            </div>
+        </div>
+    </section>
+    @endif
+
+    {{-- ═══════════════════════════════════════════
+         RECENTLY CLOSED MENTORSHIPS
+    ═══════════════════════════════════════════ --}}
+    @if(isset($closedMentorships) && $closedMentorships->count() > 0)
+    <section class="py-10" style="background: linear-gradient(135deg, #F9FAFB 0%, #F3F4F6 100%);">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-end justify-between mb-6">
+                <div>
+                    <div class="flex items-center gap-2 mb-1">
+                        <i class="fas fa-check-circle text-xs text-gray-400"></i>
+                        <span class="text-xs font-semibold text-gray-400 uppercase tracking-widest">Recently Closed · {{ $closedMentorships->count() }}</span>
+                    </div>
+                    <h2 class="text-xl md:text-2xl font-extrabold text-gray-500">Completed Mentorships</h2>
+                    <p class="text-gray-500 text-sm mt-1">Programs that wrapped up in the last 30 days</p>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                @foreach($closedMentorships as $mentorship)
+                <div class="bg-white rounded-2xl border border-gray-100 p-5 relative overflow-hidden">
+                    <div class="absolute top-0 left-0 right-0 h-1 rounded-t-2xl bg-gray-300"></div>
+                    <div class="flex items-start justify-between mb-3 mt-1">
+                        <div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-gray-200 opacity-75">
+                            <i class="fas fa-user-md text-gray-400 text-xs"></i>
+                        </div>
+                        <div class="text-right text-xs text-gray-400 leading-tight">
+                            @if($mentorship->end_date)
+                            <div class="font-semibold">ended {{ $mentorship->end_date->format('M d, Y') }}</div>
+                            @endif
+                            @if($mentorship->duration_label)
+                            <div class="mt-0.5">⏱ {{ $mentorship->duration_label }}</div>
+                            @endif
+                        </div>
+                    </div>
+                    <h3 class="font-semibold text-gray-500 text-sm leading-snug mb-3 line-clamp-2 opacity-75">
+                        {{ $mentorship->title }}
+                    </h3>
+                    <div class="space-y-1.5">
+                        @if($mentorship->facility)
+                        <div class="flex items-center gap-1.5 text-xs text-gray-400">
+                            <i class="fas fa-hospital text-gray-300 w-3.5"></i>
+                            <span class="truncate">{{ $mentorship->facility->name }}</span>
+                        </div>
+                        @elseif($mentorship->county)
+                        <div class="flex items-center gap-1.5 text-xs text-gray-400">
+                            <i class="fas fa-map-marker-alt text-gray-300 w-3.5"></i>
+                            <span class="truncate">{{ $mentorship->county->name }}</span>
+                        </div>
+                        @endif
+                        <div class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-400">
+                            ✓ Closed
                         </div>
                     </div>
                 </div>

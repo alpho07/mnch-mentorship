@@ -159,6 +159,13 @@
                             New to the platform? Create Account.
                         </a>
                     </div>
+
+                    <div class="login-footer login-footer-center" style="margin-top:.75rem">
+                        <a href="{{ url('/') }}" class="forgot-link home-link">
+                            <svg viewBox="0 0 24 24" style="width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;display:inline;vertical-align:middle;margin-right:3px"><polyline points="15 18 9 12 15 6"/></svg>
+                            Back to home
+                        </a>
+                    </div>
                 </form>
 
             </div>

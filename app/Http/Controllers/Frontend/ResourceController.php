@@ -32,6 +32,7 @@ class ResourceController extends Controller
         $cacheKey = 'homepage_data_' . (auth()->check() ? auth()->id() : 'guest');
         
         $data = Cache::remember($cacheKey, 300, function () { // 5 minutes cache
+            $now = now();
             // Apply consistent access control for authenticated users
             $baseQuery = Resource::published()->with(['resourceType', 'category', 'author', 'tags']);
             
@@ -73,23 +74,41 @@ class ResourceController extends Controller
 
             $upcomingTrainings = Training::where('type', 'global_training')
                 ->whereNotIn('status', ['cancelled', 'completed'])
-                ->where('start_date', '>=', now())
+                ->where('start_date', '>=', $now)
                 ->with(['county'])
                 ->orderBy('start_date')
                 ->limit(4)
                 ->get();
 
+            $ongoingMentorships = Training::where('type', 'facility_mentorship')
+                ->where('status', '!=', 'cancelled')
+                ->where('start_date', '<=', $now)
+                ->where('end_date', '>=', $now)
+                ->with(['county', 'facility'])
+                ->orderBy('end_date')
+                ->limit(6)
+                ->get();
+
             $upcomingMentorships = Training::where('type', 'facility_mentorship')
-                ->whereNotIn('status', ['cancelled', 'completed'])
-                ->where('start_date', '>=', now())
+                ->where('status', '!=', 'cancelled')
+                ->where('start_date', '>', $now)
                 ->with(['county', 'facility'])
                 ->orderBy('start_date')
                 ->limit(4)
                 ->get();
 
+            $closedMentorships = Training::where('type', 'facility_mentorship')
+                ->where('status', '!=', 'cancelled')
+                ->where('end_date', '<', $now)
+                ->where('end_date', '>=', $now->copy()->subDays(30))
+                ->with(['county', 'facility'])
+                ->orderBy('end_date', 'desc')
+                ->limit(4)
+                ->get();
+
             $trainingInsights = $this->buildTrainingInsights();
 
-            return compact('featuredResources', 'recentResources', 'popularResources', 'categories', 'resourceTypes', 'upcomingTrainings', 'upcomingMentorships', 'trainingInsights');
+            return compact('featuredResources', 'recentResources', 'popularResources', 'categories', 'resourceTypes', 'upcomingTrainings', 'ongoingMentorships', 'upcomingMentorships', 'closedMentorships', 'trainingInsights');
         });
 
         return view('frontend.home', $data);

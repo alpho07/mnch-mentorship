@@ -205,6 +205,37 @@ class AssessmentResource extends Resource {
                                 ->icon('heroicon-o-eye')
                                 ->color('info')
                                 ->url(fn($record) => AssessmentResource::getUrl('summary', ['record' => $record])),
+                                Tables\Actions\Action::make('markFeedbackGiven')
+                                ->label(fn($record) => $record->feedback_given ? 'Update Feedback' : 'Mark Feedback Given')
+                                ->icon('heroicon-o-chat-bubble-left-right')
+                                ->color('success')
+                                ->visible(fn($record) => $record->status === 'completed')
+                                ->form([
+                                    \Filament\Forms\Components\Textarea::make('feedback_notes')
+                                        ->label('Feedback notes (optional)')
+                                        ->default(fn($record) => $record->feedback_notes)
+                                        ->rows(3),
+                                ])
+                                ->requiresConfirmation()
+                                ->modalHeading(fn($record) => $record->feedback_given
+                                    ? 'Update Feedback Record'
+                                    : 'Mark Feedback as Given')
+                                ->modalDescription(fn($record) => $record->feedback_given
+                                    ? 'Update the feedback notes for this assessment.'
+                                    : 'Confirm that feedback has been given to the facility for this assessment.')
+                                ->action(function ($record, array $data): void {
+                                    $record->update([
+                                        'feedback_given'    => true,
+                                        'feedback_given_by' => auth()->id(),
+                                        'feedback_given_at' => now(),
+                                        'feedback_notes'    => $data['feedback_notes'] ?? null,
+                                    ]);
+
+                                    \Filament\Notifications\Notification::make()
+                                        ->title('Feedback marked as given')
+                                        ->success()
+                                        ->send();
+                                }),
                                 Tables\Actions\Action::make('download')
                                 ->label('Download Report')
                                 ->icon('heroicon-o-arrow-down-tray')

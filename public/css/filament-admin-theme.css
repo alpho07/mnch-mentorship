@@ -43,8 +43,8 @@
     margin-bottom: 4px !important;
 }
 
-html:not(.dark) .fi-sidebar-group-label {
-    color: #ffffff !important;
+.fi-sidebar-group-label {
+    color: rgba(186, 210, 255, 0.75) !important;
     font-size: 10px !important;
     font-weight: 800 !important;
     letter-spacing: 0.1em !important;
@@ -68,8 +68,8 @@ html:not(.dark) .fi-sidebar-group-label {
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
 /* Default: all item buttons */
-html:not(.dark) .fi-sidebar-item-button {
-    color: #ffffff !important;
+.fi-sidebar-item-button {
+    color: rgba(255, 255, 255, 0.82) !important;
     border-radius: 10px !important;
     margin: 1px 4px !important;
     padding: 8px 10px !important;
@@ -81,10 +81,10 @@ html:not(.dark) .fi-sidebar-item-button {
 .fi-sidebar-item-icon { color: rgba(255, 255, 255, 0.65) !important; }
 
 /* Default: label */
-html:not(.dark) .fi-sidebar-item-label {
+.fi-sidebar-item-label {
+    color: rgba(255, 255, 255, 0.82) !important;
     font-size: 13.5px !important;
     font-weight: 500 !important;
-    color: #ffffff !important;
 }
 
 /* Hover */
@@ -171,13 +171,14 @@ html:not(.dark) .fi-sidebar-item-label {
     border: 1px solid #DCF2F4 !important;
     border-radius: 14px !important;
     box-shadow: 0 1px 8px rgba(0, 151, 167, 0.05), 0 0 0 0 transparent !important;
-    overflow: hidden !important;
+    overflow: visible !important;
 }
 
 .fi-section-header {
     background: linear-gradient(90deg, #F0FAFB 0%, #ffffff 100%) !important;
     border-bottom: 1px solid #DCF2F4 !important;
     padding: 14px 20px !important;
+    border-radius: 14px 14px 0 0 !important;
 }
 
 .fi-section-header-heading {
@@ -188,8 +189,8 @@ html:not(.dark) .fi-sidebar-item-label {
 
 .fi-section-header-description { color: #5A9090 !important; font-size: 13px !important; }
 
-.fi-section-content-ctn { padding: 20px !important; }
-.fi-section-content { padding: 0 !important; }
+.fi-section-content-ctn { padding: 20px !important; border-radius: 0 0 14px 14px !important; overflow: visible !important; }
+.fi-section-content { padding: 0 !important; overflow: visible !important; }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    TABLES
@@ -245,16 +246,15 @@ html:not(.dark) .fi-sidebar-item-label {
 
 /* Cells */
 .fi-ta-cell {
-    padding: 7px 14px !important;
+    padding: 11px 16px !important;
     border-bottom: 1px solid #EAF7F8 !important;
     color: #1A3030 !important;
     font-size: 13.5px !important;
-    line-height: 1.25 !important;
     vertical-align: middle !important;
 }
 
 /* Actions cell */
-.fi-ta-actions-cell { padding: 6px 14px !important; border-bottom: 1px solid #EAF7F8 !important; }
+.fi-ta-actions-cell { padding: 8px 16px !important; border-bottom: 1px solid #EAF7F8 !important; }
 
 /* Table content wrapper inside fi-ta-ctn */
 .fi-ta-content { border-radius: 0 !important; }

@@ -2,14 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Assessment;
 use App\Models\County;
 use App\Models\ClassParticipant;
+use App\Models\ClassAttendance;
 use App\Models\Training;
 use App\Models\Facility;
 use App\Models\TrainingParticipant;
 use App\Models\Department;
 use App\Models\Cadre;
 use App\Models\FacilityType;
+use App\Services\AssessmentAnalyticsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -28,6 +31,35 @@ class AnalyticsDashboardController extends Controller {
                 ->orderBy('year', 'desc')
                 ->pluck('year')
                 ->filter();
+
+        if ($mode === 'assessment') {
+            $filters = [
+                'year'            => $selectedYear,
+                'county_id'       => $request->get('county_id'),
+                'assessment_type' => $request->get('assessment_type'),
+            ];
+
+            $assessmentService      = app(AssessmentAnalyticsService::class);
+            $summaryStats           = $assessmentService->getSummaryStats($filters);
+            $chartData              = $assessmentService->getChartData($filters);
+            $facilitiesReadiness    = $assessmentService->getFacilitiesReadiness($filters);
+            $insights               = $assessmentService->generateInsights($summaryStats);
+            $counties               = County::orderBy('name')->get(['id', 'name']);
+            $selectedCounty         = $filters['county_id'];
+            $selectedAssessmentType = $filters['assessment_type'];
+
+            $availableYears = Assessment::selectRaw('YEAR(assessment_date) as year')
+                ->distinct()
+                ->orderBy('year', 'desc')
+                ->pluck('year')
+                ->filter();
+
+            return view('analytics.dashboard.index', compact(
+                'mode', 'selectedYear', 'availableYears',
+                'summaryStats', 'chartData', 'facilitiesReadiness', 'insights',
+                'counties', 'selectedCounty', 'selectedAssessmentType'
+            ));
+        }
 
         $counties = $this->getCountiesData($selectedYear, $mode);
         $trainingsList = $this->getTrainingsList($selectedYear, $mode);
@@ -1770,5 +1802,67 @@ class AnalyticsDashboardController extends Controller {
         }
 
         return array_slice($insights, 0, 4);
+    }
+
+    public function facilityMentorshipBreakdown(Facility $facility, Request $request)
+    {
+        $selectedYear = $request->get('year', '');
+
+        $mentorships = Training::where('type', 'facility_mentorship')
+            ->where('facility_id', $facility->id)
+            ->when(!empty($selectedYear), fn($q) => $q->whereYear('start_date', $selectedYear))
+            ->with([
+                'mentor',
+                'program',
+                'mentorshipClasses' => fn($q) => $q->with([
+                    'classModules.programModule',
+                    'classModules.sessions',
+                    'participants' => fn($q) => $q->with(['user.cadre', 'user.department']),
+                ]),
+            ])
+            ->orderBy('start_date', 'desc')
+            ->get();
+
+        $mentorships->each(function ($training) {
+            $training->mentorshipClasses->each(function ($class) {
+                $moduleIds     = $class->classModules->pluck('id');
+                $totalSlots    = $class->classModules->count() * $class->participants->count();
+                $attendedSlots = ClassAttendance::whereIn('class_module_id', $moduleIds)->count();
+
+                $class->attendance_total   = $totalSlots;
+                $class->attendance_present = $attendedSlots;
+
+                $class->participants->each(function ($participant) use ($class, $moduleIds) {
+                    $attended = ClassAttendance::whereIn('class_module_id', $moduleIds)
+                        ->where('user_id', $participant->user_id)
+                        ->count();
+                    $total = $class->classModules->count();
+
+                    $participant->modules_attended = $attended;
+                    $participant->modules_total    = $total;
+                    $participant->attendance_pct   = $total > 0 ? round(($attended / $total) * 100) : 0;
+                    $participant->attendance_label = match (true) {
+                        $participant->attendance_pct >= 80 => 'Present',
+                        $participant->attendance_pct >= 50 => 'Partial',
+                        default                            => 'Absent',
+                    };
+                });
+            });
+        });
+
+        $availableYears = Training::selectRaw('YEAR(start_date) as year')
+            ->distinct()
+            ->orderBy('year', 'desc')
+            ->pluck('year')
+            ->filter();
+
+        $breadcrumbs = [
+            ['name' => 'Analytics Dashboard', 'url' => route('analytics.dashboard.index', ['mode' => 'assessment'])],
+            ['name' => $facility->name . ' — Mentorships', 'url' => null],
+        ];
+
+        return view('analytics.dashboard.facility-mentorship-breakdown', compact(
+            'facility', 'mentorships', 'availableYears', 'selectedYear', 'breadcrumbs'
+        ));
     }
 }

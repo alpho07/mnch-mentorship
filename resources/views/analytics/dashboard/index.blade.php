@@ -261,7 +261,10 @@ body { background: var(--gray-50); font-family: 'Segoe UI', system-ui, sans-seri
             </button>
 
             <!-- Mode toggle -->
-            <div class="mode-toggle" data-intro="Switch between Training and Mentorship analytics modes." data-step="2">
+            <div class="mode-toggle" data-intro="Switch between Assessment, Training and Mentorship analytics modes." data-step="2">
+                <button type="button" class="mode-btn {{ $mode === 'assessment' ? 'active' : '' }}" data-mode="assessment">
+                    <i class="fas fa-clipboard-check me-1"></i> Assessments
+                </button>
                 <button type="button" class="mode-btn {{ $mode === 'training' ? 'active' : '' }}" data-mode="training">
                     <i class="fas fa-chalkboard-teacher me-1"></i> Trainings
                 </button>
@@ -277,6 +280,9 @@ body { background: var(--gray-50); font-family: 'Segoe UI', system-ui, sans-seri
     </div>
 </div>
 
+@if($mode === 'assessment')
+    @include('analytics.dashboard.assessment-mode')
+@else
 <!-- ████████ KPI STRIP ████████ -->
 <div class="kpi-strip-wrap" data-intro="Key performance metrics for the selected mode and filters." data-step="4">
     @php
@@ -714,6 +720,8 @@ body { background: var(--gray-50); font-family: 'Segoe UI', system-ui, sans-seri
 <!-- ████████ JSON DATA PAYLOADS ████████ -->
 <script type="application/json" id="chart-data">@json($chartData ?? [])</script>
 <script type="application/json" id="extended-data">@json($extendedStats ?? [])</script>
+
+@endif
 
 @endsection
 

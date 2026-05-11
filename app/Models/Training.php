@@ -504,6 +504,35 @@ class Training extends Model {
     }
 
     /**
+     * Get human-readable duration label
+     */
+    public function getDurationLabelAttribute(): ?string {
+        $days = $this->duration_days; // reuses existing accessor
+        if ($days <= 0) {
+            return null;
+        }
+        if ($days < 7) {
+            return $days . ($days === 1 ? ' day' : ' days');
+        }
+        if ($days < 14) {
+            return '1 week';
+        }
+        if ($days < 28) {
+            $weeks = (int) floor($days / 7);
+            return $weeks . ' weeks';
+        }
+        if ($days < 60) {
+            return '1 month';
+        }
+        if ($days < 365) {
+            $months = (int) floor($days / 30);
+            return $months . ($months === 1 ? ' month' : ' months');
+        }
+        $years = (int) floor($days / 365);
+        return $years . ($years === 1 ? ' year' : ' years');
+    }
+
+    /**
      * Get remaining capacity
      */
     public function getRemainingCapacityAttribute(): string {
