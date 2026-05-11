@@ -95,7 +95,97 @@
                                 <span><i class="fas fa-calendar-alt me-1"></i>{{ $class->start_date->format('d M Y') }}
                                 @if($class->end_date) – {{ $class->end_date->format('d M Y') }} @endif</span>
                             @endif
-                            <span><i class="fas fa-cubes me-1"></i>{{ $class->classModules->count() }} modules</span>
+                            {{-- Modules hover popover --}}
+                            <span
+                                x-data="{ showModules: false }"
+                                style="position:relative;cursor:pointer;"
+                                @mouseenter="showModules = true"
+                                @mouseleave="showModules = false"
+                                @click.stop
+                            >
+                                <span style="color:var(--teal);font-weight:600;border-bottom:1px dashed var(--teal)">
+                                    <i class="fas fa-cubes me-1"></i>{{ $class->classModules->count() }} modules
+                                </span>
+
+                                <div
+                                    x-show="showModules"
+                                    x-transition
+                                    style="position:absolute;top:calc(100% + 6px);left:0;z-index:1050;background:#fff;border:1px solid var(--gray-200);border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,.15);min-width:340px;max-width:480px;"
+                                >
+                                    <div style="padding:.6rem 1rem;border-bottom:1px solid var(--gray-100);font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--teal-dark);background:var(--teal-50);border-radius:10px 10px 0 0;">
+                                        <i class="fas fa-cubes me-1"></i> Modules
+                                    </div>
+                                    @forelse($class->classModules->sortBy('order_sequence') as $module)
+                                        <div
+                                            x-data="{ showSessions: false }"
+                                            style="border-bottom:1px solid var(--gray-100);"
+                                        >
+                                            <div
+                                                @mouseenter="showSessions = true"
+                                                @mouseleave="showSessions = false"
+                                                @click.stop
+                                                style="display:flex;justify-content:space-between;align-items:center;padding:.5rem .85rem;cursor:pointer;transition:background .15s;"
+                                                :style="showSessions ? 'background:var(--teal-50)' : ''"
+                                            >
+                                                <div style="font-size:.8rem;color:var(--gray-800);font-weight:600;flex:1;min-width:0;">
+                                                    @if($module->order_sequence)
+                                                        <span style="color:var(--gray-500);font-size:.7rem;margin-right:.35rem;">{{ $module->order_sequence }}.</span>
+                                                    @endif
+                                                    {{ $module->programModule->name ?? 'Module' }}
+                                                </div>
+                                                <div style="display:flex;align-items:center;gap:.4rem;flex-shrink:0;margin-left:.5rem;">
+                                                    @php
+                                                        $mStatus = $module->status ?? 'not_started';
+                                                        $mBg = match($mStatus) { 'completed' => '#D1FAE5', 'in_progress' => '#FEF3C7', default => '#F1F5F9' };
+                                                        $mColor = match($mStatus) { 'completed' => '#065F46', 'in_progress' => '#92400E', default => '#64748B' };
+                                                        $mLabel = match($mStatus) { 'completed' => 'Done', 'in_progress' => 'Active', 'not_started' => 'Pending', default => ucfirst($mStatus) };
+                                                    @endphp
+                                                    <span style="font-size:.68rem;font-weight:700;padding:.15rem .45rem;border-radius:8px;background:{{ $mBg }};color:{{ $mColor }}">{{ $mLabel }}</span>
+                                                    @if($module->sessions->count() > 0)
+                                                        <span style="font-size:.7rem;color:var(--teal);font-weight:600;">
+                                                            <i class="fas fa-video me-1"></i>{{ $module->sessions->count() }}
+                                                        </span>
+                                                    @endif
+                                                </div>
+                                            </div>
+
+                                            {{-- Sessions sub-panel --}}
+                                            <div
+                                                x-show="showSessions"
+                                                x-transition
+                                                @mouseenter="showSessions = true"
+                                                @mouseleave="showSessions = false"
+                                                style="background:#F8FAFC;border-top:1px solid var(--gray-100);"
+                                            >
+                                                @forelse($module->sessions->sortBy('session_number') as $session)
+                                                    @php
+                                                        $sBg = match($session->status) { 'completed' => '#D1FAE5', 'in_progress' => '#FEF3C7', 'cancelled' => '#FEE2E2', default => '#F1F5F9' };
+                                                        $sColor = match($session->status) { 'completed' => '#065F46', 'in_progress' => '#92400E', 'cancelled' => '#991B1B', default => '#475569' };
+                                                    @endphp
+                                                    <div style="display:flex;justify-content:space-between;align-items:center;padding:.4rem .85rem .4rem 1.5rem;font-size:.76rem;border-bottom:1px solid var(--gray-100);">
+                                                        <div style="color:var(--gray-700);">
+                                                            <span style="color:var(--gray-400);margin-right:.3rem;">S{{ $session->session_number }}</span>
+                                                            {{ $session->title }}
+                                                        </div>
+                                                        <div style="display:flex;align-items:center;gap:.5rem;flex-shrink:0;margin-left:.5rem;">
+                                                            @if($session->scheduled_date || $session->actual_date)
+                                                                <span style="font-size:.68rem;color:var(--gray-500);">
+                                                                    <i class="fas fa-calendar me-1"></i>{{ ($session->actual_date ?? $session->scheduled_date)?->format('d M Y') }}
+                                                                </span>
+                                                            @endif
+                                                            <span style="font-size:.68rem;font-weight:700;padding:.12rem .4rem;border-radius:6px;background:{{ $sBg }};color:{{ $sColor }}">{{ ucfirst($session->status) }}</span>
+                                                        </div>
+                                                    </div>
+                                                @empty
+                                                    <div style="padding:.5rem 1.5rem;font-size:.75rem;color:var(--gray-400);">No sessions yet</div>
+                                                @endforelse
+                                            </div>
+                                        </div>
+                                    @empty
+                                        <div style="padding:.75rem 1rem;font-size:.8rem;color:var(--gray-400);">No modules</div>
+                                    @endforelse
+                                </div>
+                            </span>
                             <span><i class="fas fa-users me-1"></i>{{ $class->participants->count() }} mentees</span>
                             <span><i class="fas fa-calendar-check me-1"></i>{{ $class->attendance_present }}/{{ $class->attendance_total }} attendances</span>
                             <span><i class="fas fa-video me-1"></i>{{ $class->classModules->sum(fn($m) => $m->sessions->count()) }} sessions</span>
