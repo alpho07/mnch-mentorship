@@ -9,8 +9,8 @@
 .breadcrumb-bar { background: #fff; border-bottom: 1px solid var(--gray-200); padding: .6rem 2rem; font-size: .82rem; }
 .breadcrumb-bar a { color: var(--teal); text-decoration: none; }
 .breadcrumb-bar a:hover { text-decoration: underline; }
-.program-block { background: #fff; border-radius: 14px; box-shadow: 0 2px 12px rgba(0,0,0,.07); border: 1px solid var(--gray-200); margin: 1.5rem; overflow: hidden; }
-.program-header { background: linear-gradient(90deg, var(--teal-50) 0%, #E0F2FE 100%); padding: 1rem 1.5rem; border-bottom: 2px solid var(--teal-100); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .5rem; }
+.program-block { background: #fff; border-radius: 14px; box-shadow: 0 2px 12px rgba(0,0,0,.07); border: 1px solid var(--gray-200); margin: 1.5rem; }
+.program-header { background: linear-gradient(90deg, var(--teal-50) 0%, #E0F2FE 100%); padding: 1rem 1.5rem; border-bottom: 2px solid var(--teal-100); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .5rem; border-radius: 14px 14px 0 0; }
 .program-header h5 { margin: 0; font-weight: 800; color: var(--teal-dark); font-size: 1rem; }
 .class-row { border-bottom: 1px solid var(--gray-100); }
 .class-header { padding: .9rem 1.5rem; display: flex; justify-content: space-between; align-items: center; cursor: pointer; background: var(--gray-50); }
@@ -110,7 +110,7 @@
                                 <div
                                     x-show="showModules"
                                     x-transition
-                                    style="position:absolute;top:calc(100% + 6px);left:0;z-index:1050;background:#fff;border:1px solid var(--gray-200);border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,.15);min-width:340px;max-width:480px;"
+                                    style="position:absolute;top:calc(100% + 6px);left:0;z-index:9999;background:#fff;border:1px solid var(--gray-200);border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,.15);min-width:340px;max-width:480px;"
                                 >
                                     <div style="padding:.6rem 1rem;border-bottom:1px solid var(--gray-100);font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--teal-dark);background:var(--teal-50);border-radius:10px 10px 0 0;">
                                         <i class="fas fa-cubes me-1"></i> Modules
