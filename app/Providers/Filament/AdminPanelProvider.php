@@ -65,6 +65,10 @@ class AdminPanelProvider extends PanelProvider {
                         ])
                         ->userMenuItems([
                             MenuItem::make()
+                                ->label('Home')
+                                ->icon('heroicon-o-home')
+                                ->url('/'),
+                            MenuItem::make()
                                 ->label('Analytics Dashboard')
                                 ->icon('heroicon-o-chart-bar')
                                 ->url('/analytics/dashboard?mode=assessment'),

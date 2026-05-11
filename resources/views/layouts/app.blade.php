@@ -71,7 +71,7 @@
     <body class="bg-gray-50 font-sans antialiased">
 
         <!-- ═══ NAVIGATION ═══ -->
-        <nav x-data="{ mobileOpen: false, trainingOpen: false }"
+        <nav x-data="{ mobileOpen: false }"
              class="bg-white border-b border-gray-100 sticky top-0 z-50 shadow-sm safe-area-inset-top"
              style="padding-top: env(safe-area-inset-top, 0px);">
 
@@ -92,7 +92,7 @@
                     </div>
 
                     <!-- Desktop Nav -->
-                    <div class="hidden md:flex items-center gap-1">
+                    <div class="hidden md:flex items-center gap-4">
                         <a href="{{ route('home') }}"
                            class="nav-link {{ request()->routeIs('home') ? 'active' : '' }}">
                             <i class="fas fa-home mr-1.5 text-xs"></i>Home
@@ -105,44 +105,10 @@
                            class="nav-link {{ request()->routeIs('categories.*') ? 'active' : '' }}">
                             <i class="fas fa-th-large mr-1.5 text-xs"></i>Categories
                         </a>
-
-                        <!-- Training dropdown -->
-                        <div class="relative" x-data="{ open: false }">
-                            <button @click="open = !open"
-                                    class="nav-link {{ request()->routeIs('training.*') || request()->is('analytics*') ? 'active' : '' }} inline-flex items-center gap-1">
-                                <i class="fas fa-graduation-cap text-xs"></i>
-                                Training
-                                <svg class="w-3.5 h-3.5 transition-transform duration-150" :class="open ? 'rotate-180' : ''"
-                                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/>
-                                </svg>
-                            </button>
-                            <div x-show="open" @click.outside="open = false"
-                                 x-transition:enter="transition ease-out duration-150"
-                                 x-transition:enter-start="opacity-0 scale-95 -translate-y-1"
-                                 x-transition:enter-end="opacity-100 scale-100 translate-y-0"
-                                 x-transition:leave="transition ease-in duration-100"
-                                 x-transition:leave-start="opacity-100 scale-100"
-                                 x-transition:leave-end="opacity-0 scale-95"
-                                 class="absolute left-0 mt-2 w-72 bg-white rounded-2xl shadow-xl py-2 z-50 border border-gray-100 origin-top-left">
-                                <div class="px-4 py-2.5 border-b border-gray-100">
-                                    <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Analytics</p>
-                                </div>
-                                <a href="{{ url('analytics/dashboard') }}"
-                                   class="flex items-center gap-3 px-4 py-3 hover:bg-primary-50 transition-colors" @click="open=false">
-                                    <div class="w-9 h-9 rounded-xl bg-primary-100 flex items-center justify-center flex-shrink-0">
-                                        <i class="fas fa-map text-primary-600 text-sm"></i>
-                                    </div>
-                                    <div>
-                                        <div class="text-sm font-semibold text-gray-800 flex items-center gap-2">
-                                            Trainings & Mentorships
-                                            <span class="text-xs bg-primary-100 text-primary-700 px-1.5 py-0.5 rounded-full font-medium">New</span>
-                                        </div>
-                                        <div class="text-xs text-gray-500 mt-0.5">County-level drill-down map</div>
-                                    </div>
-                                </a>
-                            </div>
-                        </div>
+                        <a href="{{ url('analytics/dashboard') }}"
+                           class="nav-link {{ request()->is('analytics*') ? 'active' : '' }}">
+                            <i class="fas fa-chart-bar mr-1.5 text-xs"></i>Dashboard
+                        </a>
                     </div>
 
                     <!-- Search (desktop lg+) -->
@@ -272,7 +238,6 @@
                         $navHome       = request()->routeIs('home');
                         $navResources  = request()->routeIs('resources.*');
                         $navCategories = request()->routeIs('categories.*');
-                        $navTraining   = request()->routeIs('training.*') || request()->is('analytics*');
                     @endphp
                     <nav class="flex-1 px-4 py-4 space-y-1.5">
 
@@ -326,32 +291,21 @@
                             @endif
                         </a>
 
-                        {{-- Training (expandable) --}}
-                        <div>
-                            <button @click="trainingOpen = !trainingOpen"
-                                    class="w-full flex items-center gap-4 px-3 py-3 rounded-2xl transition-all duration-150 {{ $navTraining ? 'bg-primary-50' : 'hover:bg-gray-50' }}">
-                                <div class="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-sm"
-                                     style="{{ $navTraining ? 'background: linear-gradient(135deg,#0097A7 0%,#26C6DA 100%);' : 'background:#F3F4F6;' }}">
-                                    <i class="fas fa-graduation-cap {{ $navTraining ? 'text-white' : 'text-gray-500' }}" style="font-size:15px;"></i>
-                                </div>
-                                <div class="flex-1 min-w-0 text-left">
-                                    <p class="font-semibold text-[15px] leading-none {{ $navTraining ? 'text-primary-700' : 'text-gray-800' }}">Training</p>
-                                    <p class="text-xs text-gray-400 mt-0.5">Programs &amp; analytics</p>
-                                </div>
-                                <svg class="w-4 h-4 flex-shrink-0 transition-transform duration-200 {{ $navTraining ? 'text-primary-500' : 'text-gray-400' }}"
-                                     :class="trainingOpen ? 'rotate-180' : ''"
-                                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/>
-                                </svg>
-                            </button>
-                            <div x-show="trainingOpen" x-transition class="mt-1 space-y-0.5" style="padding-left: 59px;">
-                                <a href="{{ url('analytics/dashboard') }}" @click="mobileOpen = false"
-                                   class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-primary-50 hover:text-primary-700 transition-colors">
-                                    <i class="fas fa-map text-primary-400" style="font-size:13px; width:16px; text-align:center;"></i>
-                                    <span>Trainings &amp; Mentorships Map</span>
-                                </a>
+                        {{-- Dashboard --}}
+                        <a href="{{ url('analytics/dashboard') }}" @click="mobileOpen = false"
+                           class="flex items-center gap-4 px-3 py-3 rounded-2xl transition-all duration-150 {{ request()->is('analytics*') ? 'bg-primary-50' : 'hover:bg-gray-50' }}">
+                            <div class="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-sm"
+                                 style="{{ request()->is('analytics*') ? 'background: linear-gradient(135deg,#0097A7 0%,#26C6DA 100%);' : 'background:#F3F4F6;' }}">
+                                <i class="fas fa-chart-bar {{ request()->is('analytics*') ? 'text-white' : 'text-gray-500' }}" style="font-size:15px;"></i>
                             </div>
-                        </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="font-semibold text-[15px] leading-none {{ request()->is('analytics*') ? 'text-primary-700' : 'text-gray-800' }}">Dashboard</p>
+                                <p class="text-xs text-gray-400 mt-0.5">Analytics &amp; reports</p>
+                            </div>
+                            @if(request()->is('analytics*'))
+                            <span class="w-2 h-2 rounded-full flex-shrink-0" style="background:#0097A7;"></span>
+                            @endif
+                        </a>
 
                     </nav>
 
