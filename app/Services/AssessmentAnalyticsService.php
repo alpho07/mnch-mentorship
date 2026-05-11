@@ -60,6 +60,26 @@ class AssessmentAnalyticsService
             ? round(($facilitiesAssessed / $allFacilities) * 100, 1)
             : 0;
 
+        // Facilities with at least one mentorship programme
+        $withMentorships = (int) DB::table('assessments')
+            ->join('trainings', 'trainings.facility_id', '=', 'assessments.facility_id')
+            ->where('assessments.status', 'completed')
+            ->whereNull('assessments.deleted_at')
+            ->where('trainings.type', 'facility_mentorship')
+            ->whereNull('trainings.deleted_at')
+            ->when($year, fn($q) => $q->whereYear('assessments.assessment_date', $year))
+            ->when($assessmentType, fn($q) => $q->where('assessments.assessment_type', $assessmentType))
+            ->when($countyId, fn($q) => $q
+                ->join('facilities', 'facilities.id', '=', 'assessments.facility_id')
+                ->join('subcounties', 'subcounties.id', '=', 'facilities.subcounty_id')
+                ->where('subcounties.county_id', $countyId))
+            ->distinct('assessments.facility_id')
+            ->count('assessments.facility_id');
+
+        $mentorshipCoverage = $facilitiesAssessed > 0
+            ? round(($withMentorships / $facilitiesAssessed) * 100, 1)
+            : 0;
+
         // YoY
         $curYear   = Carbon::now()->year;
         $prevYear  = $curYear - 1;
@@ -72,7 +92,8 @@ class AssessmentAnalyticsService
         return compact(
             'totalAssessments', 'facilitiesAssessed', 'allFacilities',
             'avgScore', 'withSkillsLab', 'eligible',
-            'facilityCoveragePercent', 'yoyChange', 'curYear'
+            'facilityCoveragePercent', 'yoyChange', 'curYear',
+            'withMentorships', 'mentorshipCoverage'
         );
     }
 

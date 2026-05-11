@@ -8,6 +8,8 @@
     $facilityCoverage       = $summaryStats['facilityCoveragePercent'] ?? 0;
     $yoyChange              = $summaryStats['yoyChange'] ?? 0;
     $avgColor               = $avgScore >= 80 ? 'up' : ($avgScore >= 50 ? 'flat' : 'down');
+    $withMentorships        = $summaryStats['withMentorships'] ?? 0;
+    $mentorshipCoverage     = $summaryStats['mentorshipCoverage'] ?? 0;
 @endphp
 
 {{-- ████████ ASSESSMENT FILTERS ████████ --}}
@@ -54,7 +56,7 @@
 
 {{-- ████████ KPI STRIP ████████ --}}
 <div class="kpi-strip-wrap">
-    <div class="kpi-strip">
+    <div class="kpi-strip" style="grid-template-columns:repeat(7,1fr);">
         <div class="kpi-card">
             <div class="kpi-icon"><i class="fas fa-clipboard-check"></i></div>
             <div class="kpi-value">{{ number_format($totalAssessments) }}</div>
@@ -96,6 +98,25 @@
             @if($withSkillsLab > 0)
                 @php $partials = $withSkillsLab - $eligible; @endphp
                 <span class="kpi-trend flat">{{ $partials }} partial</span>
+            @endif
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-icon"><i class="fas fa-handshake"></i></div>
+            <div class="kpi-value">{{ number_format($withMentorships) }}</div>
+            <div class="kpi-label">With Mentorships</div>
+            @if($facilitiesAssessed > 0)
+                <span class="kpi-trend flat">{{ $mentorshipCoverage }}% of assessed</span>
+            @endif
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-icon"><i class="fas fa-percentage"></i></div>
+            <div class="kpi-value">{{ $mentorshipCoverage }}%</div>
+            <div class="kpi-label">Mentorship Coverage</div>
+            @php $uncovered = $facilitiesAssessed - $withMentorships; @endphp
+            @if($uncovered > 0)
+                <span class="kpi-trend down">{{ $uncovered }} without</span>
+            @else
+                <span class="kpi-trend up">Full coverage</span>
             @endif
         </div>
     </div>
