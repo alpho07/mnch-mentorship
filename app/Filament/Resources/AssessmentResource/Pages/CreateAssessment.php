@@ -111,6 +111,33 @@ class CreateAssessment extends CreateRecord {
     }
 
     /**
+     * Block duplicate assessments: one per facility per period (baseline/midline/endline).
+     */
+    protected function beforeCreate(): void {
+        $facilityId     = $this->data['facility_id'] ?? null;
+        $assessmentType = $this->data['assessment_type'] ?? null;
+
+        if ($facilityId && $assessmentType) {
+            $exists = Assessment::where('facility_id', $facilityId)
+                ->where('assessment_type', $assessmentType)
+                ->whereNull('deleted_at')
+                ->exists();
+
+            if ($exists) {
+                $typeName = ucfirst($assessmentType);
+                Notification::make()
+                    ->danger()
+                    ->title('Duplicate Assessment')
+                    ->body("A {$typeName} assessment already exists for this facility. Only one assessment per period per facility is allowed.")
+                    ->persistent()
+                    ->send();
+
+                $this->halt();
+            }
+        }
+    }
+
+    /**
      * Hook: Mutate data before save (add assessor_id and progress array)
      */
     protected function mutateFormDataBeforeCreate(array $data): array {

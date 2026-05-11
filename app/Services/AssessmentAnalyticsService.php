@@ -24,7 +24,11 @@ class AssessmentAnalyticsService
 
         $skillsLabSectionId = AssessmentSection::where('code', 'skills_lab')->value('id');
 
-        $totalAssessments   = $base()->count();
+        // Unique (facility, period) pairs — with rule enforced this equals total count
+        $uniqueAssessments  = DB::table(
+            $base()->select('facility_id', 'assessment_type')->distinct()->toBase(),
+            'u'
+        )->count();
         $facilitiesAssessed = $base()->distinct('facility_id')->count('facility_id');
         $allFacilities      = Facility::whereNull('deleted_at')->count();
         $avgScore           = round((float) ($base()->where('status', 'completed')->avg('overall_percentage') ?? 0), 1);
@@ -90,7 +94,7 @@ class AssessmentAnalyticsService
             : 0;
 
         return compact(
-            'totalAssessments', 'facilitiesAssessed', 'allFacilities',
+            'uniqueAssessments', 'facilitiesAssessed', 'allFacilities',
             'avgScore', 'withSkillsLab', 'eligible',
             'facilityCoveragePercent', 'yoyChange', 'curYear',
             'withMentorships', 'mentorshipCoverage'

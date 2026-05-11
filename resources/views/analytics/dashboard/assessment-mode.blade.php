@@ -1,5 +1,5 @@
 @php
-    $totalAssessments       = $summaryStats['totalAssessments'] ?? 0;
+    $uniqueAssessments      = $summaryStats['uniqueAssessments'] ?? 0;
     $facilitiesAssessed     = $summaryStats['facilitiesAssessed'] ?? 0;
     $allFacilities          = $summaryStats['allFacilities'] ?? 0;
     $avgScore               = $summaryStats['avgScore'] ?? 0;
@@ -56,24 +56,18 @@
 
 {{-- ████████ KPI STRIP ████████ --}}
 <div class="kpi-strip-wrap">
-    <div class="kpi-strip" style="grid-template-columns:repeat(7,1fr);">
+    <div class="kpi-strip" style="grid-template-columns:repeat(6,1fr);">
         <div class="kpi-card">
-            <div class="kpi-icon"><i class="fas fa-clipboard-check"></i></div>
-            <div class="kpi-value">{{ number_format($totalAssessments) }}</div>
-            <div class="kpi-label">Total Assessments</div>
+            <div class="kpi-icon"><i class="fas fa-hospital"></i></div>
+            <div class="kpi-value">{{ number_format($uniqueAssessments) }}</div>
+            <div class="kpi-label">Facility Assessments</div>
             @if($yoyChange > 0)
                 <span class="kpi-trend up"><i class="fas fa-arrow-up"></i> {{ $yoyChange }}% YoY</span>
             @elseif($yoyChange < 0)
                 <span class="kpi-trend down"><i class="fas fa-arrow-down"></i> {{ abs($yoyChange) }}% YoY</span>
             @else
-                <span class="kpi-trend flat"><i class="fas fa-minus"></i> Stable</span>
+                <span class="kpi-trend flat"><i class="fas fa-building"></i> {{ $facilityCoverage }}% coverage</span>
             @endif
-        </div>
-        <div class="kpi-card">
-            <div class="kpi-icon"><i class="fas fa-hospital"></i></div>
-            <div class="kpi-value">{{ number_format($facilitiesAssessed) }}</div>
-            <div class="kpi-label">Facilities Assessed</div>
-            <span class="kpi-trend flat"><i class="fas fa-building"></i> {{ $facilityCoverage }}% coverage</span>
         </div>
         <div class="kpi-card">
             <div class="kpi-icon"><i class="fas fa-star-half-alt"></i></div>
