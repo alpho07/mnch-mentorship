@@ -174,11 +174,13 @@
     filterEligibility: 'all',
     filterFeedback: 'all',
     filterType: 'all',
+    filterMentorships: 'all',
     matches(row) {
         if (this.filterSkillsLab !== 'all' && row.dataset.skillsLab !== this.filterSkillsLab) return false;
         if (this.filterEligibility !== 'all' && row.dataset.eligibility !== this.filterEligibility) return false;
         if (this.filterFeedback !== 'all' && row.dataset.feedback !== this.filterFeedback) return false;
         if (this.filterType !== 'all' && row.dataset.atype !== this.filterType) return false;
+        if (this.filterMentorships !== 'all' && row.dataset.mentorships !== this.filterMentorships) return false;
         return true;
     }
 }">
@@ -221,6 +223,14 @@
                     <option value="endline">Endline</option>
                 </select>
             </div>
+            <div class="col-auto">
+                <label class="form-label">Mentorships</label>
+                <select class="form-select form-select-sm" x-model="filterMentorships">
+                    <option value="all">All</option>
+                    <option value="yes">With Mentorships</option>
+                    <option value="no">No Mentorships</option>
+                </select>
+            </div>
         </div>
     </div>
 
@@ -245,6 +255,7 @@
                         $slKey   = $assessment->has_skills_lab ? 'yes' : 'no';
                         $fbKey   = $assessment->feedback_given ? 'given' : 'pending';
                         $eligKey = $assessment->eligibility_status;
+                        $msKey   = $assessment->mentorship_count > 0 ? 'yes' : 'no';
                     @endphp
                     <tr
                         x-show="matches($el)"
@@ -252,6 +263,7 @@
                         data-eligibility="{{ $eligKey }}"
                         data-feedback="{{ $fbKey }}"
                         data-atype="{{ $assessment->assessment_type }}"
+                        data-mentorships="{{ $msKey }}"
                     >
                         <td>
                             <div class="fw-semibold" style="color:var(--gray-800)">{{ $assessment->facility->name }}</div>
