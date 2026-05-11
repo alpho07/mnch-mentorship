@@ -27,13 +27,19 @@ class Assessment extends Model {
         'completed_by',
         'created_by',
         'updated_by',
+        'feedback_given',
+        'feedback_given_by',
+        'feedback_given_at',
+        'feedback_notes',
     ];
     protected $casts = [
-        'assessment_date' => 'date',
-        'section_progress' => 'array',
-        'completed_at' => 'datetime',
-        'overall_score' => 'decimal:2',
+        'assessment_date'    => 'date',
+        'section_progress'   => 'array',
+        'completed_at'       => 'datetime',
+        'overall_score'      => 'decimal:2',
         'overall_percentage' => 'decimal:2',
+        'feedback_given'     => 'boolean',
+        'feedback_given_at'  => 'datetime',
     ];
     protected $with = ['facility.subcounty.county'];
 
@@ -88,6 +94,10 @@ class Assessment extends Model {
 
     public function completedBy(): BelongsTo {
         return $this->belongsTo(User::class, 'completed_by');
+    }
+
+    public function feedbackGivenBy(): BelongsTo {
+        return $this->belongsTo(User::class, 'feedback_given_by');
     }
 
     // Dynamic Question Responses (Infrastructure, Skills Lab, Info Systems, Quality)
