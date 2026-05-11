@@ -273,6 +273,16 @@
                             <span class="badge" style="background:{{ $assessment->assessment_type === 'baseline' ? 'rgba(0,151,167,.12)' : ($assessment->assessment_type === 'midline' ? 'rgba(245,158,11,.12)' : 'rgba(139,92,246,.12)') }};color:{{ $assessment->assessment_type === 'baseline' ? 'var(--teal-dark)' : ($assessment->assessment_type === 'midline' ? '#92400E' : '#5B21B6') }}">
                                 {{ ucfirst($assessment->assessment_type) }}
                             </span>
+                            @if($assessment->status === 'completed')
+                                <div style="margin-top:.35rem;">
+                                    <a href="/admin/assessments/{{ $assessment->id }}/summary"
+                                       target="_blank"
+                                       style="font-size:.72rem;font-weight:600;color:var(--teal);text-decoration:none;display:inline-flex;align-items:center;gap:.25rem;padding:.15rem .45rem;border-radius:6px;background:var(--teal-50);border:1px solid var(--teal-100);"
+                                       title="View Assessment Summary">
+                                        <i class="fas fa-file-alt"></i> View Report
+                                    </a>
+                                </div>
+                            @endif
                         </td>
                         <td>{{ $assessment->assessor_name }}</td>
                         <td>
