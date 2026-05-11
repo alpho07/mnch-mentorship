@@ -134,7 +134,9 @@
                     <h6><i class="fas fa-circle-notch"></i> Grade Distribution</h6>
                     <small>Completed assessments</small>
                 </div>
-                <div class="chart-card-body"><canvas id="gradeDistChart" height="180"></canvas></div>
+                <div class="chart-card-body" style="display:flex;justify-content:center;align-items:center;">
+                    <canvas id="gradeDistChart" style="max-height:220px;max-width:220px;"></canvas>
+                </div>
             </div>
         </div>
     </div>
@@ -158,7 +160,9 @@
                     <h6><i class="fas fa-tasks"></i> Assessment Status</h6>
                     <small>Draft / In Progress / Completed</small>
                 </div>
-                <div class="chart-card-body"><canvas id="statusChart" height="160"></canvas></div>
+                <div class="chart-card-body" style="display:flex;justify-content:center;align-items:center;">
+                    <canvas id="statusChart" style="max-height:220px;max-width:220px;"></canvas>
+                </div>
             </div>
         </div>
     </div>
