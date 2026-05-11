@@ -188,7 +188,7 @@
     <div class="filter-card mb-3">
         <div class="row g-2 align-items-end">
             <div class="col-auto">
-                <label class="form-label">Skills Lab</label>
+                <label class="form-label">Skills Lab / Room</label>
                 <select class="form-select form-select-sm" x-model="filterSkillsLab">
                     <option value="all">All</option>
                     <option value="yes">Yes</option>
@@ -233,7 +233,7 @@
                     <th>Level</th>
                     <th>Latest Assessment</th>
                     <th>Assessed By</th>
-                    <th>Skills Lab</th>
+                    <th>Skills Lab / Room</th>
                     <th>Feedback</th>
                     <th>Eligibility</th>
                     <th>Mentorships</th>
