@@ -10,7 +10,6 @@ use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Resources\Components\Tab;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class ListMentorshipTrainings extends ListRecords {
 
@@ -59,13 +58,13 @@ class ListMentorshipTrainings extends ListRecords {
 
         return [
             'active' => Tab::make('Active')
-                ->icon('heroicon-o-academic-cap'),
+                ->icon('heroicon-o-academic-cap')
+                ->modifyQueryUsing(fn(Builder $q) => $q->whereNull('trainings.deleted_at')),
             'trash' => Tab::make('Trash')
                 ->icon('heroicon-o-trash')
                 ->badge($trashCount ?: null)
                 ->badgeColor('danger')
-                ->modifyQueryUsing(fn(Builder $q) => $q->withoutGlobalScope(SoftDeletingScope::class)
-                    ->whereNotNull('trainings.deleted_at')),
+                ->modifyQueryUsing(fn(Builder $q) => $q->whereNotNull('trainings.deleted_at')),
         ];
     }
 

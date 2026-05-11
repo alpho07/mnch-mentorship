@@ -58,6 +58,9 @@ class MentorshipTrainingResource extends Resource {
 
     public static function getEloquentQuery(): Builder {
         $query = parent::getEloquentQuery()
+                ->withoutGlobalScopes([
+                    \Illuminate\Database\Eloquent\SoftDeletingScope::class,
+                ])
                 ->where('type', 'facility_mentorship')
                 ->with(['facility', 'program', 'county', 'mentor']);
 
@@ -65,6 +68,12 @@ class MentorshipTrainingResource extends Resource {
 
         if (!$user->hasRole(['super_admin', 'admin', 'division'])) {
             $query->where('mentor_id', $user->id);
+        }
+
+        // Non-super-admins always see only non-deleted records.
+        // Super-admins rely on tab filters (Active / Trash) to control visibility.
+        if (!$user->hasRole('super_admin')) {
+            $query->whereNull('trainings.deleted_at');
         }
 
         return $query;
