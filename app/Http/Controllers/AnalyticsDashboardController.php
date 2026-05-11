@@ -1816,7 +1816,7 @@ class AnalyticsDashboardController extends Controller {
                 'program',
                 'mentorshipClasses' => fn($q) => $q->with([
                     'classModules.programModule',
-                    'classSessions',
+                    'classModules.sessions',
                     'participants' => fn($q) => $q->with(['user.cadre', 'user.department']),
                 ]),
             ])

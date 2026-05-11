@@ -98,7 +98,7 @@
                             <span><i class="fas fa-cubes me-1"></i>{{ $class->classModules->count() }} modules</span>
                             <span><i class="fas fa-users me-1"></i>{{ $class->participants->count() }} mentees</span>
                             <span><i class="fas fa-calendar-check me-1"></i>{{ $class->attendance_present }}/{{ $class->attendance_total }} attendances</span>
-                            <span><i class="fas fa-video me-1"></i>{{ $class->classSessions->count() }} sessions</span>
+                            <span><i class="fas fa-video me-1"></i>{{ $class->classModules->sum(fn($m) => $m->sessions->count()) }} sessions</span>
                         </div>
                     </div>
                     <div style="display:flex;align-items:center;gap:.75rem;">
