@@ -22,7 +22,11 @@
       "Bash(git -C \"C:/xampp/htdocs/MNCH-Master\" commit -m \"feat: add assessment mode branch to controller and facilityMentorshipBreakdown route\")",
       "Bash(git -C \"C:/xampp/htdocs/MNCH-Master\" add resources/views/analytics/dashboard/index.blade.php resources/views/analytics/dashboard/assessment-mode.blade.php resources/views/analytics/dashboard/facility-mentorship-breakdown.blade.php resources/views/layouts/dashboard.blade.php app/Filament/Resources/AssessmentResource.php)",
       "Bash(git -C \"C:/xampp/htdocs/MNCH-Master\" commit -m \"feat: add assessment analytics dashboard \\(KPIs, charts, readiness table, drill-down, feedback action\\)\")",
-      "Bash(git *)"
+      "Bash(git *)",
+      "Bash(Get-Content *)",
+      "Bash(sed -n '30,42p' \"C:/xampp/htdocs/MNCH-Master/vendor/filament/tables/src/Concerns/HasFilters.php\")",
+      "Bash(sed -n '55,70p' \"C:/xampp/htdocs/MNCH-Master/vendor/filament/tables/src/Concerns/InteractsWithTable.php\")",
+      "Bash(echo \"EXIT: $?\")"
     ]
   },
   "hooks": {

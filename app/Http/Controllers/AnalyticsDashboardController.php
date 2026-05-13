@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Assessment;
 use App\Models\County;
+use App\Models\Subcounty;
 use App\Models\ClassParticipant;
 use App\Models\ClassAttendance;
 use App\Models\Training;
@@ -17,6 +18,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Carbon\Carbon;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class AnalyticsDashboardController extends Controller {
 
@@ -33,9 +35,14 @@ class AnalyticsDashboardController extends Controller {
                 ->filter();
 
         if ($mode === 'assessment') {
+            $selectedSubcounty = $request->get('subcounty_id');
+            $selectedFacility  = $request->get('facility_id');
+
             $filters = [
                 'year'            => $selectedYear,
                 'county_id'       => $request->get('county_id'),
+                'subcounty_id'    => $selectedSubcounty,
+                'facility_id'     => $selectedFacility,
                 'assessment_type' => $request->get('assessment_type'),
             ];
 
@@ -48,6 +55,14 @@ class AnalyticsDashboardController extends Controller {
             $selectedCounty         = $filters['county_id'];
             $selectedAssessmentType = $filters['assessment_type'];
 
+            $subcounties = $selectedCounty
+                ? Subcounty::where('county_id', $selectedCounty)->orderBy('name')->get(['id', 'name'])
+                : collect();
+
+            $facilities = $selectedSubcounty
+                ? Facility::whereNull('deleted_at')->where('subcounty_id', $selectedSubcounty)->orderBy('name')->get(['id', 'name'])
+                : collect();
+
             $availableYears = Assessment::selectRaw('YEAR(assessment_date) as year')
                 ->distinct()
                 ->orderBy('year', 'desc')
@@ -57,7 +72,8 @@ class AnalyticsDashboardController extends Controller {
             return view('analytics.dashboard.index', compact(
                 'mode', 'selectedYear', 'availableYears',
                 'summaryStats', 'chartData', 'facilitiesReadiness', 'insights',
-                'counties', 'selectedCounty', 'selectedAssessmentType'
+                'counties', 'selectedCounty', 'selectedAssessmentType',
+                'subcounties', 'selectedSubcounty', 'facilities', 'selectedFacility'
             ));
         }
 
@@ -1802,6 +1818,37 @@ class AnalyticsDashboardController extends Controller {
         }
 
         return array_slice($insights, 0, 4);
+    }
+
+    public function exportReadiness(Request $request)
+    {
+        $filters = [
+            'year'            => $request->get('year'),
+            'county_id'       => $request->get('county_id'),
+            'subcounty_id'    => $request->get('subcounty_id'),
+            'facility_id'     => $request->get('facility_id'),
+            'assessment_type' => $request->get('assessment_type'),
+        ];
+
+        $assessmentService   = app(AssessmentAnalyticsService::class);
+        $facilitiesReadiness = $assessmentService->getFacilitiesReadiness($filters);
+        $summaryStats        = $assessmentService->getSummaryStats($filters);
+
+        $selectedYear           = $filters['year'];
+        $selectedCounty         = $filters['county_id']
+            ? County::find($filters['county_id'])?->name
+            : null;
+        $selectedAssessmentType = $filters['assessment_type'];
+        $generatedAt            = Carbon::now()->format('d M Y, H:i');
+
+        $pdf = Pdf::loadView('analytics.dashboard.assessment-readiness-export', compact(
+            'facilitiesReadiness', 'summaryStats',
+            'selectedYear', 'selectedCounty', 'selectedAssessmentType', 'generatedAt'
+        ))->setPaper('a4', 'landscape');
+
+        $filename = 'facilities-readiness-' . ($selectedYear ?: 'all') . '-' . now()->format('Ymd') . '.pdf';
+
+        return $pdf->download($filename);
     }
 
     public function facilityMentorshipBreakdown(Facility $facility, Request $request)

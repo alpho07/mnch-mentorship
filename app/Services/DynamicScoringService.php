@@ -122,8 +122,8 @@ class DynamicScoringService {
         }
 
         $totalScore = $sectionScores->sum('total_score');
-        $maxScore = $sectionScores->sum('max_score');
-        $overallPercentage = $maxScore > 0 ? round(($totalScore / $maxScore) * 100, 2) : 0;
+        // Average of section percentages — each section weighted equally regardless of question count
+        $overallPercentage = round($sectionScores->avg('percentage'), 2);
         $overallGrade = self::calculateGrade($overallPercentage);
 
         Assessment::where('id', $assessmentId)->update([

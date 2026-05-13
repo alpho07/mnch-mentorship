@@ -192,6 +192,12 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/assessments/{assessment}/download', [AssessmentReportController::class, 'download'])
             ->name('assessment.download');
+
+    Route::get('/assessments/{assessment}/executive', [\App\Http\Controllers\AssessmentExecutiveDashboardController::class, 'show'])
+            ->name('assessment.executive');
+
+    Route::get('/assessments/{assessment}/executive/export', [\App\Http\Controllers\AssessmentExecutiveDashboardController::class, 'export'])
+            ->name('assessment.executive.export');
 });
 
 Route::prefix('analytics/dashboard')->name('analytics.dashboard.')->group(function () {
@@ -235,6 +241,8 @@ Route::prefix('analytics/dashboard')->name('analytics.dashboard.')->group(functi
     Route::post('/ajax/county-data', [AnalyticsDashboardController::class, 'getCountyData'])->name('ajax.county-data');
     Route::post('/ajax/coverage-charts', [AnalyticsDashboardController::class, 'getCoverageCharts'])->name('ajax.coverage-charts');
     Route::post('/ajax/export-data', [AnalyticsDashboardController::class, 'exportData'])->name('ajax.export-data');
+
+    Route::get('/assessment/export-readiness', [AnalyticsDashboardController::class, 'exportReadiness'])->name('assessment.export-readiness');
 
     Route::get('/facility/{facility}/mentorship-breakdown',
         [AnalyticsDashboardController::class, 'facilityMentorshipBreakdown'])

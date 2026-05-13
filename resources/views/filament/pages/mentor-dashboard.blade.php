@@ -70,7 +70,7 @@ $valColorMap = ['emerald'=>'text-emerald-700 dark:text-emerald-400','blue'=>'tex
 @php
 $insightCards = [];
 if($insights['mentees_needing_attention']>0)
-    $insightCards[] = ['color'=>'#ef4444','bg'=>'bg-red-50 dark:bg-red-950/20','text'=>"<strong>{$insights['mentees_needing_attention']}</strong> mentee(s) have low module completion — consider scheduling a check-in.","icon'=>'⚠️'];
+    $insightCards[] = ['color'=>'#ef4444','bg'=>'bg-red-50 dark:bg-red-950/20','text'=>"<strong>{$insights['mentees_needing_attention']}</strong> mentee(s) have low module completion — consider scheduling a check-in.",'icon'=>'⚠️'];
 if($insights['low_attendance_classes']>0)
     $insightCards[] = ['color'=>'#f59e0b','bg'=>'bg-amber-50 dark:bg-amber-950/20','text'=>"<strong>{$insights['low_attendance_classes']}</strong> class(es) have attendance below 60% — review and follow up.",'icon'=>'📉'];
 if($insights['stalled_modules']>0)

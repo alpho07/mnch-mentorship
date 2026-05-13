@@ -47,28 +47,43 @@ class ListMentorshipTrainings extends ListRecords {
         return 1;
     }
 
-    public function getTabs1(): array {
-        return [
-            'all' => Tab::make('All Mentorships')
-                    ->badge($this->getTabCount('all'))
-                    ->badgeColor('gray'),
-            'ongoing' => Tab::make('Ongoing')
-                    ->modifyQueryUsing(fn(Builder $query) => $query->where('status', 'ongoing'))
-                    ->badge($this->getTabCount('ongoing'))
-                    ->badgeColor('success'),
-            'repeat' => Tab::make('Repeat')
-                    ->modifyQueryUsing(fn(Builder $query) => $query->where('status', 'ongoing'))
-                    ->badge($this->getTabCount('repeat'))
-                    ->badgeColor('info'),
-            'completed' => Tab::make('Completed')
-                    ->modifyQueryUsing(fn(Builder $query) => $query->where('status', 'completed'))
-                    ->badge($this->getTabCount('completed'))
-                    ->badgeColor('primary'),
-            'new' => Tab::make('New')
-                    ->modifyQueryUsing(fn(Builder $query) => $query->where('status', 'new'))
-                    ->badge($this->getTabCount('new'))
-                    ->badgeColor('secondary'),
+    public function getTabs(): array {
+        $user        = auth()->user();
+        $isSuperAdmin = $user->hasRole('super_admin');
+
+        $liveCount  = $this->getScopedBaseQuery()->where('is_pilot', false)->count();
+        $pilotCount = $this->getScopedBaseQuery()->where('is_pilot', true)->count();
+        $trashCount = $isSuperAdmin
+            ? Training::onlyTrashed()->where('type', 'facility_mentorship')->count()
+            : 0;
+
+        $tabs = [
+            'live' => Tab::make('Live Mentorships')
+                ->icon('heroicon-o-academic-cap')
+                ->badge($liveCount ?: null)
+                ->badgeColor('success')
+                ->modifyQueryUsing(fn(Builder $query) => $query
+                    ->whereNull('trainings.deleted_at')
+                    ->where('is_pilot', false)),
+
+            'pilots' => Tab::make('Pilot Runs')
+                ->icon('heroicon-o-beaker')
+                ->badge($pilotCount ?: null)
+                ->badgeColor('warning')
+                ->modifyQueryUsing(fn(Builder $query) => $query
+                    ->whereNull('trainings.deleted_at')
+                    ->where('is_pilot', true)),
         ];
+
+        if ($isSuperAdmin) {
+            $tabs['trash'] = Tab::make('Trash')
+                ->icon('heroicon-o-trash')
+                ->badge($trashCount ?: null)
+                ->badgeColor('danger')
+                ->modifyQueryUsing(fn(Builder $query) => $query->whereNotNull('trainings.deleted_at'));
+        }
+
+        return $tabs;
     }
 
     /**
@@ -86,18 +101,17 @@ class ListMentorshipTrainings extends ListRecords {
     }
 
     protected function getQuickStats(): array {
+        $live = fn() => $this->getScopedBaseQuery()->where('is_pilot', false);
         return [
-            'total' => $this->getScopedBaseQuery()->count(),
-            'active' => $this->getScopedBaseQuery()
-                    ->where(function (Builder $query) {
-                        $query->whereIn('status', ['active', 'ongoing'])
-                                ->orWhereHas('mentorshipClasses', fn(Builder $classQuery) => $classQuery->where('status', 'active'));
-                    })
-                    ->count(),
-            'completed' => $this->getScopedBaseQuery()->where('status', 'completed')->count(),
-            'draft' => $this->getScopedBaseQuery()->whereIn('status', ['draft', 'new'])->count(),
-            'upcoming' => $this->getScopedBaseQuery()->where('start_date', '>', now())->count(),
-            'mentees' => $this->getScopedMenteesQuery()->distinct('class_participants.user_id')->count('class_participants.user_id'),
+            'total'     => $live()->count(),
+            'active'    => $live()->where(function (Builder $query) {
+                                $query->whereIn('status', ['active', 'ongoing'])
+                                    ->orWhereHas('mentorshipClasses', fn(Builder $q) => $q->where('status', 'active'));
+                            })->count(),
+            'completed' => $live()->where('status', 'completed')->count(),
+            'draft'     => $live()->whereIn('status', ['draft', 'new'])->count(),
+            'upcoming'  => $live()->where('start_date', '>', now())->count(),
+            'mentees'   => $this->getScopedMenteesQuery()->distinct('class_participants.user_id')->count('class_participants.user_id'),
         ];
     }
 

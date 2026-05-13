@@ -37,7 +37,8 @@ class MentorshipStatsOverview extends BaseWidget {
      * Build a base query scoped by role: admins see all, others see only their own.
      */
     protected function getScopedBaseQuery(): Builder {
-        $query = Training::where('type', 'facility_mentorship');
+        $query = Training::where('type', 'facility_mentorship')
+            ->where('is_pilot', false);   // pilots excluded from all KPI counts
 
         $user = auth()->user();
         if (!$user->hasRole(['super_admin', 'admin', 'division'])) {

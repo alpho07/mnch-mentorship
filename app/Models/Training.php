@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -46,6 +47,9 @@ class Training extends Model {
         'provide_materials',
         'location_type', // 'hospital', 'hotel', 'online'
         'online_link', // for online trainings
+        'deleted_by',
+        'deletion_reason',
+        'is_pilot',
     ];
     protected $casts = [
         'start_date' => 'date',
@@ -56,8 +60,17 @@ class Training extends Model {
         'prerequisites' => 'array',
         'training_approaches' => 'array',
         'assess_participants' => 'boolean',
-        'provide_materials' => 'boolean',
+        'provide_materials'  => 'boolean',
+        'is_pilot'           => 'boolean',
     ];
+
+    public function scopeLive(Builder $query): Builder {
+        return $query->where('is_pilot', false);
+    }
+
+    public function scopePilot(Builder $query): Builder {
+        return $query->where('is_pilot', true);
+    }
 
     // ============================================
     // BASIC RELATIONSHIPS
@@ -131,6 +144,13 @@ class Training extends Model {
      */
     public function mentor(): BelongsTo {
         return $this->belongsTo(User::class, 'mentor_id');
+    }
+
+    /**
+     * User who soft-deleted this mentorship
+     */
+    public function deletedBy(): BelongsTo {
+        return $this->belongsTo(User::class, 'deleted_by');
     }
 
     // ============================================
@@ -359,6 +379,22 @@ class Training extends Model {
      */
     public function canUserFacilitate(int $userId): bool {
         return $this->mentor_id === $userId || $this->isCoMentor($userId);
+    }
+
+    public function hasEnrolledMentees(): bool {
+        return ClassParticipant::whereHas(
+            'mentorshipClass', fn($q) => $q->where('training_id', $this->id)
+        )->exists();
+    }
+
+    public function hasActiveOrCompletedClasses(): bool {
+        return $this->mentorshipClasses()
+            ->whereIn('status', ['active', 'completed'])
+            ->exists();
+    }
+
+    public function canBeDeleted(): bool {
+        return !$this->hasEnrolledMentees() && !$this->hasActiveOrCompletedClasses();
     }
 
     /**

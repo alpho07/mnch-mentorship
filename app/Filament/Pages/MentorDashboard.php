@@ -10,14 +10,48 @@ use App\Models\MenteeModuleProgress;
 use App\Models\MentorshipClass;
 use App\Models\MentorshipCoMentor;
 use App\Models\Training;
-use Filament\Resources\Pages\Page;
-use Illuminate\Support\Facades\DB;
+use Filament\Pages\Page;
 
 class MentorDashboard extends Page
 {
-    protected static string $resource = MentorshipTrainingResource::class;
-    protected static string $view     = 'filament.pages.mentor-dashboard';
-    protected static bool   $shouldRegisterNavigation = false;
+    protected static string  $view            = 'filament.pages.mentor-dashboard';
+    protected static ?string $slug            = 'mentor-dashboard';
+    protected static ?string $navigationGroup = 'Dashboards';
+    protected static ?string $navigationIcon  = 'heroicon-o-academic-cap';
+    protected static ?string $navigationLabel = 'Mentor Dashboard';
+    protected static ?int    $navigationSort  = 2;
+
+    private const MENTOR_ROLES = [
+        'facility_mentor', 'facility_mentor_lead',
+        'county_mentor_lead', 'subcounty_mentor_lead',
+        'spoke_mentor', 'spoke_mentor_lead',
+        'national_mentor_lead', 'national_mentor',
+    ];
+
+    private const SENIOR_ROLES = ['super_admin', 'admin', 'division', 'national'];
+
+    public static function shouldRegisterNavigation(): bool {
+        if (!auth()->check()) return false;
+        return auth()->user()->hasRole(array_merge(self::MENTOR_ROLES, self::SENIOR_ROLES));
+    }
+
+    public static function canAccess(): bool {
+        if (!auth()->check()) return false;
+        return auth()->user()->hasRole(array_merge(self::MENTOR_ROLES, self::SENIOR_ROLES));
+    }
+
+    public static function getNavigationBadge(): ?string {
+        if (!auth()->check()) return null;
+        $user = auth()->user();
+        $count = Training::where('type', 'facility_mentorship')
+            ->when(!$user->hasRole(self::SENIOR_ROLES), fn($q) => $q->where('mentor_id', $user->id))
+            ->count();
+        return $count > 0 ? (string) $count : null;
+    }
+
+    public static function getNavigationBadgeColor(): string {
+        return 'primary';
+    }
 
     // ─── Loaded state ────────────────────────────────────────────────────────
     public array $kpis          = [];
@@ -249,13 +283,27 @@ class MentorDashboard extends Page
 
     private function getMyTrainingIds(int $userId): array
     {
+        // Senior roles see all live (non-pilot) facility mentorships as a summary view
+        if (auth()->user()->hasRole(self::SENIOR_ROLES)) {
+            return Training::where('type', 'facility_mentorship')
+                ->where('is_pilot', false)
+                ->pluck('id')
+                ->toArray();
+        }
+
         $asLead = Training::where('mentor_id', $userId)
             ->where('type', 'facility_mentorship')
+            ->where('is_pilot', false)
             ->pluck('id');
 
         $asCoMentor = MentorshipCoMentor::where('user_id', $userId)
             ->where('status', 'accepted')
             ->pluck('training_id');
+
+        // Filter co-mentor training IDs to also exclude pilots
+        $asCoMentor = Training::whereIn('id', $asCoMentor)
+            ->where('is_pilot', false)
+            ->pluck('id');
 
         return $asLead->merge($asCoMentor)->unique()->values()->toArray();
     }
