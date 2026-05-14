@@ -13,7 +13,6 @@ import { MenteeManagerScreen }    from '../screens/screen-mentee-manager.jsx';
 import { MyClassesScreen }             from '../screens/screen-my-classes.jsx';
 import { MentorshipReportsScreen }    from '../screens/screen-mentorship-reports.jsx';
 import { ClassProgressScreen }    from '../screens/screen-class-progress.jsx';
-import { ProfileScreen }          from '../screens/screen-profile.jsx';
 
 // SVG nav icons keyed by tab id
 const TAB_ICONS = {
@@ -44,25 +43,17 @@ const TAB_ICONS = {
             <path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z" />
         </svg>
     ),
-    profile: (active) => (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? "#0097A7" : "#8BC8C8"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
-            <circle cx="12" cy="7" r="4" fill={active ? "rgba(0,151,167,0.08)" : "none"} />
-        </svg>
-    ),
 };
 
 const MENTOR_TABS = [
     { id: 'home',        label: 'Home' },
     { id: 'mentorships', label: 'Mentorships' },
     { id: 'reports',     label: 'Reports' },
-    { id: 'profile',     label: 'Profile' },
 ];
 
 const MENTEE_TABS = [
     { id: 'home',       label: 'Home' },
     { id: 'my-classes', label: 'My Classes' },
-    { id: 'profile',    label: 'Profile' },
 ];
 
 function BottomNav({ tabs, active, onChange }) {
@@ -234,7 +225,6 @@ export function MentorshipsScope({ user, onLogout, onUserUpdate }) {
             {tab === 'mentorships' && <MentorshipsListScreen user={user} onOpen={(t) => setModal({ type: 'mentorshipDetail', data: t })} onNew={() => setModal({ type: 'mentorshipForm', data: null })} onEdit={(t) => setModal({ type: 'mentorshipEdit', data: t })} />}
             {tab === 'reports'     && <MentorshipReportsScreen user={user} />}
             {tab === 'my-classes'  && <MyClassesScreen user={user} onOpen={(cls) => setModal({ type: 'classProgress', data: cls })} />}
-            {tab === 'profile'     && <ProfileScreen user={user} assessments={[]} onUpdateUser={onUserUpdate} onLogout={onLogout} />}
             <BottomNav tabs={TABS} active={tab} onChange={setTab} />
         </div>
     );
