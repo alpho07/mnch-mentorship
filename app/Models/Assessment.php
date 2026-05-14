@@ -31,15 +31,22 @@ class Assessment extends Model {
         'feedback_given_by',
         'feedback_given_at',
         'feedback_notes',
+        'trained_before_mentorship',
+        'trained_marked_by',
+        'trained_marked_at',
+        'excluded_cadre_ids',
     ];
     protected $casts = [
-        'assessment_date'    => 'date',
-        'section_progress'   => 'array',
-        'completed_at'       => 'datetime',
-        'overall_score'      => 'decimal:2',
-        'overall_percentage' => 'decimal:2',
-        'feedback_given'     => 'boolean',
-        'feedback_given_at'  => 'datetime',
+        'assessment_date'           => 'date',
+        'section_progress'          => 'array',
+        'completed_at'              => 'datetime',
+        'overall_score'             => 'decimal:2',
+        'overall_percentage'        => 'decimal:2',
+        'feedback_given'            => 'boolean',
+        'feedback_given_at'         => 'datetime',
+        'trained_before_mentorship' => 'boolean',
+        'trained_marked_at'         => 'datetime',
+        'excluded_cadre_ids'        => 'array',
     ];
     protected $with = ['facility.subcounty.county'];
 

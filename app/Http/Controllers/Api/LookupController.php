@@ -17,7 +17,7 @@ class LookupController extends Controller
 {
     public function programs(): JsonResponse
     {
-        $programs = Program::orderBy('name')->get(['id', 'name', 'description']);
+        $programs = Program::withCount('programModules as module_count')->orderBy('name')->get(['id', 'name', 'description']);
         return response()->json(['data' => $programs]);
     }
 

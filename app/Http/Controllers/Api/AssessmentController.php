@@ -34,7 +34,7 @@ class AssessmentController extends Controller {
                     'facility.subcounty.county',
                     'sectionScores.section',
                 ])
-                ->latest('assessment_date');
+                ->latest();
 
         if ($user->hasRole('super_admin')) {
             // Super admin sees everything including soft-deleted

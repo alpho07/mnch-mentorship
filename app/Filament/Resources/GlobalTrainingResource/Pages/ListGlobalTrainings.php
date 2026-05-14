@@ -56,23 +56,30 @@ class ListGlobalTrainings extends ListRecords
     {
         return [
             'all' => Tab::make('All Trainings')
+                ->modifyQueryUsing(fn (Builder $query) => $query->whereNull('trainings.deleted_at'))
                 ->badge($this->getTabCount('all'))
                 ->badgeColor('gray'),
 
             'national' => Tab::make('National Led')
-                ->modifyQueryUsing(fn (Builder $query) => $query->where('lead_type', 'national'))
+                ->modifyQueryUsing(fn (Builder $query) => $query->whereNull('trainings.deleted_at')->where('lead_type', 'national'))
                 ->badge($this->getTabCount('national'))
                 ->badgeColor('primary'),
 
             'county' => Tab::make('County Led')
-                ->modifyQueryUsing(fn (Builder $query) => $query->where('lead_type', 'county'))
+                ->modifyQueryUsing(fn (Builder $query) => $query->whereNull('trainings.deleted_at')->where('lead_type', 'county'))
                 ->badge($this->getTabCount('county'))
                 ->badgeColor('success'),
 
             'partner' => Tab::make('Partner Led')
-                ->modifyQueryUsing(fn (Builder $query) => $query->where('lead_type', 'partner'))
+                ->modifyQueryUsing(fn (Builder $query) => $query->whereNull('trainings.deleted_at')->where('lead_type', 'partner'))
                 ->badge($this->getTabCount('partner'))
                 ->badgeColor('warning'),
+
+            'trashed' => Tab::make('Trashed')
+                ->modifyQueryUsing(fn (Builder $query) => $query->whereNotNull('trainings.deleted_at'))
+                ->badge($this->getTabCount('trashed'))
+                ->badgeColor('danger')
+                ->icon('heroicon-o-trash'),
 
             /*'ongoing' => Tab::make('Ongoing')
                 ->modifyQueryUsing(fn (Builder $query) => $query->where('status', 'ongoing'))
@@ -392,19 +399,16 @@ class ListGlobalTrainings extends ListRecords
 
     protected function getTabCount(string $tab): int
     {
-        $query = Training::where('type', 'global_training');
+        $base    = Training::where('type', 'global_training');
+        $trashed = Training::withTrashed()->where('type', 'global_training');
 
         return match ($tab) {
-            'all' => $query->count(),
-            'national' => $query->where('lead_type', 'national')->count(),
-            'county' => $query->where('lead_type', 'county')->count(),
-            'partner' => $query->where('lead_type', 'partner')->count(),
-            'ongoing' => $query->where('status', 'ongoing')->count(),
-            'registration_open' => $query->where('status', 'registration_open')->count(),
-            'upcoming' => $query->where('start_date', '>', now())->count(),
-            'completed' => $query->where('status', 'completed')->count(),
-            'draft' => $query->where('status', 'draft')->count(),
-            default => 0,
+            'all'      => $base->count(),
+            'national' => $base->where('lead_type', 'national')->count(),
+            'county'   => $base->where('lead_type', 'county')->count(),
+            'partner'  => $base->where('lead_type', 'partner')->count(),
+            'trashed'  => $trashed->onlyTrashed()->count(),
+            default    => 0,
         };
     }
 }

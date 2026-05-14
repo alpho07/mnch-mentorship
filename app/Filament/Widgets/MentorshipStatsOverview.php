@@ -2,6 +2,7 @@
 
 namespace App\Filament\Widgets;
 
+use App\Models\ClassParticipant;
 use App\Models\Training;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
@@ -17,7 +18,7 @@ class MentorshipStatsOverview extends BaseWidget {
                     ->description('All mentorships')
                     ->descriptionIcon('heroicon-m-academic-cap')
                     ->color('primary'),
-                    Stat::make('Active Mentorships', $stats['new'])
+                    Stat::make('Active Mentorships', $stats['active'])
                     ->description('Currently running')
                     ->descriptionIcon('heroicon-m-play')
                     ->color('success'),
@@ -36,7 +37,8 @@ class MentorshipStatsOverview extends BaseWidget {
      * Build a base query scoped by role: admins see all, others see only their own.
      */
     protected function getScopedBaseQuery(): Builder {
-        $query = Training::where('type', 'facility_mentorship');
+        $query = Training::where('type', 'facility_mentorship')
+            ->where('is_pilot', false);   // pilots excluded from all KPI counts
 
         $user = auth()->user();
         if (!$user->hasRole(['super_admin', 'admin', 'division'])) {
@@ -49,11 +51,29 @@ class MentorshipStatsOverview extends BaseWidget {
     protected function getQuickStats(): array {
         return [
             'total' => $this->getScopedBaseQuery()->count(),
-            'ongoing' => $this->getScopedBaseQuery()->where('status', 'ongoing')->count(),
+            'active' => $this->getScopedBaseQuery()
+                    ->where(function (Builder $query) {
+                        $query->whereIn('status', ['active', 'ongoing'])
+                                ->orWhereHas('mentorshipClasses', fn(Builder $classQuery) => $classQuery->where('status', 'active'));
+                    })
+                    ->count(),
             'completed' => $this->getScopedBaseQuery()->where('status', 'completed')->count(),
-            'new' => $this->getScopedBaseQuery()->where('status', 'new')->count(),
+            'draft' => $this->getScopedBaseQuery()->whereIn('status', ['draft', 'new'])->count(),
             'upcoming' => $this->getScopedBaseQuery()->where('start_date', '>', now())->count(),
-            'mentees' => $this->getScopedBaseQuery()->withCount('participants')->get()->sum('participants_count'),
+            'mentees' => $this->getScopedMenteesQuery()->distinct('class_participants.user_id')->count('class_participants.user_id'),
         ];
+    }
+
+    protected function getScopedMenteesQuery(): Builder {
+        $user = auth()->user();
+
+        return ClassParticipant::query()
+                ->whereHas('mentorshipClass.training', function (Builder $query) use ($user) {
+                    $query->where('type', 'facility_mentorship');
+
+                    if (!$user->hasRole(['super_admin', 'admin', 'division'])) {
+                        $query->where('mentor_id', $user->id);
+                    }
+                });
     }
 }

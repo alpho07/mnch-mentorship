@@ -1,0 +1,156 @@
+<h2>How should the header behave when you switch tabs?</h2>
+<p class="subtitle">The segmented control is sticky at top. Question: does the header colour change with each area, or stay one consistent colour?</p>
+
+<style>
+  .phone-row { display: flex; gap: 24px; justify-content: center; flex-wrap: wrap; margin: 24px 0; }
+  .phone { width: 200px; border-radius: 28px; overflow: hidden; box-shadow: 0 12px 40px rgba(0,0,0,0.18); border: 2px solid #e5e7eb; background: #f8fafc; flex-shrink: 0; }
+  .phone-notch { background: #111; height: 26px; display: flex; align-items: center; justify-content: center; }
+  .phone-notch-pill { width: 60px; height: 8px; background: #222; border-radius: 4px; }
+  .phone-header { padding: 12px 14px 8px; display: flex; align-items: center; justify-content: space-between; }
+  .phone-title { font-size: 13px; font-weight: 800; color: white; }
+  .phone-avatar { width: 28px; height: 28px; border-radius: 50%; background: rgba(255,255,255,0.25); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: white; }
+  .phone-body { background: #f0f4f8; min-height: 260px; padding: 12px; }
+  .phone-card { background: white; border-radius: 12px; padding: 12px; margin-bottom: 10px; box-shadow: 0 1px 6px rgba(0,0,0,0.06); }
+  .phone-card-title { font-size: 11px; font-weight: 700; color: #1e293b; margin-bottom: 3px; }
+  .phone-card-sub { font-size: 9px; color: #94a3b8; }
+  .phone-card-badge { display: inline-block; font-size: 8px; font-weight: 700; padding: 2px 6px; border-radius: 20px; margin-top: 4px; }
+  .seg { display: flex; border-radius: 10px; padding: 3px; gap: 2px; }
+  .seg .tab { flex: 1; text-align: center; padding: 6px 2px; font-size: 10px; font-weight: 700; border-radius: 8px; }
+  .seg .tab.active { background: white; }
+  .label-tag { display: inline-block; font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
+  .arrow { text-align: center; font-size: 18px; margin: 8px 0 0; color: #94a3b8; }
+  .mini-row { display: flex; gap: 8px; margin-top: 12px; }
+  .mini-phone { flex: 1; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,0.12); border: 1.5px solid #e5e7eb; }
+</style>
+
+<div class="phone-row">
+
+  <!-- Option A: colour changes with tab -->
+  <div style="text-align:center">
+    <div class="label-tag">A — Header colour follows tab</div>
+    <div class="phone">
+      <div class="phone-notch"><div class="phone-notch-pill"></div></div>
+      <!-- Assessments tab active = teal -->
+      <div style="background:#0097A7">
+        <div class="phone-header">
+          <span class="phone-title">MNCH Kenya</span>
+          <div class="phone-avatar">JD</div>
+        </div>
+        <div style="padding:0 10px 10px">
+          <div class="seg" style="background:rgba(255,255,255,0.18)">
+            <div class="tab active" style="color:#0097A7">Assess</div>
+            <div class="tab" style="color:rgba(255,255,255,0.65)">Mentor</div>
+            <div class="tab" style="color:rgba(255,255,255,0.65)">Training</div>
+          </div>
+        </div>
+      </div>
+      <div class="phone-body">
+        <div class="phone-card">
+          <div class="phone-card-title">Machakos Hospital</div>
+          <div class="phone-card-sub">Assessment · Oct 2024</div>
+          <div class="phone-card-badge" style="background:#e0f7fa;color:#0097A7">In Progress</div>
+        </div>
+        <div class="phone-card">
+          <div class="phone-card-title">Mwea Health Centre</div>
+          <div class="phone-card-sub">Assessment · Sep 2024</div>
+          <div class="phone-card-badge" style="background:#dcfce7;color:#15803d">Complete</div>
+        </div>
+      </div>
+    </div>
+    <!-- show what mentor tab looks like -->
+    <div class="arrow">↓ switch to Mentorships</div>
+    <div class="mini-row">
+      <div class="mini-phone">
+        <!-- Mentorships = indigo -->
+        <div style="background:#4F46E5;padding:6px 8px 8px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <span style="color:white;font-size:10px;font-weight:800">MNCH Kenya</span>
+            <div style="width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,0.25);display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;color:white">JD</div>
+          </div>
+          <div class="seg" style="background:rgba(255,255,255,0.18)">
+            <div class="tab" style="color:rgba(255,255,255,0.6);font-size:8px">Assess</div>
+            <div class="tab active" style="color:#4F46E5;font-size:8px">Mentor</div>
+            <div class="tab" style="color:rgba(255,255,255,0.6);font-size:8px">Training</div>
+          </div>
+        </div>
+        <div style="background:#f0f4f8;padding:8px">
+          <div style="background:white;border-radius:8px;padding:8px;font-size:8px;font-weight:700;color:#1e293b">Kirinyaga Class B2<br><span style="color:#94a3b8;font-weight:400">3 active modules</span></div>
+        </div>
+      </div>
+    </div>
+    <p style="font-size:10px;color:#64748b;margin-top:6px">Header shifts to each scope's colour</p>
+  </div>
+
+  <!-- Option B: single consistent teal -->
+  <div style="text-align:center">
+    <div class="label-tag">B — One colour always</div>
+    <div class="phone">
+      <div class="phone-notch"><div class="phone-notch-pill"></div></div>
+      <div style="background:#0097A7">
+        <div class="phone-header">
+          <span class="phone-title">MNCH Kenya</span>
+          <div class="phone-avatar">JD</div>
+        </div>
+        <div style="padding:0 10px 10px">
+          <div class="seg" style="background:rgba(255,255,255,0.18)">
+            <div class="tab active" style="color:#0097A7">Assess</div>
+            <div class="tab" style="color:rgba(255,255,255,0.65)">Mentor</div>
+            <div class="tab" style="color:rgba(255,255,255,0.65)">Training</div>
+          </div>
+        </div>
+      </div>
+      <div class="phone-body">
+        <div class="phone-card">
+          <div class="phone-card-title">Machakos Hospital</div>
+          <div class="phone-card-sub">Assessment · Oct 2024</div>
+          <div class="phone-card-badge" style="background:#e0f7fa;color:#0097A7">In Progress</div>
+        </div>
+        <div class="phone-card">
+          <div class="phone-card-title">Mwea Health Centre</div>
+          <div class="phone-card-sub">Assessment · Sep 2024</div>
+          <div class="phone-card-badge" style="background:#dcfce7;color:#15803d">Complete</div>
+        </div>
+      </div>
+    </div>
+    <!-- show what mentor tab looks like -->
+    <div class="arrow">↓ switch to Mentorships</div>
+    <div class="mini-row">
+      <div class="mini-phone">
+        <!-- same teal -->
+        <div style="background:#0097A7;padding:6px 8px 8px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <span style="color:white;font-size:10px;font-weight:800">MNCH Kenya</span>
+            <div style="width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,0.25);display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;color:white">JD</div>
+          </div>
+          <div class="seg" style="background:rgba(255,255,255,0.18)">
+            <div class="tab" style="color:rgba(255,255,255,0.6);font-size:8px">Assess</div>
+            <div class="tab active" style="color:#0097A7;font-size:8px">Mentor</div>
+            <div class="tab" style="color:rgba(255,255,255,0.6);font-size:8px">Training</div>
+          </div>
+        </div>
+        <div style="background:#f0f4f8;padding:8px">
+          <div style="background:white;border-radius:8px;padding:8px;font-size:8px;font-weight:700;color:#1e293b">Kirinyaga Class B2<br><span style="color:#94a3b8;font-weight:400">3 active modules</span></div>
+        </div>
+      </div>
+    </div>
+    <p style="font-size:10px;color:#64748b;margin-top:6px">Teal header stays — only content swaps</p>
+  </div>
+
+</div>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Header colour follows the active tab</h3>
+      <p>Assessments = teal, Mentorships = indigo, Trainings = amber. Each area feels distinct — matches what the hub cards used to show.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Single teal header always</h3>
+      <p>One consistent brand colour regardless of tab. Simpler, feels more like a unified app rather than three separate mini-apps.</p>
+    </div>
+  </div>
+</div>

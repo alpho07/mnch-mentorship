@@ -35,7 +35,7 @@ class ListUsers extends ListRecords {
     // ─────────────────────────────────────────────────────────────────────────
 
     protected function getTableQuery(): Builder {
-        $query = User::query()->with([
+        $query = User::withTrashed()->with([
             'facility:id,name,mfl_code,subcounty_id',
             'facility.subcounty:id,name,county_id',
             'facility.subcounty.county:id,name',
@@ -76,6 +76,18 @@ class ListUsers extends ListRecords {
         return $query;
     }
 
+    protected function applySearchToTableQuery(Builder $query): Builder
+    {
+        $this->applyColumnSearchesToTableQuery($query);
+        $this->applyGlobalSearchToTableQuery($query);
+
+        if (filled($search = $this->getTableSearch())) {
+            $this->applySearchRelevanceOrdering($query, $search);
+        }
+
+        return $query;
+    }
+
     // ─────────────────────────────────────────────────────────────────────────
     // Tabs — labels, badges, colors only. NO modifyQueryUsing closures.
     // Filtering is handled entirely in getTableQuery() above.
@@ -83,12 +95,12 @@ class ListUsers extends ListRecords {
 
     public function getTabs(): array {
         $roleCounts = $this->getRoleCounts();
-        $noRoleCount = User::whereNotIn('id', function ($sub) {
+        $noRoleCount = User::withTrashed()->whereNotIn('id', function ($sub) {
                     $sub->select('model_id')
                             ->from('model_has_roles')
                             ->where('model_type', 'App\\Models\\User');
                 })->count();
-        $total = User::count();
+        $total = User::withTrashed()->count();
 
         $tabs = [
             'all' => Tab::make('All')->badge($total)->badgeColor('primary'),
@@ -121,7 +133,6 @@ class ListUsers extends ListRecords {
                         ->join('roles', 'model_has_roles.role_id', '=', 'roles.id')
                         ->join('users', 'model_has_roles.model_id', '=', 'users.id')
                         ->where('model_has_roles.model_type', 'App\\Models\\User')
-                        ->whereNull('users.deleted_at')
                         ->select('roles.name', DB::raw('COUNT(DISTINCT users.id) as count'))
                         ->groupBy('roles.id', 'roles.name')
                         ->orderByDesc('count')
@@ -141,5 +152,47 @@ class ListUsers extends ListRecords {
             str_contains($lower, 'mentee') => 'success',
             default => 'gray',
         };
+    }
+
+    protected function applySearchRelevanceOrdering(Builder $query, string $search): void
+    {
+        $compactSearch = $this->compactSearchValue($search);
+
+        if ($compactSearch === '') {
+            return;
+        }
+
+        $exact = $compactSearch;
+        $startsWith = "{$compactSearch}%";
+        $contains = "%{$compactSearch}%";
+
+        $emailExpression = $this->compactSearchExpression("COALESCE(users.email, '')");
+        $fullNameExpression = $this->compactSearchExpression("CONCAT_WS(' ', COALESCE(users.first_name, ''), COALESCE(users.middle_name, ''), COALESCE(users.last_name, ''), COALESCE(users.name, ''))");
+
+        $query->orderByRaw(
+            "CASE
+                WHEN {$emailExpression} = ? THEN 0
+                WHEN {$emailExpression} LIKE ? THEN 1
+                WHEN {$emailExpression} LIKE ? THEN 2
+                WHEN {$fullNameExpression} LIKE ? THEN 3
+                WHEN {$fullNameExpression} LIKE ? THEN 4
+                ELSE 5
+            END",
+            [$exact, $startsWith, $contains, $startsWith, $contains]
+        );
+    }
+
+    protected function compactSearchExpression(string $expression): string
+    {
+        $normalized = "LOWER(CAST({$expression} AS CHAR CHARACTER SET utf8mb4) COLLATE utf8mb4_unicode_ci)";
+
+        return "REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE({$normalized}, ' ', ''), '.', ''), '_', ''), '-', ''), '@', ''), '+', '')";
+    }
+
+    protected function compactSearchValue(string $search): string
+    {
+        $search = Str::lower(trim($search));
+
+        return preg_replace('/[\s.\-_@+]+/u', '', $search) ?? $search;
     }
 }

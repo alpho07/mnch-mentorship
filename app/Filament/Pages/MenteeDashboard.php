@@ -13,28 +13,42 @@ use Filament\Pages\Page;
 
 class MenteeDashboard extends Page {
 
-    protected static string $view = 'filament.pages.mentee-dashboard';
-    protected static bool $shouldRegisterNavigation = false;
-    protected static ?string $slug = 'mentee-dashboard';
+    protected static string  $view            = 'filament.pages.mentee-dashboard';
+    protected static ?string $slug            = 'mentee-dashboard';
+    protected static ?string $navigationGroup = 'Dashboards';
+    protected static ?string $navigationIcon  = 'heroicon-o-user-circle';
+    protected static ?string $navigationLabel = 'Mentee Dashboard';
+    protected static ?int    $navigationSort  = 3;
+
+    private const ALLOWED_ROLES = ['super_admin', 'admin', 'division', 'national', 'mentee'];
 
     public static function shouldRegisterNavigation(): bool {
-        return auth()->check() && auth()->user()->hasRole(['super_admin','admin','division','mentee']);
+        return auth()->check() && auth()->user()->hasRole(self::ALLOWED_ROLES);
     }
 
     public static function canAccess(): bool {
-        return auth()->check() && auth()->user()->hasRole(['super_admin','admin','division','mentee']);
+        return auth()->check() && auth()->user()->hasRole(self::ALLOWED_ROLES);
     }
 
-    public static function canCreate(): bool {
-        return static::canAccess();
+    public static function getNavigationBadge(): ?string {
+        if (!auth()->check()) return null;
+        $user = auth()->user();
+        if ($user->hasRole('mentee')) {
+            // For mentees: count their active enrollments
+            $count = \App\Models\ClassParticipant::where('user_id', $user->id)
+                ->whereIn('status', ['enrolled', 'active'])
+                ->count();
+        } else {
+            // For senior roles: count all active mentees system-wide
+            $count = \App\Models\ClassParticipant::whereIn('status', ['enrolled', 'active'])
+                ->distinct('user_id')
+                ->count('user_id');
+        }
+        return $count > 0 ? (string) $count : null;
     }
 
-    public static function canEdit($record): bool {
-        return static::canAccess();
-    }
-
-    public static function canDelete($record): bool {
-        return static::canAccess();
+    public static function getNavigationBadgeColor(): string {
+        return 'success';
     }
 
     // ── Public state (Livewire-reactive) ─────────────────────────────────────

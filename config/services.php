@@ -35,7 +35,4 @@ return [
         'username' => env('DHIS2_USERNAME'),
         'password' => env('DHIS2_PASSWORD'),
     ],
-    'anthropic' => [
-        'api_key' => env('ANTHROPIC_API_KEY'),
-    ],
 ];

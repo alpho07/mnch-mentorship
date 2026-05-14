@@ -46,13 +46,6 @@ class DynamicScoringService {
         }
         // ─────────────────────────────────────────────────────────────────────
 
-        // ── mortality_three_month exclusion ───────────────────────────────────
-        // These questions store a JSON string (monthly counts), not a yes/no
-        // value, so they can never match a scoring_map key. Exclude them from
-        // scored question counts so they don't penalise the section score.
-        $questions = $questions->filter(fn($q) => $q->question_type !== 'mortality_three_month');
-        // ─────────────────────────────────────────────────────────────────────
-
         $totalQuestions = $questions->count();
 
         if ($totalQuestions === 0) {
@@ -129,8 +122,8 @@ class DynamicScoringService {
         }
 
         $totalScore = $sectionScores->sum('total_score');
-        $maxScore = $sectionScores->sum('max_score');
-        $overallPercentage = $maxScore > 0 ? round(($totalScore / $maxScore) * 100, 2) : 0;
+        // Average of section percentages — each section weighted equally regardless of question count
+        $overallPercentage = round($sectionScores->avg('percentage'), 2);
         $overallGrade = self::calculateGrade($overallPercentage);
 
         Assessment::where('id', $assessmentId)->update([

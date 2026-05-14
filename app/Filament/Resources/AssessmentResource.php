@@ -205,6 +205,13 @@ class AssessmentResource extends Resource {
                                 ->icon('heroicon-o-eye')
                                 ->color('info')
                                 ->url(fn($record) => AssessmentResource::getUrl('summary', ['record' => $record])),
+                                Tables\Actions\Action::make('executive_dashboard')
+                                ->label('Executive Dashboard')
+                                ->icon('heroicon-o-chart-pie')
+                                ->color('warning')
+                                ->url(fn($record) => route('assessment.executive', $record))
+                                ->openUrlInNewTab()
+                                ->visible(fn($record) => $record->status === 'completed'),
                                 Tables\Actions\Action::make('markFeedbackGiven')
                                 ->label(fn($record) => $record->feedback_given ? 'Update Feedback' : 'Mark Feedback Given')
                                 ->icon('heroicon-o-chat-bubble-left-right')
@@ -216,7 +223,6 @@ class AssessmentResource extends Resource {
                                         ->default(fn($record) => $record->feedback_notes)
                                         ->rows(3),
                                 ])
-                                ->requiresConfirmation()
                                 ->modalHeading(fn($record) => $record->feedback_given
                                     ? 'Update Feedback Record'
                                     : 'Mark Feedback as Given')
@@ -236,6 +242,41 @@ class AssessmentResource extends Resource {
                                         ->success()
                                         ->send();
                                 }),
+                                Tables\Actions\Action::make('markTrained')
+                                ->label(fn($record) => match($record->trained_before_mentorship) {
+                                    true  => 'Has Been Trained (Yes)',
+                                    false => 'Has Been Trained (No)',
+                                    default => 'Mark Has Been Trained',
+                                })
+                                ->icon('heroicon-o-academic-cap')
+                                ->color('warning')
+                                ->visible(fn($record) => $record->status === 'completed' && $record->feedback_given)
+                                ->form([
+                                    \Filament\Forms\Components\Select::make('trained_before_mentorship')
+                                        ->label('Has this facility been trained?')
+                                        ->options([
+                                            '1' => 'Yes — facility has been trained',
+                                            '0' => 'No — facility has not been trained',
+                                        ])
+                                        ->default(fn($record) => $record->trained_before_mentorship === null
+                                            ? null
+                                            : (string)(int)$record->trained_before_mentorship)
+                                        ->required(),
+                                ])
+                                ->modalHeading('Mark Has Been Trained')
+                                ->modalDescription('Record whether this facility has been trained. This overrides the auto-computed value.')
+                                ->action(function ($record, array $data): void {
+                                    $record->update([
+                                        'trained_before_mentorship' => (bool) $data['trained_before_mentorship'],
+                                        'trained_marked_by'         => auth()->id(),
+                                        'trained_marked_at'         => now(),
+                                    ]);
+
+                                    \Filament\Notifications\Notification::make()
+                                        ->title('Training status updated')
+                                        ->success()
+                                        ->send();
+                                }),
                                 Tables\Actions\Action::make('download')
                                 ->label('Download Report')
                                 ->icon('heroicon-o-arrow-down-tray')
@@ -244,8 +285,14 @@ class AssessmentResource extends Resource {
                                     // Add download logic here
                                 })
                                 ->visible(fn($record) => $record->status === 'completed'),
-//                                Tables\Actions\DeleteAction::make()
-//                                ->requiresConfirmation(),
+                                Tables\Actions\DeleteAction::make()
+                                ->requiresConfirmation()
+                                ->modalHeading('Delete Assessment')
+                                ->modalDescription('This assessment will be soft-deleted and can be restored later by a super admin.')
+                                ->visible(fn($record) =>
+                                    auth()->user()->hasRole('super_admin') &&
+                                    $record->status !== 'completed'
+                                ),
                             ])
                             ->label('Actions')
                             ->icon('heroicon-m-ellipsis-vertical')
@@ -306,7 +353,8 @@ class AssessmentResource extends Resource {
     }
 
     public static function getNavigationBadge(): ?string {
-        return static::getModel()::where('status', 'in_progress')->count() ?: null;
+        $count = Assessment::whereIn('status', ['draft', 'in_progress'])->count();
+        return $count > 0 ? (string) $count : null;
     }
 
     public static function getNavigationBadgeColor(): ?string {

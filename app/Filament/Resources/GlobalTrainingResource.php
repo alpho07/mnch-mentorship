@@ -75,9 +75,11 @@ class GlobalTrainingResource extends Resource {
         ]);
     }
 
-    // Ensure proper route model binding for global trainings only
+    // Ensure proper route model binding for global trainings only (withTrashed so restore works)
     public static function resolveRecordRouteBinding($value): ?Model {
-        return static::getModel()::where('type', 'global_training')->findOrFail($value);
+        return static::getModel()::withTrashed()
+            ->where('type', 'global_training')
+            ->findOrFail($value);
     }
 
     public static function form(Form $form): Form {
@@ -633,7 +635,16 @@ class GlobalTrainingResource extends Resource {
                                     return redirect()->to(static::getUrl('edit', ['record' => $newTraining]));
                                 }),
                                 Tables\Actions\DeleteAction::make()
-                                ->requiresConfirmation(),
+                                ->requiresConfirmation()
+                                ->visible(fn($record) => !$record->trashed()),
+                                Tables\Actions\RestoreAction::make()
+                                ->visible(fn($record) => $record->trashed()),
+                                Tables\Actions\ForceDeleteAction::make()
+                                ->visible(fn($record) => $record->trashed() && auth()->user()->hasRole('super_admin'))
+                                ->requiresConfirmation()
+                                ->modalHeading('Permanently Delete Training')
+                                ->modalDescription('This will permanently delete the training and ALL associated data (participants, assessments, etc.). This cannot be undone.')
+                                ->modalSubmitActionLabel('Yes, permanently delete'),
                             ])
                             ->label('Actions')
                             ->icon('heroicon-m-ellipsis-horizontal')
@@ -645,6 +656,9 @@ class GlobalTrainingResource extends Resource {
                             Tables\Actions\BulkActionGroup::make([
                                 Tables\Actions\DeleteBulkAction::make()
                                 ->requiresConfirmation(),
+                                Tables\Actions\RestoreBulkAction::make(),
+                                Tables\Actions\ForceDeleteBulkAction::make()
+                                ->visible(fn() => auth()->user()->hasRole('super_admin')),
                             ]),
                         ])
                         ->defaultSort('start_date', 'desc')

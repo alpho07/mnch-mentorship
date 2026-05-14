@@ -7,7 +7,26 @@
       "Bash(composer install:*)",
       "Bash(bash *)",
       "Bash(npm run *)",
-      "Bash(php artisan *)"
+      "Bash(php artisan *)",
+      "Bash(php *)",
+      "Bash(C:/Users/ALPHY/.claude/plugins/cache/claude-plugins-official/superpowers/5.0.7/skills/brainstorming/scripts/start-server.sh *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git commit *)",
+      "Bash(composer test *)",
+      "Bash(git -C \"C:/xampp/htdocs/MNCH-Master\" add database/migrations/2026_05_11_194111_add_feedback_tracking_to_assessments_table.php app/Models/Assessment.php)",
+      "Bash(git -C \"C:/xampp/htdocs/MNCH-Master\" commit -m \"feat: add feedback tracking columns to assessments table and update Assessment model\")",
+      "Bash(git -C \"C:/xampp/htdocs/MNCH-Master\" add app/Services/AssessmentAnalyticsService.php)",
+      "Bash(git -C \"C:/xampp/htdocs/MNCH-Master\" commit -m \"feat: add AssessmentAnalyticsService with getSummaryStats, generateInsights, getChartData, getFacilitiesReadiness\")",
+      "Bash(git -C \"C:/xampp/htdocs/MNCH-Master\" add app/Http/Controllers/AnalyticsDashboardController.php routes/web.php)",
+      "Bash(git -C \"C:/xampp/htdocs/MNCH-Master\" commit -m \"feat: add assessment mode branch to controller and facilityMentorshipBreakdown route\")",
+      "Bash(git -C \"C:/xampp/htdocs/MNCH-Master\" add resources/views/analytics/dashboard/index.blade.php resources/views/analytics/dashboard/assessment-mode.blade.php resources/views/analytics/dashboard/facility-mentorship-breakdown.blade.php resources/views/layouts/dashboard.blade.php app/Filament/Resources/AssessmentResource.php)",
+      "Bash(git -C \"C:/xampp/htdocs/MNCH-Master\" commit -m \"feat: add assessment analytics dashboard \\(KPIs, charts, readiness table, drill-down, feedback action\\)\")",
+      "Bash(git *)",
+      "Bash(Get-Content *)",
+      "Bash(sed -n '30,42p' \"C:/xampp/htdocs/MNCH-Master/vendor/filament/tables/src/Concerns/HasFilters.php\")",
+      "Bash(sed -n '55,70p' \"C:/xampp/htdocs/MNCH-Master/vendor/filament/tables/src/Concerns/InteractsWithTable.php\")",
+      "Bash(echo \"EXIT: $?\")"
     ]
   },
   "hooks": {

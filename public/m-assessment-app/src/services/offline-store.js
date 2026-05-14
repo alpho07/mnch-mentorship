@@ -297,6 +297,22 @@ const offlineStore = {
     saveScopeConfig: (scopes) => dbPut(STORES.scopeConfig, "config", scopes),
     clearScopeConfig: () => dbDelete(STORES.scopeConfig, "config"),
 
+    // ── Class detail (modules embedded) ──────────────────────────────────────
+    getClassDetail: (classId) => dbGet(STORES.mentorships, 'class_detail_' + classId),
+    saveClassDetail: (classId, data) => dbPut(STORES.mentorships, 'class_detail_' + classId, data),
+
+    // ── Module list per class ─────────────────────────────────────────────────
+    getModuleList: (classId) => dbGet(STORES.mentorships, 'modules_' + classId),
+    saveModuleList: (classId, list) => dbPut(STORES.mentorships, 'modules_' + classId, list),
+
+    // ── Session templates per module ──────────────────────────────────────────
+    getSessionTemplates: (moduleId) => dbGet(STORES.meta, 'session_templates_' + moduleId),
+    saveSessionTemplates: (moduleId, list) => dbPut(STORES.meta, 'session_templates_' + moduleId, list),
+
+    // ── Enrollment link per class ─────────────────────────────────────────────
+    getEnrollmentLink: (classId) => dbGet(STORES.meta, 'enrollment_link_' + classId),
+    saveEnrollmentLink: (classId, data) => dbPut(STORES.meta, 'enrollment_link_' + classId, data),
+
     // ── Full wipe (logout) ───────────────────────────────────────────────────
     clearAll: async () => {
         await Promise.all(Object.values(STORES).map(s => dbClear(s)));

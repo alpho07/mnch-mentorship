@@ -16,13 +16,28 @@ class AssessmentAnalyticsService
         $year           = $filters['year'] ?? null;
         $assessmentType = $filters['assessment_type'] ?? null;
         $countyId       = $filters['county_id'] ?? null;
+        $subcountyId    = $filters['subcounty_id'] ?? null;
+        $facilityId     = $filters['facility_id'] ?? null;
+
+        // Resolve geographic scope to a facility ID list for raw DB queries
+        $facilityIds = null;
+        if ($facilityId) {
+            $facilityIds = [(int) $facilityId];
+        } elseif ($subcountyId || $countyId) {
+            $facilityIds = Facility::whereNull('deleted_at')
+                ->when($subcountyId, fn($q) => $q->where('subcounty_id', $subcountyId))
+                ->when($countyId && !$subcountyId, fn($q) => $q->whereHas('subcounty', fn($s) => $s->where('county_id', $countyId)))
+                ->pluck('id')->all();
+        }
 
         $base = fn() => Assessment::whereNull('deleted_at')
             ->when($year, fn($q) => $q->whereYear('assessment_date', $year))
             ->when($assessmentType, fn($q) => $q->where('assessment_type', $assessmentType))
-            ->when($countyId, fn($q) => $q->whereHas('facility.subcounty', fn($s) => $s->where('county_id', $countyId)));
+            ->when($facilityIds !== null, fn($q) => $q->whereIn('facility_id', $facilityIds));
 
-        $skillsLabSectionId = AssessmentSection::where('code', 'skills_lab')->value('id');
+        // Resolve question IDs from codes so we query actual responses, not section scores
+        $skillsMasterQId  = DB::table('assessment_questions')->where('question_code', 'SKILLS_MASTER')->value('id');
+        $skillsRoomQId    = DB::table('assessment_questions')->where('question_code', 'SKILLS_ROOM_SPACE')->value('id');
 
         // Unique (facility, period) pairs — with rule enforced this equals total count
         $uniqueAssessments  = DB::table(
@@ -31,32 +46,59 @@ class AssessmentAnalyticsService
         )->count();
         $facilitiesAssessed = $base()->distinct('facility_id')->count('facility_id');
         $allFacilities      = Facility::whereNull('deleted_at')->count();
-        $avgScore           = round((float) ($base()->where('status', 'completed')->avg('overall_percentage') ?? 0), 1);
 
+        // Avg score = average of per-assessment section averages (each section weighted equally)
+        // Computed live from assessment_section_scores so it matches DynamicScoringService formula
+        $avgScoreRaw = DB::table(
+            DB::table('assessment_section_scores')
+                ->join('assessments', 'assessments.id', '=', 'assessment_section_scores.assessment_id')
+                ->where('assessments.status', 'completed')
+                ->whereNull('assessments.deleted_at')
+                ->when($year, fn($q) => $q->whereYear('assessments.assessment_date', $year))
+                ->when($assessmentType, fn($q) => $q->where('assessments.assessment_type', $assessmentType))
+                ->when($facilityIds !== null, fn($q) => $q->whereIn('assessments.facility_id', $facilityIds))
+                ->select('assessments.id', DB::raw('AVG(assessment_section_scores.percentage) as section_avg'))
+                ->groupBy('assessments.id'),
+            'per_assessment'
+        )->avg('section_avg');
+        $avgScore = round((float) ($avgScoreRaw ?? 0), 1);
+
+        // Facilities with a dedicated skills lab (SKILLS_MASTER = Yes)
         $withSkillsLab = (int) DB::table('assessments')
-            ->join('assessment_section_scores', 'assessment_section_scores.assessment_id', '=', 'assessments.id')
-            ->where('assessment_section_scores.assessment_section_id', (int) $skillsLabSectionId)
-            ->where('assessment_section_scores.percentage', '>', 0)
+            ->join('assessment_question_responses as aqr', 'aqr.assessment_id', '=', 'assessments.id')
+            ->where('aqr.assessment_question_id', (int) $skillsMasterQId)
+            ->where('aqr.response_value', 'Yes')
             ->where('assessments.status', 'completed')
             ->whereNull('assessments.deleted_at')
             ->when($year, fn($q) => $q->whereYear('assessments.assessment_date', $year))
             ->when($assessmentType, fn($q) => $q->where('assessments.assessment_type', $assessmentType))
-            ->when($countyId, fn($q) => $q
-                ->join('facilities', 'facilities.id', '=', 'assessments.facility_id')
-                ->join('subcounties', 'subcounties.id', '=', 'facilities.subcounty_id')
-                ->where('subcounties.county_id', $countyId))
+            ->when($facilityIds !== null, fn($q) => $q->whereIn('assessments.facility_id', $facilityIds))
             ->distinct('assessments.facility_id')
             ->count('assessments.facility_id');
 
+        // Eligible = has skills lab OR room/space, AND feedback has been given
         $eligible = (int) DB::table('assessments')
-            ->join('assessment_section_scores', 'assessment_section_scores.assessment_id', '=', 'assessments.id')
-            ->where('assessment_section_scores.assessment_section_id', (int) $skillsLabSectionId)
-            ->where('assessment_section_scores.percentage', '>', 0)
             ->where('assessments.status', 'completed')
             ->where('assessments.feedback_given', true)
             ->whereNull('assessments.deleted_at')
+            ->where(function ($q) use ($skillsMasterQId, $skillsRoomQId) {
+                $q->whereExists(function ($sub) use ($skillsMasterQId) {
+                    $sub->select(DB::raw(1))
+                        ->from('assessment_question_responses as aqr')
+                        ->whereColumn('aqr.assessment_id', 'assessments.id')
+                        ->where('aqr.assessment_question_id', (int) $skillsMasterQId)
+                        ->where('aqr.response_value', 'Yes');
+                })->orWhereExists(function ($sub) use ($skillsRoomQId) {
+                    $sub->select(DB::raw(1))
+                        ->from('assessment_question_responses as aqr')
+                        ->whereColumn('aqr.assessment_id', 'assessments.id')
+                        ->where('aqr.assessment_question_id', (int) $skillsRoomQId)
+                        ->where('aqr.response_value', 'Yes');
+                });
+            })
             ->when($year, fn($q) => $q->whereYear('assessments.assessment_date', $year))
             ->when($assessmentType, fn($q) => $q->where('assessments.assessment_type', $assessmentType))
+            ->when($facilityIds !== null, fn($q) => $q->whereIn('assessments.facility_id', $facilityIds))
             ->distinct('assessments.facility_id')
             ->count('assessments.facility_id');
 
@@ -73,10 +115,7 @@ class AssessmentAnalyticsService
             ->whereNull('trainings.deleted_at')
             ->when($year, fn($q) => $q->whereYear('assessments.assessment_date', $year))
             ->when($assessmentType, fn($q) => $q->where('assessments.assessment_type', $assessmentType))
-            ->when($countyId, fn($q) => $q
-                ->join('facilities', 'facilities.id', '=', 'assessments.facility_id')
-                ->join('subcounties', 'subcounties.id', '=', 'facilities.subcounty_id')
-                ->where('subcounties.county_id', $countyId))
+            ->when($facilityIds !== null, fn($q) => $q->whereIn('assessments.facility_id', $facilityIds))
             ->distinct('assessments.facility_id')
             ->count('assessments.facility_id');
 
@@ -229,6 +268,8 @@ class AssessmentAnalyticsService
         $year           = $filters['year']            ?? null;
         $assessmentType = $filters['assessment_type'] ?? null;
         $countyId       = $filters['county_id']       ?? null;
+        $subcountyId    = $filters['subcounty_id']    ?? null;
+        $facilityId     = $filters['facility_id']     ?? null;
 
         $skillsLabSectionId = (int) AssessmentSection::where('code', 'skills_lab')->value('id');
 
@@ -239,7 +280,22 @@ class AssessmentAnalyticsService
             ->whereNull('deleted_at')
             ->when($year, fn($q) => $q->whereYear('assessment_date', $year))
             ->when($assessmentType, fn($q) => $q->where('assessment_type', $assessmentType))
+            ->when($facilityId, fn($q) => $q->where('facility_id', $facilityId))
+            ->when($subcountyId && !$facilityId, fn($q) => $q->whereIn(
+                'facility_id',
+                Facility::whereNull('deleted_at')->where('subcounty_id', $subcountyId)->pluck('id')
+            ))
+            ->when($countyId && !$subcountyId && !$facilityId, fn($q) => $q->whereIn(
+                'facility_id',
+                Facility::whereNull('deleted_at')
+                    ->whereHas('subcounty', fn($s) => $s->where('county_id', $countyId))
+                    ->pluck('id')
+            ))
             ->groupBy('facility_id');
+
+        // Resolve question IDs from codes (SKILLS_MASTER = dedicated lab, SKILLS_ROOM_SPACE = fallback room)
+        $skillsMasterQId = (int) DB::table('assessment_questions')->where('question_code', 'SKILLS_MASTER')->value('id');
+        $skillsRoomQId   = (int) DB::table('assessment_questions')->where('question_code', 'SKILLS_ROOM_SPACE')->value('id');
 
         $assessments = Assessment::query()
             ->joinSub($latestDates, 'latest', function ($join) {
@@ -248,17 +304,27 @@ class AssessmentAnalyticsService
             })
             ->where('assessments.status', 'completed')
             ->whereNull('assessments.deleted_at')
-            ->when($countyId, fn($q) => $q->whereHas(
+            ->when($countyId && !$subcountyId && !$facilityId, fn($q) => $q->whereHas(
                 'facility.subcounty', fn($s) => $s->where('county_id', $countyId)
             ))
+            ->when($subcountyId && !$facilityId, fn($q) => $q->whereHas(
+                'facility', fn($f) => $f->where('subcounty_id', $subcountyId)
+            ))
+            ->when($facilityId, fn($q) => $q->where('assessments.facility_id', $facilityId))
             ->with(['assessor', 'feedbackGivenBy', 'facility.facilityLevel', 'facility.subcounty.county'])
             ->addSelect([
                 'assessments.*',
                 DB::raw(
-                    '(SELECT ss.percentage FROM assessment_section_scores ss
-                      WHERE ss.assessment_id = assessments.id
-                      AND ss.assessment_section_id = ' . $skillsLabSectionId . '
-                      LIMIT 1) as skills_lab_percentage'
+                    "(SELECT aqr.response_value FROM assessment_question_responses aqr
+                      WHERE aqr.assessment_id = assessments.id
+                      AND aqr.assessment_question_id = {$skillsMasterQId}
+                      LIMIT 1) as skills_lab_answer"
+                ),
+                DB::raw(
+                    "(SELECT aqr.response_value FROM assessment_question_responses aqr
+                      WHERE aqr.assessment_id = assessments.id
+                      AND aqr.assessment_question_id = {$skillsRoomQId}
+                      LIMIT 1) as room_answer"
                 ),
                 DB::raw(
                     '(SELECT COUNT(*) FROM trainings t
@@ -270,14 +336,19 @@ class AssessmentAnalyticsService
             ->get();
 
         return $assessments->map(function ($assessment) {
-            $hasSkillsLab  = ((float) ($assessment->skills_lab_percentage ?? 0)) > 0;
-            $feedbackGiven = (bool) $assessment->feedback_given;
+            $hasSkillsLab     = strtolower($assessment->skills_lab_answer ?? '') === 'yes';
+            $hasRoom          = strtolower($assessment->room_answer ?? '') === 'yes';
+            $feedbackGiven    = (bool) $assessment->feedback_given;
+            $hasPriorTraining = (bool) $assessment->trained_before_mentorship;
 
-            $assessment->has_skills_lab      = $hasSkillsLab;
-            $assessment->eligibility_status  = match (true) {
-                $hasSkillsLab && $feedbackGiven => 'eligible',
-                $hasSkillsLab                   => 'partial',
-                default                         => 'not_eligible',
+            $assessment->has_skills_lab     = $hasSkillsLab;
+            $assessment->has_room           = $hasRoom;
+            $assessment->has_prior_training = $hasPriorTraining;
+            $hasFacility = $hasSkillsLab || $hasRoom;
+            $assessment->eligibility_status = match (true) {
+                $hasFacility && $feedbackGiven => 'eligible',
+                $hasFacility                   => 'partial',
+                default                        => 'not_eligible',
             };
 
             return $assessment;

@@ -2,95 +2,278 @@
 
 namespace App\Livewire\Auth;
 
+use App\Mail\AccountVerificationMail;
+use App\Models\County;
+use App\Models\Department;
+use App\Models\Facility;
+use App\Models\MainCadre;
+use App\Models\Subcounty;
 use App\Models\User;
 use Filament\Facades\Filament;
-use Filament\Forms\Components\CheckboxList;
-use Filament\Forms\Components\Grid;
-use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\Actions\Action as FormAction;
+use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Concerns\InteractsWithForms;
+use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
 use Filament\Http\Responses\Auth\Contracts\RegistrationResponse;
 use Filament\Notifications\Notification;
 use Filament\Pages\SimplePage;
-use Illuminate\Auth\Events\Registered;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\ValidationException;
-use Spatie\Permission\Models\Role;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 
-class CustomRegister extends SimplePage {
+class CustomRegister extends SimplePage implements HasForms
+{
+    use InteractsWithForms;
 
     protected static string $view = 'livewire.auth.custom-register';
-    public ?array $data = [];
 
-    public function mount(): void {
+    public ?array $data           = [];
+    public string $captchaQuestion = '';
+
+    public function mount(): void
+    {
         if (Filament::auth()->check()) {
             redirect()->intended(Filament::getUrl());
         }
-
+        $this->generateCaptcha();
         $this->form->fill();
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Registration Logic
-    // ─────────────────────────────────────────────────────────────────────────
+    public function generateCaptcha(): void
+    {
+        $a  = rand(2, 15);
+        $b  = rand(2, 15);
+        $op = ['+', '-', '×'][rand(0, 2)];
 
-    public function register(): ?RegistrationResponse {
+        if ($op === '-' && $a < $b) {
+            [$a, $b] = [$b, $a];
+        }
+
+        $answer = match ($op) {
+            '+' => $a + $b,
+            '-' => $a - $b,
+            '×' => $a * $b,
+        };
+
+        $this->captchaQuestion = "What is {$a} {$op} {$b}?";
+        session(['captcha_answer' => $answer]);
+    }
+
+    public function form(Form $form): Form
+    {
+        return $form
+            ->schema([
+                Section::make('Personal Information')
+                    ->schema([
+                        TextInput::make('first_name')
+                            ->label('First Name')
+                            ->required()
+                            ->maxLength(255),
+                        TextInput::make('middle_name')
+                            ->label('Middle Name (Optional)')
+                            ->maxLength(255),
+                        TextInput::make('last_name')
+                            ->label('Last Name')
+                            ->required()
+                            ->maxLength(255),
+                    ])
+                    ->columns(1),
+
+                Section::make('Contact Details')
+                    ->schema([
+                        TextInput::make('email')
+                            ->label('Email Address')
+                            ->email()
+                            ->required()
+                            ->unique('users', 'email')
+                            ->maxLength(255),
+                        TextInput::make('phone')
+                            ->label('Phone Number')
+                            ->tel()
+                            ->required()
+                            ->unique('users', 'phone')
+                            ->maxLength(20),
+                    ])
+                    ->columns(1),
+
+                Section::make('Professional Information')
+                    ->schema([
+                        Select::make('cadre_id')
+                            ->label('Cadre')
+                            ->options(fn () => MainCadre::where('is_active', true)->orderBy('order')->pluck('name', 'id'))
+                            ->searchable()
+                            ->required(),
+                        Select::make('department_id')
+                            ->label('Department')
+                            ->options(fn () => Department::orderBy('name')->pluck('name', 'id'))
+                            ->searchable()
+                            ->required(),
+                    ])
+                    ->columns(1),
+
+                Section::make('Geographic Scope')
+                    ->description('Select your mentorship level, then choose your location.')
+                    ->schema([
+                        Radio::make('scope_level')
+                            ->label('Mentorship Level')
+                            ->options([
+                                'county'    => 'County',
+                                'subcounty' => 'Subcounty',
+                                'facility'  => 'Facility',
+                            ])
+                            ->descriptions([
+                                'county'    => 'Oversee all mentorships in a county',
+                                'subcounty' => 'Oversee all mentorships in a subcounty',
+                                'facility'  => 'Conduct mentorships at a specific facility',
+                            ])
+                            ->required()
+                            ->live()
+                            ->afterStateUpdated(function (Set $set) {
+                                $set('county_id', null);
+                                $set('subcounty_id', null);
+                                $set('facility_id', null);
+                            }),
+
+                        Select::make('county_id')
+                            ->label('County')
+                            ->options(fn () => County::orderBy('name')->pluck('name', 'id'))
+                            ->searchable()
+                            ->required()
+                            ->live()
+                            ->afterStateUpdated(function (Set $set) {
+                                $set('subcounty_id', null);
+                                $set('facility_id', null);
+                            })
+                            ->visible(fn (Get $get) => filled($get('scope_level'))),
+
+                        Select::make('subcounty_id')
+                            ->label('Subcounty')
+                            ->options(fn (Get $get) => $get('county_id')
+                                ? Subcounty::where('county_id', $get('county_id'))->orderBy('name')->pluck('name', 'id')->toArray()
+                                : []
+                            )
+                            ->searchable()
+                            ->required()
+                            ->live()
+                            ->afterStateUpdated(fn (Set $set) => $set('facility_id', null))
+                            ->visible(fn (Get $get) => in_array($get('scope_level'), ['subcounty', 'facility']))
+                            ->disabled(fn (Get $get) => ! filled($get('county_id')))
+                            ->helperText(fn (Get $get) => ! filled($get('county_id')) ? 'Select a county first' : null),
+
+                        Select::make('facility_id')
+                            ->label('Facility')
+                            ->options(fn (Get $get) => $get('subcounty_id')
+                                ? Facility::where('subcounty_id', $get('subcounty_id'))->orderBy('name')->pluck('name', 'id')->toArray()
+                                : []
+                            )
+                            ->searchable()
+                            ->required()
+                            ->visible(fn (Get $get) => $get('scope_level') === 'facility')
+                            ->disabled(fn (Get $get) => ! filled($get('subcounty_id')))
+                            ->helperText(fn (Get $get) => ! filled($get('subcounty_id')) ? 'Select a subcounty first' : null),
+                    ])
+                    ->columns(1),
+
+                Section::make('Security Check')
+                    ->schema([
+                        TextInput::make('captcha_input')
+                            ->label(fn () => $this->captchaQuestion)
+                            ->required()
+                            ->integer()
+                            ->inputMode('numeric')
+                            ->autocomplete('off')
+                            ->suffixActions([
+                                FormAction::make('refresh_captcha')
+                                    ->icon('heroicon-o-arrow-path')
+                                    ->tooltip('Get a new question')
+                                    ->action(fn () => $this->generateCaptcha()),
+                            ])
+                            ->rules([
+                                fn () => function (string $attribute, mixed $value, \Closure $fail) {
+                                    if ((int) $value !== (int) session('captcha_answer')) {
+                                        $this->generateCaptcha();
+                                        $fail('Incorrect answer. Please try the new question.');
+                                    }
+                                },
+                            ]),
+                    ])
+                    ->columns(1),
+            ])
+            ->statePath('data');
+    }
+
+    public function register(): ?RegistrationResponse
+    {
         $data = $this->form->getState();
 
-        // ── Extra duplicate checks (belt & suspenders alongside form rules) ──
-        $this->guardAgainstDuplicates($data);
-
-        // ── Build display name ───────────────────────────────────────────────
-        $displayName = $this->buildDisplayName(
-                $data['first_name'],
-                $data['middle_name'] ?? null,
-                $data['last_name']
-        );
+        $role = match ($data['scope_level']) {
+            'county'    => 'county_mentor_lead',
+            'subcounty' => 'subcounty_mentor_lead',
+            'facility'  => 'facility_mentor',
+        };
 
         try {
-            $user = DB::transaction(function () use ($data, $displayName) {
+            $user = DB::transaction(function () use ($data, $role) {
                 $user = User::create([
-                    'first_name' => $data['first_name'],
-                    'middle_name' => $data['middle_name'] ?? null,
-                    'last_name' => $data['last_name'],
-                    'name' => $displayName,
-                    'email' => $data['email'],
-                    'phone' => $data['phone'],
-                    'password' => Hash::make($data['password']),
-                    'status' => 'active',
+                    'first_name'    => ucfirst(strtolower(trim($data['first_name']))),
+                    'middle_name'   => filled($data['middle_name'] ?? null)
+                        ? ucfirst(strtolower(trim($data['middle_name'])))
+                        : null,
+                    'last_name'     => ucfirst(strtolower(trim($data['last_name']))),
+                    'name'          => trim(collect([
+                        $data['first_name'],
+                        $data['middle_name'] ?? null,
+                        $data['last_name'],
+                    ])->filter()->map(fn ($n) => ucfirst(strtolower(trim($n))))->implode(' ')),
+                    'email'         => $data['email'],
+                    'phone'         => $data['phone'],
+                    'cadre_id'      => $data['cadre_id'],
+                    'department_id' => $data['department_id'],
+                    'facility_id'   => $data['scope_level'] === 'facility' ? $data['facility_id'] : null,
+                    'password'      => bcrypt(Str::random(32)),
+                    'status'        => 'pending',
                 ]);
 
-                // Assign selected Spatie roles
-                if (!empty($data['mentor_roles'])) {
-                    $user->assignRole($data['mentor_roles']);
+                $user->assignRole($role);
+                $user->counties()->sync([$data['county_id']]);
+
+                if (filled($data['subcounty_id'] ?? null)) {
+                    $user->subcounties()->sync([$data['subcounty_id']]);
+                }
+
+                if (filled($data['facility_id'] ?? null) && $data['scope_level'] === 'facility') {
+                    $user->facilities()->sync([$data['facility_id']]);
                 }
 
                 return $user;
             });
 
-            event(new Registered($user));
-
-            Filament::auth()->login($user);
-
-            session()->regenerate();
+            $user->load('roles');
+            session()->forget('captcha_answer');
+            Mail::to($user->email)->send(new AccountVerificationMail($user));
 
             Notification::make()
-                    ->success()
-                    ->title('Registration Successful')
-                    ->body("Welcome, {$user->first_name}! Your mentor account has been created.")
-                    ->send();
+                ->success()
+                ->title('Account created!')
+                ->body("A verification email has been sent to {$user->email}. Click the link to set your password and activate your account.")
+                ->persistent()
+                ->send();
 
-            return app(RegistrationResponse::class);
+            $this->redirect(route('filament.admin.auth.login'));
+
+            return null;
         } catch (\Exception $e) {
             Notification::make()
-                    ->danger()
-                    ->title('Registration Failed')
-                    ->body('An unexpected error occurred. Please try again or contact support.')
-                    ->send();
+                ->danger()
+                ->title('Registration Failed')
+                ->body('An unexpected error occurred. Please try again or contact support.')
+                ->send();
 
             report($e);
 
@@ -98,204 +281,6 @@ class CustomRegister extends SimplePage {
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Form Schema
-    // ─────────────────────────────────────────────────────────────────────────
-
-    public function form(Form $form): Form {
-        return $form
-                        ->schema([
-                            // ── Personal Information ─────────────────────────────────
-                            Section::make('Personal Information')
-                            ->icon('heroicon-o-user')
-                            ->description('Enter your full name as it appears on official documents.')
-                            ->compact()
-                            ->schema([
-                                Grid::make(3)->schema([
-                                    TextInput::make('first_name')
-                                    ->label('First Name')
-                                    ->required()
-                                    ->maxLength(255)
-                                    ->autofocus()
-                                    ->live(onBlur: true)
-                                    ->afterStateUpdated(fn(Get $get, Set $set) =>
-                                            $set('display_name', $this->buildDisplayName(
-                                                            $get('first_name'),
-                                                            $get('middle_name'),
-                                                            $get('last_name'),
-                                                    ))
-                                    )
-                                    ->extraInputAttributes(['class' => 'custom-input']),
-                                    TextInput::make('middle_name')
-                                    ->label('Middle Name')
-                                    ->maxLength(255)
-                                    ->live(onBlur: true)
-                                    ->afterStateUpdated(fn(Get $get, Set $set) =>
-                                            $set('display_name', $this->buildDisplayName(
-                                                            $get('first_name'),
-                                                            $get('middle_name'),
-                                                            $get('last_name'),
-                                                    ))
-                                    )
-                                    ->extraInputAttributes(['class' => 'custom-input']),
-                                    TextInput::make('last_name')
-                                    ->label('Last Name')
-                                    ->required()
-                                    ->maxLength(255)
-                                    ->live(onBlur: true)
-                                    ->afterStateUpdated(fn(Get $get, Set $set) =>
-                                            $set('display_name', $this->buildDisplayName(
-                                                            $get('first_name'),
-                                                            $get('middle_name'),
-                                                            $get('last_name'),
-                                                    ))
-                                    )
-                                    ->extraInputAttributes(['class' => 'custom-input']),
-                                ]),
-                                Placeholder::make('display_name')
-                                ->label('Display Name (auto-generated)')
-                                ->content(fn(Get $get): string =>
-                                        $this->buildDisplayName(
-                                                $get('first_name'),
-                                                $get('middle_name'),
-                                                $get('last_name'),
-                                        ) ?: '—'
-                                )
-                                ->helperText('This is how your name will appear across the platform.'),
-                            ]),
-                            // ── Contact Details ──────────────────────────────────────
-                            Section::make('Contact Details')
-                            ->icon('heroicon-o-phone')
-                            ->compact()
-                            ->schema([
-                                Grid::make(2)->schema([
-                                    TextInput::make('email')
-                                    ->label('Email Address')
-                                    ->email()
-                                    ->required()
-                                    ->maxLength(255)
-                                    ->unique(table: User::class, column: 'email', ignoreRecord: true)
-                                    ->validationMessages([
-                                        'unique' => 'This email address is already registered. Please log in or use a different email.',
-                                    ])
-                                    ->extraInputAttributes(['class' => 'custom-input']),
-                                    TextInput::make('phone')
-                                    ->label('Phone Number')
-                                    ->tel()
-                                    ->required()
-                                    ->maxLength(20)
-                                    ->unique(table: User::class, column: 'phone', ignoreRecord: true)
-                                    ->validationMessages([
-                                        'unique' => 'This phone number is already registered. Please log in or use a different number.',
-                                    ])
-                                    ->helperText('e.g. 0712345678 or +254712345678')
-                                    ->extraInputAttributes(['class' => 'custom-input']),
-                                ]),
-                            ]),
-                            // ── Role Selection ───────────────────────────────────────
-                            Section::make('Mentor Role')
-                            ->icon('heroicon-o-academic-cap')
-                            ->description('Select the type of mentor role(s) you are registering for.')
-                            ->compact()
-                            ->schema([
-                                CheckboxList::make('mentor_roles')
-                                ->label('Select Role(s)')
-                                ->options(function (): array {
-                                    return Role::query()
-                                                    ->whereIn('name', ['facility_mentor', 'national_mentor'])
-                                                    ->pluck('name', 'name')
-                                                    ->mapWithKeys(fn(string $name) => [
-                                                        $name => match ($name) {
-                                                            'facility_mentor' => 'Facility Mentor — Conduct mentorships at facility level',
-                                                            'national_mentor' => 'National Mentor — Conduct mentorships at national/county level',
-                                                            default => $name,
-                                                        },
-                                                            ])
-                                                    ->toArray();
-                                })
-                                ->required()
-                                ->columns(1)
-                                ->bulkToggleable()
-                                ->validationMessages([
-                                    'required' => 'Please select at least one mentor role.',
-                                ]),
-                            ]),
-                            // ── Password ─────────────────────────────────────────────
-                            Section::make('Security')
-                            ->icon('heroicon-o-lock-closed')
-                            ->compact()
-                            ->schema([
-                                Grid::make(2)->schema([
-                                    TextInput::make('password')
-                                    ->label('Password')
-                                    ->password()
-                                    ->revealable()
-                                    ->required()
-                                    ->minLength(8)
-                                    ->rules(['regex:/[A-Z]/', 'regex:/[0-9]/'])
-                                    ->validationMessages([
-                                        'regex' => 'Password must contain at least one uppercase letter and one number.',
-                                        'min' => 'Password must be at least 8 characters long.',
-                                    ])
-                                    ->same('passwordConfirmation')
-                                    ->extraInputAttributes(['class' => 'custom-input']),
-                                    TextInput::make('passwordConfirmation')
-                                    ->label('Confirm Password')
-                                    ->password()
-                                    ->revealable()
-                                    ->required()
-                                    ->dehydrated(false)
-                                    ->extraInputAttributes(['class' => 'custom-input']),
-                                ]),
-                            ]),
-                        ])
-                        ->statePath('data');
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Helpers
-    // ─────────────────────────────────────────────────────────────────────────
-
-    /**
-     * Build a display name from name parts.
-     */
-    private function buildDisplayName(?string $first, ?string $middle, ?string $last): string {
-        return trim(implode(' ', array_filter([
-            $first ? ucfirst(strtolower(trim($first))) : null,
-            $middle ? ucfirst(strtolower(trim($middle))) : null,
-            $last ? ucfirst(strtolower(trim($last))) : null,
-        ])));
-    }
-
-    /**
-     * Runtime guard against email/phone duplicates.
-     * The form `unique()` rule handles most cases, but this catches race conditions.
-     */
-    private function guardAgainstDuplicates(array $data): void {
-        $errors = [];
-
-        if (User::where('email', $data['email'])->exists()) {
-            $errors['data.email'] = 'This email address is already registered. Please log in or use a different email.';
-        }
-
-        if (!empty($data['phone']) && User::where('phone', $data['phone'])->exists()) {
-            $errors['data.phone'] = 'This phone number is already registered. Please log in or use a different number.';
-        }
-
-        if (!empty($errors)) {
-            throw ValidationException::withMessages($errors);
-        }
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Page Config
-    // ─────────────────────────────────────────────────────────────────────────
-
-    public function getTitle(): string {
-        return '';
-    }
-
-    public function hasLogo(): bool {
-        return false;
-    }
+    public function getTitle(): string { return ''; }
+    public function hasLogo(): bool    { return false; }
 }

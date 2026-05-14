@@ -53,6 +53,7 @@ class AdminPanelProvider extends PanelProvider {
                         )
                         ->navigationGroups([
                             'Dashboards',
+                            'Facility Assessment',
                             'Training Management',
                             'Indicator Catalog',
                             'knowledge Base',

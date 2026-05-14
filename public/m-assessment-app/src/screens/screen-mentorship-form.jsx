@@ -145,6 +145,133 @@ function SearchableDropdown({
     );
 }
 
+function getProgramTheme(name, i) {
+    const n = (name ?? "").toLowerCase();
+    if (n.includes("infant") || n.includes("child"))
+        return { from: "#7DB83A", to: "#A8D84E", shadow: "rgba(125,184,58,.40)", emoji: "👶", tag: "Paediatric Care" };
+    if (n.includes("newborn") || n.includes("neonat"))
+        return { from: "#A855C8", to: "#CF8FE0", shadow: "rgba(168,85,200,.40)", emoji: "🤱", tag: "Neonatal Care" };
+    if (n.includes("maternal") || n.includes("mother") || n.includes("safe"))
+        return { from: "#B5006C", to: "#E91E8C", shadow: "rgba(181,0,108,.40)", emoji: "❤️", tag: "Maternal Health" };
+    if (n.includes("nutrition") || n.includes("feeding"))
+        return { from: "#E05A00", to: "#FF8C00", shadow: "rgba(224,90,0,.40)", emoji: "🌿", tag: "Nutrition" };
+    const fb = [
+        { from: "#C2185B", to: "#E91E63", shadow: "rgba(194,24,91,.35)", emoji: "❤️", tag: "Maternal Health" },
+        { from: "#E65100", to: "#EF8C00", shadow: "rgba(230,81,0,.35)", emoji: "🌿", tag: "Nutrition" },
+        { from: "#5E35B1", to: "#9C27B0", shadow: "rgba(94,53,177,.35)", emoji: "🧬", tag: "Programme" },
+        { from: "#00838F", to: "#26C6DA", shadow: "rgba(0,131,143,.35)", emoji: "🩺", tag: "Clinical" },
+    ];
+    return fb[i % fb.length];
+}
+
+function ProgramPickerCards({ programs, value, onChange }) {
+    if (!programs || programs.length === 0) {
+        return (
+            <div style={{ padding: "20px 0", textAlign: "center", color: T.textMuted, fontSize: 13 }}>
+                No programmes configured yet.
+            </div>
+        );
+    }
+    return (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            {programs.map((p, i) => {
+                const theme = getProgramTheme(p.name, i);
+                const selected = String(p.id) === String(value);
+                return (
+                    <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => onChange(String(p.id))}
+                        style={{
+                            position: "relative",
+                            background: `linear-gradient(150deg, ${theme.from} 0%, ${theme.to} 100%)`,
+                            border: selected ? "2.5px solid rgba(255,255,255,0.9)" : "2px solid transparent",
+                            borderRadius: 14,
+                            padding: "12px 10px 10px",
+                            cursor: "pointer",
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            gap: 2,
+                            overflow: "hidden",
+                            minHeight: 140,
+                            transform: selected ? "translateY(-4px)" : "none",
+                            boxShadow: selected
+                                ? `0 10px 24px ${theme.shadow}, 0 3px 8px rgba(0,0,0,0.15)`
+                                : "0 3px 10px rgba(0,0,0,0.18)",
+                            transition: "transform 0.22s ease, box-shadow 0.22s ease, border-color 0.18s",
+                            textAlign: "center",
+                        }}
+                    >
+                        {/* dot-pattern watermark */}
+                        <div style={{
+                            position: "absolute", inset: 0, pointerEvents: "none",
+                            backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.18) 1.2px, transparent 1.2px)",
+                            backgroundSize: "9px 9px",
+                            maskImage: "radial-gradient(ellipse 75% 70% at 55% 80%, black 0%, transparent 70%)",
+                            WebkitMaskImage: "radial-gradient(ellipse 75% 70% at 55% 80%, black 0%, transparent 70%)",
+                        }} />
+                        {/* MoH badge */}
+                        <div style={{
+                            display: "inline-flex", alignItems: "center", gap: 3,
+                            background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.25)",
+                            borderRadius: 99, padding: "2px 7px 2px 4px",
+                            fontSize: 9, fontWeight: 700, letterSpacing: "0.06em",
+                            textTransform: "uppercase", color: "rgba(255,255,255,0.92)",
+                            marginBottom: 2, alignSelf: "flex-start",
+                        }}>
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.9)" strokeWidth="1.8">
+                                <path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7L12 2z"/>
+                            </svg>
+                            MoH
+                        </div>
+                        {/* checkmark */}
+                        <div style={{
+                            position: "absolute", top: 10, right: 10,
+                            width: 20, height: 20, borderRadius: "50%",
+                            background: selected ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.2)",
+                            border: `1.5px solid ${selected ? "rgba(255,255,255,1)" : "rgba(255,255,255,0.35)"}`,
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                            transform: selected ? "scale(1)" : "scale(0.65)",
+                            opacity: selected ? 1 : 0,
+                            transition: "all 0.2s cubic-bezier(0.34,1.56,0.64,1)",
+                        }}>
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none"
+                                stroke={theme.from} strokeWidth="3">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </div>
+                        {/* emoji */}
+                        <div style={{ fontSize: 28, lineHeight: 1, margin: "4px 0 2px", filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.2))" }}>
+                            {theme.emoji}
+                        </div>
+                        {/* tag */}
+                        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.65)", marginBottom: 2 }}>
+                            {theme.tag}
+                        </div>
+                        {/* title */}
+                        <div style={{ fontSize: 11, fontWeight: 900, color: "#fff", lineHeight: 1.25, letterSpacing: "0.01em", textShadow: "0 1px 4px rgba(0,0,0,0.25)" }}>
+                            {p.name}
+                        </div>
+                        {/* module count */}
+                        {p.module_count != null && (
+                            <div style={{
+                                marginTop: "auto", paddingTop: 6,
+                                fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em",
+                                color: "rgba(255,255,255,0.85)",
+                                background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.28)",
+                                borderRadius: 99, padding: "3px 8px", display: "inline-block",
+                            }}>
+                                {p.module_count} module{p.module_count !== 1 ? "s" : ""}
+                            </div>
+                        )}
+                    </button>
+                );
+            })}
+        </div>
+    );
+}
+
 export function MentorshipFormScreen({ user, onBack, onCreated, existingMentorship }) {
     const isEditMode = !!existingMentorship;
     const [step, setStep] = useState(1);
@@ -155,6 +282,7 @@ export function MentorshipFormScreen({ user, onBack, onCreated, existingMentorsh
     // ── Step 1: Setup ──────────────────────────────────────────────────────
     const [programs, setPrograms]         = useState([]);
     const [programId, setProgramId]       = useState("");
+    const [isPilot, setIsPilot]           = useState(false);
 
     // County → Facility cascade (matches web form)
     const [counties, setCounties]           = useState([]);
@@ -289,6 +417,7 @@ export function MentorshipFormScreen({ user, onBack, onCreated, existingMentorsh
                 if (t.start_date)  setStartDate(t.start_date);
                 if (t.end_date)    setEndDate(t.end_date);
                 if (t.max_participants) setMaxParticipants(t.max_participants);
+                if (t.is_pilot !== undefined) setIsPilot(!!t.is_pilot);
             })
             .catch(() => {})
             .finally(() => setEditLoading(false));
@@ -466,6 +595,7 @@ export function MentorshipFormScreen({ user, onBack, onCreated, existingMentorsh
                 start_date:       startDate,
                 end_date:         endDate,
                 max_participants: maxParticipants,
+                is_pilot:         isPilot,
             });
             onCreated(res?.data ?? res);
         } catch (e) {
@@ -485,6 +615,7 @@ export function MentorshipFormScreen({ user, onBack, onCreated, existingMentorsh
                 start_date:       startDate,
                 end_date:         endDate,
                 max_participants: maxParticipants,
+                is_pilot:         isPilot,
                 class_name:       className.trim(),
                 class_start_date: effectiveClassStartDate,
                 class_end_date:   effectiveClassEndDate,
@@ -585,6 +716,45 @@ export function MentorshipFormScreen({ user, onBack, onCreated, existingMentorsh
                 {/* ── Step 1: Setup ── */}
                 {!editLoading && step === 1 && (
                     <div>
+                        {/* Run Type toggle */}
+                        <div style={{ background: T.card, borderRadius: T.radiusSm, padding: "14px 14px 14px", boxShadow: T.shadowCard, marginBottom: 12 }}>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: T.textSub, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}>
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                                Run Type
+                            </div>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                                {[
+                                    { pilot: false, label: "Live", icon: "🎯", desc: "Production mentorship tracked in official reporting" },
+                                    { pilot: true,  label: "Pilot Run", icon: "🧪", desc: "Trial run — excluded from official KPIs and reports" },
+                                ].map(opt => {
+                                    const active = isPilot === opt.pilot;
+                                    return (
+                                        <button
+                                            key={opt.label}
+                                            type="button"
+                                            onClick={() => setIsPilot(opt.pilot)}
+                                            style={{
+                                                padding: "12px 10px", borderRadius: 10, cursor: "pointer",
+                                                border: active ? `2px solid ${opt.pilot ? "#F59E0B" : T.primary}` : `1px solid ${T.border}`,
+                                                background: active ? (opt.pilot ? "#FFFBEB" : T.primaryGhost) : "#fff",
+                                                textAlign: "center",
+                                                transition: "all 0.18s ease",
+                                                boxShadow: active ? `0 2px 8px ${opt.pilot ? "rgba(245,158,11,0.2)" : T.primaryGlow}` : "none",
+                                            }}
+                                        >
+                                            <div style={{ fontSize: 20, marginBottom: 4 }}>{opt.icon}</div>
+                                            <div style={{ fontSize: 13, fontWeight: 700, color: active ? (opt.pilot ? "#D97706" : T.primary) : T.text }}>
+                                                {opt.label}
+                                            </div>
+                                            <div style={{ fontSize: 10, color: T.textMuted, marginTop: 3, lineHeight: 1.4 }}>
+                                                {opt.desc}
+                                            </div>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
                         {/* Location card */}
                         <div style={{ background: T.card, borderRadius: T.radiusSm, padding: "14px 14px 2px", boxShadow: T.shadowCard, marginBottom: 12 }}>
                             <div style={{ fontSize: 11, fontWeight: 700, color: T.textSub, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}>
@@ -653,17 +823,12 @@ export function MentorshipFormScreen({ user, onBack, onCreated, existingMentorsh
                                 Program & Schedule
                             </div>
 
-                            <Field label="Mentorship Program" required hint="e.g. Newborn Care or Infant & Child Care">
-                                <select
+                            <Field label="Mentorship Program" required>
+                                <ProgramPickerCards
+                                    programs={programs}
                                     value={programId}
-                                    onChange={e => { setProgramId(e.target.value); setSelectedModuleIds([]); }}
-                                    style={selectStyle}
-                                >
-                                    <option value="">Select program…</option>
-                                    {programs.map(p => (
-                                        <option key={p.id} value={p.id}>{p.name}</option>
-                                    ))}
-                                </select>
+                                    onChange={(id) => { setProgramId(id); setSelectedModuleIds([]); }}
+                                />
                             </Field>
 
                             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -961,14 +1126,15 @@ export function MentorshipFormScreen({ user, onBack, onCreated, existingMentorsh
                     <div>
                         <div style={{ background: T.card, borderRadius: T.radiusSm, padding: 16, boxShadow: T.shadowCard, marginBottom: 12 }}>
                             {[
+                                ["Run Type",   isPilot ? "🧪 Pilot Run" : "🎯 Live"],
                                 ["Program",    selectedProgram?.name ?? "—"],
                                 ["County",     counties.find(c => String(c.id) === String(countyId))?.name ?? "—"],
                                 ["Facility",   facilityLabel || "—"],
                                 ["Start Date", startDate],
                                 ["End Date",   endDate],
                                 ["Max Mentees", `${maxParticipants}`],
-                                ["Class",      className.trim() || "â€”"],
-                                ["Class Dates", `${effectiveClassStartDate || "â€”"} â†’ ${effectiveClassEndDate || "â€”"}`],
+                                ["Class",      className.trim() || "—"],
+                                ["Class Dates", `${effectiveClassStartDate || "—"} → ${effectiveClassEndDate || "—"}`],
                                 ["Modules",    `${selectedModuleIds.length} selected`],
                                 ["Mentees",    `${selectedMentees.length} added`],
                             ].map(([label, value]) => (

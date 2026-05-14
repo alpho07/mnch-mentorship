@@ -6,6 +6,7 @@ use App\Filament\Resources\AssessmentResource;
 use App\Filament\Resources\AssessmentResource\Traits\HasSectionNavigation;
 use App\Models\MainCadre;
 use App\Models\HumanResourceResponse;
+use Filament\Actions;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
@@ -15,6 +16,49 @@ class EditHumanResources extends EditRecord {
     use HasSectionNavigation;
 
     protected static string $resource = AssessmentResource::class;
+
+    protected function getHeaderActions(): array {
+        return [
+            Actions\Action::make('manage_cadres')
+                ->label('Manage Cadres')
+                ->icon('heroicon-o-adjustments-horizontal')
+                ->color('gray')
+                ->modalHeading('Manage Cadres for This Assessment')
+                ->modalDescription('Select which cadres are present at this facility. Unchecked cadres will be hidden from the form — any data already entered for them is preserved.')
+                ->modalSubmitActionLabel('Save Selection')
+                ->fillForm(function () {
+                    $allCadreIds = MainCadre::where('is_active', true)->pluck('id')->toArray();
+                    $excludedIds = $this->record->excluded_cadre_ids ?? [];
+                    return [
+                        'included_cadre_ids' => array_values(array_diff($allCadreIds, $excludedIds)),
+                    ];
+                })
+                ->form([
+                    Forms\Components\CheckboxList::make('included_cadre_ids')
+                        ->label('Cadres')
+                        ->helperText('Uncheck any cadre not applicable to this facility.')
+                        ->options(fn() => MainCadre::where('is_active', true)->orderBy('order')->pluck('name', 'id')->toArray())
+                        ->bulkToggleable()
+                        ->columns(2),
+                ])
+                ->action(function (array $data) {
+                    $allCadreIds = MainCadre::where('is_active', true)->pluck('id')->toArray();
+                    $includedIds = array_map('intval', $data['included_cadre_ids'] ?? []);
+                    $excludedIds = array_values(array_diff($allCadreIds, $includedIds));
+
+                    $this->record->update(['excluded_cadre_ids' => $excludedIds ?: null]);
+
+                    Notification::make()
+                        ->title('Cadre selection updated')
+                        ->success()
+                        ->send();
+
+                    $this->redirect(
+                        AssessmentResource::getUrl('edit-human-resources', ['record' => $this->record->id])
+                    );
+                }),
+        ];
+    }
 
     public function mount(int|string $record): void {
         parent::mount($record);
@@ -40,7 +84,10 @@ class EditHumanResources extends EditRecord {
     }
 
     public function form(Form $form): Form {
+        $excludedIds = $this->record->excluded_cadre_ids ?? [];
+
         $cadres = MainCadre::where('is_active', true)
+                ->when(!empty($excludedIds), fn($q) => $q->whereNotIn('id', $excludedIds))
                 ->orderBy('order')
                 ->get();
 

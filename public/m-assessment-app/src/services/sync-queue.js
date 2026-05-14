@@ -425,8 +425,13 @@ async function executeOp(rawApi, op) {
         case 'mentorships.updateMenteeEmail':
             return rawApi.classLifecycle.updateMentee(op.classId, op.participantId, op.data);
 
-        case 'mentorships.regenerateToken':
-            return rawApi.classLifecycle.regenerateToken(op.classId);
+        case 'mentorships.regenerateToken': {
+            const response = await rawApi.classLifecycle.regenerateToken(op.classId);
+            if (response?.data) {
+                await offlineStore.saveEnrollmentLink(op.classId, response.data);
+            }
+            return response;
+        }
 
         case 'mentorships.addModule': {
             const migrateModuleId = async (fromId, toId, classId) => {

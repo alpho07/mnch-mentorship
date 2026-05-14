@@ -1,0 +1,179 @@
+<h2>Top Tab Style — Which feels right?</h2>
+<p class="subtitle">All three replace the current hub screen. Tap a style to select it.</p>
+
+<style>
+  .phone-row { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; margin: 24px 0; }
+  .phone { width: 200px; border-radius: 28px; overflow: hidden; box-shadow: 0 12px 40px rgba(0,0,0,0.18); border: 2px solid #e5e7eb; background: #f8fafc; flex-shrink: 0; }
+  .phone-notch { background: #111; height: 26px; display: flex; align-items: center; justify-content: center; }
+  .phone-notch-pill { width: 60px; height: 8px; background: #222; border-radius: 4px; }
+  .phone-header { padding: 12px 14px 10px; display: flex; align-items: center; justify-content: space-between; }
+  .phone-title { font-size: 14px; font-weight: 800; color: white; }
+  .phone-avatar { width: 28px; height: 28px; border-radius: 50%; background: rgba(255,255,255,0.25); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: white; }
+  .phone-body { background: #f0f4f8; min-height: 280px; padding: 12px; }
+  .phone-card { background: white; border-radius: 12px; padding: 12px; margin-bottom: 10px; box-shadow: 0 1px 6px rgba(0,0,0,0.06); }
+  .phone-card-title { font-size: 11px; font-weight: 700; color: #1e293b; margin-bottom: 4px; }
+  .phone-card-sub { font-size: 9px; color: #94a3b8; }
+  .phone-card-badge { display: inline-block; background: #e0f7fa; color: #0097A7; font-size: 8px; font-weight: 700; padding: 2px 6px; border-radius: 20px; margin-top: 4px; }
+  .label-tag { display: inline-block; font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
+  /* Option A – TikTok underline */
+  .tabs-tiktok { display: flex; background: #0097A7; padding: 0 10px; }
+  .tabs-tiktok .tab { flex: 1; text-align: center; padding: 10px 0 9px; font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.6); border-bottom: 2px solid transparent; cursor: pointer; }
+  .tabs-tiktok .tab.active { color: white; border-bottom: 2px solid white; }
+  /* Option B – Uber floating pills */
+  .tabs-uber-wrap { background: #0097A7; padding: 8px 10px 10px; }
+  .tabs-uber { display: flex; gap: 6px; }
+  .tabs-uber .tab { flex: 1; text-align: center; padding: 6px 4px; font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.7); background: rgba(255,255,255,0.12); border-radius: 20px; cursor: pointer; border: 1px solid transparent; }
+  .tabs-uber .tab.active { color: #0097A7; background: white; }
+  /* Option C – Segmented control */
+  .tabs-seg-wrap { background: #0097A7; padding: 10px 10px 12px; }
+  .tabs-seg { display: flex; background: rgba(255,255,255,0.15); border-radius: 10px; padding: 3px; gap: 2px; }
+  .tabs-seg .tab { flex: 1; text-align: center; padding: 6px 2px; font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.65); border-radius: 8px; cursor: pointer; }
+  .tabs-seg .tab.active { background: white; color: #0097A7; }
+</style>
+
+<div class="phone-row">
+
+  <!-- Option A: TikTok underline -->
+  <div style="text-align:center">
+    <div class="label-tag">A — Underline (TikTok)</div>
+    <div class="phone" style="cursor:pointer" onclick="selectPhone('a', this)">
+      <div class="phone-notch"><div class="phone-notch-pill"></div></div>
+      <div class="phone-header" style="background:#0097A7">
+        <span class="phone-title">MNCH Kenya</span>
+        <div class="phone-avatar">JD</div>
+      </div>
+      <div class="tabs-tiktok">
+        <div class="tab active">Assessments</div>
+        <div class="tab">Mentorships</div>
+        <div class="tab">Trainings</div>
+      </div>
+      <div class="phone-body">
+        <div class="phone-card">
+          <div class="phone-card-title">Machakos District Hospital</div>
+          <div class="phone-card-sub">Assessment · Oct 2024</div>
+          <div class="phone-card-badge">In Progress</div>
+        </div>
+        <div class="phone-card">
+          <div class="phone-card-title">Mwea Health Centre</div>
+          <div class="phone-card-sub">Assessment · Sep 2024</div>
+          <div class="phone-card-badge" style="background:#dcfce7;color:#15803d">Complete</div>
+        </div>
+        <div class="phone-card">
+          <div class="phone-card-title">Kerugoya Hospital</div>
+          <div class="phone-card-sub">Assessment · Sep 2024</div>
+          <div class="phone-card-badge" style="background:#dcfce7;color:#15803d">Complete</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Option B: Uber pill tabs -->
+  <div style="text-align:center">
+    <div class="label-tag">B — Floating Pills (Uber)</div>
+    <div class="phone" style="cursor:pointer" onclick="selectPhone('b', this)">
+      <div class="phone-notch"><div class="phone-notch-pill"></div></div>
+      <div class="phone-header" style="background:#0097A7">
+        <span class="phone-title">MNCH Kenya</span>
+        <div class="phone-avatar">JD</div>
+      </div>
+      <div class="tabs-uber-wrap">
+        <div class="tabs-uber">
+          <div class="tab active">Assessments</div>
+          <div class="tab">Mentorships</div>
+          <div class="tab">Trainings</div>
+        </div>
+      </div>
+      <div class="phone-body">
+        <div class="phone-card">
+          <div class="phone-card-title">Machakos District Hospital</div>
+          <div class="phone-card-sub">Assessment · Oct 2024</div>
+          <div class="phone-card-badge">In Progress</div>
+        </div>
+        <div class="phone-card">
+          <div class="phone-card-title">Mwea Health Centre</div>
+          <div class="phone-card-sub">Assessment · Sep 2024</div>
+          <div class="phone-card-badge" style="background:#dcfce7;color:#15803d">Complete</div>
+        </div>
+        <div class="phone-card">
+          <div class="phone-card-title">Kerugoya Hospital</div>
+          <div class="phone-card-sub">Assessment · Sep 2024</div>
+          <div class="phone-card-badge" style="background:#dcfce7;color:#15803d">Complete</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Option C: Segmented control -->
+  <div style="text-align:center">
+    <div class="label-tag">C — Segmented (iOS style)</div>
+    <div class="phone" style="cursor:pointer" onclick="selectPhone('c', this)">
+      <div class="phone-notch"><div class="phone-notch-pill"></div></div>
+      <div class="phone-header" style="background:#0097A7">
+        <span class="phone-title">MNCH Kenya</span>
+        <div class="phone-avatar">JD</div>
+      </div>
+      <div class="tabs-seg-wrap">
+        <div class="tabs-seg">
+          <div class="tab active">Assess</div>
+          <div class="tab">Mentor</div>
+          <div class="tab">Training</div>
+        </div>
+      </div>
+      <div class="phone-body">
+        <div class="phone-card">
+          <div class="phone-card-title">Machakos District Hospital</div>
+          <div class="phone-card-sub">Assessment · Oct 2024</div>
+          <div class="phone-card-badge">In Progress</div>
+        </div>
+        <div class="phone-card">
+          <div class="phone-card-title">Mwea Health Centre</div>
+          <div class="phone-card-sub">Assessment · Sep 2024</div>
+          <div class="phone-card-badge" style="background:#dcfce7;color:#15803d">Complete</div>
+        </div>
+        <div class="phone-card">
+          <div class="phone-card-title">Kerugoya Hospital</div>
+          <div class="phone-card-sub">Assessment · Sep 2024</div>
+          <div class="phone-card-badge" style="background:#dcfce7;color:#15803d">Complete</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<p class="subtitle" style="text-align:center;margin-top:4px">Click a phone to select that style. All show the same content — only the tab strip differs.</p>
+
+<div class="options" style="margin-top:20px">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Underline tabs (TikTok / YouTube)</h3>
+      <p>Text labels flush with the header, white underline slides to the active tab. Maximises vertical space — no extra height added. Clean and familiar.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Floating pill tabs (Uber / Google Maps)</h3>
+      <p>Rounded pill buttons sit below the header on the coloured band. Active tab pops out in white. Feels tactile and button-like — good for 2–4 tabs.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Segmented control (iOS native)</h3>
+      <p>All tabs in one rounded container; active segment fills white. Very iOS-native feel. Labels get truncated if there are many tabs.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+function selectPhone(choice, el) {
+  document.querySelectorAll('.phone').forEach(p => p.style.outline = '');
+  el.style.outline = '3px solid #0097A7';
+  // Also trigger the option below
+  document.querySelectorAll('.option').forEach(o => o.classList.remove('selected'));
+  const opt = document.querySelector(`.option[data-choice="${choice}"]`);
+  if (opt) { opt.classList.add('selected'); window._lastChoice = choice; }
+}
+</script>

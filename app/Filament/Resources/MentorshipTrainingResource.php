@@ -11,6 +11,7 @@ use Filament\Forms;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Section;
+use App\Filament\Forms\Components\ProgramPicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
@@ -33,11 +34,17 @@ class MentorshipTrainingResource extends Resource {
     protected static ?int $navigationSort = 1;
 
     public static function shouldRegisterNavigation(): bool {
-        return auth()->check() && auth()->user()->hasRole(['super_admin', 'admin', 'division', 'facility_mentor', 'national_mentor']);
+        return auth()->check() && auth()->user()->hasRole([
+            'super_admin', 'admin', 'division', 'facility_mentor', 'national_mentor',
+            'facility_mentor_lead', 'county_mentor_lead', 'subcounty_mentor_lead',
+        ]);
     }
 
     public static function canAccess(): bool {
-        return auth()->check() && auth()->user()->hasRole(['super_admin', 'admin', 'division', 'facility_mentor', 'national_mentor']);
+        return auth()->check() && auth()->user()->hasRole([
+            'super_admin', 'admin', 'division', 'facility_mentor', 'national_mentor',
+            'facility_mentor_lead', 'county_mentor_lead', 'subcounty_mentor_lead',
+        ]);
     }
 
     public static function canCreate(): bool {
@@ -66,9 +73,7 @@ class MentorshipTrainingResource extends Resource {
 
         $user = auth()->user();
 
-        if (!$user->hasRole(['super_admin', 'admin', 'division'])) {
-            $query->where('mentor_id', $user->id);
-        }
+        static::applyRoleScope($query, $user);
 
         // Non-super-admins always see only non-deleted records.
         // Super-admins rely on tab filters (Active / Trash) to control visibility.
@@ -77,6 +82,42 @@ class MentorshipTrainingResource extends Resource {
         }
 
         return $query;
+    }
+
+    private static function applyRoleScope(Builder $query, User $user): void {
+        if ($user->hasRole(['super_admin', 'admin', 'division'])) {
+            return;
+        }
+
+        if ($user->hasRole('county_mentor_lead')) {
+            $countyIds = $user->counties()->pluck('counties.id')->toArray();
+            if ($user->county_id) {
+                $countyIds[] = $user->county_id;
+            }
+            $facilityIds = Facility::whereHas('subcounty',
+                fn($q) => $q->whereIn('county_id', array_unique($countyIds))
+            )->pluck('id');
+            $query->whereIn('facility_id', $facilityIds);
+            return;
+        }
+
+        if ($user->hasRole('subcounty_mentor_lead')) {
+            $subcountyIds = $user->subcounties()->pluck('subcounties.id');
+            $facilityIds = Facility::whereIn('subcounty_id', $subcountyIds)->pluck('id');
+            $query->whereIn('facility_id', $facilityIds);
+            return;
+        }
+
+        if ($user->hasRole('facility_mentor_lead')) {
+            $facilityIds = $user->facilities()->pluck('facilities.id')->toArray();
+            if ($user->facility_id) {
+                $facilityIds[] = $user->facility_id;
+            }
+            $query->whereIn('facility_id', array_unique($facilityIds));
+            return;
+        }
+
+        $query->where('mentor_id', $user->id);
     }
 
     public static function getNavigationLabel(): string {
@@ -96,6 +137,27 @@ class MentorshipTrainingResource extends Resource {
                     // Auto-set hidden fields — mentor is always the logged-in user
                     Forms\Components\Hidden::make('type')->default('facility_mentorship'),
                     Forms\Components\Hidden::make('mentor_id')->default(fn() => auth()->id()),
+
+                    // ── Run Type ──────────────────────────────────────────────
+                    Section::make('Run Type')
+                            ->description('Is this a real live mentorship or a pilot/test run?')
+                            ->icon('heroicon-o-beaker')
+                            ->schema([
+                                Forms\Components\Radio::make('is_pilot')
+                                ->label('')
+                                ->options([
+                                    0 => 'Live Mentorship',
+                                    1 => 'Pilot Run',
+                                ])
+                                ->descriptions([
+                                    0 => 'Counts in dashboards, KPI badges, and analytics reports.',
+                                    1 => 'Excluded from all counts, badges, and analytics. Use for testing.',
+                                ])
+                                ->default(0)
+                                ->required()
+                                ->inline(false),
+                            ]),
+
                     Section::make('Mentorship Preparation')
                             ->description('Use these steps before starting classes or sending attendance links.')
                             ->icon('heroicon-o-light-bulb')
@@ -161,14 +223,13 @@ class MentorshipTrainingResource extends Resource {
                             ->description('What program is being mentored and when?')
                             ->icon('heroicon-o-calendar-days')
                             ->schema([
-                                Select::make('program_id')
+                                ProgramPicker::make('program_id')
                                 ->label('Mentorship Program')
-                                ->relationship('program', 'name')
+                                ->helperText('Tap a programme card to select it.')
                                 ->required()
-                                ->searchable()
-                                ->preload()
-                                ->prefixIcon('heroicon-o-book-open')
-                                ->helperText('e.g. Newborn Care or Infant & Child Care')
+                                ->validationMessages([
+                                    'required' => 'Please pick either the Infant and Child or Newborn programme card.',
+                                ])
                                 ->columnSpanFull(),
                                 Grid::make(3)->schema([
                                     DatePicker::make('start_date')
@@ -206,6 +267,14 @@ class MentorshipTrainingResource extends Resource {
         return $table
                         ->columns([
                             // Mentorship Code
+                            Tables\Columns\IconColumn::make('is_pilot')
+                            ->label('')
+                            ->boolean()
+                            ->trueIcon('heroicon-o-beaker')
+                            ->falseIcon(null)
+                            ->trueColor('warning')
+                            ->tooltip(fn($record) => $record->is_pilot ? 'Pilot Run — excluded from dashboards' : null)
+                            ->width('32px'),
                             Tables\Columns\TextColumn::make('identifier')
                             ->label('Code')
                             ->searchable()
@@ -472,13 +541,12 @@ class MentorshipTrainingResource extends Resource {
     // ─────────────────────────────────────────────────────────────────────────
 
     public static function getNavigationBadge(): ?string {
-        $query = static::getModel()::where('type', 'facility_mentorship');
-        //  ->whereHas('mentorshipClasses');
-
         $user = auth()->user();
-        if (!$user->hasRole(['super_admin', 'admin', 'division'])) {
-            $query->where('mentor_id', $user->id);
-        }
+        $query = static::getModel()::where('type', 'facility_mentorship')
+            ->where('is_pilot', false)
+            ->whereNull('deleted_at');
+
+        static::applyRoleScope($query, $user);
 
         $count = $query->count();
         return $count > 0 ? (string) $count : null;

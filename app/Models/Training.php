@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -48,6 +49,7 @@ class Training extends Model {
         'online_link', // for online trainings
         'deleted_by',
         'deletion_reason',
+        'is_pilot',
     ];
     protected $casts = [
         'start_date' => 'date',
@@ -58,8 +60,17 @@ class Training extends Model {
         'prerequisites' => 'array',
         'training_approaches' => 'array',
         'assess_participants' => 'boolean',
-        'provide_materials' => 'boolean',
+        'provide_materials'  => 'boolean',
+        'is_pilot'           => 'boolean',
     ];
+
+    public function scopeLive(Builder $query): Builder {
+        return $query->where('is_pilot', false);
+    }
+
+    public function scopePilot(Builder $query): Builder {
+        return $query->where('is_pilot', true);
+    }
 
     // ============================================
     // BASIC RELATIONSHIPS

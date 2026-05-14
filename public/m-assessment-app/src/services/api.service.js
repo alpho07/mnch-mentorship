@@ -1203,7 +1203,7 @@ const api = {
                 const data = await _rawApi.mentorshipCreate.create(payload);
                 return data;
             } catch (e) {
-                if (!navigator.onLine) {
+                if (isNetworkError(e)) {
                     const tempId = 'local_' + Date.now();
                     const local = { ...payload, id: tempId, _isOffline: true, status: 'draft' };
                     await offlineStore.saveMentorship(local);
@@ -1228,7 +1228,7 @@ const api = {
             try {
                 return await _rawApi.mentorshipCreate.submit(id);
             } catch (e) {
-                if (!navigator.onLine) {
+                if (isNetworkError(e)) {
                     await syncQueue.enqueue({ type: 'mentorships.submit', id });
                     return { message: 'Queued for sync.' };
                 }
@@ -1243,7 +1243,7 @@ const api = {
             try {
                 return await _rawApi.classLifecycle.start(classId);
             } catch (e) {
-                if (!navigator.onLine) {
+                if (isNetworkError(e)) {
                     await syncQueue.enqueue({ type: 'mentorships.startClass', classId });
                     return { data: { id: classId, status: 'active' } };
                 }
@@ -1311,7 +1311,7 @@ const api = {
             try {
                 return await _rawApi.classLifecycle.enrollMentee(classId, userId);
             } catch (e) {
-                if (!navigator.onLine) {
+                if (isNetworkError(e)) {
                     await syncQueue.enqueue({ type: 'mentorships.addMentee', classId, userId });
                     return { data: { participant_id: 'local_' + Date.now(), user_id: userId } };
                 }
@@ -1366,7 +1366,7 @@ const api = {
             try {
                 return await _rawApi.classLifecycle.removeMentee(classId, participantId);
             } catch (e) {
-                if (!navigator.onLine) {
+                if (isNetworkError(e)) {
                     await syncQueue.enqueue({ type: 'mentorships.removeMentee', classId, participantId });
                     return { message: 'Queued for sync.' };
                 }
@@ -1416,7 +1416,7 @@ const api = {
             try {
                 return await _rawApi.trainingActions.enroll(trainingId);
             } catch (e) {
-                if (!navigator.onLine) {
+                if (isNetworkError(e)) {
                     await syncQueue.enqueue({ type: 'trainings.enroll', trainingId });
                     return { data: { participant_id: 'pending', status: 'registered' } };
                 }
@@ -1427,7 +1427,7 @@ const api = {
             try {
                 return await _rawApi.trainingActions.attendance(trainingId);
             } catch (e) {
-                if (!navigator.onLine) {
+                if (isNetworkError(e)) {
                     await syncQueue.enqueue({ type: 'trainings.attendance', trainingId });
                     return { message: 'Queued for sync.' };
                 }

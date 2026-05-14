@@ -28,7 +28,7 @@ class MentorshipController extends Controller {
             $query->where('mentor_id', $user->id);
         }
 
-        $mentorships = $query->get();
+        $mentorships = $query->latest()->get();
 
         $data = $mentorships->map(fn (Training $t) => [
             'id'          => $t->id,
@@ -81,14 +81,18 @@ class MentorshipController extends Controller {
                 'title'        => $training->title,
                 'description'  => $training->description,
                 'status'       => $training->status,
+                'is_pilot'     => (bool) $training->is_pilot,
                 'start_date'   => $training->start_date?->toDateString(),
                 'end_date'     => $training->end_date?->toDateString(),
                 'location_type'=> $training->location_type,
+                'facility_id'  => $training->facility_id,
                 'facility'     => $training->facility?->name,
                 'facility_mfl' => $training->facility?->mfl_code,
+                'county_id'    => $training->county_id,
                 'county'       => $training->county?->name,
                 'program'      => $training->program?->name,
                 'program_id'   => $training->program_id,
+                'max_participants' => $training->max_participants,
                 'mentor_name'  => $training->mentor?->name,
                 'mentor_email' => $training->mentor?->email,
                 'notes'        => $training->notes,
@@ -180,7 +184,7 @@ class MentorshipController extends Controller {
             ...$data,
             'status'           => 'draft',
             'created_by'       => $request->user()->id,
-            'enrollment_token' => \Illuminate\Support\Str::uuid(),
+            'enrollment_token' => \Illuminate\Support\Str::random(32),
         ]);
 
         return response()->json([
