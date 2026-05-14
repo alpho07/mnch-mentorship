@@ -4,6 +4,7 @@ import { getScopesFromCache, cacheScopeConfig } from "../scope-config.js";
 import { AssessmentsScope } from "../scopes/AssessmentsScope.jsx";
 import { MentorshipsScope } from "../scopes/MentorshipsScope.jsx";
 import { TrainingsScope }   from "../scopes/TrainingsScope.jsx";
+import api from "../services/api.service.js";
 
 const SCOPE_COMPONENTS = {
     assessments: AssessmentsScope,
@@ -51,6 +52,26 @@ export function ScopeShell({ user, onLogout, onUserUpdate }) {
     const [activeIdx, setActiveIdx]     = useState(0);
     const [ready, setReady]             = useState(false);
     const [showProfile, setShowProfile] = useState(false);
+    const [syncToast, setSyncToast]     = useState(null);
+
+    useEffect(() => {
+        api.smartSync().catch(() => {});
+
+        function handleSyncComplete(e) {
+            const { assessments, mentorships, trainings, users } = e.detail ?? {};
+            const parts = [];
+            if (mentorships > 0) parts.push(`${mentorships} mentorship${mentorships !== 1 ? "s" : ""}`);
+            if (assessments > 0) parts.push(`${assessments} assessment${assessments !== 1 ? "s" : ""}`);
+            if (trainings > 0) parts.push(`${trainings} training${trainings !== 1 ? "s" : ""}`);
+            if (users > 0) parts.push(`${users} user${users !== 1 ? "s" : ""}`);
+            if (parts.length === 0) return;
+            setSyncToast(parts.join(", ") + " updated");
+            setTimeout(() => setSyncToast(null), 5000);
+        }
+
+        window.addEventListener("app:sync-complete", handleSyncComplete);
+        return () => window.removeEventListener("app:sync-complete", handleSyncComplete);
+    }, []);
 
     useEffect(() => {
         const userScopes = user?.scopes;
@@ -198,6 +219,39 @@ export function ScopeShell({ user, onLogout, onUserUpdate }) {
                     );
                 })}
             </div>
+
+            {/* ── Inbound sync toast ── */}
+            {syncToast && (
+                <div style={{
+                    position: "fixed",
+                    bottom: "calc(80px + env(safe-area-inset-bottom, 0px))",
+                    left: 16, right: 16,
+                    background: "linear-gradient(135deg, #ECFDF5, #D1FAE5)",
+                    color: "#065F46",
+                    border: "1px solid #6EE7B7",
+                    borderRadius: 14,
+                    padding: "10px 14px",
+                    fontSize: 13,
+                    fontWeight: 600,
+                    zIndex: 300,
+                    boxShadow: "0 4px 20px rgba(0,0,0,0.12)",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                }}>
+                    <span>↓</span>
+                    <span style={{ flex: 1 }}>{syncToast}</span>
+                    <button
+                        onClick={() => setSyncToast(null)}
+                        style={{
+                            background: "rgba(0,0,0,0.08)", border: "none",
+                            borderRadius: 6, width: 20, height: 20,
+                            cursor: "pointer", color: "#065F46", fontSize: 12,
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                        }}
+                    >✕</button>
+                </div>
+            )}
 
             {/* ── Profile bottom sheet ── */}
             {showProfile && (
