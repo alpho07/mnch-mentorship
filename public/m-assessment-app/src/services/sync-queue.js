@@ -55,6 +55,17 @@ async function refreshCount() {
 //   "mentorships.removeMentee"  → { classId, participantId }
 //   "mentorships.updateSession" → { sessionId, payload }
 //   "mentorships.startClass"    → { classId }
+//   "mentorships.createClass"    → { trainingId, payload, tempId }
+//   "mentorships.updateClass"    → { trainingId, classId, payload }
+//   "mentorships.deleteClass"    → { trainingId, classId }
+//   "mentorships.endClass"       → { classId }
+//   "mentorships.createMentee"   → { classId, payload, tempId }
+//   "mentorships.updateMenteeEmail" → { classId, participantId, data }
+//   "mentorships.regenerateToken"→ { classId }
+//   "mentorships.addModule"      → { classId, programModuleId, tempId }
+//   "mentorships.removeModule"   → { moduleId, classId }
+//   "mentorships.addSession"     → { moduleId, templateId, tempId }
+//   "mentorships.removeSession"  → { sessionId, moduleId }
 //   "trainings.enroll"          → { trainingId }
 //   "trainings.attendance"      → { trainingId }
 
@@ -328,6 +339,159 @@ async function executeOp(rawApi, op) {
 
         case 'mentorships.startClass':
             return rawApi.classLifecycle.start(op.classId);
+
+        case 'mentorships.createClass': {
+            const migrateClassId = async (fromId, toId, trainingId) => {
+                const list = (await offlineStore.getMentorshipClasses(trainingId)) ?? [];
+                const idx = list.findIndex(c => c.id === fromId);
+                if (idx !== -1) {
+                    list[idx] = { ...list[idx], id: toId, _isOffline: false };
+                    await offlineStore.saveMentorshipClasses(trainingId, list);
+                }
+                window.dispatchEvent(new CustomEvent('mentorship:classId-resolved', {
+                    detail: { tempId: fromId, realId: toId },
+                }));
+            };
+            try {
+                const response = await rawApi.mentorships.createClass(op.trainingId, op.payload);
+                const realId = response?.data?.id;
+                if (!realId) throw new Error('[SyncQueue] mentorships.createClass: server returned no id');
+                await migrateClassId(op.tempId, realId, op.trainingId);
+                return response;
+            } catch (e) {
+                if (e.status === 409) {
+                    const realId = e.data?.data?.id;
+                    if (realId) await migrateClassId(op.tempId, realId, op.trainingId);
+                    return null;
+                }
+                if (e.status >= 400 && e.status < 500) {
+                    // Remove the provisional class from local cache
+                    const list = (await offlineStore.getMentorshipClasses(op.trainingId)) ?? [];
+                    await offlineStore.saveMentorshipClasses(op.trainingId, list.filter(c => c.id !== op.tempId));
+                    return null; // dequeue
+                }
+                throw e;
+            }
+        }
+
+        case 'mentorships.updateClass':
+            return rawApi.mentorships.updateClass(op.trainingId, op.classId, op.payload);
+
+        case 'mentorships.deleteClass': {
+            try {
+                return await rawApi.mentorships.deleteClass(op.trainingId, op.classId);
+            } catch (e) {
+                if (e.status === 404) return null; // already deleted
+                throw e;
+            }
+        }
+
+        case 'mentorships.endClass':
+            return rawApi.classLifecycle.end(op.classId);
+
+        case 'mentorships.createMentee': {
+            const migrateMenteeId = async (fromId, toId, classId) => {
+                const list = (await offlineStore.getParticipants(classId)) ?? [];
+                const idx = list.findIndex(p => p.id === fromId);
+                if (idx !== -1) {
+                    list[idx] = { ...list[idx], id: toId, _isOffline: false };
+                    await offlineStore.saveParticipants(classId, list);
+                }
+                window.dispatchEvent(new CustomEvent('mentorship:participantId-resolved', {
+                    detail: { tempId: fromId, realId: toId, classId },
+                }));
+            };
+            try {
+                const response = await rawApi.classLifecycle.createMentee(op.classId, op.payload);
+                const realId = response?.data?.participant_id;
+                if (!realId) throw new Error('[SyncQueue] mentorships.createMentee: server returned no participant_id');
+                await migrateMenteeId(op.tempId, realId, op.classId);
+                return response;
+            } catch (e) {
+                if (e.status === 409) {
+                    const realId = e.data?.data?.participant_id;
+                    if (realId) await migrateMenteeId(op.tempId, realId, op.classId);
+                    return null;
+                }
+                if (e.status >= 400 && e.status < 500) {
+                    const list = (await offlineStore.getParticipants(op.classId)) ?? [];
+                    await offlineStore.saveParticipants(op.classId, list.filter(p => p.id !== op.tempId));
+                    return null;
+                }
+                throw e;
+            }
+        }
+
+        case 'mentorships.updateMenteeEmail':
+            return rawApi.classLifecycle.updateMentee(op.classId, op.participantId, op.data);
+
+        case 'mentorships.regenerateToken':
+            return rawApi.classLifecycle.regenerateToken(op.classId);
+
+        case 'mentorships.addModule': {
+            const migrateModuleId = async (fromId, toId, classId) => {
+                const list = (await offlineStore.getModuleList(classId)) ?? [];
+                const idx = list.findIndex(m => m.id === fromId);
+                if (idx !== -1) {
+                    list[idx] = { ...list[idx], id: toId, _isOffline: false };
+                    await offlineStore.saveModuleList(classId, list);
+                }
+                window.dispatchEvent(new CustomEvent('mentorship:moduleId-resolved', {
+                    detail: { tempId: fromId, realId: toId, classId },
+                }));
+            };
+            try {
+                const response = await rawApi.classLifecycle.addModule(op.classId, op.programModuleId);
+                const realId = response?.data?.id;
+                if (!realId) throw new Error('[SyncQueue] mentorships.addModule: server returned no id');
+                await migrateModuleId(op.tempId, realId, op.classId);
+                return response;
+            } catch (e) {
+                if (e.status === 409) {
+                    const realId = e.data?.data?.id;
+                    if (realId) await migrateModuleId(op.tempId, realId, op.classId);
+                    return null;
+                }
+                if (e.status >= 400 && e.status < 500) {
+                    const list = (await offlineStore.getModuleList(op.classId)) ?? [];
+                    await offlineStore.saveModuleList(op.classId, list.filter(m => m.id !== op.tempId));
+                    return null;
+                }
+                throw e;
+            }
+        }
+
+        case 'mentorships.removeModule': {
+            try {
+                return await rawApi.modules.remove(op.moduleId);
+            } catch (e) {
+                if (e.status === 404) return null; // already removed
+                throw e;
+            }
+        }
+
+        case 'mentorships.addSession': {
+            const response = await rawApi.modules.addSession(op.moduleId, op.templateId);
+            const realSession = response?.data;
+            if (realSession?.id && op.tempId) {
+                const list = (await offlineStore.getSessionsByModule(op.moduleId)) ?? [];
+                const idx = list.findIndex(s => s.id === op.tempId);
+                if (idx !== -1) {
+                    list[idx] = { ...realSession, _isOffline: false };
+                    await offlineStore.saveSessionsByModule(op.moduleId, list);
+                }
+            }
+            return response;
+        }
+
+        case 'mentorships.removeSession': {
+            try {
+                return await rawApi.sessions.remove(op.sessionId);
+            } catch (e) {
+                if (e.status === 404) return null; // already removed
+                throw e;
+            }
+        }
 
         case 'trainings.enroll': {
             try {
