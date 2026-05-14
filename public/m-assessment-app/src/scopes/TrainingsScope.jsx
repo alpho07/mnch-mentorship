@@ -26,7 +26,7 @@ function TrainingsHomeScreen({ user }) {
     return <div style={{ padding: '24px 16px' }}><p style={{ color: 'white', fontWeight: 700, fontSize: 20 }}>Welcome, {user?.name?.split(' ')[0]}</p><p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14 }}>Browse and manage training events.</p></div>;
 }
 
-export function TrainingsScope({ user, header, onLogout, onUserUpdate }) {
+export function TrainingsScope({ user, onLogout, onUserUpdate }) {
     const [tab, setTab]     = useState('home');
     const [modal, setModal] = useState(null);
 
@@ -36,7 +36,6 @@ export function TrainingsScope({ user, header, onLogout, onUserUpdate }) {
 
     return (
         <div style={{ paddingBottom: 64, minHeight: '100vh', background: '#0f172a' }}>
-            {header}
             {tab === 'home'      && <TrainingsHomeScreen user={user} />}
             {tab === 'trainings' && <TrainingsListScreen user={user} onOpen={(t) => setModal({ type: 'trainingDetail', data: t })} />}
             {tab === 'profile'   && <ProfileScreen user={user} assessments={[]} onUpdateUser={onUserUpdate} onLogout={onLogout} />}
