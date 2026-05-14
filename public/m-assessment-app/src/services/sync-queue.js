@@ -83,11 +83,14 @@ async function enqueue(op) {
 // Guard: reject any op that still carries an unresolved local_* ID.
 // Throws with status 400 so flush() discards the op rather than sending bad data.
 function assertNoTempIds(op) {
-    const json = JSON.stringify(op);
-    const match = json.match(/local_[a-z]+_\d+/);
-    if (match) {
-        console.error(`[SyncQueue] Op ${op.type} contains unresolved temp ID: ${match[0]}`);
-        throw Object.assign(new Error('Unresolved temp ID'), { status: 400, _tempIdGuard: true });
+    const ID_FIELDS = ['assessmentId', 'classId', 'moduleId', 'sessionId', 'participantId', 'tempId', 'trainingId', 'id'];
+    const TEMP_PATTERN = /^local_[a-z]+_\d+$/;
+    for (const field of ID_FIELDS) {
+        const val = op[field];
+        if (typeof val === 'string' && TEMP_PATTERN.test(val)) {
+            console.error(`[SyncQueue] Op ${op.type} has unresolved temp ID in field "${field}": ${val}`);
+            throw Object.assign(new Error('Unresolved temp ID'), { status: 400, _tempIdGuard: true });
+        }
     }
 }
 
@@ -103,6 +106,13 @@ const OP_LABELS = {
     'mentorships.create':            'New mentorship',
     'mentorships.update':            'Mentorship edit',
     'mentorships.submit':            'Mentorship submit',
+    'mentorships.addMentee':         'Mentee enrollment',
+    'mentorships.removeMentee':      'Mentee removal',
+    'mentorships.updateSession':     'Session update',
+    'mentorships.startClass':        'Class start',
+    'mentorships.deleteClass':       'Class deletion',
+    'mentorships.removeModule':      'Module removal',
+    'mentorships.removeSession':     'Session removal',
     'responses.bulkSave':            'Assessment responses',
     'assessments.create':            'New assessment',
     'assessments.submit':            'Assessment submission',
@@ -170,16 +180,14 @@ async function flush() {
 
                 // If it's a 4xx client error (not 401), the data is bad — discard it
                 if (e.status && e.status >= 400 && e.status < 500 && e.status !== 401) {
-                    if (!e._tempIdGuard) {
-                        await offlineStore.saveConflict({
-                            id: 'conflict_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
-                            op_type: op.type,
-                            payload: op,
-                            error: e.message ?? `HTTP ${e.status}`,
-                            created_at: new Date().toISOString(),
-                            resolved: false,
-                        });
-                    }
+                    await offlineStore.saveConflict({
+                        id: 'conflict_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+                        op_type: op.type,
+                        payload: op,
+                        error: e._tempIdGuard ? 'Discarded: contained unresolved temp ID' : (e.message ?? `HTTP ${e.status}`),
+                        created_at: new Date().toISOString(),
+                        resolved: false,
+                    });
                     console.warn(`[SyncQueue] Discarding op ${op.id} due to ${e.status}`);
                     await offlineStore.removeFromQueue(op.id);
                     await refreshCount();
@@ -343,7 +351,7 @@ async function executeOp(rawApi, op) {
                 }
                 if (e.status >= 400 && e.status < 500) {
                     await offlineStore.saveConflict({
-                        id: 'conflict_' + Date.now(),
+                        id: 'conflict_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
                         op_type: op.type,
                         payload: op.payload,
                         error: e.message ?? 'Request rejected',
