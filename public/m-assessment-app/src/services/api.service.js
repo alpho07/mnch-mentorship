@@ -952,8 +952,10 @@ const api = {
                     if (classId) {
                         const existing = (await offlineStore.getModuleList(classId)) ?? [];
                         await offlineStore.saveModuleList(classId, existing.filter(m => m.id !== moduleId));
+                    } else {
+                        console.warn('[API] modules.remove offline: classId missing, cache not patched');
                     }
-                    await syncQueue.enqueue({ type: 'mentorships.removeModule', moduleId });
+                    await syncQueue.enqueue({ type: 'mentorships.removeModule', moduleId, classId });
                     return { message: 'Queued for sync.' };
                 }
                 throw e;
@@ -1383,8 +1385,10 @@ const api = {
                     if (moduleId) {
                         const existing = (await offlineStore.getSessionsByModule(moduleId)) ?? [];
                         await offlineStore.saveSessionsByModule(moduleId, existing.filter(s => s.id !== sessionId));
+                    } else {
+                        console.warn('[API] sessions.remove offline: moduleId missing, cache not patched');
                     }
-                    await syncQueue.enqueue({ type: 'mentorships.removeSession', sessionId });
+                    await syncQueue.enqueue({ type: 'mentorships.removeSession', sessionId, moduleId });
                     return { message: 'Queued for sync.' };
                 }
                 throw e;
