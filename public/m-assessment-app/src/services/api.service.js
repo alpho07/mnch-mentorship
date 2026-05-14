@@ -149,6 +149,87 @@ async function syncTrainings(since) {
     return { count: delta.length };
 }
 
+// syncMentorships: fetches delta from server, merges list, re-prefetches details for updated records.
+async function syncMentorships(since) {
+    const url = since
+        ? `/mentorships?since=${encodeURIComponent(since)}`
+        : '/mentorships';
+    const data = await get(url);
+    const delta = Array.isArray(data?.data) ? data.data : [];
+    if (delta.length === 0) return { count: 0 };
+
+    const existing = await offlineStore.getMentorships();
+    const merged = mergeById(existing, delta);
+    await offlineStore.saveMentorships(merged);
+
+    // Re-prefetch detail for updated (non-trashed) mentorships
+    const updated = delta.filter(r => !r.is_trashed);
+    for (const m of updated) {
+        try {
+            const detail = await get(`/mentorships/${m.id}`);
+            if (detail?.data) await offlineStore.saveMentorship(detail.data);
+            const classes = await get(`/mentorships/${m.id}/classes`);
+            const classArr = Array.isArray(classes?.data) ? classes.data : [];
+            if (classArr.length > 0) await offlineStore.saveMentorshipClasses(m.id, classArr);
+        } catch {
+            // Non-fatal — skip on any error
+        }
+    }
+
+    return { count: delta.length };
+}
+
+// syncUserLookupIndex: fetches delta of user lookup entries and merges into the cached map.
+async function syncUserLookupIndex(since) {
+    const url = since
+        ? `/users/lookup-index?since=${encodeURIComponent(since)}`
+        : '/users/lookup-index';
+    const data = await get(url);
+    const users = Array.isArray(data?.data) ? data.data : [];
+    if (users.length === 0) return { count: 0 };
+
+    const updates = {};
+    for (const u of users) {
+        const key = (u.email ?? '').toLowerCase().trim();
+        if (!key) continue;
+        updates[key] = u.is_active === false
+            ? null  // signals removal in mergeUserLookupMap
+            : { id: u.id, name: u.name, phone: u.phone ?? null };
+    }
+    await offlineStore.mergeUserLookupMap(updates);
+
+    return { count: users.length };
+}
+
+// smartSync: orchestrates all incremental sync operations using a shared `since` timestamp.
+async function smartSync() {
+    if (!navigator.onLine) return;
+
+    const since = await offlineStore.getSyncedAt('global');
+    const nowTs = new Date().toISOString();
+
+    const [assessments, mentorships, trainings, users] = await Promise.allSettled([
+        syncAssessments(since),
+        syncMentorships(since),
+        syncTrainings(since),
+        syncUserLookupIndex(since),
+    ]);
+
+    await offlineStore.setSyncedAt('global', nowTs);
+
+    const summary = {
+        assessments: assessments.status === 'fulfilled' ? assessments.value.count : 0,
+        mentorships: mentorships.status === 'fulfilled' ? mentorships.value.count : 0,
+        trainings:   trainings.status === 'fulfilled'   ? trainings.value.count   : 0,
+        users:       users.status === 'fulfilled'       ? users.value.count       : 0,
+    };
+
+    const hasChanges = Object.values(summary).some(n => n > 0);
+    if (hasChanges) {
+        window.dispatchEvent(new CustomEvent('app:sync-complete', { detail: summary }));
+    }
+}
+
 function normalizeApiList(data) {
     if (Array.isArray(data?.data)) return data.data;
     if (Array.isArray(data?.data?.data)) return data.data.data;
@@ -852,8 +933,8 @@ const api = {
                 const data = await _rawApi.mentorships.list();
                 const arr = Array.isArray(data?.data) ? data.data : [];
                 if (arr.length > 0) await offlineStore.saveMentorships(arr);
-                // Non-blocking deep prefetch while online
-                api.prefetchMentorshipsForOffline().catch(() => {});
+                // Non-blocking smart sync while online
+                smartSync().catch(() => {});
                 return data;
             } catch (e) {
                 if (isNetworkError(e)) {
@@ -1558,6 +1639,9 @@ const api = {
         getConfig: () => _rawApi.scopes.getConfig(),
     },
 
+    // ── Smart sync (incremental, delta-based) ────────────────────────────────
+    smartSync,
+
     // ── Prefetch for offline ─────────────────────────────────────────────────
     // Call after initial data load while online. Pre-caches HR structure,
     // HP structure, and responses for all in-progress assessments so they
@@ -1656,5 +1740,11 @@ const api = {
         ]);
     },
 };
+
+// ── Module-level event listeners: trigger smartSync on network recovery ──────
+window.addEventListener('online', () => { smartSync().catch(() => {}); });
+document.addEventListener('resume', () => {
+    if (navigator.onLine) smartSync().catch(() => {});
+});
 
 export default api;
