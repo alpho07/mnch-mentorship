@@ -28,6 +28,11 @@ class MentorshipController extends Controller {
             $query->where('mentor_id', $user->id);
         }
 
+        if ($request->filled('since')) {
+            $since = \Carbon\Carbon::parse($request->since);
+            $query->withTrashed()->where('updated_at', '>', $since);
+        }
+
         $mentorships = $query->latest()->get();
 
         $data = $mentorships->map(fn (Training $t) => [
