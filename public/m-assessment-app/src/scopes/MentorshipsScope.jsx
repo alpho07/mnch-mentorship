@@ -123,7 +123,7 @@ function MenteeHomeScreen({ user }) {
     return <div style={{ padding: '24px 16px' }}><p style={{ color: '#1A3A3A', fontWeight: 700, fontSize: 20 }}>Welcome, {user?.name?.split(' ')[0]}</p><p style={{ color: '#4A8080', fontSize: 14 }}>View your class modules and track your learning progress.</p></div>;
 }
 
-export function MentorshipsScope({ user, header, onLogout, onUserUpdate }) {
+export function MentorshipsScope({ user, onLogout, onUserUpdate }) {
     const isMentee = (user?.roles ?? []).includes('mentee');
     const TABS = isMentee ? MENTEE_TABS : MENTOR_TABS;
     const [tab, setTab]     = useState('home');
@@ -229,7 +229,6 @@ export function MentorshipsScope({ user, header, onLogout, onUserUpdate }) {
 
     return (
         <div style={{ paddingBottom: 64, minHeight: '100vh', background: '#F0F9FA' }}>
-            {header}
             {tab === 'home' && !isMentee && <HomeScreen user={user} />}
             {tab === 'home' && isMentee  && <MenteeHomeScreen user={user} />}
             {tab === 'mentorships' && <MentorshipsListScreen user={user} onOpen={(t) => setModal({ type: 'mentorshipDetail', data: t })} onNew={() => setModal({ type: 'mentorshipForm', data: null })} onEdit={(t) => setModal({ type: 'mentorshipEdit', data: t })} />}
