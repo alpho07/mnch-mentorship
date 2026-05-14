@@ -25,6 +25,12 @@ class GlobalTrainingController extends Controller
             $query->whereHas('participants', fn($q) => $q->where('user_id', $user->id));
         }
 
+        // Filter by updated_at if ?since= is provided (delta sync)
+        if ($request->filled('since')) {
+            $since = \Carbon\Carbon::parse($request->since);
+            $query->where('updated_at', '>', $since);
+        }
+
         $trainings = $query->get()->map(fn(Training $t) => [
             'id'            => $t->id,
             'title'         => $t->title,
@@ -34,6 +40,7 @@ class GlobalTrainingController extends Controller
             'county'        => $t->county?->name,
             'facility'      => $t->facility?->name,
             'location_type' => $t->location_type,
+            'updated_at'    => $t->updated_at?->toIso8601String(),
         ]);
 
         return response()->json(['data' => $trainings]);
