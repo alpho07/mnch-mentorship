@@ -65,6 +65,7 @@ export function ScopeShell({ user, onLogout, onUserUpdate }) {
 
     function applyScopes(resolved) {
         setScopes(resolved);
+        setActiveIdx(0);
         setReady(true);
     }
 
