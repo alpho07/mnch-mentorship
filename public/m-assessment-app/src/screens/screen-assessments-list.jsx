@@ -8,14 +8,24 @@ export function AssessmentsListScreen({ assessments, sections, onView, loading, 
     const [filter, setFilter] = useState("all");
     const [showSheet, setShowSheet] = useState(false);
 
+    const isSuperAdmin = (user?.roles ?? []).includes('super_admin');
+
     // Allow App.jsx (e.g. bottom-nav "New" tap) to open the sheet externally
     useEffect(() => {
         if (openSheet) setShowSheet(true);
     }, [openSheet]);
 
-    const list = filter === "all"
-        ? (assessments || [])
-        : (assessments || []).filter(a => a.status === filter);
+    const all = assessments || [];
+    const list = filter === "trashed"
+        ? all.filter(a => a.is_trashed)
+        : all.filter(a => !a.is_trashed && (filter === "all" || a.status === filter));
+
+    const filterTabs = [
+        { key: "all",         label: "All" },
+        { key: "completed",   label: "Completed" },
+        { key: "in_progress", label: "In Progress" },
+        ...(isSuperAdmin ? [{ key: "trashed", label: "Trash" }] : []),
+    ];
 
     return (
         <div style={{ height: "100%", overflowY: "auto", background: T.bg, position: "relative" }}>
@@ -40,24 +50,25 @@ export function AssessmentsListScreen({ assessments, sections, onView, loading, 
                     color: "rgba(255,255,255,0.45)", fontSize: 13, marginTop: 3, fontWeight: 500,
                     animation: "fadeInUp 0.4s ease 0.05s both",
                 }}>
-                    {(assessments || []).length} total assessments
+                    {all.filter(a => !a.is_trashed).length} total assessments
+                    {isSuperAdmin && all.some(a => a.is_trashed) && ` · ${all.filter(a => a.is_trashed).length} trashed`}
                 </div>
 
                 <div style={{
                     display: "flex", gap: 6, marginTop: 16,
                     animation: "fadeInUp 0.4s ease 0.1s both",
                 }}>
-                    {["all", "completed", "in_progress"].map(f => (
-                        <button key={f} onClick={() => setFilter(f)} style={{
+                    {filterTabs.map(f => (
+                        <button key={f.key} onClick={() => setFilter(f.key)} style={{
                             padding: "7px 16px", borderRadius: 20,
-                            background: filter === f ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.08)",
-                            color: filter === f ? T.primary : "rgba(255,255,255,0.6)",
-                            border: filter === f ? "none" : "1px solid rgba(255,255,255,0.1)",
+                            background: filter === f.key ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.08)",
+                            color: filter === f.key ? (f.key === "trashed" ? "#EF4444" : T.primary) : "rgba(255,255,255,0.6)",
+                            border: filter === f.key ? "none" : "1px solid rgba(255,255,255,0.1)",
                             fontSize: 12, fontWeight: 600, cursor: "pointer",
                             transition: "all 0.2s cubic-bezier(0.4,0,0.2,1)",
-                            boxShadow: filter === f ? `0 4px 12px rgba(0,0,0,0.15)` : "none",
+                            boxShadow: filter === f.key ? `0 4px 12px rgba(0,0,0,0.15)` : "none",
                         }}>
-                            {f === "all" ? "All" : f === "completed" ? "Completed" : "In Progress"}
+                            {f.label}
                         </button>
                     ))}
                 </div>
@@ -95,9 +106,9 @@ export function AssessmentsListScreen({ assessments, sections, onView, loading, 
                 )}
                 {!loading && list.map((a, i) => (
                     <button key={a.id} onClick={() => onView(a)} style={{
-                        width: "100%", background: "white", borderRadius: T.radius,
+                        width: "100%", background: a.is_trashed ? "#FFF7ED" : "white", borderRadius: T.radius,
                         padding: "15px 16px", marginBottom: 12,
-                        border: `1.5px solid ${a.overall_grade ? GRADE_BG[a.overall_grade] : T.border}`,
+                        border: `1.5px solid ${a.is_trashed ? "#FED7AA" : a.overall_grade ? GRADE_BG[a.overall_grade] : T.border}`,
                         cursor: "pointer", textAlign: "left",
                         boxShadow: T.shadowCard,
                         transition: "all 0.25s cubic-bezier(0.4,0,0.2,1)",
@@ -118,6 +129,16 @@ export function AssessmentsListScreen({ assessments, sections, onView, loading, 
                             }}>
                                 <span style={{ width: 6, height: 6, borderRadius: "50%", background: GRADE_COLOR.yellow, display: "inline-block" }} />
                                 Pending sync
+                            </div>
+                        )}
+                        {a.is_trashed && (
+                            <div style={{
+                                display: "inline-flex", alignItems: "center", gap: 4,
+                                background: "#FEE2E2", color: "#991B1B",
+                                fontSize: 11, fontWeight: 600, borderRadius: 6,
+                                padding: "3px 8px", marginBottom: 6,
+                            }}>
+                                🗑 Trashed · {a.assessor_name}
                             </div>
                         )}
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>

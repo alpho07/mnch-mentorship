@@ -28,13 +28,22 @@ class AssessmentController extends Controller {
      * Supports ?status=completed|in_progress|draft and ?search=
      */
     public function index(Request $request): JsonResponse {
+        $user = $request->user();
+
         $query = Assessment::with([
                     'facility.subcounty.county',
                     'sectionScores.section',
                 ])
-                ->where('assessor_id', $request->user()->id)
-                //->whereNotIn('id', [1, 3])
                 ->latest('assessment_date');
+
+        if ($user->hasRole('super_admin')) {
+            // Super admin sees everything including soft-deleted
+            $query->withTrashed();
+        } elseif (!$user->isAboveSite()) {
+            // Regular users see only their own assessments
+            $query->where('assessor_id', $user->id);
+        }
+        // isAboveSite() non-super-admin roles see all non-deleted
 
         if ($request->filled('status')) {
             $query->where('status', $request->status);

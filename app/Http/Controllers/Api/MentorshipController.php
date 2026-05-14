@@ -21,7 +21,10 @@ class MentorshipController extends Controller {
             ->with(['mentor:id,name', 'facility:id,name,mfl_code', 'county:id,name', 'program:id,name'])
             ->withCount('mentorshipClasses as class_count');
 
-        if (!$user->isAboveSite()) {
+        if ($user->hasRole('super_admin')) {
+            // Super admin sees all mentorships including soft-deleted
+            $query->withTrashed();
+        } elseif (!$user->isAboveSite()) {
             $query->where('mentor_id', $user->id);
         }
 
@@ -31,6 +34,8 @@ class MentorshipController extends Controller {
             'id'          => $t->id,
             'title'       => $t->title,
             'status'      => $t->status,
+            'is_pilot'    => (bool) $t->is_pilot,
+            'is_trashed'  => $t->deleted_at !== null,
             'class_count' => (int) $t->class_count,
             'start_date'  => $t->start_date?->toDateString(),
             'end_date'    => $t->end_date?->toDateString(),
