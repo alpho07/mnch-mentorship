@@ -471,17 +471,41 @@ async function executeOp(rawApi, op) {
         }
 
         case 'mentorships.addSession': {
-            const response = await rawApi.modules.addSession(op.moduleId, op.templateId);
-            const realSession = response?.data;
-            if (realSession?.id && op.tempId) {
-                const list = (await offlineStore.getSessionsByModule(op.moduleId)) ?? [];
-                const idx = list.findIndex(s => s.id === op.tempId);
+            const migrateSessionId = async (fromId, toId, moduleId, realSession) => {
+                const list = (await offlineStore.getSessionsByModule(moduleId)) ?? [];
+                const idx = list.findIndex(s => s.id === fromId);
                 if (idx !== -1) {
                     list[idx] = { ...realSession, _isOffline: false };
-                    await offlineStore.saveSessionsByModule(op.moduleId, list);
+                    await offlineStore.saveSessionsByModule(moduleId, list);
                 }
+                window.dispatchEvent(new CustomEvent('mentorship:sessionId-resolved', {
+                    detail: { tempId: fromId, realId: toId, moduleId },
+                }));
+            };
+            try {
+                const response = await rawApi.modules.addSession(op.moduleId, op.templateId);
+                const realSession = response?.data;
+                const realId = realSession?.id;
+                if (!realId) throw new Error('[SyncQueue] mentorships.addSession: server returned no id');
+                await migrateSessionId(op.tempId, realId, op.moduleId, realSession);
+                return response;
+            } catch (e) {
+                if (e.status === 409) {
+                    const realId = e.data?.data?.id;
+                    if (realId && op.tempId) {
+                        const realSession = e.data?.data ?? { id: realId };
+                        await migrateSessionId(op.tempId, realId, op.moduleId, realSession);
+                    }
+                    return null;
+                }
+                if (e.status >= 400 && e.status < 500) {
+                    // Remove the provisional session from local cache
+                    const list = (await offlineStore.getSessionsByModule(op.moduleId)) ?? [];
+                    await offlineStore.saveSessionsByModule(op.moduleId, list.filter(s => s.id !== op.tempId));
+                    return null; // dequeue
+                }
+                throw e;
             }
-            return response;
         }
 
         case 'mentorships.removeSession': {
