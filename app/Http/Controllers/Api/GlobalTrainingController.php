@@ -28,7 +28,20 @@ class GlobalTrainingController extends Controller
         // Filter by updated_at if ?since= is provided (delta sync)
         if ($request->filled('since')) {
             $since = \Carbon\Carbon::parse($request->since);
-            $query->where('updated_at', '>', $since);
+            $query->withTrashed()->where('updated_at', '>', $since);
+            $delta = $query->get()->map(fn(Training $t) => [
+                'id'            => $t->id,
+                'title'         => $t->title,
+                'status'        => $t->status,
+                'start_date'    => $t->start_date?->toDateString(),
+                'end_date'      => $t->end_date?->toDateString(),
+                'county'        => $t->county?->name,
+                'facility'      => $t->facility?->name,
+                'location_type' => $t->location_type,
+                'updated_at'    => $t->updated_at?->toIso8601String(),
+                'is_trashed'    => $t->trashed(),
+            ]);
+            return response()->json(['data' => $delta]);
         }
 
         $trainings = $query->get()->map(fn(Training $t) => [
