@@ -174,6 +174,8 @@ class LookupController extends Controller
                 $facilityId = $user->facility_id;
                 if ($facilityId) {
                     $query->where('facility_id', $facilityId);
+                } else {
+                    $query->whereRaw('1 = 0'); // no facility assigned → no results
                 }
             }
 
@@ -193,6 +195,8 @@ class LookupController extends Controller
                 $facilityId = $user->facility_id;
                 if ($facilityId) {
                     $query->where('facility_id', $facilityId);
+                } else {
+                    $query->whereRaw('1 = 0'); // no facility assigned → no results
                 }
             }
 
