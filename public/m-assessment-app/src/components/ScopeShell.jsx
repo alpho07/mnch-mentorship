@@ -51,7 +51,6 @@ export function ScopeShell({ user, onLogout, onUserUpdate }) {
     const [activeIdx, setActiveIdx]     = useState(0);
     const [ready, setReady]             = useState(false);
     const [showProfile, setShowProfile] = useState(false);
-    const [animating, setAnimating]     = useState(false);
 
     useEffect(() => {
         const userScopes = user?.scopes;
@@ -70,10 +69,8 @@ export function ScopeShell({ user, onLogout, onUserUpdate }) {
     }
 
     function switchTab(idx) {
-        if (idx === activeIdx || animating) return;
-        setAnimating(true);
+        if (idx === activeIdx) return;
         setActiveIdx(idx);
-        setTimeout(() => setAnimating(false), 400);
     }
 
     if (!ready) {
@@ -102,10 +99,8 @@ export function ScopeShell({ user, onLogout, onUserUpdate }) {
         );
     }
 
-    const activeScope    = scopes[activeIdx] ?? scopes[0];
-    const showTabs       = scopes.length > 1;
-    const trackTranslate = `translateX(calc(-${activeIdx} * 100% / ${scopes.length}))`;
-    const trackWidth     = `${scopes.length * 100}%`;
+    const activeScope = scopes[activeIdx] ?? scopes[0];
+    const showTabs    = scopes.length > 1;
 
     return (
         <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden" }}>
@@ -180,34 +175,28 @@ export function ScopeShell({ user, onLogout, onUserUpdate }) {
                 {!showTabs && <div style={{ height: 12 }} />}
             </div>
 
-            {/* ── Carousel ── */}
-            <div style={{ flex: 1, overflow: "hidden", position: "relative" }}>
-                <div style={{
-                    display: "flex",
-                    width: trackWidth,
-                    height: "100%",
-                    transform: trackTranslate,
-                    transition: "transform 0.38s cubic-bezier(0.4, 0, 0.2, 1)",
-                }}>
-                    {scopes.map((scope) => {
-                        const ScopeComponent = SCOPE_COMPONENTS[scope.id];
-                        if (!ScopeComponent) return (
-                            <div key={scope.id} style={{ width: `calc(100% / ${scopes.length})`, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                <p style={{ color: T.textSub }}>Unknown scope: {scope.id}</p>
-                            </div>
-                        );
-                        return (
-                            <div key={scope.id} style={{ width: `calc(100% / ${scopes.length})`, flexShrink: 0, overflowY: "auto", height: "100%" }}>
-                                <ScopeComponent
-                                    user={user}
-                                    scope={scope}
-                                    onLogout={onLogout}
-                                    onUserUpdate={onUserUpdate}
-                                />
-                            </div>
-                        );
-                    })}
-                </div>
+            {/* ── Panels ── all scopes stay mounted; inactive ones are display:none so
+                 their position:fixed bottom navs don't bleed into the active view. */}
+            <div style={{ flex: 1, position: "relative", overflow: "hidden" }}>
+                {scopes.map((scope, idx) => {
+                    const ScopeComponent = SCOPE_COMPONENTS[scope.id];
+                    const isActive = idx === activeIdx;
+                    if (!ScopeComponent) return (
+                        <div key={scope.id} style={{ display: isActive ? "flex" : "none", height: "100%", alignItems: "center", justifyContent: "center" }}>
+                            <p style={{ color: T.textSub }}>Unknown scope: {scope.id}</p>
+                        </div>
+                    );
+                    return (
+                        <div key={scope.id} style={{ display: isActive ? "block" : "none", height: "100%", overflowY: "auto" }}>
+                            <ScopeComponent
+                                user={user}
+                                scope={scope}
+                                onLogout={onLogout}
+                                onUserUpdate={onUserUpdate}
+                            />
+                        </div>
+                    );
+                })}
             </div>
 
             {/* ── Profile bottom sheet ── */}
