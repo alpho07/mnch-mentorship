@@ -89,6 +89,66 @@ function isNetworkError(e) {
             );
 }
 
+// ── Merge-by-id utility (used by smartSync) ──────────────────────────────────
+// Merges a delta (partial server response) into an existing cached array.
+// Records with is_trashed=true are removed; otherwise the server version wins
+// when its updated_at is >= the cached version.
+function mergeById(existing, delta) {
+    const map = Object.fromEntries((existing ?? []).map(r => [r.id, r]));
+    for (const record of delta) {
+        if (record.is_trashed) {
+            delete map[record.id];
+        } else {
+            const cached = map[record.id];
+            if (!cached || (record.updated_at ?? '') >= (cached.updated_at ?? '')) {
+                map[record.id] = record;
+            }
+        }
+    }
+    return Object.values(map);
+}
+
+// ── Incremental sync helpers (used by smartSync, not exported on api object) ─
+// syncAssessments: fetches delta from server and upserts/deletes in IndexedDB.
+// The delta contains minimal records (id + updated_at + is_trashed).
+async function syncAssessments(since) {
+    const url = since
+        ? `/assessments?since=${encodeURIComponent(since)}`
+        : '/assessments';
+    const data = await get(url);
+    const delta = Array.isArray(data?.data) ? data.data : [];
+    if (delta.length === 0) return { count: 0 };
+
+    for (const record of delta) {
+        if (record.is_trashed) {
+            await offlineStore.deleteAssessment(record.id);
+        } else {
+            const cached = await offlineStore.getAssessment(record.id);
+            if (!cached || (record.updated_at ?? '') >= (cached.updated_at ?? '')) {
+                await offlineStore.saveAssessment(record);
+            }
+        }
+    }
+
+    return { count: delta.length };
+}
+
+// syncTrainings: fetches delta from server and merges into the cached trainings list.
+async function syncTrainings(since) {
+    const url = since
+        ? `/trainings?since=${encodeURIComponent(since)}`
+        : '/trainings';
+    const data = await get(url);
+    const delta = Array.isArray(data?.data) ? data.data : [];
+    if (delta.length === 0) return { count: 0 };
+
+    const existing = await offlineStore.getTrainings();
+    const merged = mergeById(existing, delta);
+    await offlineStore.saveTrainings(merged);
+
+    return { count: delta.length };
+}
+
 function normalizeApiList(data) {
     if (Array.isArray(data?.data)) return data.data;
     if (Array.isArray(data?.data?.data)) return data.data.data;
@@ -1192,7 +1252,20 @@ const api = {
                 return (await offlineStore.getMeta('departments')) ?? [];
             }
         },
-        userByEmail: _rawApi.lookups.userByEmail,
+        userByEmail: async (email) => {
+            try {
+                return await _rawApi.lookups.userByEmail(email);
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    const map = await offlineStore.getUserLookupMap();
+                    const key = (email ?? '').toLowerCase().trim();
+                    const found = map?.[key];
+                    if (found) return { data: found };
+                    return null;
+                }
+                throw e;
+            }
+        },
         userSearch: _rawApi.lookups.userSearch,
     },
 
@@ -1319,6 +1392,8 @@ const api = {
             }
         },
         createMentee: async (classId, payload) => {
+            if (!payload?.email) throw new Error('createMentee: email is required');
+            if (!classId) throw new Error('createMentee: classId is required');
             try {
                 return await _rawApi.classLifecycle.createMentee(classId, payload);
             } catch (e) {
