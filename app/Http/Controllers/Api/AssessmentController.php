@@ -61,6 +61,21 @@ class AssessmentController extends Controller {
             $query->where('assessment_type', $request->type);
         }
 
+        // Delta sync: return all records updated after the given timestamp (no pagination)
+        if ($request->filled('since')) {
+            $since = \Carbon\Carbon::parse($request->since);
+            $query->withTrashed()->where('updated_at', '>', $since);
+            $delta = $query->get();
+            $data = $delta->map(function (Assessment $a) {
+                return [
+                    'id'         => $a->id,
+                    'updated_at' => $a->updated_at?->toIso8601String(),
+                    'is_trashed' => $a->trashed(),
+                ];
+            });
+            return response()->json(['data' => $data]);
+        }
+
         $assessments = $query->paginate($request->input('per_page', 20));
 
         return response()->json([
