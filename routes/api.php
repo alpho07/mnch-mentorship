@@ -138,6 +138,7 @@ Route::prefix('v1')->name('api.v1.')->middleware(MobileApiCors::class)->group(fu
         Route::get('counties/{county}/facilities', [\App\Http\Controllers\Api\LookupController::class, 'facilitiesByCounty'])->name('counties.facilities');
         Route::get('users/by-email', [\App\Http\Controllers\Api\LookupController::class, 'userByEmail'])->name('users.by-email');
         Route::get('users/search', [\App\Http\Controllers\Api\LookupController::class, 'userSearch'])->name('users.search');
+        Route::get('users/lookup-index', [\App\Http\Controllers\Api\LookupController::class, 'userLookupIndex'])->name('users.lookup-index');
 
         // ── Mentorships ───────────────────────────────────────────────────────
         Route::prefix('mentorships')->name('mentorships.')->group(function () {
