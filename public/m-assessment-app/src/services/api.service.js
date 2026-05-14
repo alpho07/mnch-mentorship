@@ -1217,7 +1217,7 @@ const api = {
             try {
                 return await _rawApi.mentorshipCreate.update(id, payload);
             } catch (e) {
-                if (!navigator.onLine) {
+                if (isNetworkError(e)) {
                     await syncQueue.enqueue({ type: 'mentorships.update', id, payload });
                     return { data: { id, ...payload } };
                 }
@@ -1400,7 +1400,7 @@ const api = {
                 await offlineStore.saveSession({ id: sessionId, ...payload });
                 return data;
             } catch (e) {
-                if (!navigator.onLine) {
+                if (isNetworkError(e)) {
                     await offlineStore.saveSession({ id: sessionId, ...payload, _pending: true });
                     await syncQueue.enqueue({ type: 'mentorships.updateSession', sessionId, payload });
                     return { data: { id: sessionId, ...payload } };
@@ -1530,18 +1530,16 @@ const api = {
             if (mentorships.length > 0) await offlineStore.saveMentorships(mentorships);
         } catch { return; }
 
-        await Promise.allSettled(mentorships.map(m => _rawApi.mentorships.find(m.id).then(d => {
-            if (d?.data) return offlineStore.saveMentorship(d.data);
-        })));
-
         const allClasses = [];
-        for (const m of mentorships) {
+        await Promise.allSettled(mentorships.map(async (m) => {
             try {
-                const cd = await _rawApi.mentorships.find(m.id);
-                const classes = cd?.data?.classes ?? [];
-                classes.forEach(c => allClasses.push({ trainingId: m.id, classId: c.id }));
+                const d = await _rawApi.mentorships.find(m.id);
+                if (d?.data) {
+                    await offlineStore.saveMentorship(d.data);
+                    (d.data.classes ?? []).forEach(c => allClasses.push({ trainingId: m.id, classId: c.id }));
+                }
             } catch { /* continue */ }
-        }
+        }));
 
         const allModules = [];
         await Promise.allSettled(allClasses.map(({ trainingId, classId }) =>
