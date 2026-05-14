@@ -39,7 +39,7 @@ function enrichAssessment(a) {
     return { ...a, section_scores: ss, section_progress: a.section_progress ?? {}, responses: a.responses ?? {}, overall_percentage: pct ?? (Number(a.overall_percentage) || null), overall_grade: pct != null ? calcGrade(pct) : a.overall_grade };
 }
 
-export function AssessmentsScope({ user, header, onLogout, onUserUpdate }) {
+export function AssessmentsScope({ user, onLogout, onUserUpdate }) {
     const [tab, setTab]     = useState('home');
     const [modal, setModal] = useState(null);
     const [assessments, setAssessments]         = useState([]);
@@ -75,7 +75,6 @@ export function AssessmentsScope({ user, header, onLogout, onUserUpdate }) {
 
     return (
         <div style={{ paddingBottom: 64, minHeight: '100vh', background: '#0f172a' }}>
-            {header}
             {tab === 'home' && <DashboardScreen user={user} assessments={assessments} onViewAssessment={(a) => setModal({ type: 'detail', data: a })} loading={loading} error={error} onRetry={refreshAssessments} />}
             {tab === 'assessments' && <AssessmentsListScreen assessments={assessments} sections={sections} onView={(a) => setModal({ type: 'detail', data: a })} loading={loading} onCreate={(a) => { const enriched = enrichAssessment(a); setAssessments(prev => [...prev, enriched]); setModal({ type: 'detail', data: enriched }); }} facilities={facilities} user={user} openSheet={false} onSheetClose={() => {}} />}
             {tab === 'reports' && <ReportsScreen user={user} assessments={assessments} sectionAverages={sectionAverages} loading={loading} onViewAssessment={(a) => setModal({ type: 'detail', data: a })} onViewEmailJobs={() => setModal({ type: 'emailJobs' })} />}
