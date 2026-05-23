@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { T, calcGrade, isQuestionVisible, getSectionCompletion, GRADE_COLOR, GRADE_BG } from "../constants.js";
 import { BackButton, ProgressBar } from "../components/shared-components.jsx";
+import { SectionIcon } from "../components/section-icons.jsx";
 import { QuestionCard, MortalityThreeMonthInput } from "../components/question-inputs.jsx";
 import { ChatbotPanel } from "../components/chatbot-widget.jsx";
 import { HumanResourcesScreen } from "./screen-human-resources.jsx";
@@ -116,7 +117,7 @@ function SectionCard({ section, completedSections, responses, onOpen, index, spe
             width: "100%", background: T.card, borderRadius: 16, padding: 0, marginBottom: 10,
             border: `2px solid ${isCompleted ? "#6EE7B7" : pct > 0 ? "#FCD34D" : T.borderLight}`,
             cursor: "pointer", textAlign: "left",
-            boxShadow: isCompleted ? "0 4px 16px rgba(16,185,129,0.12)" : T.shadow,
+            boxShadow: isCompleted ? "0 4px 16px rgba(79,106,245,0.12)" : T.shadow,
             overflow: "hidden", transition: "all 0.2s",
             animation: `cardIn 0.3s ease ${index * 0.05}s both`,
         }}>
@@ -124,8 +125,8 @@ function SectionCard({ section, completedSections, responses, onOpen, index, spe
             <div style={{ height: 4, background: `linear-gradient(90deg,${g1},${g2})`, opacity: isCompleted ? 1 : 0.5 }} />
             <div style={{ padding: "13px 16px", display: "flex", alignItems: "center", gap: 12 }}>
                 <CircleRing pct={pct} size={50} stroke={4} color={g1} bg={T.borderLight}>
-                    <div style={{ width: 34, height: 34, borderRadius: 10, background: `linear-gradient(135deg,${g1}22,${g2}33)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>
-                        {section.icon ?? "📋"}
+                    <div style={{ width: 34, height: 34, borderRadius: 10, background: `linear-gradient(135deg,${g1}22,${g2}33)`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <SectionIcon code={section.code} size={18} />
                     </div>
                 </CircleRing>
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -168,8 +169,8 @@ function RecommendationsPanel({ sections, responses }) {
     sections.forEach(s => {
         (s.questions || []).filter(q => isQuestionVisible(q, responses)).forEach(q => {
             const v = responses[q.question_code];
-            if (v === "No") issues.push({ type: "critical", section: s.name, icon: s.icon, question: q.question_text });
-            else if (v === "Partial") issues.push({ type: "warning", section: s.name, icon: s.icon, question: q.question_text });
+            if (v === "No") issues.push({ type: "critical", section: s.name, code: s.code, question: q.question_text });
+            else if (v === "Partial") issues.push({ type: "warning", section: s.name, code: s.code, question: q.question_text });
         });
     });
     const critical = issues.filter(i => i.type === "critical").slice(0, 3);
@@ -194,7 +195,7 @@ function RecommendationsPanel({ sections, responses }) {
                         background: item.type === "critical" ? "#FEF2F2" : "#FFFBEB",
                         border: `1px solid ${item.type === "critical" ? "#FEE2E2" : "#FDE68A"}`,
                     }}>
-                        <span style={{ fontSize: 14, flexShrink: 0 }}>{item.icon}</span>
+                        <span style={{ flexShrink: 0, display: "flex", alignItems: "center" }}><SectionIcon code={item.code} size={14} /></span>
                         <div style={{ flex: 1 }}>
                             <div style={{ fontSize: 10, fontWeight: 700, color: item.type === "critical" ? "#EF4444" : "#F59E0B", textTransform: "uppercase", marginBottom: 2 }}>{item.section}</div>
                             <div style={{ fontSize: 11, lineHeight: 1.4, color: item.type === "critical" ? "#7F1D1D" : "#78350F" }}>
@@ -236,8 +237,8 @@ function ProgressHeader({ sections, completedSections, responses, onBack, specia
 
     return (
         <div style={{ background: T.gradientDark, padding: "20px 20px 22px", position: "relative", overflow: "hidden", borderRadius: "24px 24px 28px 28px" }}>
-            <div style={{ position: "absolute", width: 160, height: 160, borderRadius: "50%", background: "radial-gradient(circle, rgba(16,185,129,0.1) 0%, transparent 70%)", top: -50, right: -40 }} />
-            <div style={{ position: "absolute", width: 80, height: 80, borderRadius: "50%", background: "radial-gradient(circle, rgba(52,211,153,0.07) 0%, transparent 70%)", bottom: -20, left: 10 }} />
+            <div style={{ position: "absolute", width: 160, height: 160, borderRadius: "50%", background: "radial-gradient(circle, rgba(79,106,245,0.20) 0%, transparent 70%)", top: -50, right: -40 }} />
+            <div style={{ position: "absolute", width: 80, height: 80, borderRadius: "50%", background: "radial-gradient(circle, rgba(108,99,255,0.14) 0%, transparent 70%)", bottom: -20, left: 10 }} />
             <BackButton onBack={onBack} light />
             <div style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 12 }}>
                 <CircleRing pct={overallPct} size={58} stroke={5} color="white" bg="rgba(255,255,255,0.2)">
@@ -333,8 +334,8 @@ function SectionForm({ section, responses, explanations, onAnswer, onExplain, on
                 <BackButton onBack={onBack} light />
                 <AutoSavePill status={autoSaveStatus} />
                 <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 12 }}>
-                    <div style={{ width: 48, height: 48, borderRadius: 15, background: "rgba(255,255,255,0.2)", border: "1.5px solid rgba(255,255,255,0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 }}>
-                        {section.icon ?? "📋"}
+                    <div style={{ width: 48, height: 48, borderRadius: 15, background: "rgba(255,255,255,0.2)", border: "1.5px solid rgba(255,255,255,0.3)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <SectionIcon code={section.code} size={24} />
                     </div>
                     <div style={{ flex: 1 }}>
                         <div style={{ color: "white", fontSize: 17, fontWeight: 800 }}>{section.name}</div>

@@ -680,7 +680,7 @@ export function AssessmentDetailScreen({ assessment, sections, onBack, onContinu
                 borderRadius: "0 0 28px 28px",
                 margin: "0 6px",
             }}>
-                <div style={{ position: "absolute", width: 140, height: 140, borderRadius: "50%", background: "radial-gradient(circle, rgba(16,185,129,0.1) 0%, transparent 70%)", top: -40, right: -30 }} />
+                <div style={{ position: "absolute", width: 140, height: 140, borderRadius: "50%", background: "radial-gradient(circle, rgba(79,106,245,0.20) 0%, transparent 70%)", top: -40, right: -30 }} />
 
                 {/* Top row: back + delete */}
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
