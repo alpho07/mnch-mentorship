@@ -170,7 +170,7 @@ export function LoginScreen({ onLogin }) {
                                 border:"none", background:"transparent",
                                 fontSize:14, color:T.text, outline:"none",
                                 boxSizing:"border-box", fontFamily:"inherit" }} />
-                        <button type="button" onClick={() => setShowPassword(p => !p)} style={{
+                        <button type="button" onClick={() => setShowPassword(p => !p)} aria-label={showPassword ? "Hide password" : "Show password"} style={{
                             position:"absolute", right:4, top:"50%", transform:"translateY(-50%)",
                             width:38, height:38, borderRadius:10, border:"none",
                             background:"transparent", cursor:"pointer",
@@ -205,7 +205,7 @@ export function LoginScreen({ onLogin }) {
                     {loading ? (
                         <span style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
                             <svg width="17" height="17" viewBox="0 0 24 24" style={{ animation:"spinCW 1s linear infinite" }}>
-                                <circle cx="12" cy="12" r="10" fill="none" stroke="rgba(0,0,0,0.15)" strokeWidth="3"/>
+                                <circle cx="12" cy="12" r="10" fill="none" stroke="rgba(79,106,245,0.15)" strokeWidth="3"/>
                                 <path d="M12 2a10 10 0 019.95 9" fill="none" stroke={T.primary} strokeWidth="3" strokeLinecap="round"/>
                             </svg>
                             Signing in…
@@ -213,9 +213,13 @@ export function LoginScreen({ onLogin }) {
                     ) : "Sign In"}
                 </button>
 
-                <div style={{ textAlign:"center", marginTop:16, fontSize:13, color:T.primary, fontWeight:600 }}>
+                <button type="button" style={{
+                    background:"none", border:"none", padding:0,
+                    textAlign:"center", marginTop:16, fontSize:13, color:T.primary, fontWeight:600,
+                    cursor:"pointer", width:"100%",
+                }}>
                     Forgot password?
-                </div>
+                </button>
             </div>
         </div>
     );
