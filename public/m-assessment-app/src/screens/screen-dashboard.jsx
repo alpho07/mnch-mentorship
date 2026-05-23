@@ -635,7 +635,7 @@ export function DashboardScreen({ user, assessments, onViewAssessment, loading, 
                 {completed.length > 0 && (
                     <div style={{
                         marginTop: 6, padding: "16px 18px",
-                        background: "linear-gradient(135deg, rgba(0,151,167,0.06), rgba(38,198,218,0.06))",
+                        background: T.primaryGhost,
                         borderRadius: T.radius,
                         border: `1px solid ${T.primary}22`,
                         display: "flex", alignItems: "flex-start", gap: 12,
@@ -714,7 +714,7 @@ export function DashboardScreen({ user, assessments, onViewAssessment, loading, 
                                 display: "flex", alignItems: "center", gap: 12,
                             }}>
                                 <div style={{ width: 36, height: 36, borderRadius: 10, background: T.accentGhost, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0EA5E9" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={T.primary} strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                                 </div>
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                     <div style={{ fontWeight: 700, color: T.text, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.title}</div>
