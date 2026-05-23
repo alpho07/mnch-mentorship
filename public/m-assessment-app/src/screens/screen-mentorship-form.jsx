@@ -1192,7 +1192,7 @@ export function MentorshipFormScreen({ user, onBack, onCreated, existingMentorsh
                             color: "#fff", fontSize: 14, fontWeight: 700,
                             cursor: (saving || !step1Valid) ? "not-allowed" : "pointer",
                             opacity: (saving || !step1Valid) ? 0.6 : 1,
-                            boxShadow: "0 4px 12px rgba(0,151,167,0.3)",
+                            boxShadow: "0 4px 12px rgba(79,106,245,0.28)",
                         }}
                     >
                         {saving ? "Saving…" : "Save Changes"}
