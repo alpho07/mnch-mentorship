@@ -408,8 +408,8 @@ export function DashboardScreen({ user, assessments, onViewAssessment, loading, 
                 margin: "0 6px",
             }}>
                 {/* Decorative elements */}
-                <div style={{ position: "absolute", width: 200, height: 200, borderRadius: "50%", background: "radial-gradient(circle, rgba(38,198,218,0.15) 0%, transparent 70%)", top: -60, right: -50 }} />
-                <div style={{ position: "absolute", width: 120, height: 120, borderRadius: "50%", background: "radial-gradient(circle, rgba(0,151,167,0.1) 0%, transparent 70%)", bottom: 0, left: -30 }} />
+                <div style={{ position: "absolute", width: 200, height: 200, borderRadius: "50%", background: "radial-gradient(circle, rgba(79,106,245,0.20) 0%, transparent 70%)", top: -60, right: -50 }} />
+                <div style={{ position: "absolute", width: 120, height: 120, borderRadius: "50%", background: "radial-gradient(circle, rgba(108,99,255,0.14) 0%, transparent 70%)", bottom: 0, left: -30 }} />
 
                 {/* Greeting */}
                 <div style={{
@@ -713,7 +713,7 @@ export function DashboardScreen({ user, assessments, onViewAssessment, loading, 
                                 border: `1px solid ${T.border}`,
                                 display: "flex", alignItems: "center", gap: 12,
                             }}>
-                                <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(14,165,233,0.08)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                                <div style={{ width: 36, height: 36, borderRadius: 10, background: T.accentGhost, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0EA5E9" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                                 </div>
                                 <div style={{ flex: 1, minWidth: 0 }}>
