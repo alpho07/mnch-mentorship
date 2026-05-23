@@ -4,6 +4,7 @@ export const T = {
     bg:           "#F2F2F7",
     card:         "#FFFFFF",
     cardHover:    "#F9F9FB",
+    surface:      "#FFFFFF",   // alias used by ResourceCard
 
     // Primary — Indigo Sapphire
     primary:      "#4F6AF5",
