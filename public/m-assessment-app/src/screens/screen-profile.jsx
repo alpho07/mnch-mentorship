@@ -68,8 +68,8 @@ export function ProfileScreen({ user, assessments, onUpdateUser, onLogout }) {
                 borderRadius: "24px 24px 28px 28px",
                 position: "relative", overflow: "hidden",
             }}>
-                <div style={{ position: "absolute", width: 180, height: 180, borderRadius: "50%", background: "radial-gradient(circle, rgba(16,185,129,0.12) 0%, transparent 70%)", top: -50, right: -50 }} />
-                <div style={{ position: "absolute", width: 100, height: 100, borderRadius: "50%", background: "radial-gradient(circle, rgba(52,211,153,0.08) 0%, transparent 70%)", bottom: -20, left: 20 }} />
+                <div style={{ position: "absolute", width: 180, height: 180, borderRadius: "50%", background: "radial-gradient(circle, rgba(79,106,245,0.20) 0%, transparent 70%)", top: -50, right: -50 }} />
+                <div style={{ position: "absolute", width: 100, height: 100, borderRadius: "50%", background: "radial-gradient(circle, rgba(108,99,255,0.14) 0%, transparent 70%)", bottom: -20, left: 20 }} />
 
                 <div style={{ animation: "fadeInUp 0.4s ease both", display: "inline-block" }}>
                     <Avatar initials={user?.initials ?? "??"} size={72} color="rgba(255,255,255,0.12)" />

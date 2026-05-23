@@ -175,8 +175,8 @@ export function MentorshipsListScreen({ user, onOpen, onNew, onEdit }) {
                 margin: "0 6px",
                 position: "relative", overflow: "hidden",
             }}>
-                <div style={{ position: "absolute", width: 180, height: 180, borderRadius: "50%", background: "radial-gradient(circle, rgba(38,198,218,0.15) 0%, transparent 70%)", top: -50, right: -50 }} />
-                <div style={{ position: "absolute", width: 100, height: 100, borderRadius: "50%", background: "radial-gradient(circle, rgba(0,151,167,0.12) 0%, transparent 70%)", bottom: 0, left: -20 }} />
+                <div style={{ position: "absolute", width: 180, height: 180, borderRadius: "50%", background: "radial-gradient(circle, rgba(79,106,245,0.20) 0%, transparent 70%)", top: -50, right: -50 }} />
+                <div style={{ position: "absolute", width: 100, height: 100, borderRadius: "50%", background: "radial-gradient(circle, rgba(108,99,255,0.14) 0%, transparent 70%)", bottom: 0, left: -20 }} />
 
                 <div style={{ color: "white", fontSize: 22, fontWeight: 800, letterSpacing: -0.3, animation: "fadeInUp 0.4s ease both" }}>
                     My Mentorships
@@ -187,7 +187,7 @@ export function MentorshipsListScreen({ user, onOpen, onNew, onEdit }) {
 
                 <div style={{ display: "flex", gap: 8, marginTop: 16, animation: "fadeInUp 0.4s ease 0.1s both" }}>
                     {[
-                        { label: "Live",    count: counts.live,          bg: "rgba(38,198,218,0.25)", border: "rgba(0,151,167,0.3)" },
+                        { label: "Live",    count: counts.live,          bg: "rgba(79,106,245,0.18)", border: "rgba(79,106,245,0.3)" },
                         { label: "Pilots",  count: counts.pilots,        bg: "rgba(255,255,255,0.08)", border: "rgba(255,255,255,0.12)" },
                         { label: "Active",  count: counts.liveActive,    bg: "rgba(255,255,255,0.08)", border: "rgba(255,255,255,0.12)" },
                     ].map(p => (
