@@ -147,6 +147,7 @@ export function MentorshipOverviewScreen({ mentorshipId, onBack, onViewDetail, o
     }, [mentorshipId]);
 
     // Lazy load mentees for a class when it's expanded for the first time
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- menteeCache intentionally omitted: including it would re-run after every fetch and re-enter the loop
     useEffect(() => {
         for (const [classId, isOpen] of Object.entries(expanded)) {
             if (isOpen && menteeCache[classId] === undefined) {
@@ -215,17 +216,17 @@ export function MentorshipOverviewScreen({ mentorshipId, onBack, onViewDetail, o
                 {/* Stat pills */}
                 {!loading && (
                     <div style={{ display: "flex", gap: 8 }}>
-                        {[
-                            { label: "Mentees",  value: totalMentees },
-                            { label: "Classes",  value: classes.length },
-                            { label: "Progress", value: avgPct + "%", highlight: avgPct >= 60 },
-                            { label: "Status",   value: m?.status ?? "—", isStatus: true },
-                        ].map(pill => {
-                            const s = STATUS_MAP[m?.status] ?? STATUS_MAP.draft;
-                            return (
+                        {(() => {
+                            const statusStyle = STATUS_MAP[m?.status] ?? STATUS_MAP.draft;
+                            return [
+                                { label: "Mentees",  value: totalMentees },
+                                { label: "Classes",  value: classes.length },
+                                { label: "Progress", value: avgPct + "%", highlight: avgPct >= 60 },
+                                { label: "Status",   value: m?.status ?? "—", isStatus: true },
+                            ].map(pill => (
                                 <div key={pill.label} style={{
                                     flex: 1, padding: "8px 4px", borderRadius: 12, textAlign: "center",
-                                    background: pill.isStatus ? s.bg + "22" : "rgba(255,255,255,0.08)",
+                                    background: pill.isStatus ? statusStyle.bg + "22" : "rgba(255,255,255,0.08)",
                                     border: "1px solid rgba(255,255,255,0.12)",
                                     backdropFilter: "blur(8px)",
                                 }}>
@@ -236,8 +237,8 @@ export function MentorshipOverviewScreen({ mentorshipId, onBack, onViewDetail, o
                                     <div style={{ color: "rgba(255,255,255,0.5)", fontSize: 9,
                                         fontWeight: 600, marginTop: 3 }}>{pill.label}</div>
                                 </div>
-                            );
-                        })}
+                            ));
+                        })()}
                     </div>
                 )}
             </div>
@@ -264,7 +265,7 @@ export function MentorshipOverviewScreen({ mentorshipId, onBack, onViewDetail, o
             {/* Classes section */}
             <div style={{ padding: "16px 16px 80px" }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, letterSpacing: 1,
-                    textTransform: "uppercase", marginBottom: 10 }}>
+                    marginBottom: 10 }}>
                     MENTEES BY CLASS
                 </div>
                 {loading && <div style={{ color: T.textMuted, fontSize: 13 }}>Loading classes…</div>}
