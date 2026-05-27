@@ -246,7 +246,7 @@ export function MentorshipOverviewScreen({ mentorshipId, onBack, onViewDetail, o
             {/* Action strip */}
             <div style={{ margin: "12px 16px 0", display: "flex", gap: 10 }}>
                 <button
-                    onClick={() => onViewDetail(mentorshipId)}
+                    onClick={() => onViewDetail(m ?? { id: mentorshipId })}
                     style={{ flex: 1, padding: "12px 0", background: T.gradientPrimary,
                         color: "white", border: "none", borderRadius: T.radiusSm,
                         fontWeight: 700, fontSize: 13, cursor: "pointer",
@@ -254,7 +254,7 @@ export function MentorshipOverviewScreen({ mentorshipId, onBack, onViewDetail, o
                     View Detail & Reports →
                 </button>
                 <button
-                    onClick={() => onEdit(mentorshipId)}
+                    onClick={() => onEdit(m ?? { id: mentorshipId })}
                     style={{ padding: "12px 18px", background: T.primaryGhost,
                         color: T.primary, border: `1px solid ${T.primary}33`,
                         borderRadius: T.radiusSm, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
