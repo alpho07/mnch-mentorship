@@ -18,6 +18,7 @@ const STATUS_TABS = [
 
 function MentorshipCard({ m, onOpen, onEdit }) {
     const s = STATUS_MAP[m.status] ?? STATUS_MAP.draft;
+    const pct = Math.min(100, Math.round(m.progress_percentage ?? 0));
     return (
         <button
             onClick={() => onOpen(m)}
@@ -93,7 +94,6 @@ function MentorshipCard({ m, onOpen, onEdit }) {
                             {m.start_date}{m.end_date ? ` — ${m.end_date}` : ""}
                         </span>
                     )}
-                    <span>{m.class_count} class{m.class_count !== 1 ? "es" : ""}</span>
                 </div>
 
                 {/* Stat row */}
@@ -107,15 +107,15 @@ function MentorshipCard({ m, onOpen, onEdit }) {
                         <span style={{ fontWeight: 600, color: T.textSub }}>{m.class_count ?? 0}</span> classes
                     </span>
                     <span style={{ marginLeft: "auto", fontWeight: 700, fontSize: 11,
-                        color: (m.progress_percentage ?? 0) >= 60 ? T.success : T.primary }}>
-                        {Math.round(m.progress_percentage ?? 0)}%
+                        color: pct >= 60 ? T.success : T.primary }}>
+                        {pct}%
                     </span>
                 </div>
                 {/* Progress bar */}
                 <div style={{ marginTop: 7, height: 5, borderRadius: 6, background: T.borderLight, overflow: "hidden" }}>
                     <div style={{
                         height: "100%",
-                        width: Math.min(100, Math.round(m.progress_percentage ?? 0)) + "%",
+                        width: pct + "%",
                         background: T.gradientPrimary,
                         borderRadius: 6,
                         transition: "width 0.5s ease",
