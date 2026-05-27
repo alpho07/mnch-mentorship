@@ -248,3 +248,4 @@ export function MyClassesScreen({ user, onModuleDetail }) {
         </div>
     );
 }
+
