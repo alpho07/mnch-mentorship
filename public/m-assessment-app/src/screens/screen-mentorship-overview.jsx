@@ -35,7 +35,7 @@ function StatusBadge({ status }) {
 
 function ClassCard({ cls, onViewMentees, menteeCache, onExpand, isExpanded }) {
     const mentees      = menteeCache[cls.id];
-    const loadingMentees = mentees === undefined && isExpanded;
+    const loadingMentees = mentees === null && isExpanded;
 
     return (
         <div style={{ background: T.card, borderRadius: T.radiusSm, boxShadow: T.shadowCard,
@@ -265,7 +265,7 @@ export function MentorshipOverviewScreen({ mentorshipId, onBack, onViewDetail, o
             <div style={{ padding: "16px 16px 80px" }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, letterSpacing: 1,
                     textTransform: "uppercase", marginBottom: 10 }}>
-                    Mentees by Class
+                    MENTEES BY CLASS
                 </div>
                 {loading && <div style={{ color: T.textMuted, fontSize: 13 }}>Loading classes…</div>}
                 {!loading && classes.length === 0 && (
