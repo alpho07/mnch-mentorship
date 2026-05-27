@@ -76,3 +76,4 @@ class ParticipantController extends Controller
         return round(($completed / $total) * 100, 1);
     }
 }
+
