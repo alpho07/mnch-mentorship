@@ -143,7 +143,7 @@ export function MentorshipsListScreen({ user, onOpen, onNew, onEdit }) {
             .finally(() => setLoading(false));
     }, []);
 
-    const all = mentorships ?? [];
+    const all = useMemo(() => mentorships ?? [], [mentorships]);
 
     const counts = useMemo(() => {
         const live    = all.filter(m => !m.is_pilot && !m.is_trashed);

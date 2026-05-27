@@ -146,8 +146,9 @@ export function MentorshipOverviewScreen({ mentorshipId, onBack, onViewDetail, o
         }).catch(() => {}).finally(() => setLoading(false));
     }, [mentorshipId]);
 
-    // Lazy load mentees for a class when it's expanded for the first time
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- menteeCache intentionally omitted: including it would re-run after every fetch and re-enter the loop
+    // Lazy load mentees for a class when it's expanded for the first time.
+    // menteeCache intentionally omitted from deps: including it re-runs after every fetch and causes a loop.
+    /* eslint-disable react-hooks/exhaustive-deps */
     useEffect(() => {
         for (const [classId, isOpen] of Object.entries(expanded)) {
             if (isOpen && menteeCache[classId] === undefined) {
@@ -164,6 +165,7 @@ export function MentorshipOverviewScreen({ mentorshipId, onBack, onViewDetail, o
             }
         }
     }, [expanded]);
+    /* eslint-enable react-hooks/exhaustive-deps */
 
     function toggleExpand(classId) {
         setExpanded(prev => ({ ...prev, [classId]: !prev[classId] }));

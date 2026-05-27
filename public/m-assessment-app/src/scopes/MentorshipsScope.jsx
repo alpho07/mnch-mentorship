@@ -175,7 +175,7 @@ function MenteeHomeScreen({ user }) {
     );
 }
 
-export function MentorshipsScope({ user, onLogout, onUserUpdate }) {
+export function MentorshipsScope({ user }) {
     const isMentee = (user?.roles ?? []).includes('mentee');
     const TABS = isMentee ? MENTEE_TABS : MENTOR_TABS;
     const [tab, setTab]     = useState('home');
