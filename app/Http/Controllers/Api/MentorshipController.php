@@ -18,7 +18,16 @@ class MentorshipController extends Controller {
 
         $query = Training::query()
             ->where('type', 'facility_mentorship')
-            ->with(['mentor:id,name', 'facility:id,name,mfl_code', 'county:id,name', 'program:id,name'])
+            ->with([
+                'mentor:id,name',
+                'facility:id,name,mfl_code',
+                'county:id,name',
+                'program:id,name',
+                'mentorshipClasses' => fn ($q) => $q
+                    ->withCount('participants')
+                    ->withCount(['classModules as completed_modules_count' => fn ($q) => $q->where('status', 'completed')])
+                    ->withCount('classModules as total_modules_count'),
+            ])
             ->withCount('mentorshipClasses as class_count');
 
         if ($user->hasRole('super_admin')) {
@@ -35,21 +44,33 @@ class MentorshipController extends Controller {
 
         $mentorships = $query->latest()->get();
 
-        $data = $mentorships->map(fn (Training $t) => [
-            'id'          => $t->id,
-            'title'       => $t->title,
-            'status'      => $t->status,
-            'is_pilot'    => (bool) $t->is_pilot,
-            'is_trashed'  => $t->deleted_at !== null,
-            'class_count' => (int) $t->class_count,
-            'start_date'  => $t->start_date?->toDateString(),
-            'end_date'    => $t->end_date?->toDateString(),
-            'facility'    => $t->facility?->name,
-            'county'      => $t->county?->name,
-            'program'     => $t->program?->name,
-            'program_id'  => $t->program_id,
-            'mentor_name' => $t->mentor?->name,
-        ]);
+        $data = $mentorships->map(function (Training $t) {
+            $classes         = $t->mentorshipClasses;
+            $participantCount = $classes->sum('participants_count');
+            $totalModules    = $classes->sum('total_modules_count');
+            $completedModules = $classes->sum('completed_modules_count');
+            $progressPct     = $totalModules > 0
+                ? (int) round($completedModules / $totalModules * 100)
+                : 0;
+
+            return [
+                'id'                  => $t->id,
+                'title'               => $t->title,
+                'status'              => $t->status,
+                'is_pilot'            => (bool) $t->is_pilot,
+                'is_trashed'          => $t->deleted_at !== null,
+                'class_count'         => (int) $t->class_count,
+                'participant_count'   => $participantCount,
+                'progress_percentage' => $progressPct,
+                'start_date'          => $t->start_date?->toDateString(),
+                'end_date'            => $t->end_date?->toDateString(),
+                'facility'            => $t->facility?->name,
+                'county'              => $t->county?->name,
+                'program'             => $t->program?->name,
+                'program_id'          => $t->program_id,
+                'mentor_name'         => $t->mentor?->name,
+            ];
+        });
 
         return response()->json(['data' => $data]);
     }

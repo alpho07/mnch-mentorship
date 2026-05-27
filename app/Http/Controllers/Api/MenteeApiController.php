@@ -24,7 +24,8 @@ class MenteeApiController extends Controller
         $userId = $request->user()->id;
 
         $participations = ClassParticipant::with([
-                'mentorshipClass.training',
+                'mentorshipClass.training.facility:id,name',
+                'mentorshipClass.training.mentor:id,name',
                 'mentorshipClass.classModules',
             ])
             ->where('user_id', $userId)
@@ -35,6 +36,8 @@ class MenteeApiController extends Controller
             'name'                => $p->mentorshipClass->name,
             'status'              => $p->mentorshipClass->status,
             'training_title'      => $p->mentorshipClass->training?->title,
+            'facility'            => $p->mentorshipClass->training?->facility?->name,
+            'mentor_name'         => $p->mentorshipClass->training?->mentor?->name,
             'progress_percentage' => $p->mentorshipClass->progress_percentage,
             'module_count'        => $p->mentorshipClass->module_count,
             'participant_id'      => $p->id,
