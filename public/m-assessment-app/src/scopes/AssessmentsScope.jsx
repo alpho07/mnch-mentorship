@@ -1,27 +1,25 @@
 import { useState, useEffect } from 'react';
 import api from '../services/api.service.js';
 import { calcGrade } from '../constants.js';
-import { DashboardScreen } from '../screens/screen-dashboard.jsx';
+import { AssessmentAnalyticsHomeScreen } from '../screens/screen-analytics-home.jsx';
 import { AssessmentsListScreen } from '../screens/screen-assessments-list.jsx';
 import { AssessmentDetailScreen } from '../screens/screen-assessment-detail.jsx';
 import { AssessmentFormScreen } from '../screens/screen-assessment-form.jsx';
 import { AssessmentReportScreen } from '../screens/screen-assessment-report.jsx';
 import { ReportsScreen } from '../screens/screen-reports.jsx';
 import { EmailJobsScreen } from '../screens/screen-email-jobs.jsx';
-import { ProfileScreen } from '../screens/screen-profile.jsx';
 
 const TABS = [
     { id: 'home',        icon: '🏠', label: 'Home' },
     { id: 'assessments', icon: '📋', label: 'Assessments' },
     { id: 'reports',     icon: '📊', label: 'Reports' },
-    { id: 'profile',     icon: '👤', label: 'Profile' },
 ];
 
 function BottomNav({ active, onChange }) {
     return (
-        <nav style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#1e293b', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', zIndex: 50, paddingBottom: 'env(safe-area-inset-bottom)' }}>
+        <nav style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#ffffff', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderTop: '1px solid #EAF6F7', boxShadow: '0 -2px 16px rgba(0,0,0,0.06)', display: 'flex', zIndex: 50, paddingBottom: 'env(safe-area-inset-bottom)' }}>
             {TABS.map(tab => (
-                <button key={tab.id} onClick={() => onChange(tab.id)} style={{ flex: 1, padding: '10px 0 8px', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, color: active === tab.id ? '#6366F1' : 'rgba(255,255,255,0.35)', fontSize: 10, fontWeight: active === tab.id ? 700 : 400, transition: 'color 0.15s' }}>
+                <button key={tab.id} onClick={() => onChange(tab.id)} style={{ flex: 1, padding: '10px 0 8px', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, color: active === tab.id ? '#0097A7' : '#8BC8C8', fontSize: 10, fontWeight: active === tab.id ? 700 : 400, transition: 'color 0.15s' }}>
                     <span style={{ fontSize: 20 }}>{tab.icon}</span>
                     <span>{tab.label}</span>
                 </button>
@@ -39,7 +37,7 @@ function enrichAssessment(a) {
     return { ...a, section_scores: ss, section_progress: a.section_progress ?? {}, responses: a.responses ?? {}, overall_percentage: pct ?? (Number(a.overall_percentage) || null), overall_grade: pct != null ? calcGrade(pct) : a.overall_grade };
 }
 
-export function AssessmentsScope({ user, header, onLogout, onUserUpdate }) {
+export function AssessmentsScope({ user, onLogout, onUserUpdate }) {
     const [tab, setTab]     = useState('home');
     const [modal, setModal] = useState(null);
     const [assessments, setAssessments]         = useState([]);
@@ -74,12 +72,10 @@ export function AssessmentsScope({ user, header, onLogout, onUserUpdate }) {
     if (modal?.type === 'emailJobs') return <EmailJobsScreen onBack={() => setModal(null)} />;
 
     return (
-        <div style={{ paddingBottom: 64, minHeight: '100vh', background: '#0f172a' }}>
-            {header}
-            {tab === 'home' && <DashboardScreen user={user} assessments={assessments} onViewAssessment={(a) => setModal({ type: 'detail', data: a })} loading={loading} error={error} onRetry={refreshAssessments} />}
+        <div style={{ paddingBottom: 64, minHeight: '100vh', background: '#f0f4f8' }}>
+            {tab === 'home' && <AssessmentAnalyticsHomeScreen user={user} />}
             {tab === 'assessments' && <AssessmentsListScreen assessments={assessments} sections={sections} onView={(a) => setModal({ type: 'detail', data: a })} loading={loading} onCreate={(a) => { const enriched = enrichAssessment(a); setAssessments(prev => [...prev, enriched]); setModal({ type: 'detail', data: enriched }); }} facilities={facilities} user={user} openSheet={false} onSheetClose={() => {}} />}
             {tab === 'reports' && <ReportsScreen user={user} assessments={assessments} sectionAverages={sectionAverages} loading={loading} onViewAssessment={(a) => setModal({ type: 'detail', data: a })} onViewEmailJobs={() => setModal({ type: 'emailJobs' })} />}
-            {tab === 'profile' && <ProfileScreen user={user} assessments={assessments} onUpdateUser={onUserUpdate} onLogout={onLogout} />}
             <BottomNav active={tab} onChange={setTab} />
         </div>
     );

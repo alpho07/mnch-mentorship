@@ -353,7 +353,8 @@ class AssessmentResource extends Resource {
     }
 
     public static function getNavigationBadge(): ?string {
-        return static::getModel()::where('status', 'in_progress')->count() ?: null;
+        $count = Assessment::whereIn('status', ['draft', 'in_progress'])->count();
+        return $count > 0 ? (string) $count : null;
     }
 
     public static function getNavigationBadgeColor(): ?string {

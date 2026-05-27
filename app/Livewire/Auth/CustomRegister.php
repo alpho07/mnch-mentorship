@@ -7,16 +7,14 @@ use App\Models\County;
 use App\Models\Department;
 use App\Models\Facility;
 use App\Models\MainCadre;
-use App\Models\Subcounty;
 use App\Models\User;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Actions\Action as FormAction;
-use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Concerns\InteractsWithForms;
-use Filament\Forms\Contracts\HasForms;
+use Filament\Forms\Contracts\HasForms; 
 use Filament\Forms\Form;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
@@ -118,65 +116,29 @@ class CustomRegister extends SimplePage implements HasForms
                     ->columns(1),
 
                 Section::make('Geographic Scope')
-                    ->description('Select your mentorship level, then choose your location.')
+                    ->description('Select your county, then choose your facility.')
                     ->schema([
-                        Radio::make('scope_level')
-                            ->label('Mentorship Level')
-                            ->options([
-                                'county'    => 'County',
-                                'subcounty' => 'Subcounty',
-                                'facility'  => 'Facility',
-                            ])
-                            ->descriptions([
-                                'county'    => 'Oversee all mentorships in a county',
-                                'subcounty' => 'Oversee all mentorships in a subcounty',
-                                'facility'  => 'Conduct mentorships at a specific facility',
-                            ])
-                            ->required()
-                            ->live()
-                            ->afterStateUpdated(function (Set $set) {
-                                $set('county_id', null);
-                                $set('subcounty_id', null);
-                                $set('facility_id', null);
-                            }),
-
                         Select::make('county_id')
                             ->label('County')
                             ->options(fn () => County::orderBy('name')->pluck('name', 'id'))
                             ->searchable()
                             ->required()
                             ->live()
-                            ->afterStateUpdated(function (Set $set) {
-                                $set('subcounty_id', null);
-                                $set('facility_id', null);
-                            })
-                            ->visible(fn (Get $get) => filled($get('scope_level'))),
-
-                        Select::make('subcounty_id')
-                            ->label('Subcounty')
-                            ->options(fn (Get $get) => $get('county_id')
-                                ? Subcounty::where('county_id', $get('county_id'))->orderBy('name')->pluck('name', 'id')->toArray()
-                                : []
-                            )
-                            ->searchable()
-                            ->required()
-                            ->live()
-                            ->afterStateUpdated(fn (Set $set) => $set('facility_id', null))
-                            ->visible(fn (Get $get) => in_array($get('scope_level'), ['subcounty', 'facility']))
-                            ->disabled(fn (Get $get) => ! filled($get('county_id')))
-                            ->helperText(fn (Get $get) => ! filled($get('county_id')) ? 'Select a county first' : null),
+                            ->afterStateUpdated(fn (Set $set) => $set('facility_id', null)),
 
                         Select::make('facility_id')
                             ->label('Facility')
-                            ->options(fn (Get $get) => $get('subcounty_id')
-                                ? Facility::where('subcounty_id', $get('subcounty_id'))->orderBy('name')->pluck('name', 'id')->toArray()
+                            ->options(fn (Get $get) => $get('county_id')
+                                ? Facility::whereHas('subcounty', fn ($q) => $q->where('county_id', $get('county_id')))
+                                    ->orderBy('name')
+                                    ->pluck('name', 'id')
+                                    ->toArray()
                                 : []
                             )
                             ->searchable()
                             ->required()
-                            ->visible(fn (Get $get) => $get('scope_level') === 'facility')
-                            ->disabled(fn (Get $get) => ! filled($get('subcounty_id')))
-                            ->helperText(fn (Get $get) => ! filled($get('subcounty_id')) ? 'Select a subcounty first' : null),
+                            ->disabled(fn (Get $get) => ! filled($get('county_id')))
+                            ->helperText(fn (Get $get) => ! filled($get('county_id')) ? 'Select a county first' : null),
                     ])
                     ->columns(1),
 
@@ -212,14 +174,8 @@ class CustomRegister extends SimplePage implements HasForms
     {
         $data = $this->form->getState();
 
-        $role = match ($data['scope_level']) {
-            'county'    => 'county_mentor_lead',
-            'subcounty' => 'subcounty_mentor_lead',
-            'facility'  => 'facility_mentor',
-        };
-
         try {
-            $user = DB::transaction(function () use ($data, $role) {
+            $user = DB::transaction(function () use ($data) {
                 $user = User::create([
                     'first_name'    => ucfirst(strtolower(trim($data['first_name']))),
                     'middle_name'   => filled($data['middle_name'] ?? null)
@@ -235,21 +191,14 @@ class CustomRegister extends SimplePage implements HasForms
                     'phone'         => $data['phone'],
                     'cadre_id'      => $data['cadre_id'],
                     'department_id' => $data['department_id'],
-                    'facility_id'   => $data['scope_level'] === 'facility' ? $data['facility_id'] : null,
+                    'facility_id'   => $data['facility_id'],
                     'password'      => bcrypt(Str::random(32)),
                     'status'        => 'pending',
                 ]);
 
-                $user->assignRole($role);
+                $user->assignRole('mentee');
                 $user->counties()->sync([$data['county_id']]);
-
-                if (filled($data['subcounty_id'] ?? null)) {
-                    $user->subcounties()->sync([$data['subcounty_id']]);
-                }
-
-                if (filled($data['facility_id'] ?? null) && $data['scope_level'] === 'facility') {
-                    $user->facilities()->sync([$data['facility_id']]);
-                }
+                $user->facilities()->sync([$data['facility_id']]);
 
                 return $user;
             });
@@ -260,8 +209,8 @@ class CustomRegister extends SimplePage implements HasForms
 
             Notification::make()
                 ->success()
-                ->title('Account created!')
-                ->body("A verification email has been sent to {$user->email}. Click the link to set your password and activate your account.")
+                ->title('Registration Successful!')
+                ->body("Please check your email ({$user->email}) for further instructions. Click the link in the email to set your password and activate your account.")
                 ->persistent()
                 ->send();
 

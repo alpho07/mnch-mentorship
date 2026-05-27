@@ -24,6 +24,7 @@ class MentorshipCreateController extends Controller
             'start_date'       => 'required|date',
             'end_date'         => 'required|date|after_or_equal:start_date',
             'max_participants' => 'nullable|integer|min:1',
+            'is_pilot'         => 'nullable|boolean',
             'title'            => 'nullable|string|max:255',
             'class_name'       => 'nullable|string|max:255',
             'class_start_date' => 'nullable|date',
@@ -44,6 +45,7 @@ class MentorshipCreateController extends Controller
             'start_date'       => $request->start_date,
             'end_date'         => $request->end_date,
             'max_participants' => $request->max_participants ?? 20,
+            'is_pilot'         => $request->boolean('is_pilot', false),
             'status'           => 'draft',
             'identifier'       => 'MT-' . strtoupper(Str::random(6)),
             'title'            => $request->title ?? $this->autoTitle($request),
@@ -57,7 +59,7 @@ class MentorshipCreateController extends Controller
             'end_date'    => $request->class_end_date ?: $request->end_date,
             'notes'       => $request->class_notes,
             'created_by'  => $user->id,
-            'enrollment_token' => (string) Str::uuid(),
+            'enrollment_token' => Str::random(32),
         ]);
 
         if (!empty($request->module_ids)) {
@@ -105,16 +107,24 @@ class MentorshipCreateController extends Controller
             'start_date'       => 'sometimes|date',
             'end_date'         => 'sometimes|date',
             'max_participants' => 'sometimes|integer|min:1',
+            'is_pilot'         => 'sometimes|boolean',
+            'program_id'       => 'sometimes|integer|exists:programs,id',
+            'facility_id'      => 'sometimes|integer|exists:facilities,id',
+            'county_id'        => 'nullable|integer|exists:counties,id',
         ]);
 
-        $training->update($request->only(['title', 'start_date', 'end_date', 'max_participants']));
+        $training->update($request->only(['title', 'start_date', 'end_date', 'max_participants', 'is_pilot', 'program_id', 'facility_id', 'county_id']));
 
         return response()->json(['data' => [
-            'id'         => $training->id,
-            'title'      => $training->title,
-            'status'     => $training->status,
-            'start_date' => $training->start_date?->toDateString(),
-            'end_date'   => $training->end_date?->toDateString(),
+            'id'          => $training->id,
+            'title'       => $training->title,
+            'status'      => $training->status,
+            'is_pilot'    => (bool) $training->is_pilot,
+            'program_id'  => $training->program_id,
+            'facility_id' => $training->facility_id,
+            'county_id'   => $training->county_id,
+            'start_date'  => $training->start_date?->toDateString(),
+            'end_date'    => $training->end_date?->toDateString(),
         ]]);
     }
 

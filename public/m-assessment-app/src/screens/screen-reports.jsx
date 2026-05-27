@@ -3,8 +3,65 @@ import { T, GRADE_COLOR, GRADE_BG, GRADE_LABEL, calcGrade } from "../constants.j
 import { GradeBadge, ProgressBar } from "../components/shared-components.jsx";
 import api from "../services/api.service.js";
 
+function ReadinessCard({ f }) {
+    const isEligible   = f.eligibility_status === 'eligible';
+    const isPending    = !f.eligibility_status || f.eligibility_status === 'pending';
+    const eligColor    = isEligible ? '#065F46' : isPending ? '#92400E' : '#991B1B';
+    const eligBg       = isEligible ? '#D1FAE5' : isPending ? '#FEF3C7' : '#FEE2E2';
+    const eligLabel    = isEligible ? '✓ Eligible' : isPending ? '? Pending' : '✗ Not Eligible';
+    const pct          = f.overall_percentage != null ? Number(f.overall_percentage) : null;
+    const pctColor     = pct == null ? '#94A3B8' : pct >= 80 ? '#10B981' : pct >= 50 ? '#F59E0B' : '#EF4444';
+    const pctBg        = pct == null ? '#F1F5F9' : pct >= 80 ? '#D1FAE5' : pct >= 50 ? '#FEF3C7' : '#FEE2E2';
+
+    return (
+        <div style={{ background: 'white', borderRadius: T.radius, padding: '12px 14px', marginBottom: 10, boxShadow: T.shadowCard, border: `1px solid ${T.border}`, display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+            <div style={{ width: 48, height: 48, borderRadius: 12, flexShrink: 0, background: pctBg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ fontSize: pct != null ? 14 : 18, fontWeight: 900, color: pctColor, lineHeight: 1 }}>
+                    {pct != null ? `${pct.toFixed(0)}%` : '—'}
+                </div>
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 6, marginBottom: 3 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: T.text, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.facility}</span>
+                    <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: eligBg, color: eligColor, flexShrink: 0, whiteSpace: 'nowrap' }}>{eligLabel}</span>
+                </div>
+                <div style={{ fontSize: 11, color: T.textMuted, marginBottom: 5 }}>
+                    {[f.mfl_code && `MFL ${f.mfl_code}`, f.county, f.subcounty, f.level].filter(Boolean).join(' · ')}
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                    <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 6, fontWeight: 600, background: f.has_skills_lab ? '#D1FAE5' : '#FEE2E2', color: f.has_skills_lab ? '#065F46' : '#991B1B' }}>
+                        {f.has_skills_lab ? '✓' : '✗'} Skills Lab
+                    </span>
+                    <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 6, fontWeight: 600, background: f.has_room ? '#D1FAE5' : '#FEE2E2', color: f.has_room ? '#065F46' : '#991B1B' }}>
+                        {f.has_room ? '✓' : '✗'} Training Room
+                    </span>
+                    {f.mentorship_count > 0 && (
+                        <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 6, fontWeight: 600, background: '#EEF2FF', color: '#4338CA' }}>
+                            {f.mentorship_count} mentorship{f.mentorship_count !== 1 ? 's' : ''}
+                        </span>
+                    )}
+                </div>
+                {(f.assessment_date || f.assessment_type) && (
+                    <div style={{ fontSize: 10, color: T.textSub, marginTop: 4 }}>
+                        {[f.assessment_type, f.assessment_date].filter(Boolean).join(' · ')}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
 export function ReportsScreen({ user, assessments, sectionAverages, loading, onViewAssessment, onViewEmailJobs }) {
     const [selectedFacility, setSelectedFacility] = useState(null);
+    const [readiness, setReadiness]               = useState(null);
+    const [readinessLoading, setReadinessLoading] = useState(true);
+    const [rSearch, setRSearch]       = useState('');
+    const [rEligibility, setREligibility] = useState('all');
+    const [rSkillsLab, setRSkillsLab] = useState('all');
+    const [rRoom, setRRoom]           = useState('all');
+    const [rCounty, setRCounty]       = useState('all');
+    const [rType, setRType]           = useState('all');
+    const [rSort, setRSort]           = useState('score_desc');
     const list = assessments ?? [];
     const completed = list.filter(a => a.status === "completed");
     const avgScore = completed.length
@@ -33,6 +90,13 @@ export function ReportsScreen({ user, assessments, sectionAverages, loading, onV
                 .catch(() => setMentorships([]));
         }
     }, [user?.id]);
+
+    useEffect(() => {
+        api.analytics.summary('assessment')
+            .then(d => setReadiness(d?.facilitiesReadiness ?? []))
+            .catch(() => setReadiness([]))
+            .finally(() => setReadinessLoading(false));
+    }, []);
 
     return (
         <div style={{ height: "100%", overflowY: "auto", background: T.bg }}>
@@ -216,6 +280,157 @@ export function ReportsScreen({ user, assessments, sectionAverages, loading, onV
                                             </div>
                                         )}
                                     </>
+                                );
+                            })()}
+
+                            {/* Facilities Readiness & Mentorship Eligibility */}
+                            {(readiness?.length > 0 || readinessLoading) && (() => {
+                                // Derived filter options
+                                const allCounties  = [...new Set((readiness ?? []).map(f => f.county).filter(Boolean))].sort();
+                                const allTypes     = [...new Set((readiness ?? []).map(f => f.assessment_type).filter(Boolean))].sort();
+                                const eligible    = (readiness ?? []).filter(f => f.eligibility_status === 'eligible').length;
+                                const notEligible = (readiness ?? []).filter(f => f.eligibility_status === 'not_eligible').length;
+                                const pending     = (readiness ?? []).length - eligible - notEligible;
+
+                                // Apply filters
+                                let filtered = readiness ?? [];
+                                if (rSearch.trim()) {
+                                    const q = rSearch.toLowerCase();
+                                    filtered = filtered.filter(f =>
+                                        (f.facility ?? '').toLowerCase().includes(q) ||
+                                        (f.county ?? '').toLowerCase().includes(q) ||
+                                        (f.mfl_code ?? '').toLowerCase().includes(q)
+                                    );
+                                }
+                                if (rEligibility !== 'all') filtered = filtered.filter(f => f.eligibility_status === rEligibility);
+                                if (rSkillsLab === 'yes') filtered = filtered.filter(f => f.has_skills_lab);
+                                if (rSkillsLab === 'no')  filtered = filtered.filter(f => !f.has_skills_lab);
+                                if (rRoom === 'yes') filtered = filtered.filter(f => f.has_room);
+                                if (rRoom === 'no')  filtered = filtered.filter(f => !f.has_room);
+                                if (rCounty !== 'all') filtered = filtered.filter(f => f.county === rCounty);
+                                if (rType !== 'all')   filtered = filtered.filter(f => f.assessment_type === rType);
+                                if (rSort === 'score_desc') filtered = [...filtered].sort((a, b) => (b.overall_percentage ?? 0) - (a.overall_percentage ?? 0));
+                                if (rSort === 'score_asc')  filtered = [...filtered].sort((a, b) => (a.overall_percentage ?? 0) - (b.overall_percentage ?? 0));
+                                if (rSort === 'name')       filtered = [...filtered].sort((a, b) => (a.facility ?? '').localeCompare(b.facility ?? ''));
+                                if (rSort === 'mentorships') filtered = [...filtered].sort((a, b) => (b.mentorship_count ?? 0) - (a.mentorship_count ?? 0));
+
+                                const activeFilters = [rEligibility!=='all', rSkillsLab!=='all', rRoom!=='all', rCounty!=='all', rType!=='all', rSearch.trim()!==''].filter(Boolean).length;
+
+                                return (
+                                    <div style={{ background: "white", borderRadius: T.radius, padding: 18, marginBottom: 14, boxShadow: T.shadowCard, border: `1px solid ${T.border}`, animation: "fadeInUp 0.4s ease 0.23s both" }}>
+                                        {/* Header */}
+                                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                                            <div style={{ fontSize: 12, fontWeight: 700, color: T.textMuted, textTransform: "uppercase", letterSpacing: 0.8, display: "flex", alignItems: "center", gap: 6 }}>
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={T.primary} strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                                                Facilities Readiness &amp; Eligibility
+                                            </div>
+                                            {activeFilters > 0 && (
+                                                <button onClick={() => { setRSearch(''); setREligibility('all'); setRSkillsLab('all'); setRRoom('all'); setRCounty('all'); setRType('all'); setRSort('score_desc'); }} style={{ fontSize: 11, color: T.primary, fontWeight: 700, background: T.primaryGhost, border: "none", borderRadius: 6, padding: "3px 8px", cursor: "pointer" }}>
+                                                    Clear {activeFilters}
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        {readinessLoading && <div style={{ textAlign: "center", color: T.textMuted, padding: "16px 0", fontSize: 13 }}>Loading…</div>}
+
+                                        {!readinessLoading && (
+                                            <>
+                                                {/* Summary pills */}
+                                                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+                                                    <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 20, background: "#D1FAE5", color: "#065F46", fontWeight: 700 }}>✓ {eligible} Eligible</span>
+                                                    {pending > 0 && <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 20, background: "#FEF3C7", color: "#92400E", fontWeight: 700 }}>? {pending} Pending</span>}
+                                                    {notEligible > 0 && <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 20, background: "#FEE2E2", color: "#991B1B", fontWeight: 700 }}>✗ {notEligible} Not Eligible</span>}
+                                                </div>
+
+                                                {/* Search */}
+                                                <div style={{ position: "relative", marginBottom: 10 }}>
+                                                    <svg style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)" }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={T.textMuted} strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                                    <input value={rSearch} onChange={e => setRSearch(e.target.value)} placeholder="Search facility, county, MFL…" style={{ width: "100%", padding: "8px 12px 8px 30px", border: `1px solid ${T.border}`, borderRadius: 10, fontSize: 13, outline: "none", boxSizing: "border-box", background: T.bg }} />
+                                                </div>
+
+                                                {/* Filter row 1: Eligibility */}
+                                                <div style={{ overflowX: "auto", paddingBottom: 4, marginBottom: 8 }}>
+                                                    <div style={{ display: "flex", gap: 6, whiteSpace: "nowrap" }}>
+                                                        <span style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, alignSelf: "center", flexShrink: 0 }}>Eligibility:</span>
+                                                        {[['all','All'],['eligible','✓ Eligible'],['not_eligible','✗ Not Eligible'],['pending','? Pending']].map(([v, label]) => (
+                                                            <button key={v} onClick={() => setREligibility(v)} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 20, border: "1.5px solid", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", transition: "all 0.15s", borderColor: rEligibility===v ? T.primary : T.border, background: rEligibility===v ? T.primaryGhost : "white", color: rEligibility===v ? T.primary : T.textMuted }}>
+                                                                {label}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                {/* Filter row 2: Skills Lab + Room */}
+                                                <div style={{ overflowX: "auto", paddingBottom: 4, marginBottom: 8 }}>
+                                                    <div style={{ display: "flex", gap: 6, whiteSpace: "nowrap" }}>
+                                                        <span style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, alignSelf: "center", flexShrink: 0 }}>Skills Lab:</span>
+                                                        {[['all','All'],['yes','Has'],['no','None']].map(([v, label]) => (
+                                                            <button key={v} onClick={() => setRSkillsLab(v)} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 20, border: "1.5px solid", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", transition: "all 0.15s", borderColor: rSkillsLab===v ? '#10B981' : T.border, background: rSkillsLab===v ? '#ECFDF5' : "white", color: rSkillsLab===v ? '#065F46' : T.textMuted }}>
+                                                                {label}
+                                                            </button>
+                                                        ))}
+                                                        <span style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, alignSelf: "center", flexShrink: 0, marginLeft: 4 }}>Room:</span>
+                                                        {[['all','All'],['yes','Has'],['no','None']].map(([v, label]) => (
+                                                            <button key={v} onClick={() => setRRoom(v)} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 20, border: "1.5px solid", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", transition: "all 0.15s", borderColor: rRoom===v ? '#6366F1' : T.border, background: rRoom===v ? '#EEF2FF' : "white", color: rRoom===v ? '#4338CA' : T.textMuted }}>
+                                                                {label}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                {/* Filter row 3: County + Type */}
+                                                {(allCounties.length > 1 || allTypes.length > 1) && (
+                                                    <div style={{ overflowX: "auto", paddingBottom: 4, marginBottom: 8 }}>
+                                                        <div style={{ display: "flex", gap: 6, whiteSpace: "nowrap" }}>
+                                                            {allCounties.length > 1 && (
+                                                                <>
+                                                                    <span style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, alignSelf: "center", flexShrink: 0 }}>County:</span>
+                                                                    {['all', ...allCounties].map(v => (
+                                                                        <button key={v} onClick={() => setRCounty(v)} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 20, border: "1.5px solid", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", transition: "all 0.15s", borderColor: rCounty===v ? T.primary : T.border, background: rCounty===v ? T.primaryGhost : "white", color: rCounty===v ? T.primary : T.textMuted }}>
+                                                                            {v === 'all' ? 'All' : v}
+                                                                        </button>
+                                                                    ))}
+                                                                </>
+                                                            )}
+                                                            {allTypes.length > 1 && (
+                                                                <>
+                                                                    <span style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, alignSelf: "center", flexShrink: 0, marginLeft: 4 }}>Type:</span>
+                                                                    {['all', ...allTypes].map(v => (
+                                                                        <button key={v} onClick={() => setRType(v)} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 20, border: "1.5px solid", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", transition: "all 0.15s", borderColor: rType===v ? '#F59E0B' : T.border, background: rType===v ? '#FFFBEB' : "white", color: rType===v ? '#92400E' : T.textMuted }}>
+                                                                            {v === 'all' ? 'All' : v}
+                                                                        </button>
+                                                                    ))}
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Sort row */}
+                                                <div style={{ overflowX: "auto", paddingBottom: 4, marginBottom: 12 }}>
+                                                    <div style={{ display: "flex", gap: 6, whiteSpace: "nowrap" }}>
+                                                        <span style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, alignSelf: "center", flexShrink: 0 }}>Sort:</span>
+                                                        {[['score_desc','Score ↓'],['score_asc','Score ↑'],['name','Name'],['mentorships','Mentorships']].map(([v, label]) => (
+                                                            <button key={v} onClick={() => setRSort(v)} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 20, border: "1.5px solid", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", transition: "all 0.15s", borderColor: rSort===v ? '#8B5CF6' : T.border, background: rSort===v ? '#EDE9FE' : "white", color: rSort===v ? '#6D28D9' : T.textMuted }}>
+                                                                {label}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                {/* Results */}
+                                                <div style={{ fontSize: 11, color: T.textMuted, marginBottom: 10, fontWeight: 600 }}>
+                                                    {filtered.length} of {(readiness??[]).length} facilities
+                                                </div>
+                                                {filtered.length === 0 && (
+                                                    <div style={{ textAlign: "center", padding: "20px 0", color: T.textSub }}>
+                                                        No facilities match the current filters.
+                                                    </div>
+                                                )}
+                                                {filtered.map((f, i) => <ReadinessCard key={i} f={f} />)}
+                                            </>
+                                        )}
+                                    </div>
                                 );
                             })()}
 

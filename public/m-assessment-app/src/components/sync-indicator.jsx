@@ -61,11 +61,14 @@ export function SyncIndicator() {
     const [state, setState] = useState(syncQueue.getStatus());
     const [dismissed, setDismissed] = useState(false);
     const [isSyncing, setIsSyncing] = useState(false);
+    const [showDetail, setShowDetail] = useState(false);
+    const [summary, setSummary] = useState(null);
 
     useEffect(() => {
         return syncQueue.subscribe((s) => {
             setState(s);
             setDismissed(false); // un-dismiss on any status change
+            setShowDetail(false);
             if (s.status !== "syncing") setIsSyncing(false);
         });
     }, []);
@@ -76,6 +79,16 @@ export function SyncIndicator() {
         await syncQueue.flush();
         // isSyncing will be reset by the subscribe callback above
     }, [isSyncing]);
+
+    const handleLabelTap = useCallback(async () => {
+        if (showDetail) {
+            setShowDetail(false);
+            return;
+        }
+        const s = await syncQueue.getPendingSummary();
+        setSummary(s);
+        setShowDetail(true);
+    }, [showDetail]);
 
     const {status, pendingCount, lastError} = state;
     const online = navigator.onLine;
@@ -120,7 +133,7 @@ export function SyncIndicator() {
                 color: config.color,
                 borderRadius: 14,
                 padding: "8px 12px",
-                display: "flex", alignItems: "center", gap: 8,
+                display: "flex", flexDirection: "column", alignItems: "stretch",
                 fontSize: 12, fontWeight: 600,
                 border: `1px solid ${config.border}`,
                 boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
@@ -128,52 +141,84 @@ export function SyncIndicator() {
                 backdropFilter: "blur(8px)",
                 animation: "slideDown 0.25s ease",
             }}>
-                <SyncIcon type={effectiveStatus === "syncing" ? "sync" : config.icon} />
-                <span style={{flex: 1, lineHeight: 1.3}}>{label}</span>
+                {/* Main row */}
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <SyncIcon type={effectiveStatus === "syncing" ? "sync" : config.icon} />
+                    <span
+                        style={{ flex: 1, lineHeight: 1.3, cursor: pendingCount > 0 ? "pointer" : "default" }}
+                        onClick={pendingCount > 0 ? handleLabelTap : undefined}
+                    >
+                        {label}
+                        {pendingCount > 0 && (
+                            <span style={{ marginLeft: 4, opacity: 0.6, fontSize: 10 }}>
+                                {showDetail ? "▲" : "▼"}
+                            </span>
+                        )}
+                    </span>
 
-                {/* Manual Sync Now button */}
-                {showSyncBtn && !showRetryBtn && (
+                    {/* Manual Sync Now button */}
+                    {showSyncBtn && !showRetryBtn && (
+                        <button
+                            onClick={handleManualSync}
+                            disabled={isSyncing}
+                            style={{
+                                padding: "4px 10px", borderRadius: 8, border: "none",
+                                background: "rgba(16,185,129,0.15)", color: "#065F46",
+                                fontSize: 11, fontWeight: 700, cursor: "pointer",
+                                whiteSpace: "nowrap",
+                            }}
+                        >
+                            ↑ Sync Now
+                        </button>
+                    )}
+
+                    {/* Retry button for errors */}
+                    {showRetryBtn && (
+                        <button
+                            onClick={handleManualSync}
+                            style={{
+                                padding: "4px 10px", borderRadius: 8, border: "none",
+                                background: "rgba(255,255,255,0.9)", color: "#991B1B",
+                                fontSize: 11, fontWeight: 700, cursor: "pointer",
+                            }}
+                        >
+                            Retry
+                        </button>
+                    )}
+
+                    {/* Dismiss */}
                     <button
-                        onClick={handleManualSync}
-                        disabled={isSyncing}
+                        onClick={() => setDismissed(true)}
                         style={{
-                            padding: "4px 10px", borderRadius: 8, border: "none",
-                            background: "rgba(16,185,129,0.15)", color: "#065F46",
-                            fontSize: 11, fontWeight: 700, cursor: "pointer",
-                            whiteSpace: "nowrap",
+                            width: 20, height: 20, borderRadius: 6, border: "none",
+                            background: "rgba(0,0,0,0.08)", color: config.color,
+                            fontSize: 12, cursor: "pointer",
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                            flexShrink: 0,
                         }}
                     >
-                        ↑ Sync Now
+                        ✕
                     </button>
-                )}
+                </div>
 
-                {/* Retry button for errors */}
-                {showRetryBtn && (
-                    <button
-                        onClick={handleManualSync}
-                        style={{
-                            padding: "4px 10px", borderRadius: 8, border: "none",
-                            background: "rgba(255,255,255,0.9)", color: "#991B1B",
-                            fontSize: 11, fontWeight: 700, cursor: "pointer",
-                        }}
-                    >
-                        Retry
-                    </button>
+                {/* Tap-to-expand pending breakdown */}
+                {showDetail && summary && summary.total > 0 && (
+                    <div style={{
+                        marginTop: 4,
+                        borderTop: `1px solid ${config.border}`,
+                        paddingTop: 6,
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 2,
+                    }}>
+                        {Object.entries(summary.groups).map(([label, count]) => (
+                            <div key={label} style={{ display: "flex", justifyContent: "space-between", fontSize: 11 }}>
+                                <span>{label}</span>
+                                <span style={{ fontWeight: 700 }}>{count}×</span>
+                            </div>
+                        ))}
+                    </div>
                 )}
-
-                {/* Dismiss */}
-                <button
-                    onClick={() => setDismissed(true)}
-                    style={{
-                        width: 20, height: 20, borderRadius: 6, border: "none",
-                        background: "rgba(0,0,0,0.08)", color: config.color,
-                        fontSize: 12, cursor: "pointer",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        flexShrink: 0,
-                    }}
-                >
-                    ✕
-                </button>
             </div>
         </div>
     );

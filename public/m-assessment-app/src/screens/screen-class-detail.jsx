@@ -288,7 +288,7 @@ export function ClassDetailScreen({
         if (!ok) return;
         setModuleActing(mod.id);
         try {
-            await api.modules.remove(mod.id);
+            await api.modules.remove(mod.id, cls.id);
             setModules(prev => prev.filter(m => m.id !== mod.id));
         } catch (e) {
             alert(e.message ?? "Failed to delete module.");
@@ -638,3 +638,5 @@ export function ClassDetailScreen({
         </div>
     );
 }
+
+

@@ -24,7 +24,8 @@ class AssessmentResource extends JsonResource {
             'overall_percentage' => $this->overall_percentage,
             'overall_grade' => $this->overall_grade,
             'completed_at' => $this->completed_at instanceof \Carbon\Carbon ? $this->completed_at->toDateString() : $this->completed_at,
-            'created_at' => $this->created_at?->toIso8601String(),
+            'created_at'  => $this->created_at?->toIso8601String(),
+            'is_trashed'  => $this->deleted_at !== null,
             'section_scores' => $this->whenLoaded('sectionScores', fn() =>
                     $this->sectionScores->mapWithKeys(fn($s) => [
                         $s->section->code => [

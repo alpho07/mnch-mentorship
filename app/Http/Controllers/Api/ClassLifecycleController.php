@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Api\Concerns\AuthorizesClassAccess;
 use App\Http\Controllers\Controller;
+use App\Mail\MenteeEnrollmentInvitationMail;
 use App\Models\ClassParticipant;
 use App\Models\MentorshipClass;
 use App\Models\User;
@@ -12,6 +13,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -182,6 +184,19 @@ class ClassLifecycleController extends Controller
 
         $participant->load('user');
 
+        $invitationSent = false;
+        if ($participant->user?->email) {
+            $this->ensureEnrollmentToken($class);
+            try {
+                Mail::to($participant->user->email)
+                    ->send(new MenteeEnrollmentInvitationMail($participant->user, $class, $participant));
+                $participant->update(['invitation_sent_at' => now()]);
+                $invitationSent = true;
+            } catch (\Throwable) {
+                // Mail failure must not break the enrollment response.
+            }
+        }
+
         return response()->json([
             'data' => [
                 'participant_id'   => $participant->id,
@@ -191,6 +206,7 @@ class ClassLifecycleController extends Controller
                 'phone'            => $participant->user?->phone,
                 'default_password' => '123456',
                 'created'          => true,
+                'invitation_sent'  => $invitationSent,
             ],
         ], 201);
     }
@@ -203,7 +219,7 @@ class ClassLifecycleController extends Controller
         $this->authorizeClassAccess($class);
 
         if (!$class->enrollment_token) {
-            $class->update(['enrollment_token' => Str::uuid(), 'enrollment_link_active' => true]);
+            $class->update(['enrollment_token' => Str::random(32), 'enrollment_link_active' => true]);
             $class->refresh();
         }
 
@@ -226,7 +242,7 @@ class ClassLifecycleController extends Controller
         $this->authorizeClassAccess($class);
         abort_if($class->status === 'completed' || $class->status === 'cancelled', 422, 'Cannot regenerate token for a completed class.');
 
-        $token = Str::uuid();
+        $token = Str::random(32);
         $class->update(['enrollment_token' => $token, 'enrollment_link_active' => true]);
 
         return response()->json([
@@ -271,15 +287,49 @@ class ClassLifecycleController extends Controller
 
     /**
      * POST /api/v1/classes/{class}/mentees/{participant}/invite
-     * Mark that an invitation was sent to this participant.
+     * Send (or resend) the enrollment invitation email to this participant.
      */
     public function markInvited(MentorshipClass $class, ClassParticipant $participant): JsonResponse
     {
         $this->authorizeClassAccess($class);
         abort_if($participant->mentorship_class_id !== $class->id, 404);
 
+        $participant->load('user');
+
+        $emailSent = false;
+        if ($participant->user?->email) {
+            $this->ensureEnrollmentToken($class);
+            $isResend = (bool) $participant->invitation_sent_at;
+            try {
+                Mail::to($participant->user->email)
+                    ->send(new MenteeEnrollmentInvitationMail($participant->user, $class, $participant, $isResend));
+                $emailSent = true;
+            } catch (\Throwable) {
+                // Fall through — still stamp the timestamp so the caller knows we attempted.
+            }
+        }
+
         $participant->update(['invitation_sent_at' => now()]);
 
-        return response()->json(['data' => ['invitation_sent_at' => $participant->invitation_sent_at->toIso8601String()]]);
+        return response()->json([
+            'data' => [
+                'invitation_sent_at' => $participant->invitation_sent_at->toIso8601String(),
+                'email_sent'         => $emailSent,
+            ],
+        ]);
+    }
+
+    private function ensureEnrollmentToken(MentorshipClass $class): void
+    {
+        if (!$class->enrollment_token) {
+            $class->update([
+                'enrollment_token'       => Str::random(32),
+                'enrollment_link_active' => true,
+            ]);
+            $class->refresh();
+        } elseif (!$class->enrollment_link_active) {
+            $class->update(['enrollment_link_active' => true]);
+            $class->refresh();
+        }
     }
 }

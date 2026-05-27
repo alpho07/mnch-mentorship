@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\ResourceResource\Pages;
 
 use App\Filament\Resources\ResourceResource;
+use App\Models\ProgramModule;
 use App\Models\Tag;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
@@ -89,6 +90,12 @@ class EditResource extends EditRecord
             $data['tag_names'] = $this->getRecord()->tags->pluck('name')->toArray();
         }
 
+        // Load program module selections
+        $moduleIds = $this->getRecord()->programModules()->pluck('program_modules.id')->toArray();
+        $data['program_module_ids'] = $moduleIds;
+        $programIds = ProgramModule::whereIn('id', $moduleIds)->pluck('program_id')->unique()->values()->toArray();
+        $data['program_ids'] = $programIds;
+
         // Load existing files data for the repeater
         $data['resource_files'] = $this->getRecord()->files->map(function ($file) {
             return [
@@ -109,6 +116,9 @@ class EditResource extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
+        // Strip virtual fields before model update
+        unset($data['program_ids'], $data['program_module_ids']);
+
         // Handle tag names conversion
         if (isset($data['tag_names']) && is_array($data['tag_names'])) {
             $tagIds = [];
@@ -252,6 +262,10 @@ class EditResource extends EditRecord
         if (isset($this->data['scoped_departments'])) {
             $record->scopedDepartments()->sync($this->data['scoped_departments']);
         }
+
+        // Sync program modules
+        $moduleIds = $this->data['program_module_ids'] ?? [];
+        $record->programModules()->sync($moduleIds);
 
         // Ensure only one primary file exists
         $this->ensureSinglePrimaryFile($record);

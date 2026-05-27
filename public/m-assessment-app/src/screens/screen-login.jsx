@@ -87,7 +87,7 @@ export function LoginScreen({ onLogin }) {
                     letterSpacing: 0.5,
                     animation: "loginFade 0.6s ease 0.3s both",
                 }}>
-                    Ministry of Health · Assessment Platform
+                    Ministry of Health
                 </div>
             </div>
 
@@ -254,24 +254,6 @@ export function LoginScreen({ onLogin }) {
                     ) : "Sign In"}
                 </button>
 
-                <div style={{
-                    marginTop: 22, padding: "14px 16px",
-                    background: T.primaryGhost,
-                    borderRadius: T.radiusSm,
-                    border: `1px solid ${T.primary}15`,
-                }}>
-                    <div style={{
-                        fontSize: 11, color: T.primary, fontWeight: 700,
-                        marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.8,
-                        display: "flex", alignItems: "center", gap: 6,
-                    }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={T.primary} strokeWidth="2">
-                            <circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" />
-                        </svg>
-                        Assessments Made Easy!
-                    </div>
-
-                </div>
             </div>
         </div>
     );

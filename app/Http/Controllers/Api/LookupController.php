@@ -17,7 +17,7 @@ class LookupController extends Controller
 {
     public function programs(): JsonResponse
     {
-        $programs = Program::orderBy('name')->get(['id', 'name', 'description']);
+        $programs = Program::withCount('programModules as module_count')->orderBy('name')->get(['id', 'name', 'description']);
         return response()->json(['data' => $programs]);
     }
 
@@ -147,6 +147,74 @@ class LookupController extends Controller
                 'facility_id'   => $user->facility_id,
                 'facility_name' => $user->facility?->name ?? '',
                 'mfl_code'      => $user->facility?->mfl_code,
+            ],
+        ]);
+    }
+
+    /**
+     * GET /api/v1/users/lookup-index
+     *
+     * Returns a slim index of active users for offline email lookups.
+     * Supports ?since= for delta updates (includes inactive users in delta so app can remove them).
+     *
+     * Super admin / above-site roles: all users.
+     * Others: scoped to users sharing the same facility.
+     */
+    public function userLookupIndex(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        if ($request->filled('since')) {
+            // Delta: return all users (active or inactive) updated after the given time
+            $since = \Carbon\Carbon::parse($request->since);
+
+            $query = User::query()->where('updated_at', '>', $since);
+
+            if (!$user->hasRole('super_admin') && !$user->isAboveSite()) {
+                $facilityId = $user->facility_id;
+                if ($facilityId) {
+                    $query->where('facility_id', $facilityId);
+                } else {
+                    $query->whereRaw('1 = 0'); // no facility assigned → no results
+                }
+            }
+
+            $users = $query->get(['id', 'name', 'first_name', 'last_name', 'email', 'phone', 'status'])
+                ->map(fn(User $u) => [
+                    'id'        => $u->id,
+                    'name'      => $u->full_name ?? $u->name,
+                    'email'     => strtolower(trim($u->email ?? '')),
+                    'phone'     => $u->phone,
+                    'is_active' => $u->status === 'active',
+                ]);
+        } else {
+            // Full index: active users only
+            $query = User::query()->where('status', 'active');
+
+            if (!$user->hasRole('super_admin') && !$user->isAboveSite()) {
+                $facilityId = $user->facility_id;
+                if ($facilityId) {
+                    $query->where('facility_id', $facilityId);
+                } else {
+                    $query->whereRaw('1 = 0'); // no facility assigned → no results
+                }
+            }
+
+            $users = $query->get(['id', 'name', 'first_name', 'last_name', 'email', 'phone', 'status'])
+                ->map(fn(User $u) => [
+                    'id'        => $u->id,
+                    'name'      => $u->full_name ?? $u->name,
+                    'email'     => strtolower(trim($u->email ?? '')),
+                    'phone'     => $u->phone,
+                    'is_active' => true,
+                ]);
+        }
+
+        return response()->json([
+            'data' => $users,
+            'meta' => [
+                'generated_at' => now()->toIso8601String(),
+                'total'        => $users->count(),
             ],
         ]);
     }

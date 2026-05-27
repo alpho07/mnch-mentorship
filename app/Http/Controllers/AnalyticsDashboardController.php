@@ -23,10 +23,41 @@ use Barryvdh\DomPDF\Facade\Pdf;
 class AnalyticsDashboardController extends Controller {
 
     public function index(Request $request) {
-        $currentYear = Carbon::now()->year;
-        $selectedYear = $request->get('year', ''); // Default to empty for "All Years"
-        $mode = $request->get('mode', 'training'); // training or mentorship
-        
+        $currentYear  = Carbon::now()->year;
+        $selectedYear = $request->get('year', '');
+        $mode         = $request->get('mode', 'training');
+
+        // ── Role-based geographic scoping ────────────────────────────────
+        // Pre-fill county/subcounty/facility filters for non-above-site users
+        // when those params aren't explicitly set (e.g. via the Filament embed).
+        $user = auth()->user();
+        if ($user && ! $user->isAboveSite()) {
+            if ($user->hasRole('county_mentor_lead') && ! $request->filled('county_id')) {
+                $request->merge(['county_id' => $user->counties()->value('counties.id')]);
+            } elseif ($user->hasRole('subcounty_mentor_lead') && ! $request->filled('subcounty_id')) {
+                $sub = $user->subcounties()->first();
+                if ($sub) {
+                    $request->merge([
+                        'county_id'    => $sub->county_id,
+                        'subcounty_id' => $sub->id,
+                    ]);
+                }
+            } elseif (! $request->filled('facility_id')) {
+                $facilityId = $user->facility_id ?? $user->facilities()->value('facilities.id');
+                if ($facilityId) {
+                    $facility = Facility::with('subcounty')->find($facilityId);
+                    if ($facility) {
+                        $request->merge([
+                            'county_id'    => $facility->subcounty?->county_id,
+                            'subcounty_id' => $facility->subcounty_id,
+                            'facility_id'  => $facilityId,
+                        ]);
+                    }
+                }
+            }
+        }
+        // ─────────────────────────────────────────────────────────────────
+
         // Get available years
         $availableYears = Training::selectRaw('YEAR(start_date) as year')
                 ->distinct()
@@ -51,9 +82,16 @@ class AnalyticsDashboardController extends Controller {
             $chartData              = $assessmentService->getChartData($filters);
             $facilitiesReadiness    = $assessmentService->getFacilitiesReadiness($filters);
             $insights               = $assessmentService->generateInsights($summaryStats);
-            $counties               = County::orderBy('name')->get(['id', 'name']);
             $selectedCounty         = $filters['county_id'];
             $selectedAssessmentType = $filters['assessment_type'];
+
+            // Scope county list for non-above-site users
+            if ($user && ! $user->isAboveSite()) {
+                $allowedCountyIds = $user->scopedCountyIds()->toArray();
+                $counties = County::whereIn('id', $allowedCountyIds)->orderBy('name')->get(['id', 'name']);
+            } else {
+                $counties = County::orderBy('name')->get(['id', 'name']);
+            }
 
             $subcounties = $selectedCounty
                 ? Subcounty::where('county_id', $selectedCounty)->orderBy('name')->get(['id', 'name'])
@@ -77,12 +115,18 @@ class AnalyticsDashboardController extends Controller {
             ));
         }
 
-        $counties = $this->getCountiesData($selectedYear, $mode);
+        $counties      = $this->getCountiesData($selectedYear, $mode);
         $trainingsList = $this->getTrainingsList($selectedYear, $mode);
-        $summaryStats = $this->getSummaryStats($selectedYear, $mode);
-        $chartData = $this->getChartData($selectedYear, $mode);
+        $summaryStats  = $this->getSummaryStats($selectedYear, $mode);
+        $chartData     = $this->getChartData($selectedYear, $mode);
         $extendedStats = $this->getExtendedStats($selectedYear, $mode);
-        $insights = $this->generateInsights($summaryStats, $extendedStats, $mode);
+        $insights      = $this->generateInsights($summaryStats, $extendedStats, $mode);
+
+        // Scope counties list to the user's visible geography
+        if ($user && ! $user->isAboveSite()) {
+            $allowedCountyIds = $user->scopedCountyIds()->toArray();
+            $counties = collect($counties)->filter(fn ($c) => in_array($c->id, $allowedCountyIds))->values();
+        }
 
         return view('analytics.dashboard.index', compact(
                         'counties', 'trainingsList', 'summaryStats', 'chartData',

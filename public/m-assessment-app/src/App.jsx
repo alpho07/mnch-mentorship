@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
 import { LoginScreen } from "./screens/screen-login.jsx";
 import { ScopeShell } from "./components/ScopeShell.jsx";
+import { InstallPrompt } from "./components/install-prompt.jsx";
 import { T } from "./constants.js";
 import api from "./services/api.service.js";
+import offlineStore from "./services/offline-store.js";
 
 // ── normaliseUser ─────────────────────────────────────────────────────────────
 function normaliseUser(u) {
@@ -25,17 +27,34 @@ export default function App() {
     const [loading, setLoading] = useState(true);
 
     // ── Session restore ──────────────────────────────────────────────────────
+    // Load cached user immediately (offline-first), then refresh from server
+    // in the background so the app is usable instantly without a network round-trip.
     useEffect(() => {
         const token = api.getToken();
         if (!token) { setLoading(false); return; }
 
-        api.auth.me()
-            .then(data => {
-                const u = data?.user ?? data;
-                if (u?.id) setUser(normaliseUser(u));
-            })
-            .catch(() => api.clearToken())
-            .finally(() => setLoading(false));
+        offlineStore.getUser().then(cached => {
+            if (cached?.id) {
+                setUser(normaliseUser(cached));
+                setLoading(false);
+                // Background refresh — silently update cached user; on 401 log out
+                api.auth.me()
+                    .then(data => {
+                        const u = data?.user ?? data;
+                        if (u?.id) setUser(normaliseUser(u));
+                    })
+                    .catch((e) => { if (e?.status === 401) { api.clearToken(); setUser(null); } });
+            } else {
+                // No cached user — must go to network
+                api.auth.me()
+                    .then(data => {
+                        const u = data?.user ?? data;
+                        if (u?.id) setUser(normaliseUser(u));
+                    })
+                    .catch(() => api.clearToken())
+                    .finally(() => setLoading(false));
+            }
+        });
     }, []);
 
     if (loading) {
@@ -51,10 +70,15 @@ export default function App() {
     }
 
     return (
-        <ScopeShell
-            user={user}
-            onLogout={() => { api.clearToken(); setUser(null); }}
-            onUserUpdate={(u) => setUser(normaliseUser(u))}
-        />
+        <>
+            <ScopeShell
+                user={user}
+                onLogout={() => { api.clearToken(); setUser(null); }}
+                onUserUpdate={(u) => setUser(normaliseUser(u))}
+            />
+            <InstallPrompt />
+        </>
     );
 }
+
+

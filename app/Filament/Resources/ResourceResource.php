@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources;
 
+use App\Models\Program;
+use App\Models\ProgramModule;
 use App\Models\Resource;
 use App\Models\Tag;
 use App\Services\ResourceService;
@@ -42,6 +44,7 @@ class ResourceResource extends FilamentResource {
                             ->schema([
                                 static::getPublishingSection(),
                                 static::getCategorizationSection(),
+                                static::getProgramsSection(),
                                 static::getAnalyticsSection(),
                             ])
                             ->columnSpan(['lg' => 1]),
@@ -93,7 +96,7 @@ class ResourceResource extends FilamentResource {
                             ->schema([
                                 Forms\Components\FileUpload::make('file_path')
                                 ->label('File')
-                                ->disk('thumbnails')
+                                ->disk('resources')
                                 ->directory(fn() => 'documents/' . date('Y/m/d'))
                                 ->maxSize(102400)
                                 ->acceptedFileTypes([
@@ -225,6 +228,34 @@ class ResourceResource extends FilamentResource {
                             ->relationship('accessGroups', 'name')
                             ->preload(),
         ]);
+    }
+
+    protected static function getProgramsSection(): Forms\Components\Section {
+        return Forms\Components\Section::make('Programs & Modules')
+                        ->description('Optionally link this resource to specific programs or modules.')
+                        ->schema([
+                            Forms\Components\Select::make('program_ids')
+                            ->label('Programs')
+                            ->multiple()
+                            ->options(fn () => Program::orderBy('name')->pluck('name', 'id'))
+                            ->searchable()
+                            ->preload()
+                            ->live()
+                            ->afterStateUpdated(fn (Forms\Set $set) => $set('program_module_ids', []))
+                            ->helperText('Select one or more programs'),
+                            Forms\Components\Select::make('program_module_ids')
+                            ->label('Modules')
+                            ->multiple()
+                            ->options(fn (Forms\Get $get) => filled($get('program_ids'))
+                                ? ProgramModule::whereIn('program_id', $get('program_ids'))
+                                    ->orderBy('name')
+                                    ->pluck('name', 'id')
+                                : ProgramModule::orderBy('name')->pluck('name', 'id')
+                            )
+                            ->searchable()
+                            ->helperText('Leave empty to attach to all modules of the selected programs'),
+                        ])
+                        ->collapsible();
     }
 
     protected static function getAnalyticsSection(): Forms\Components\Section {

@@ -269,7 +269,7 @@ export function ModuleDetailScreen({ module: mod, user, onBack, onOpenAttendance
         setRemovingId(sessionId);
         setError(null);
         try {
-            await api.sessions.remove(sessionId);
+            await api.sessions.remove(sessionId, mod.id);
             setSessions(prev => prev.filter(s => s.id !== sessionId));
         } catch (e) {
             setError(e.message ?? "Failed to remove session.");
@@ -509,3 +509,5 @@ export function ModuleDetailScreen({ module: mod, user, onBack, onOpenAttendance
         </div>
     );
 }
+
+

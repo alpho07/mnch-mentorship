@@ -43,7 +43,8 @@ body {
     height: 100%;
     /* Prevent iOS/Android bounce scroll on the root */
     overflow: hidden;
-    background: #F4F6FB;
+    /* Dark backdrop shows through the top rounded corners on Capacitor */
+    background: #004D40;
 }
 
 #root {
@@ -51,6 +52,10 @@ body {
     height: 100%;
     /* Use 100dvh so the shell fills the real viewport on mobile browsers */
     height: 100dvh;
+    /* Curve the top corners to match the phone screen shape */
+    border-radius: 16px 16px 0 0;
+    overflow: hidden;
+    background: #F4F6FB;
 }
 
 button {

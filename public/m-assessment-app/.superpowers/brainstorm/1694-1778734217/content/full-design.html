@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Full Design Preview</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0f172a; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; min-height: 100vh; padding: 32px 20px 48px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+  h2 { color: white; font-size: 20px; font-weight: 800; text-align: center; margin-bottom: 6px; }
+  .sub { color: #94a3b8; font-size: 13px; text-align: center; margin-bottom: 28px; }
+
+  /* Phone shell */
+  .phone { width: 300px; border-radius: 40px; overflow: hidden; box-shadow: 0 24px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.08); background: #f0f4f8; position: relative; }
+  .notch { background: #111; height: 30px; display: flex; align-items: center; justify-content: center; }
+  .notch-pill { width: 72px; height: 10px; background: #222; border-radius: 5px; }
+
+  /* Sticky header */
+  .sticky-header { position: sticky; top: 0; z-index: 10; transition: background 0.35s ease; }
+  .header-top { padding: 14px 16px 8px; display: flex; align-items: center; justify-content: space-between; }
+  .header-title { font-size: 16px; font-weight: 800; color: white; }
+  .header-avatar { width: 34px; height: 34px; border-radius: 50%; background: rgba(255,255,255,0.22); border: 1px solid rgba(255,255,255,0.3); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; color: white; }
+  .seg-wrap { padding: 0 14px 14px; }
+  .seg { display: flex; background: rgba(255,255,255,0.18); border-radius: 12px; padding: 3px; gap: 3px; }
+  .seg-tab { flex: 1; text-align: center; padding: 8px 4px; font-size: 12px; font-weight: 700; border-radius: 10px; color: rgba(255,255,255,0.65); cursor: pointer; transition: all 0.25s ease; user-select: none; }
+  .seg-tab.active { background: white; }
+
+  /* Carousel */
+  .carousel-clip { overflow: hidden; height: 460px; }
+  .carousel-track { display: flex; width: 300%; height: 100%; transition: transform 0.38s cubic-bezier(0.4, 0, 0.2, 1); }
+  .carousel-panel { width: calc(100% / 3); height: 100%; overflow-y: auto; flex-shrink: 0; background: #f0f4f8; }
+
+  /* Cards */
+  .panel-content { padding: 14px; }
+  .section-label { font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px; }
+  .card { background: white; border-radius: 14px; padding: 14px; margin-bottom: 10px; box-shadow: 0 1px 8px rgba(0,0,0,0.06); }
+  .card-title { font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 3px; }
+  .card-sub { font-size: 11px; color: #94a3b8; }
+  .badge { display: inline-block; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 20px; margin-top: 6px; }
+  .badge-teal { background: #e0f7fa; color: #0097A7; }
+  .badge-green { background: #dcfce7; color: #15803d; }
+  .badge-indigo { background: #e0e7ff; color: #4338ca; }
+  .badge-amber { background: #fef3c7; color: #b45309; }
+
+  /* Home bar */
+  .home-bar { background: #111; height: 28px; display: flex; align-items: center; justify-content: center; }
+  .home-pill { width: 100px; height: 5px; background: #444; border-radius: 3px; }
+
+  /* Tab colours */
+  .scope-assess  { --hue: linear-gradient(135deg, #007B8E, #0097A7); --active: #0097A7; }
+  .scope-mentor  { --hue: linear-gradient(135deg, #3730a3, #4F46E5); --active: #4F46E5; }
+  .scope-training{ --hue: linear-gradient(135deg, #b45309, #D97706); --active: #D97706; }
+
+  /* instruction strip */
+  .instruction { margin-top: 24px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 16px 20px; color: #94a3b8; font-size: 13px; line-height: 1.6; max-width: 340px; text-align: center; }
+  .instruction strong { color: white; }
+</style>
+</head>
+<body>
+
+<h2>Full design preview</h2>
+<p class="sub">Tap the segmented tabs on the phone to try it live</p>
+
+<div class="phone" id="phone">
+  <!-- Notch -->
+  <div class="notch"><div class="notch-pill"></div></div>
+
+  <!-- Sticky header -->
+  <div class="sticky-header" id="stickyHeader" style="background: linear-gradient(135deg, #007B8E, #0097A7)">
+    <div class="header-top">
+      <span class="header-title">MNCH Kenya</span>
+      <div class="header-avatar">JD</div>
+    </div>
+    <div class="seg-wrap">
+      <div class="seg" id="segControl">
+        <div class="seg-tab active" id="tab-0" onclick="switchTab(0)" style="color:#0097A7">Assessments</div>
+        <div class="seg-tab"        id="tab-1" onclick="switchTab(1)" style="color:rgba(255,255,255,0.65)">Mentorships</div>
+        <div class="seg-tab"        id="tab-2" onclick="switchTab(2)" style="color:rgba(255,255,255,0.65)">Trainings</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Carousel -->
+  <div class="carousel-clip">
+    <div class="carousel-track" id="track">
+
+      <!-- Panel 0: Assessments -->
+      <div class="carousel-panel">
+        <div class="panel-content">
+          <div class="section-label">Your Assessments</div>
+          <div class="card">
+            <div class="card-title">Machakos District Hospital</div>
+            <div class="card-sub">Section 3 of 8 · Oct 2024</div>
+            <div class="badge badge-teal">In Progress</div>
+          </div>
+          <div class="card">
+            <div class="card-title">Mwea Health Centre</div>
+            <div class="card-sub">All sections complete · Sep 2024</div>
+            <div class="badge badge-green">Complete</div>
+          </div>
+          <div class="card">
+            <div class="card-title">Kerugoya Hospital</div>
+            <div class="card-sub">All sections complete · Aug 2024</div>
+            <div class="badge badge-green">Complete</div>
+          </div>
+          <div class="card">
+            <div class="card-title">Sagana Health Centre</div>
+            <div class="card-sub">Not started · Aug 2024</div>
+            <div class="badge" style="background:#f1f5f9;color:#64748b">Draft</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Panel 1: Mentorships -->
+      <div class="carousel-panel">
+        <div class="panel-content">
+          <div class="section-label">Active Classes</div>
+          <div class="card">
+            <div class="card-title">Kirinyaga MNCH Class B2</div>
+            <div class="card-sub">6 mentees · Module 3 active</div>
+            <div class="badge badge-indigo">In Session</div>
+          </div>
+          <div class="card">
+            <div class="card-title">Embu County Group A</div>
+            <div class="card-sub">8 mentees · Module 1 active</div>
+            <div class="badge badge-indigo">In Session</div>
+          </div>
+          <div class="section-label" style="margin-top:14px">Completed</div>
+          <div class="card">
+            <div class="card-title">Tharaka Nithi Group C</div>
+            <div class="card-sub">5 mentees · All modules done</div>
+            <div class="badge badge-green">Graduated</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Panel 2: Trainings -->
+      <div class="carousel-panel">
+        <div class="panel-content">
+          <div class="section-label">Upcoming Trainings</div>
+          <div class="card">
+            <div class="card-title">MNCH Skills Workshop</div>
+            <div class="card-sub">Nov 12–14 · Nairobi</div>
+            <div class="badge badge-amber">Registered</div>
+          </div>
+          <div class="card">
+            <div class="card-title">BEmONC Refresher</div>
+            <div class="card-sub">Nov 20 · Embu County</div>
+            <div class="badge" style="background:#f1f5f9;color:#64748b">Open</div>
+          </div>
+          <div class="section-label" style="margin-top:14px">Past</div>
+          <div class="card">
+            <div class="card-title">Newborn Care Training</div>
+            <div class="card-sub">Oct 5 · Kirinyaga</div>
+            <div class="badge badge-green">Attended</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Home bar -->
+  <div class="home-bar"><div class="home-pill"></div></div>
+</div>
+
+<div class="instruction">
+  <strong>Tap the tabs above</strong> to see the slide animation and colour shift in action.<br><br>
+  This is the exact behaviour that will be implemented — sticky header, segmented control, content slides left/right, header colour transitions per area.
+</div>
+
+<script>
+  const gradients = [
+    'linear-gradient(135deg, #007B8E, #0097A7)',
+    'linear-gradient(135deg, #3730a3, #4F46E5)',
+    'linear-gradient(135deg, #b45309, #D97706)',
+  ];
+  const activeColors = ['#0097A7', '#4F46E5', '#D97706'];
+  let current = 0;
+
+  function switchTab(idx) {
+    if (idx === current) return;
+    current = idx;
+
+    // Slide carousel
+    document.getElementById('track').style.transform = `translateX(calc(-${idx} * 100% / 3))`;
+
+    // Header gradient
+    document.getElementById('stickyHeader').style.background = gradients[idx];
+
+    // Seg tabs
+    for (let i = 0; i < 3; i++) {
+      const t = document.getElementById(`tab-${i}`);
+      if (i === idx) {
+        t.classList.add('active');
+        t.style.color = activeColors[idx];
+      } else {
+        t.classList.remove('active');
+        t.style.color = 'rgba(255,255,255,0.65)';
+      }
+    }
+  }
+</script>
+</body>
+</html>

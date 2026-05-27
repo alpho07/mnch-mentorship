@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">MNCH Assessments</string>
-    <string name="title_activity_main">MNCH Assessments</string>
-    <string name="package_name">com.mnch.assessments.app</string>
-    <string name="custom_url_scheme">com.mnch.assessments.app</string>
+    <string name="app_name">MNCH Mentorship</string>
+    <string name="title_activity_main">MNCH Mentorship</string>
+    <string name="package_name">com.mnch.mentorship.app</string>
+    <string name="custom_url_scheme">com.mnch.mentorship.app</string>
 </resources>

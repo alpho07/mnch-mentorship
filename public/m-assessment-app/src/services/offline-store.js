@@ -297,6 +297,54 @@ const offlineStore = {
     saveScopeConfig: (scopes) => dbPut(STORES.scopeConfig, "config", scopes),
     clearScopeConfig: () => dbDelete(STORES.scopeConfig, "config"),
 
+    // ── Class detail (modules embedded) ──────────────────────────────────────
+    getClassDetail: (classId) => dbGet(STORES.mentorships, 'class_detail_' + classId),
+    saveClassDetail: (classId, data) => dbPut(STORES.mentorships, 'class_detail_' + classId, data),
+
+    // ── Module list per class ─────────────────────────────────────────────────
+    getModuleList: (classId) => dbGet(STORES.mentorships, 'modules_' + classId),
+    saveModuleList: (classId, list) => dbPut(STORES.mentorships, 'modules_' + classId, list),
+
+    // ── Session templates per module ──────────────────────────────────────────
+    getSessionTemplates: (moduleId) => dbGet(STORES.meta, 'session_templates_' + moduleId),
+    saveSessionTemplates: (moduleId, list) => dbPut(STORES.meta, 'session_templates_' + moduleId, list),
+
+    // ── Enrollment link per class ─────────────────────────────────────────────
+    getEnrollmentLink: (classId) => dbGet(STORES.meta, 'enrollment_link_' + classId),
+    saveEnrollmentLink: (classId, data) => dbPut(STORES.meta, 'enrollment_link_' + classId, data),
+
+    // ── Sync timestamps (delta sync) ─────────────────────────────────────────
+    getSyncedAt: (resource) => dbGet(STORES.meta, 'synced_at_' + resource),
+    setSyncedAt: (resource, ts) => dbPut(STORES.meta, 'synced_at_' + resource, ts),
+
+    // ── User lookup map (email → {id, name, phone}) ──────────────────────────
+    getUserLookupMap: () => dbGet(STORES.meta, 'user_lookup_map'),
+    saveUserLookupMap: (map) => dbPut(STORES.meta, 'user_lookup_map', map),
+    mergeUserLookupMap: async (updates) => {
+        const existing = (await dbGet(STORES.meta, 'user_lookup_map')) ?? {};
+        for (const [email, record] of Object.entries(updates)) {
+            if (record === null) {
+                delete existing[email];
+            } else {
+                existing[email] = record;
+            }
+        }
+        await dbPut(STORES.meta, 'user_lookup_map', existing);
+    },
+
+    // ── Queue dependency patching ─────────────────────────────────────────────
+    // Replaces all occurrences of tempId with realId across every queued op.
+    // Uses in-place dbPut (not clear+rewrite) to avoid losing ops under concurrent writes.
+    patchQueueIds: async (tempId, realId) => {
+        const queue = await dbGetAll(STORES.syncQueue);
+        for (const entry of queue) {
+            const json = JSON.stringify(entry);
+            if (!json.includes(String(tempId))) continue;
+            const patched = JSON.parse(json.replaceAll(String(tempId), String(realId)));
+            await dbPut(STORES.syncQueue, patched.id, patched);
+        }
+    },
+
     // ── Full wipe (logout) ───────────────────────────────────────────────────
     clearAll: async () => {
         await Promise.all(Object.values(STORES).map(s => dbClear(s)));

@@ -28,13 +28,22 @@ class AssessmentController extends Controller {
      * Supports ?status=completed|in_progress|draft and ?search=
      */
     public function index(Request $request): JsonResponse {
+        $user = $request->user();
+
         $query = Assessment::with([
                     'facility.subcounty.county',
                     'sectionScores.section',
                 ])
-                ->where('assessor_id', $request->user()->id)
-                //->whereNotIn('id', [1, 3])
-                ->latest('assessment_date');
+                ->latest();
+
+        if ($user->hasRole('super_admin')) {
+            // Super admin sees everything including soft-deleted
+            $query->withTrashed();
+        } elseif (!$user->isAboveSite()) {
+            // Regular users see only their own assessments
+            $query->where('assessor_id', $user->id);
+        }
+        // isAboveSite() non-super-admin roles see all non-deleted
 
         if ($request->filled('status')) {
             $query->where('status', $request->status);
@@ -50,6 +59,21 @@ class AssessmentController extends Controller {
 
         if ($request->filled('type')) {
             $query->where('assessment_type', $request->type);
+        }
+
+        // Delta sync: return all records updated after the given timestamp (no pagination)
+        if ($request->filled('since')) {
+            $since = \Carbon\Carbon::parse($request->since);
+            $query->withTrashed()->where('updated_at', '>', $since);
+            $delta = $query->get();
+            $data = $delta->map(function (Assessment $a) {
+                return [
+                    'id'         => $a->id,
+                    'updated_at' => $a->updated_at?->toIso8601String(),
+                    'is_trashed' => $a->trashed(),
+                ];
+            });
+            return response()->json(['data' => $data]);
         }
 
         $assessments = $query->paginate($request->input('per_page', 20));

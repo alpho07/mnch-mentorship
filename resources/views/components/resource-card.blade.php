@@ -15,21 +15,11 @@
     <!-- Resource Image/Thumbnail -->
     <div class="relative h-48 bg-gradient-to-br from-primary-50 to-primary-100 overflow-hidden">
         @if ($resource->featured_image)
-            <img src="{{ Storage::url($resource->featured_image) }}" alt="{{ $resource->title }}"
-                class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+            <img src="{{ Storage::disk('thumbnails')->url($resource->featured_image) }}"
+                 alt="{{ $resource->title }}"
+                 class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
         @else
-            <!-- Default thumbnail based on resource type -->
-            <div class="w-full h-full flex items-center justify-center">
-                @if ($resource->resourceType)
-                    <div class="text-center">
-                        <i
-                            class="{{ $resource->resourceType->icon ?? 'fas fa-file' }} text-4xl text-primary-600 mb-2"></i>
-                        <p class="text-sm text-primary-700 font-medium">{{ $resource->resourceType->name }}</p>
-                    </div>
-                @else
-                    <i class="fas fa-file text-4xl text-primary-600"></i>
-                @endif
-            </div>
+            <x-resource-placeholder :resource="$resource" icon-size="text-4xl" />
         @endif
 
         <!-- Quick Actions Overlay -->
@@ -41,7 +31,7 @@
                     <i class="fas fa-eye"></i>
                 </a>
 
-                @if ($resource->is_downloadable && $resource->file_path)
+                @if ($resource->is_downloadable && ($resource->file_path || $resource->hasPrimaryFile()))
                     <a href="{{ route('resources.download', $resource->slug) }}"
                         class="bg-primary-600 text-white p-2 rounded-full hover:bg-primary-700 transition-colors">
                         <i class="fas fa-download"></i>

@@ -11,6 +11,7 @@ use Filament\Forms;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Section;
+use App\Filament\Forms\Components\ProgramPicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
@@ -222,14 +223,13 @@ class MentorshipTrainingResource extends Resource {
                             ->description('What program is being mentored and when?')
                             ->icon('heroicon-o-calendar-days')
                             ->schema([
-                                Select::make('program_id')
+                                ProgramPicker::make('program_id')
                                 ->label('Mentorship Program')
-                                ->relationship('program', 'name')
+                                ->helperText('Tap a programme card to select it.')
                                 ->required()
-                                ->searchable()
-                                ->preload()
-                                ->prefixIcon('heroicon-o-book-open')
-                                ->helperText('e.g. Newborn Care or Infant & Child Care')
+                                ->validationMessages([
+                                    'required' => 'Please pick either the Infant and Child or Newborn programme card.',
+                                ])
                                 ->columnSpanFull(),
                                 Grid::make(3)->schema([
                                     DatePicker::make('start_date')
@@ -530,6 +530,7 @@ class MentorshipTrainingResource extends Resource {
             'module-sessions' => Pages\ManageModuleSessions::route('/{training}/classes/{class}/modules/{module}/sessions'),
             'module-mentees' => Pages\ManageModuleMentees::route('/{training}/classes/{class}/modules/{module}/mentees'),
             'module-summary' => Pages\ModuleSummary::route('/{training}/classes/{class}/modules/{module}/summary'),
+            'module-resources' => Pages\ManageModuleResources::route('/{training}/classes/{class}/modules/{module}/resources'),
             //'mentee-dashboard' => Pages\MenteeDashboard::route('/mentee-dashboard'),
             'mentee-progress' => Pages\MenteeProgress::route('/{record}/participants/{participant}/progress'),
             'attendance-report' => Pages\AttendanceReportPage::route('/attendance-report'),

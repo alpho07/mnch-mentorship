@@ -6,6 +6,7 @@ use App\Filament\Widgets\KenyaTrainingHeatmapWidget;
 use App\Filament\Widgets\TrainingChartsWidget;
 use App\Filament\Widgets\TrainingCoverageStatsWidget;
 use App\Filament\Widgets\TrainingsByMonthChart;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Livewire\Livewire;
 use App\Livewire\TrainingCoverageDashboard;
@@ -37,6 +38,11 @@ class AppServiceProvider extends ServiceProvider {
      */
     public function boot(): void {
 
+        // Register our upload bypass before Livewire's ServiceProvider has a
+        // chance to register its own signed-URL–gated route.
+        Route::post('/livewire/upload-file', [\App\Http\Controllers\LivewireUploadController::class, 'handle'])
+            ->middleware('web')
+            ->name('livewire.upload-file');
 
         $this->configureRateLimiters();
 

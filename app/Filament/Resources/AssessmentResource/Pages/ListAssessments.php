@@ -6,12 +6,57 @@ use App\Filament\Resources\AssessmentResource;
 use App\Services\AssessmentExportService;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
+use Filament\Resources\Components\Tab;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class ListAssessments extends ListRecords {
 
     protected static string $resource = AssessmentResource::class;
+
+    protected function getHeaderWidgets(): array
+    {
+        if (request()->get('tab') === 'home') {
+            return [\App\Filament\Widgets\AssessmentAnalyticsEmbed::class];
+        }
+        return [];
+    }
+
+    public function getHeaderWidgetsColumns(): int|array
+    {
+        return 1;
+    }
+
+    public function getTabs(): array
+    {
+        $total     = \App\Models\Assessment::count();
+        $active    = \App\Models\Assessment::whereIn('status', ['draft', 'in_progress'])->count();
+        $completed = \App\Models\Assessment::where('status', 'completed')->count();
+
+        return [
+            'all' => Tab::make('All Assessments')
+                ->icon('heroicon-o-clipboard-document-check')
+                ->badge($total ?: null)
+                ->badgeColor('gray'),
+
+            'active' => Tab::make('Active')
+                ->icon('heroicon-o-clock')
+                ->badge($active ?: null)
+                ->badgeColor('warning')
+                ->modifyQueryUsing(fn (Builder $query) => $query->whereIn('status', ['draft', 'in_progress'])),
+
+            'completed' => Tab::make('Completed')
+                ->icon('heroicon-o-check-circle')
+                ->badge($completed ?: null)
+                ->badgeColor('success')
+                ->modifyQueryUsing(fn (Builder $query) => $query->where('status', 'completed')),
+
+            'home' => Tab::make('Home')
+                ->icon('heroicon-o-chart-bar-square')
+                ->modifyQueryUsing(fn (Builder $query) => $query->whereRaw('1 = 0')),
+        ];
+    }
 
     protected function getHeaderActions(): array {
         return [

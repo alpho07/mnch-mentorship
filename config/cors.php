@@ -21,7 +21,8 @@ return [
         'http://localhost:5173', // Vite dev server
         'http://localhost:3000', // alternative local dev
         'http://127.0.0.1:5173',
-        'https://localhost'
+        'https://localhost',
+        'https://mnchkenyamentorship.netlify.app'
     ],
     'allowed_origins_patterns' => [],
     'allowed_headers' => ['*'],

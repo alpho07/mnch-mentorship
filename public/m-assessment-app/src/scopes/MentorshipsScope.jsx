@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import api from '../services/api.service.js';
+import { AnalyticsHomeScreen }    from '../screens/screen-analytics-home.jsx';
 import { MentorshipsListScreen }  from '../screens/screen-mentorships-list.jsx';
 import { MentorshipDetailScreen } from '../screens/screen-mentorship-detail.jsx';
 import { MentorshipFormScreen }   from '../screens/screen-mentorship-form.jsx';
@@ -13,7 +14,7 @@ import { MenteeManagerScreen }    from '../screens/screen-mentee-manager.jsx';
 import { MyClassesScreen }             from '../screens/screen-my-classes.jsx';
 import { MentorshipReportsScreen }    from '../screens/screen-mentorship-reports.jsx';
 import { ClassProgressScreen }    from '../screens/screen-class-progress.jsx';
-import { ProfileScreen }          from '../screens/screen-profile.jsx';
+import { MentorshipOverviewScreen } from '../screens/screen-mentorship-overview.jsx';
 
 // SVG nav icons keyed by tab id
 const TAB_ICONS = {
@@ -44,25 +45,17 @@ const TAB_ICONS = {
             <path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z" />
         </svg>
     ),
-    profile: (active) => (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? "#0097A7" : "#8BC8C8"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
-            <circle cx="12" cy="7" r="4" fill={active ? "rgba(0,151,167,0.08)" : "none"} />
-        </svg>
-    ),
 };
 
 const MENTOR_TABS = [
     { id: 'home',        label: 'Home' },
     { id: 'mentorships', label: 'Mentorships' },
     { id: 'reports',     label: 'Reports' },
-    { id: 'profile',     label: 'Profile' },
 ];
 
 const MENTEE_TABS = [
     { id: 'home',       label: 'Home' },
     { id: 'my-classes', label: 'My Classes' },
-    { id: 'profile',    label: 'Profile' },
 ];
 
 function BottomNav({ tabs, active, onChange }) {
@@ -115,20 +108,88 @@ function BottomNav({ tabs, active, onChange }) {
     );
 }
 
-function HomeScreen({ user }) {
-    return <div style={{ padding: '24px 16px' }}><p style={{ color: '#1A3A3A', fontWeight: 700, fontSize: 20 }}>Welcome, {user?.name?.split(' ')[0]}</p><p style={{ color: '#4A8080', fontSize: 14 }}>Manage your mentorship classes and track progress.</p></div>;
+function StatCard({ label, value, color, bg, loading }) {
+    return (
+        <div style={{ background: bg, border: `1px solid ${color}22`, borderRadius: 14, padding: '14px 10px', textAlign: 'center' }}>
+            <div style={{ fontSize: 26, fontWeight: 800, color, lineHeight: 1 }}>{loading ? '—' : value}</div>
+            <div style={{ fontSize: 11, color: '#4A8080', marginTop: 3, fontWeight: 600 }}>{label}</div>
+        </div>
+    );
 }
 
 function MenteeHomeScreen({ user }) {
-    return <div style={{ padding: '24px 16px' }}><p style={{ color: '#1A3A3A', fontWeight: 700, fontSize: 20 }}>Welcome, {user?.name?.split(' ')[0]}</p><p style={{ color: '#4A8080', fontSize: 14 }}>View your class modules and track your learning progress.</p></div>;
+    const [classes, setClasses] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        api.me.classes()
+            .then(data => {
+                const arr = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
+                setClasses(arr);
+            })
+            .catch(() => {})
+            .finally(() => setLoading(false));
+    }, []);
+
+    const inProgress = classes.filter(c => c.status === 'active' || c.status === 'in_progress');
+    const completed  = classes.filter(c => c.status === 'completed');
+
+    return (
+        <div style={{ paddingBottom: 16 }}>
+            <div style={{ padding: '20px 16px 14px' }}>
+                <p style={{ color: '#1A3A3A', fontWeight: 800, fontSize: 22, margin: '0 0 2px' }}>
+                    Welcome, {user?.name?.split(' ')[0]}
+                </p>
+                <p style={{ color: '#4A8080', fontSize: 13, margin: 0 }}>
+                    {loading ? 'Loading your classes…' : `${inProgress.length} active · ${classes.length} enrolled`}
+                </p>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, padding: '0 16px 16px' }}>
+                <StatCard label="Active"    value={inProgress.length} color="#10B981" bg="#ECFDF5" loading={loading} />
+                <StatCard label="Enrolled"  value={classes.length}    color="#0097A7" bg="#E0F7FA" loading={loading} />
+                <StatCard label="Done"      value={completed.length}  color="#6366F1" bg="#EEF2FF" loading={loading} />
+            </div>
+
+            {!loading && inProgress.length > 0 && (
+                <div style={{ padding: '0 16px' }}>
+                    <p style={{ color: '#1A3A3A', fontWeight: 700, fontSize: 15, margin: '0 0 10px' }}>Your Active Classes</p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        {inProgress.slice(0, 3).map(cls => (
+                            <div key={cls.id} style={{ background: 'white', border: '1px solid #E0F2F1', borderRadius: 14, padding: '12px 14px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                                <p style={{ color: '#1A3A3A', fontWeight: 700, fontSize: 14, margin: '0 0 4px' }}>{cls.name ?? cls.title ?? 'Class'}</p>
+                                <p style={{ color: '#4A8080', fontSize: 12, margin: 0 }}>{cls.progress_percentage != null ? `${Math.round(cls.progress_percentage)}% complete` : 'In progress'}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {!loading && classes.length === 0 && (
+                <div style={{ padding: '24px 16px', textAlign: 'center' }}>
+                    <p style={{ color: '#1A3A3A', fontWeight: 700, fontSize: 16, margin: '0 0 6px' }}>No classes yet</p>
+                    <p style={{ color: '#4A8080', fontSize: 13, margin: 0 }}>You haven't been enrolled in any classes</p>
+                </div>
+            )}
+        </div>
+    );
 }
 
-export function MentorshipsScope({ user, header, onLogout, onUserUpdate }) {
+export function MentorshipsScope({ user }) {
     const isMentee = (user?.roles ?? []).includes('mentee');
     const TABS = isMentee ? MENTEE_TABS : MENTOR_TABS;
     const [tab, setTab]     = useState('home');
     const [modal, setModal] = useState(null);
 
+    if (modal?.type === 'mentorshipOverview') return (
+        <MentorshipOverviewScreen
+            mentorshipId={modal.data?.id ?? modal.data}
+            onBack={() => setModal(null)}
+            onViewDetail={(mentorship) => setModal({ type: 'mentorshipDetail', data: mentorship })}
+            onEdit={(mentorship) => setModal({ type: 'mentorshipEdit', data: mentorship })}
+            onViewMentees={(cls) => setModal({ type: 'menteeManager', data: cls, prev: modal.data, fromOverview: true })}
+        />
+    );
     if (modal?.type === 'mentorshipDetail') return (
         <MentorshipDetailScreen
             training={modal.data}
@@ -190,7 +251,7 @@ export function MentorshipsScope({ user, header, onLogout, onUserUpdate }) {
         <ModuleDetailScreen
             module={modal.data}
             user={user}
-            onBack={() => setModal({ type: 'classDetail', data: modal.prev, prev: modal.mentorship })}
+            onBack={() => modal.backTab ? setModal(null) : setModal({ type: 'classDetail', data: modal.prev, prev: modal.mentorship })}
             onOpenAttendance={(mod) => setModal({ type: 'attendance', data: mod, prev: modal.prev, mentorship: modal.mentorship })}
             onOpenSession={(sess, mod) => setModal({ type: 'sessionNotes', data: sess, module: mod, prev: modal.prev, mentorship: modal.mentorship })}
         />
@@ -212,7 +273,9 @@ export function MentorshipsScope({ user, header, onLogout, onUserUpdate }) {
     if (modal?.type === 'menteeManager') return (
         <MenteeManagerScreen
             cls={modal.data}
-            onBack={() => setModal({ type: 'classDetail', data: modal.data, prev: modal.prev })}
+            onBack={() => modal.fromOverview
+                ? setModal({ type: 'mentorshipOverview', data: modal.prev })
+                : setModal({ type: 'classDetail', data: modal.data, prev: modal.prev })}
         />
     );
     if (modal?.type === 'modulePicker') return (
@@ -229,14 +292,13 @@ export function MentorshipsScope({ user, header, onLogout, onUserUpdate }) {
 
     return (
         <div style={{ paddingBottom: 64, minHeight: '100vh', background: '#F0F9FA' }}>
-            {header}
-            {tab === 'home' && !isMentee && <HomeScreen user={user} />}
+            {tab === 'home' && !isMentee && <AnalyticsHomeScreen mode="mentorship" user={user} />}
             {tab === 'home' && isMentee  && <MenteeHomeScreen user={user} />}
-            {tab === 'mentorships' && <MentorshipsListScreen user={user} onOpen={(t) => setModal({ type: 'mentorshipDetail', data: t })} onNew={() => setModal({ type: 'mentorshipForm', data: null })} onEdit={(t) => setModal({ type: 'mentorshipEdit', data: t })} />}
+            {tab === 'mentorships' && <MentorshipsListScreen user={user} onOpen={(t) => setModal({ type: 'mentorshipOverview', data: t })} onNew={() => setModal({ type: 'mentorshipForm', data: null })} onEdit={(t) => setModal({ type: 'mentorshipEdit', data: t })} />}
             {tab === 'reports'     && <MentorshipReportsScreen user={user} />}
-            {tab === 'my-classes'  && <MyClassesScreen user={user} onOpen={(cls) => setModal({ type: 'classProgress', data: cls })} />}
-            {tab === 'profile'     && <ProfileScreen user={user} assessments={[]} onUpdateUser={onUserUpdate} onLogout={onLogout} />}
+            {tab === 'my-classes'  && <MyClassesScreen user={user} onModuleDetail={(mod, cls) => setModal({ type: 'moduleDetail', data: mod, prev: cls, mentorship: null, backTab: 'my-classes' })} />}
             <BottomNav tabs={TABS} active={tab} onChange={setTab} />
         </div>
     );
 }
+

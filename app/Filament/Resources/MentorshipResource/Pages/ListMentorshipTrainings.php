@@ -35,8 +35,12 @@ class ListMentorshipTrainings extends ListRecords {
         return "Facility-based mentorships • {$stats['total']} total • {$stats['active']} active • {$stats['mentees']} mentees";
     }
 
-    // REMOVE the getHeaderWidgets method entirely or fix it like this:
     protected function getHeaderWidgets(): array {
+        // When Home analytics tab is active, swap to the embed widget only
+        if (request()->get('tab') === 'home') {
+            return [\App\Filament\Widgets\MentorshipAnalyticsEmbed::class];
+        }
+
         return [
             \App\Filament\Widgets\MentorshipGuidanceNotice::class,
             \App\Filament\Widgets\MentorshipStatsOverview::class,
@@ -48,7 +52,7 @@ class ListMentorshipTrainings extends ListRecords {
     }
 
     public function getTabs(): array {
-        $user        = auth()->user();
+        $user         = auth()->user();
         $isSuperAdmin = $user->hasRole('super_admin');
 
         $liveCount  = $this->getScopedBaseQuery()->where('is_pilot', false)->count();
@@ -82,6 +86,10 @@ class ListMentorshipTrainings extends ListRecords {
                 ->badgeColor('danger')
                 ->modifyQueryUsing(fn(Builder $query) => $query->whereNotNull('trainings.deleted_at'));
         }
+
+        $tabs['home'] = Tab::make('Home')
+            ->icon('heroicon-o-chart-bar-square')
+            ->modifyQueryUsing(fn(Builder $query) => $query->whereRaw('1 = 0'));
 
         return $tabs;
     }

@@ -18,28 +18,59 @@ class MentorshipController extends Controller {
 
         $query = Training::query()
             ->where('type', 'facility_mentorship')
-            ->with(['mentor:id,name', 'facility:id,name,mfl_code', 'county:id,name', 'program:id,name'])
+            ->with([
+                'mentor:id,name',
+                'facility:id,name,mfl_code',
+                'county:id,name',
+                'program:id,name',
+                'mentorshipClasses' => fn ($q) => $q
+                    ->withCount('participants')
+                    ->withCount(['classModules as completed_modules_count' => fn ($q) => $q->where('status', 'completed')])
+                    ->withCount('classModules as total_modules_count'),
+            ])
             ->withCount('mentorshipClasses as class_count');
 
-        if (!$user->isAboveSite()) {
+        if ($user->hasRole('super_admin')) {
+            // Super admin sees all mentorships including soft-deleted
+            $query->withTrashed();
+        } elseif (!$user->isAboveSite()) {
             $query->where('mentor_id', $user->id);
         }
 
-        $mentorships = $query->get();
+        if ($request->filled('since')) {
+            $since = \Carbon\Carbon::parse($request->since);
+            $query->withTrashed()->where('updated_at', '>', $since);
+        }
 
-        $data = $mentorships->map(fn (Training $t) => [
-            'id'          => $t->id,
-            'title'       => $t->title,
-            'status'      => $t->status,
-            'class_count' => (int) $t->class_count,
-            'start_date'  => $t->start_date?->toDateString(),
-            'end_date'    => $t->end_date?->toDateString(),
-            'facility'    => $t->facility?->name,
-            'county'      => $t->county?->name,
-            'program'     => $t->program?->name,
-            'program_id'  => $t->program_id,
-            'mentor_name' => $t->mentor?->name,
-        ]);
+        $mentorships = $query->latest()->get();
+
+        $data = $mentorships->map(function (Training $t) {
+            $classes         = $t->mentorshipClasses;
+            $participantCount = $classes->sum('participants_count');
+            $totalModules    = $classes->sum('total_modules_count');
+            $completedModules = $classes->sum('completed_modules_count');
+            $progressPct     = $totalModules > 0
+                ? (int) round($completedModules / $totalModules * 100)
+                : 0;
+
+            return [
+                'id'                  => $t->id,
+                'title'               => $t->title,
+                'status'              => $t->status,
+                'is_pilot'            => (bool) $t->is_pilot,
+                'is_trashed'          => $t->deleted_at !== null,
+                'class_count'         => (int) $t->class_count,
+                'participant_count'   => $participantCount,
+                'progress_percentage' => $progressPct,
+                'start_date'          => $t->start_date?->toDateString(),
+                'end_date'            => $t->end_date?->toDateString(),
+                'facility'            => $t->facility?->name,
+                'county'              => $t->county?->name,
+                'program'             => $t->program?->name,
+                'program_id'          => $t->program_id,
+                'mentor_name'         => $t->mentor?->name,
+            ];
+        });
 
         return response()->json(['data' => $data]);
     }
@@ -76,14 +107,18 @@ class MentorshipController extends Controller {
                 'title'        => $training->title,
                 'description'  => $training->description,
                 'status'       => $training->status,
+                'is_pilot'     => (bool) $training->is_pilot,
                 'start_date'   => $training->start_date?->toDateString(),
                 'end_date'     => $training->end_date?->toDateString(),
                 'location_type'=> $training->location_type,
+                'facility_id'  => $training->facility_id,
                 'facility'     => $training->facility?->name,
                 'facility_mfl' => $training->facility?->mfl_code,
+                'county_id'    => $training->county_id,
                 'county'       => $training->county?->name,
                 'program'      => $training->program?->name,
                 'program_id'   => $training->program_id,
+                'max_participants' => $training->max_participants,
                 'mentor_name'  => $training->mentor?->name,
                 'mentor_email' => $training->mentor?->email,
                 'notes'        => $training->notes,
@@ -175,7 +210,7 @@ class MentorshipController extends Controller {
             ...$data,
             'status'           => 'draft',
             'created_by'       => $request->user()->id,
-            'enrollment_token' => \Illuminate\Support\Str::uuid(),
+            'enrollment_token' => \Illuminate\Support\Str::random(32),
         ]);
 
         return response()->json([
@@ -241,3 +276,4 @@ class MentorshipController extends Controller {
         abort_if(!$isMentor && !$isCoMentor, 403, 'Not authorised for this mentorship.');
     }
 }
+

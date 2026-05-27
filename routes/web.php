@@ -1,4 +1,4 @@
-<?php
+<?php 
 
 use Illuminate\Support\Facades\Route;
 use League\Csv\Writer;
@@ -19,7 +19,7 @@ use App\Http\Controllers\MenteeEnrollmentController;
 use App\Http\Controllers\MenteeClassProgressController;
 use App\Http\Controllers\ModuleAttendanceController;
 use App\Http\Controllers\AccountVerificationController;
-use Illuminate\Http\Request;
+use Illuminate\Http\Request;  
 
 /*
   |--------------------------------------------------------------------------
@@ -61,72 +61,9 @@ Route::middleware('guest')->group(function () {
             ->name('account.verify.update');
 });
 
-// Override Livewire upload to bypass signature
-Route::post('/livewire/upload-file', function (Request $request) {
-    \Log::info('Livewire upload received', [
-        'has_files' => $request->hasFile('files'),
-        'file_count' => $request->hasFile('files') ? count($request->file('files')) : 0,
-    ]);
-
-    $disk = config('livewire.temporary_file_upload.disk', 'local');
-    $directory = config('livewire.temporary_file_upload.directory', 'livewire-tmp');
-
-    $request->validate([
-        'files.*' => ['required', 'file', 'max:102400']
-    ]);
-
-    $files = $request->file('files');
-    if (!is_array($files)) {
-        $files = [$files];
-    }
-
-    $paths = [];
-
-    foreach ($files as $file) {
-        try {
-            // Generate unique filename
-            $filename = Str::uuid() . '.' . $file->getClientOriginalExtension();
-
-            \Log::info('Storing file', [
-                'original_name' => $file->getClientOriginalName(),
-                'filename' => $filename,
-                'directory' => $directory,
-                'disk' => $disk,
-            ]);
-
-            // Store the file
-            $stored = Storage::disk($disk)->putFileAs($directory, $file, $filename);
-
-            if (!$stored) {
-                throw new \Exception('Failed to store file');
-            }
-
-            \Log::info('File stored successfully', [
-                'path' => $stored,
-                'exists' => Storage::disk($disk)->exists($stored),
-            ]);
-
-            // Return just the filename (not the full path)
-            $paths[] = $filename;
-        } catch (\Exception $e) {
-            \Log::error('File upload failed', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-
-            return response()->json([
-                        'error' => $e->getMessage()
-                            ], 500);
-        }
-    }
-
-    \Log::info('Upload complete', ['paths' => $paths]);
-
-    // Return in the exact format Livewire expects
-    return response()->json([
-                'paths' => $paths
-    ]);
-})->middleware('web')->name('livewire.upload-file');
+// Livewire upload bypass — extends FileUploadController, skips signature check
+Route::post('/livewire/upload-file', [\App\Http\Controllers\LivewireUploadController::class, 'handle'])
+    ->name('livewire.upload-file');
 
 Route::get('/check-upload-config', function () {
     return [
@@ -324,27 +261,27 @@ Route::prefix('admin/analytics/progressive-dashboard')->middleware(['auth', 'adm
 
 Route::get('/dashboard/national', [DashboardController::class, 'national'])->name('dashboard.national');
 
-Route::group(['prefix' => 'dashboard'], function () {
-    Route::get('/', [App\Http\Controllers\Dashboard\DashboardController::class, 'index'])->name('dashboard.index');
+Route::prefix('dashboard')->name('main-dashboard.')->group(function () {
+    Route::get('/', [App\Http\Controllers\Dashboard\DashboardController::class, 'index'])->name('index');
 
     // API endpoints for dashboard data
-    Route::get('/api/overview', [App\Http\Controllers\Dashboard\DashboardController::class, 'getOverviewStats'])->name('dashboard.api.overview');
-    Route::get('/api/counties-heatmap', [App\Http\Controllers\Dashboard\DashboardController::class, 'getCountiesHeatmapData'])->name('dashboard.api.counties');
-    Route::get('/api/enhanced-insights', [App\Http\Controllers\Dashboard\DashboardController::class, 'getEnhancedInsights'])->name('dashboard.api.enhanced-insights');
-    Route::get('/api/coverage/facility-type', [App\Http\Controllers\Dashboard\DashboardController::class, 'getCoverageByFacilityType'])->name('dashboard.api.facility-type');
-    Route::get('/api/coverage/department', [App\Http\Controllers\Dashboard\DashboardController::class, 'getCoverageByDepartment'])->name('dashboard.api.department');
-    Route::get('/api/coverage/cadre', [App\Http\Controllers\Dashboard\DashboardController::class, 'getCoverageByCadre'])->name('dashboard.api.cadre');
-    Route::get('/api/county/{county}', [App\Http\Controllers\Dashboard\DashboardController::class, 'getCountyDetails'])->name('dashboard.api.county-details');
-    Route::get('/api/years', [App\Http\Controllers\Dashboard\DashboardController::class, 'getAvailableYears'])->name('dashboard.api.years');
+    Route::get('/api/overview', [App\Http\Controllers\Dashboard\DashboardController::class, 'getOverviewStats'])->name('api.overview');
+    Route::get('/api/counties-heatmap', [App\Http\Controllers\Dashboard\DashboardController::class, 'getCountiesHeatmapData'])->name('api.counties');
+    Route::get('/api/enhanced-insights', [App\Http\Controllers\Dashboard\DashboardController::class, 'getEnhancedInsights'])->name('api.enhanced-insights');
+    Route::get('/api/coverage/facility-type', [App\Http\Controllers\Dashboard\DashboardController::class, 'getCoverageByFacilityType'])->name('api.facility-type');
+    Route::get('/api/coverage/department', [App\Http\Controllers\Dashboard\DashboardController::class, 'getCoverageByDepartment'])->name('api.department');
+    Route::get('/api/coverage/cadre', [App\Http\Controllers\Dashboard\DashboardController::class, 'getCoverageByCadre'])->name('api.cadre');
+    Route::get('/api/county/{county}', [App\Http\Controllers\Dashboard\DashboardController::class, 'getCountyDetails'])->name('api.county-details');
+    Route::get('/api/years', [App\Http\Controllers\Dashboard\DashboardController::class, 'getAvailableYears'])->name('api.years');
 
     // Drill-down routes
     Route::get('/county/{county}', function ($county) {
         return view('dashboard.county', compact('county'));
-    })->name('dashboard.county');
+    })->name('county');
 
     Route::get('/county/{county}/facility/{facility}', function ($county, $facility) {
         return view('dashboard.facility', compact('county', 'facility'));
-    })->name('dashboard.facility');
+    })->name('facility');
 });
 
 Route::prefix('co-mentor')->name('co-mentor.accept')->group(function () {
@@ -357,6 +294,11 @@ Route::prefix('co-mentor')->name('co-mentor.accept')->group(function () {
 Route::get('login-v1', function () {
     return redirect()->route('filament.admin.auth.login');
 })->name('login');
+
+// Signed temporary URL for external viewers (Google Docs / Office Online) — no auth, expires quickly
+Route::get('resource-files/{file}/temp-view', [App\Http\Controllers\Admin\ResourceFileController::class, 'tempView'])
+    ->name('resource-files.temp-view')
+    ->middleware('signed');
 
 Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () {
     // Resource file operations

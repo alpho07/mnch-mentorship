@@ -3,8 +3,10 @@
 namespace App\Filament\Resources\ResourceResource\Pages;
 
 use App\Filament\Resources\ResourceResource;
+use App\Models\Tag;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 class CreateResource extends CreateRecord {
 
@@ -36,6 +38,9 @@ class CreateResource extends CreateRecord {
     }
 
     protected function mutateFormDataBeforeCreate(array $data): array {
+        // Strip virtual fields before model creation
+        unset($data['program_ids'], $data['program_module_ids']);
+
         // Handle tag names conversion
         if (isset($data['tag_names']) && is_array($data['tag_names'])) {
             $tagIds = [];
@@ -78,5 +83,9 @@ class CreateResource extends CreateRecord {
         if (isset($data['access_groups'])) {
             $record->accessGroups()->sync($data['access_groups']);
         }
+
+        // Sync program modules
+        $moduleIds = $data['program_module_ids'] ?? [];
+        $record->programModules()->sync($moduleIds);
     }
 }

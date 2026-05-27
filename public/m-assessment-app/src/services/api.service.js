@@ -89,6 +89,148 @@ function isNetworkError(e) {
             );
 }
 
+// ── Merge-by-id utility (used by smartSync) ──────────────────────────────────
+// Merges a delta (partial server response) into an existing cached array.
+// Records with is_trashed=true are removed; otherwise the server version wins
+// when its updated_at is >= the cached version.
+function mergeById(existing, delta) {
+    const map = Object.fromEntries((existing ?? []).map(r => [r.id, r]));
+    for (const record of delta) {
+        if (record.is_trashed) {
+            delete map[record.id];
+        } else {
+            const cached = map[record.id];
+            if (!cached || (record.updated_at ?? '') >= (cached.updated_at ?? '')) {
+                map[record.id] = record;
+            }
+        }
+    }
+    return Object.values(map);
+}
+
+// ── Incremental sync helpers (used by smartSync, not exported on api object) ─
+// syncAssessments: fetches delta from server and upserts/deletes in IndexedDB.
+// The delta contains minimal records (id + updated_at + is_trashed).
+async function syncAssessments(since) {
+    const url = since
+        ? `/assessments?since=${encodeURIComponent(since)}`
+        : '/assessments';
+    const data = await get(url);
+    const delta = Array.isArray(data?.data) ? data.data : [];
+    if (delta.length === 0) return { count: 0 };
+
+    for (const record of delta) {
+        if (record.is_trashed) {
+            await offlineStore.deleteAssessment(record.id);
+        } else {
+            const cached = await offlineStore.getAssessment(record.id);
+            if (!cached || (record.updated_at ?? '') >= (cached.updated_at ?? '')) {
+                await offlineStore.saveAssessment(record);
+            }
+        }
+    }
+
+    return { count: delta.length };
+}
+
+// syncTrainings: fetches delta from server and merges into the cached trainings list.
+async function syncTrainings(since) {
+    const url = since
+        ? `/trainings?since=${encodeURIComponent(since)}`
+        : '/trainings';
+    const data = await get(url);
+    const delta = Array.isArray(data?.data) ? data.data : [];
+    if (delta.length === 0) return { count: 0 };
+
+    const existing = await offlineStore.getTrainings();
+    const merged = mergeById(existing, delta);
+    await offlineStore.saveTrainings(merged);
+
+    return { count: delta.length };
+}
+
+// syncMentorships: fetches delta from server, merges list, re-prefetches details for updated records.
+async function syncMentorships(since) {
+    const url = since
+        ? `/mentorships?since=${encodeURIComponent(since)}`
+        : '/mentorships';
+    const data = await get(url);
+    const delta = Array.isArray(data?.data) ? data.data : [];
+    if (delta.length === 0) return { count: 0 };
+
+    const existing = await offlineStore.getMentorships();
+    const merged = mergeById(existing, delta);
+    await offlineStore.saveMentorships(merged);
+
+    // Re-prefetch detail for updated (non-trashed) mentorships
+    const updated = delta.filter(r => !r.is_trashed);
+    for (const m of updated) {
+        try {
+            const detail = await get(`/mentorships/${m.id}`);
+            if (detail?.data) await offlineStore.saveMentorship(detail.data);
+            const classes = await get(`/mentorships/${m.id}/classes`);
+            const classArr = Array.isArray(classes?.data) ? classes.data : [];
+            if (classArr.length > 0) await offlineStore.saveMentorshipClasses(m.id, classArr);
+        } catch {
+            // Non-fatal — skip on any error
+        }
+    }
+
+    return { count: delta.length };
+}
+
+// syncUserLookupIndex: fetches delta of user lookup entries and merges into the cached map.
+async function syncUserLookupIndex(since) {
+    const url = since
+        ? `/users/lookup-index?since=${encodeURIComponent(since)}`
+        : '/users/lookup-index';
+    const data = await get(url);
+    const users = Array.isArray(data?.data) ? data.data : [];
+    if (users.length === 0) return { count: 0 };
+
+    const updates = {};
+    for (const u of users) {
+        const key = (u.email ?? '').toLowerCase().trim();
+        if (!key) continue;
+        const inactive = u.is_active === false || u.status === 'inactive' || u.status === 'suspended';
+        updates[key] = inactive
+            ? null  // signals removal in mergeUserLookupMap
+            : { id: u.id, name: u.name, phone: u.phone ?? null };
+    }
+    await offlineStore.mergeUserLookupMap(updates);
+
+    return { count: users.length };
+}
+
+// smartSync: orchestrates all incremental sync operations using a shared `since` timestamp.
+async function smartSync() {
+    if (!navigator.onLine) return;
+
+    const since = await offlineStore.getSyncedAt('global');
+    const nowTs = new Date().toISOString();
+
+    const [assessments, mentorships, trainings, users] = await Promise.allSettled([
+        syncAssessments(since),
+        syncMentorships(since),
+        syncTrainings(since),
+        syncUserLookupIndex(since),
+    ]);
+
+    await offlineStore.setSyncedAt('global', nowTs);
+
+    const summary = {
+        assessments: assessments.status === 'fulfilled' ? assessments.value.count : 0,
+        mentorships: mentorships.status === 'fulfilled' ? mentorships.value.count : 0,
+        trainings:   trainings.status === 'fulfilled'   ? trainings.value.count   : 0,
+        users:       users.status === 'fulfilled'       ? users.value.count       : 0,
+    };
+
+    const hasChanges = Object.values(summary).some(n => n > 0);
+    if (hasChanges) {
+        window.dispatchEvent(new CustomEvent('app:sync-complete', { detail: summary }));
+    }
+}
+
 function normalizeApiList(data) {
     if (Array.isArray(data?.data)) return data.data;
     if (Array.isArray(data?.data?.data)) return data.data.data;
@@ -321,7 +463,51 @@ const api = {
     },
 
     // ── Profile ──────────────────────────────────────────────────────────────
-    profile: _rawApi.profile,
+    profile: {
+        get: async () => {
+            try {
+                const data = await _rawApi.profile.get();
+                const u = data?.data ?? data;
+                if (u?.id) await offlineStore.saveUser(u);
+                return data;
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    const cached = await offlineStore.getUser();
+                    if (cached) return { data: cached };
+                }
+                throw e;
+            }
+        },
+        update: async (data) => {
+            try {
+                return await _rawApi.profile.update(data);
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    await syncQueue.enqueue({ type: 'profile.update', data });
+                    return { queued: true };
+                }
+                throw e;
+            }
+        },
+        changePassword: (data) => {
+            if (!navigator.onLine)
+                throw Object.assign(new Error('Password change requires an internet connection.'), { offlineBlocked: true });
+            return _rawApi.profile.changePassword(data);
+        },
+        stats: async () => {
+            try {
+                const data = await _rawApi.profile.stats();
+                await offlineStore.setMeta('profile_stats', data);
+                return data;
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    const cached = await offlineStore.getMeta('profile_stats');
+                    if (cached) return cached;
+                }
+                throw e;
+            }
+        },
+    },
 
     // ── Facilities (cached reads — fetches ALL pages) ─────────────────────────
     facilities: {
@@ -434,7 +620,18 @@ const api = {
             }
         },
         update: _rawApi.assessments.update,
-        delete: _rawApi.assessments.delete,
+        delete: async (id) => {
+            try {
+                return await _rawApi.assessments.delete(id);
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    await offlineStore.deleteAssessment(id);
+                    await syncQueue.enqueue({ type: 'assessments.delete', id });
+                    return { queued: true };
+                }
+                throw e;
+            }
+        },
 
         submit: async (id) => {
             try {
@@ -728,6 +925,49 @@ const api = {
     reports: {
         ..._rawApi.reports,
 
+        show: async (assessmentId) => {
+            const cacheKey = `report_${assessmentId}`;
+            try {
+                const data = await _rawApi.reports.show(assessmentId);
+                await offlineStore.setMeta(cacheKey, data);
+                return data;
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    const cached = await offlineStore.getMeta(cacheKey);
+                    if (cached) return cached;
+                }
+                throw e;
+            }
+        },
+        full: async (assessmentId) => {
+            const cacheKey = `report_${assessmentId}`;
+            try {
+                const data = await _rawApi.reports.full(assessmentId);
+                await offlineStore.setMeta(cacheKey, data);
+                return data;
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    const cached = await offlineStore.getMeta(cacheKey);
+                    if (cached) return cached;
+                }
+                throw e;
+            }
+        },
+        summary: async (assessmentId) => {
+            const cacheKey = `report_summary_${assessmentId}`;
+            try {
+                const data = await _rawApi.reports.summary(assessmentId);
+                await offlineStore.setMeta(cacheKey, data);
+                return data;
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    const cached = await offlineStore.getMeta(cacheKey);
+                    if (cached) return cached;
+                }
+                throw e;
+            }
+        },
+
         // Email report — queues locally when offline, dispatches job when online
         emailReport: async (assessmentId, emails) => {
             // Always save a local pending job immediately so the UI can show it
@@ -792,6 +1032,8 @@ const api = {
                 const data = await _rawApi.mentorships.list();
                 const arr = Array.isArray(data?.data) ? data.data : [];
                 if (arr.length > 0) await offlineStore.saveMentorships(arr);
+                // Non-blocking smart sync while online
+                smartSync().catch(() => {});
                 return data;
             } catch (e) {
                 if (isNetworkError(e)) {
@@ -828,20 +1070,94 @@ const api = {
                 throw e;
             }
         },
-        update: _rawApi.mentorshipCreate.update,
-        classDetail: _rawApi.mentorships.classDetail,
-        createClass: _rawApi.mentorships.createClass,
-        updateClass: _rawApi.mentorships.updateClass,
-        deleteClass: _rawApi.mentorships.deleteClass,
+        update: async (id, payload) => {
+            try {
+                return await _rawApi.mentorshipCreate.update(id, payload);
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    const cached = await offlineStore.getMentorship(id);
+                    if (cached) await offlineStore.saveMentorship({ ...cached, ...payload });
+                    await syncQueue.enqueue({ type: 'mentorships.update', id, payload });
+                    return { data: { id, ...payload } };
+                }
+                throw e;
+            }
+        },
+        classDetail: async (trainingId, classId) => {
+            try {
+                const data = await _rawApi.mentorships.classDetail(trainingId, classId);
+                if (data?.data) await offlineStore.saveClassDetail(classId, data.data);
+                return data;
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    const cached = await offlineStore.getClassDetail(classId);
+                    if (cached) return { data: cached };
+                }
+                throw e;
+            }
+        },
+        createClass: async (trainingId, payload) => {
+            try {
+                return await _rawApi.mentorships.createClass(trainingId, payload);
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    const tempId = 'local_class_' + Date.now();
+                    const provisional = {
+                        id: tempId, name: payload.name ?? '', status: 'draft',
+                        start_date: payload.start_date ?? null, end_date: payload.end_date ?? null,
+                        notes: payload.notes ?? null,
+                        module_count: 0, participant_count: 0, progress_percentage: 0,
+                        _isOffline: true,
+                    };
+                    const existing = (await offlineStore.getMentorshipClasses(trainingId)) ?? [];
+                    await offlineStore.saveMentorshipClasses(trainingId, [...existing, provisional]);
+                    await syncQueue.enqueue({ type: 'mentorships.createClass', trainingId, payload, tempId });
+                    return { data: provisional };
+                }
+                throw e;
+            }
+        },
+        updateClass: async (trainingId, classId, payload) => {
+            try {
+                return await _rawApi.mentorships.updateClass(trainingId, classId, payload);
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    const cached = await offlineStore.getClassDetail(classId);
+                    if (cached) await offlineStore.saveClassDetail(classId, { ...cached, ...payload });
+                    await syncQueue.enqueue({ type: 'mentorships.updateClass', trainingId, classId, payload });
+                    return { data: { id: classId, ...payload } };
+                }
+                throw e;
+            }
+        },
+        deleteClass: async (trainingId, classId) => {
+            try {
+                return await _rawApi.mentorships.deleteClass(trainingId, classId);
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    const existing = (await offlineStore.getMentorshipClasses(trainingId)) ?? [];
+                    await offlineStore.saveMentorshipClasses(trainingId, existing.filter(c => c.id !== classId));
+                    await syncQueue.enqueue({ type: 'mentorships.deleteClass', trainingId, classId });
+                    return { message: 'Queued for sync.' };
+                }
+                throw e;
+            }
+        },
     },
 
     // ── Modules (write ops queued when offline) ──────────────────────────────
     modules: {
         list: async (classId) => {
             try {
-                return await _rawApi.modules.list(classId);
+                const data = await _rawApi.modules.list(classId);
+                const arr = Array.isArray(data?.data) ? data.data : [];
+                await offlineStore.saveModuleList(classId, arr);
+                return data;
             } catch (e) {
-                if (isNetworkError(e)) return { data: [] };
+                if (isNetworkError(e)) {
+                    const cached = await offlineStore.getModuleList(classId);
+                    if (cached) return { data: cached };
+                }
                 throw e;
             }
         },
@@ -867,11 +1183,84 @@ const api = {
                 throw e;
             }
         },
-        add: _rawApi.modules.add,
-        remove: _rawApi.modules.remove,
-        sessions: _rawApi.modules.sessions,
-        sessionTemplates: _rawApi.modules.sessionTemplates,
-        addSession: _rawApi.modules.addSession,
+        add: async (classId, programModuleId) => {
+            try {
+                return await _rawApi.modules.add(classId, programModuleId);
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    const tempId = 'local_module_' + Date.now();
+                    const provisional = {
+                        id: tempId, name: 'Module', status: 'pending',
+                        session_count: 0, _isOffline: true,
+                    };
+                    const existing = (await offlineStore.getModuleList(classId)) ?? [];
+                    await offlineStore.saveModuleList(classId, [...existing, provisional]);
+                    await syncQueue.enqueue({ type: 'mentorships.addModule', classId, programModuleId, tempId });
+                    return { data: provisional };
+                }
+                throw e;
+            }
+        },
+        remove: async (moduleId, classId) => {
+            try {
+                return await _rawApi.modules.remove(moduleId);
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    if (classId) {
+                        const existing = (await offlineStore.getModuleList(classId)) ?? [];
+                        await offlineStore.saveModuleList(classId, existing.filter(m => m.id !== moduleId));
+                    } else {
+                        console.warn('[API] modules.remove offline: classId missing, cache not patched');
+                    }
+                    await syncQueue.enqueue({ type: 'mentorships.removeModule', moduleId, classId });
+                    return { message: 'Queued for sync.' };
+                }
+                throw e;
+            }
+        },
+        sessions: async (moduleId) => {
+            try {
+                const data = await _rawApi.modules.sessions(moduleId);
+                const arr = Array.isArray(data?.data) ? data.data : [];
+                await offlineStore.saveSessionsByModule(moduleId, arr);
+                return data;
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    const cached = await offlineStore.getSessionsByModule(moduleId);
+                    if (cached) return { data: cached };
+                }
+                throw e;
+            }
+        },
+        sessionTemplates: async (moduleId) => {
+            try {
+                const data = await _rawApi.modules.sessionTemplates(moduleId);
+                const list = data?.data ?? data ?? [];
+                await offlineStore.saveSessionTemplates(moduleId, list);
+                return data;
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    const cached = await offlineStore.getSessionTemplates(moduleId);
+                    return cached ? { data: cached } : { data: [] };
+                }
+                throw e;
+            }
+        },
+        addSession: async (moduleId, templateId) => {
+            try {
+                return await _rawApi.modules.addSession(moduleId, templateId);
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    const tempId = 'local_session_' + Date.now();
+                    const provisional = { id: tempId, name: 'Session', _isOffline: true };
+                    const existing = (await offlineStore.getSessionsByModule(moduleId)) ?? [];
+                    await offlineStore.saveSessionsByModule(moduleId, [...existing, provisional]);
+                    await syncQueue.enqueue({ type: 'mentorships.addSession', moduleId, templateId, tempId });
+                    return { data: provisional };
+                }
+                throw e;
+            }
+        },
     },
 
     // ── Attendance ────────────────────────────────────────────────────────────
@@ -894,6 +1283,10 @@ const api = {
                 return await _rawApi.attendance.mark(moduleId, participantId, status);
             } catch (e) {
                 if (isNetworkError(e)) {
+                    const existing = (await offlineStore.getAttendance(moduleId)) ?? [];
+                    await offlineStore.saveAttendance(moduleId, existing.map(p =>
+                        p.participant_id === participantId ? { ...p, status } : p
+                    ));
                     await syncQueue.enqueue({ type: 'mentorship.attendance.mark', moduleId, participantId, status });
                     return { queued: true };
                 }
@@ -986,7 +1379,21 @@ const api = {
                 throw e;
             }
         },
-        participants: _rawApi.trainings.participants,
+        participants: async (id) => {
+            try {
+                const data = await _rawApi.trainings.participants(id);
+                const arr = Array.isArray(data?.data) ? data.data : [];
+                if (arr.length > 0)
+                    await offlineStore.setMeta(`training_participants_${id}`, arr);
+                return data;
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    const cached = await offlineStore.getMeta(`training_participants_${id}`);
+                    if (cached) return { data: cached };
+                }
+                throw e;
+            }
+        },
     },
 
     // ── Lookup (cache-first, no writes) ─────────────────────────────────────
@@ -1040,10 +1447,60 @@ const api = {
                 throw e;
             }
         },
-        cadres: _rawApi.lookups.cadres,
-        departments: _rawApi.lookups.departments,
-        userByEmail: _rawApi.lookups.userByEmail,
-        userSearch: _rawApi.lookups.userSearch,
+        cadres: async () => {
+            try {
+                const data = await _rawApi.lookups.cadres();
+                const list = data?.data ?? data;
+                await offlineStore.setMeta('cadres', list);
+                return list;
+            } catch {
+                return (await offlineStore.getMeta('cadres')) ?? [];
+            }
+        },
+        departments: async () => {
+            try {
+                const data = await _rawApi.lookups.departments();
+                const list = data?.data ?? data;
+                await offlineStore.setMeta('departments', list);
+                return list;
+            } catch {
+                return (await offlineStore.getMeta('departments')) ?? [];
+            }
+        },
+        userByEmail: async (email) => {
+            try {
+                return await _rawApi.lookups.userByEmail(email);
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    const map = await offlineStore.getUserLookupMap();
+                    const key = (email ?? '').toLowerCase().trim();
+                    const found = map?.[key];
+                    if (found) return { data: { ...found, email: key } };
+                    return null;
+                }
+                throw e;
+            }
+        },
+        userSearch: async (q, perPage = 20) => {
+            try {
+                return await _rawApi.lookups.userSearch(q, perPage);
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    const map = await offlineStore.getUserLookupMap();
+                    if (!map) return { data: [] };
+                    const qLower = (q ?? '').toLowerCase().trim();
+                    const results = Object.entries(map)
+                        .filter(([email, u]) => u && (
+                            email.includes(qLower) ||
+                            (u.name ?? '').toLowerCase().includes(qLower)
+                        ))
+                        .map(([email, u]) => ({ ...u, email }))
+                        .slice(0, perPage);
+                    return { data: results };
+                }
+                throw e;
+            }
+        },
     },
 
     // ── Mentorship creation (online→queue) ───────────────────────────────────
@@ -1053,11 +1510,23 @@ const api = {
                 const data = await _rawApi.mentorshipCreate.create(payload);
                 return data;
             } catch (e) {
-                if (!navigator.onLine) {
+                if (isNetworkError(e)) {
                     const tempId = 'local_' + Date.now();
-                    const local = { ...payload, id: tempId, _isOffline: true, status: 'draft' };
+                    const tempClassId = 'local_class_' + (Date.now() + 1);
+                    const local = {
+                        ...payload,
+                        id: tempId,
+                        _isOffline: true,
+                        status: 'draft',
+                        class: {
+                            id: tempClassId,
+                            name: payload.class_name ?? '',
+                            status: 'draft',
+                            _isOffline: true,
+                        },
+                    };
                     await offlineStore.saveMentorship(local);
-                    await syncQueue.enqueue({ type: 'mentorships.create', tempId, payload });
+                    await syncQueue.enqueue({ type: 'mentorships.create', tempId, tempClassId, payload });
                     return { data: local };
                 }
                 throw e;
@@ -1067,7 +1536,7 @@ const api = {
             try {
                 return await _rawApi.mentorshipCreate.update(id, payload);
             } catch (e) {
-                if (!navigator.onLine) {
+                if (isNetworkError(e)) {
                     await syncQueue.enqueue({ type: 'mentorships.update', id, payload });
                     return { data: { id, ...payload } };
                 }
@@ -1078,7 +1547,7 @@ const api = {
             try {
                 return await _rawApi.mentorshipCreate.submit(id);
             } catch (e) {
-                if (!navigator.onLine) {
+                if (isNetworkError(e)) {
                     await syncQueue.enqueue({ type: 'mentorships.submit', id });
                     return { message: 'Queued for sync.' };
                 }
@@ -1093,37 +1562,144 @@ const api = {
             try {
                 return await _rawApi.classLifecycle.start(classId);
             } catch (e) {
-                if (!navigator.onLine) {
+                if (isNetworkError(e)) {
                     await syncQueue.enqueue({ type: 'mentorships.startClass', classId });
                     return { data: { id: classId, status: 'active' } };
                 }
                 throw e;
             }
         },
-        end: (classId) => _rawApi.classLifecycle.end(classId),
-        report: (classId) => _rawApi.classLifecycle.report(classId),
-        enrollmentLink: (classId) => _rawApi.classLifecycle.enrollmentLink(classId),
-        regenerateToken: (classId) => _rawApi.classLifecycle.regenerateToken(classId),
-        addModule: (classId, programModuleId) => _rawApi.classLifecycle.addModule(classId, programModuleId),
+        end: async (classId) => {
+            try {
+                return await _rawApi.classLifecycle.end(classId);
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    const cached = await offlineStore.getClassDetail(classId);
+                    if (cached) await offlineStore.saveClassDetail(classId, { ...cached, status: 'completed' });
+                    await syncQueue.enqueue({ type: 'mentorships.endClass', classId });
+                    return { data: { id: classId, status: 'completed' } };
+                }
+                throw e;
+            }
+        },
+        report: async (classId) => {
+            try {
+                const data = await _rawApi.classLifecycle.report(classId);
+                await offlineStore.setMeta(`class_report_${classId}`, data);
+                return data;
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    const cached = await offlineStore.getMeta(`class_report_${classId}`);
+                    if (cached) return cached;
+                }
+                throw e;
+            }
+        },
+        enrollmentLink: async (classId) => {
+            try {
+                const data = await _rawApi.classLifecycle.enrollmentLink(classId);
+                if (data?.data) await offlineStore.saveEnrollmentLink(classId, data.data);
+                return data;
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    const cached = await offlineStore.getEnrollmentLink(classId);
+                    if (cached) return { data: cached };
+                }
+                throw e;
+            }
+        },
+        regenerateToken: async (classId) => {
+            try {
+                return await _rawApi.classLifecycle.regenerateToken(classId);
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    await offlineStore.saveEnrollmentLink(classId, null);
+                    await syncQueue.enqueue({ type: 'mentorships.regenerateToken', classId });
+                    return { queued: true };
+                }
+                throw e;
+            }
+        },
+        addModule: async (classId, programModuleId) => {
+            try {
+                return await _rawApi.classLifecycle.addModule(classId, programModuleId);
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    const tempId = 'local_module_' + Date.now();
+                    const provisional = {
+                        id: tempId, name: 'Module', status: 'pending',
+                        session_count: 0, _isOffline: true,
+                    };
+                    const existing = (await offlineStore.getModuleList(classId)) ?? [];
+                    await offlineStore.saveModuleList(classId, [...existing, provisional]);
+                    await syncQueue.enqueue({ type: 'mentorships.addModule', classId, programModuleId, tempId });
+                    return { data: provisional };
+                }
+                throw e;
+            }
+        },
         enrollMentee: async (classId, userId) => {
             try {
                 return await _rawApi.classLifecycle.enrollMentee(classId, userId);
             } catch (e) {
-                if (!navigator.onLine) {
+                if (isNetworkError(e)) {
                     await syncQueue.enqueue({ type: 'mentorships.addMentee', classId, userId });
                     return { data: { participant_id: 'local_' + Date.now(), user_id: userId } };
                 }
                 throw e;
             }
         },
-        createMentee: (classId, payload) => _rawApi.classLifecycle.createMentee(classId, payload),
-        updateMentee: (classId, participantId, data) => _rawApi.classLifecycle.updateMentee(classId, participantId, data),
-        markInvited: (classId, participantId) => _rawApi.classLifecycle.markInvited(classId, participantId),
+        createMentee: async (classId, payload) => {
+            if (!payload?.email) throw new Error('createMentee: email is required');
+            if (!classId) throw new Error('createMentee: classId is required');
+            try {
+                return await _rawApi.classLifecycle.createMentee(classId, payload);
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    const tempId = 'local_participant_' + Date.now();
+                    const provisional = {
+                        id: tempId,
+                        user_id: null,
+                        name: [payload.first_name, payload.last_name].filter(Boolean).join(' ') || payload.email,
+                        email: payload.email,
+                        phone: payload.phone ?? null,
+                        invitation_sent_at: null,
+                        _isOffline: true,
+                    };
+                    const existing = (await offlineStore.getParticipants(classId)) ?? [];
+                    await offlineStore.saveParticipants(classId, [...existing, provisional]);
+                    await syncQueue.enqueue({ type: 'mentorships.createMentee', classId, payload, tempId });
+                    return { data: provisional };
+                }
+                throw e;
+            }
+        },
+        updateMentee: async (classId, participantId, data) => {
+            try {
+                return await _rawApi.classLifecycle.updateMentee(classId, participantId, data);
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    const existing = (await offlineStore.getParticipants(classId)) ?? [];
+                    await offlineStore.saveParticipants(classId, existing.map(p =>
+                        p.id === participantId ? { ...p, ...data } : p
+                    ));
+                    await syncQueue.enqueue({ type: 'mentorships.updateMenteeEmail', classId, participantId, data });
+                    return { data };
+                }
+                throw e;
+            }
+        },
+        markInvited: async (classId, participantId) => {
+            if (!navigator.onLine) {
+                return { requiresInternet: true };
+            }
+            return _rawApi.classLifecycle.markInvited(classId, participantId);
+        },
         removeMentee: async (classId, participantId) => {
             try {
                 return await _rawApi.classLifecycle.removeMentee(classId, participantId);
             } catch (e) {
-                if (!navigator.onLine) {
+                if (isNetworkError(e)) {
                     await syncQueue.enqueue({ type: 'mentorships.removeMentee', classId, participantId });
                     return { message: 'Queued for sync.' };
                 }
@@ -1134,14 +1710,30 @@ const api = {
 
     // ── Session notes / lifecycle ────────────────────────────────────────────
     sessions: {
-        remove: _rawApi.sessions.remove,
+        remove: async (sessionId, moduleId) => {
+            try {
+                return await _rawApi.sessions.remove(sessionId);
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    if (moduleId) {
+                        const existing = (await offlineStore.getSessionsByModule(moduleId)) ?? [];
+                        await offlineStore.saveSessionsByModule(moduleId, existing.filter(s => s.id !== sessionId));
+                    } else {
+                        console.warn('[API] sessions.remove offline: moduleId missing, cache not patched');
+                    }
+                    await syncQueue.enqueue({ type: 'mentorships.removeSession', sessionId, moduleId });
+                    return { message: 'Queued for sync.' };
+                }
+                throw e;
+            }
+        },
         update: async (sessionId, payload) => {
             try {
                 const data = await _rawApi.sessions.update(sessionId, payload);
                 await offlineStore.saveSession({ id: sessionId, ...payload });
                 return data;
             } catch (e) {
-                if (!navigator.onLine) {
+                if (isNetworkError(e)) {
                     await offlineStore.saveSession({ id: sessionId, ...payload, _pending: true });
                     await syncQueue.enqueue({ type: 'mentorships.updateSession', sessionId, payload });
                     return { data: { id: sessionId, ...payload } };
@@ -1157,7 +1749,7 @@ const api = {
             try {
                 return await _rawApi.trainingActions.enroll(trainingId);
             } catch (e) {
-                if (!navigator.onLine) {
+                if (isNetworkError(e)) {
                     await syncQueue.enqueue({ type: 'trainings.enroll', trainingId });
                     return { data: { participant_id: 'pending', status: 'registered' } };
                 }
@@ -1168,7 +1760,7 @@ const api = {
             try {
                 return await _rawApi.trainingActions.attendance(trainingId);
             } catch (e) {
-                if (!navigator.onLine) {
+                if (isNetworkError(e)) {
                     await syncQueue.enqueue({ type: 'trainings.attendance', trainingId });
                     return { message: 'Queued for sync.' };
                 }
@@ -1177,25 +1769,38 @@ const api = {
         },
     },
 
-    // ── Resources (cache with 24h TTL) ───────────────────────────────────────
+    // ── Resources (cache with 24h TTL — both typed and untyped) ────────────────
     resources: {
         list: async (type) => {
             const now = Date.now();
-            const cachedAt = (await offlineStore.getResourcesCachedAt()) ?? 0;
             const ttl = 24 * 60 * 60 * 1000;
-            if (!type && now - cachedAt < ttl) {
-                const cached = await offlineStore.getResources();
-                if (cached) return cached;
+
+            if (!type) {
+                const cachedAt = (await offlineStore.getResourcesCachedAt()) ?? 0;
+                if (now - cachedAt < ttl) {
+                    const cached = await offlineStore.getResources();
+                    if (cached) return cached;
+                }
+            } else {
+                const entry = await offlineStore.getMeta(`resources_type_${type}`);
+                if (entry && now - (entry._cachedAt ?? 0) < ttl) return entry.data;
             }
+
             try {
                 const data = await _rawApi.resources.list(type);
                 const list = data?.data ?? data;
                 if (!type) {
                     await offlineStore.saveResources(list);
                     await offlineStore.setResourcesCachedAt(now);
+                } else {
+                    await offlineStore.setMeta(`resources_type_${type}`, { data: list, _cachedAt: now });
                 }
                 return list;
             } catch {
+                if (type) {
+                    const entry = await offlineStore.getMeta(`resources_type_${type}`);
+                    return entry?.data ?? [];
+                }
                 return (await offlineStore.getResources()) ?? [];
             }
         },
@@ -1219,10 +1824,31 @@ const api = {
         progress: _rawApi.participants.progress,
     },
 
+    // ── Analytics summary (mobile dashboard) ─────────────────────────────────
+    analytics: {
+        summary: async (mode, year = '') => {
+            const cacheKey = `analytics_${mode}${year ? `_${year}` : ''}`;
+            try {
+                const data = await get(`/analytics/summary?mode=${mode}${year ? `&year=${year}` : ''}`);
+                await offlineStore.setMeta(cacheKey, data);
+                return data;
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    const cached = await offlineStore.getMeta(cacheKey);
+                    if (cached) return cached;
+                }
+                throw e;
+            }
+        },
+    },
+
     // ── Scope config ─────────────────────────────────────────────────────────
     scopes: {
         getConfig: () => _rawApi.scopes.getConfig(),
     },
+
+    // ── Smart sync (incremental, delta-based) ────────────────────────────────
+    smartSync,
 
     // ── Prefetch for offline ─────────────────────────────────────────────────
     // Call after initial data load while online. Pre-caches HR structure,
@@ -1257,9 +1883,91 @@ const api = {
             }
         }
 
+        // Cache reports for completed/submitted assessments so they're viewable offline
+        const completed = (assessments ?? []).filter(a => a.status === 'submitted' || a.status === 'completed');
+        for (const a of completed) {
+            try {
+                await Promise.allSettled([
+                    api.reports.show(a.id),
+                    api.reports.summary(a.id),
+                ]);
+            } catch {
+                // Non-critical
+            }
+        }
+
         await offlineStore.setMeta("lastPrefetch", Date.now());
         console.log("[API] Prefetch complete");
     },
+
+    prefetchMentorshipsForOffline: async () => {
+        if (!navigator.onLine) return;
+
+        let mentorships = [];
+        try {
+            const data = await _rawApi.mentorships.list();
+            mentorships = Array.isArray(data?.data) ? data.data : [];
+            if (mentorships.length > 0) await offlineStore.saveMentorships(mentorships);
+        } catch { return; }
+
+        const allClasses = [];
+        await Promise.allSettled(mentorships.map(async (m) => {
+            try {
+                const d = await _rawApi.mentorships.find(m.id);
+                if (d?.data) {
+                    await offlineStore.saveMentorship(d.data);
+                    (d.data.classes ?? []).forEach(c => allClasses.push({ trainingId: m.id, classId: c.id }));
+                }
+            } catch { /* continue */ }
+        }));
+
+        const allModules = [];
+        await Promise.allSettled(allClasses.map(({ trainingId, classId }) =>
+            Promise.allSettled([
+                _rawApi.mentorships.classDetail(trainingId, classId).then(d => {
+                    if (d?.data) {
+                        offlineStore.saveClassDetail(classId, d.data);
+                        (d.data.modules ?? []).forEach(mod => allModules.push({ classId, moduleId: mod.id }));
+                    }
+                }),
+                _rawApi.participants.list(classId).then(d => {
+                    if (d?.data) offlineStore.saveParticipants(classId, d.data);
+                }),
+                _rawApi.classLifecycle.enrollmentLink(classId).then(d => {
+                    if (d?.data) offlineStore.saveEnrollmentLink(classId, d.data);
+                }),
+            ])
+        ));
+
+        await Promise.allSettled(allModules.map(({ moduleId }) =>
+            Promise.allSettled([
+                _rawApi.modules.sessions(moduleId).then(d => {
+                    const arr = Array.isArray(d?.data) ? d.data : [];
+                    return offlineStore.saveSessionsByModule(moduleId, arr);
+                }),
+                _rawApi.attendance.roster(moduleId).then(d => {
+                    if (d?.data) offlineStore.saveAttendance(moduleId, d.data);
+                }),
+                _rawApi.modules.sessionTemplates(moduleId).then(d => {
+                    const list = d?.data ?? d ?? [];
+                    return offlineStore.saveSessionTemplates(moduleId, list);
+                }),
+            ])
+        ));
+
+        await Promise.allSettled([
+            _rawApi.lookups.cadres().then(d => offlineStore.setMeta('cadres', d?.data ?? d ?? [])),
+            _rawApi.lookups.departments().then(d => offlineStore.setMeta('departments', d?.data ?? d ?? [])),
+        ]);
+    },
 };
 
+// ── Module-level event listeners: trigger smartSync on network recovery ──────
+window.addEventListener('online', () => { smartSync().catch(() => {}); });
+document.addEventListener('resume', () => {
+    if (navigator.onLine) smartSync().catch(() => {});
+});
+
 export default api;
+
+

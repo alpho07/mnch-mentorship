@@ -55,6 +55,17 @@ async function refreshCount() {
 //   "mentorships.removeMentee"  → { classId, participantId }
 //   "mentorships.updateSession" → { sessionId, payload }
 //   "mentorships.startClass"    → { classId }
+//   "mentorships.createClass"    → { trainingId, payload, tempId }
+//   "mentorships.updateClass"    → { trainingId, classId, payload }
+//   "mentorships.deleteClass"    → { trainingId, classId }
+//   "mentorships.endClass"       → { classId }
+//   "mentorships.createMentee"   → { classId, payload, tempId }
+//   "mentorships.updateMenteeEmail" → { classId, participantId, data }
+//   "mentorships.regenerateToken"→ { classId }
+//   "mentorships.addModule"      → { classId, programModuleId, tempId }
+//   "mentorships.removeModule"   → { moduleId, classId }
+//   "mentorships.addSession"     → { moduleId, templateId, tempId }
+//   "mentorships.removeSession"  → { sessionId, moduleId }
 //   "trainings.enroll"          → { trainingId }
 //   "trainings.attendance"      → { trainingId }
 
@@ -67,6 +78,64 @@ async function enqueue(op) {
     if (navigator.onLine) {
         flush();
     }
+}
+
+// Guard: reject any op whose DEPENDENCY fields still carry an unresolved local_* ID.
+// `tempId` is intentionally excluded — it is the provisional ID of the record being
+// created by this very op, not a dependency on another op's output.
+// Throws with status 400 so flush() discards the op rather than sending bad data.
+function assertNoTempIds(op) {
+    const DEP_FIELDS = ['assessmentId', 'classId', 'moduleId', 'sessionId', 'participantId', 'trainingId', 'id'];
+    const TEMP_PATTERN = /^local_[a-z]+_\d+$/;
+    for (const field of DEP_FIELDS) {
+        const val = op[field];
+        if (typeof val === 'string' && TEMP_PATTERN.test(val)) {
+            console.error(`[SyncQueue] Op ${op.type} has unresolved temp ID in field "${field}": ${val}`);
+            throw Object.assign(new Error('Unresolved temp ID'), { status: 400, _tempIdGuard: true });
+        }
+    }
+}
+
+const OP_LABELS = {
+    'mentorships.createClass':       'New class',
+    'mentorships.createMentee':      'New mentee',
+    'mentorships.addModule':         'New module',
+    'mentorships.addSession':        'New session',
+    'mentorships.updateClass':       'Class edit',
+    'mentorships.updateMenteeEmail': 'Mentee update',
+    'mentorships.endClass':          'Class completion',
+    'mentorships.regenerateToken':   'Link regeneration',
+    'assessments.delete':            'Assessment deletion',
+    'profile.update':                'Profile update',
+    'mentorships.create':            'New mentorship',
+    'mentorships.update':            'Mentorship edit',
+    'mentorships.submit':            'Mentorship submit',
+    'mentorships.addMentee':         'Mentee enrollment',
+    'mentorships.removeMentee':      'Mentee removal',
+    'mentorships.updateSession':     'Session update',
+    'mentorships.startClass':        'Class start',
+    'mentorships.deleteClass':       'Class deletion',
+    'mentorships.removeModule':      'Module removal',
+    'mentorships.removeSession':     'Session removal',
+    'responses.bulkSave':            'Assessment responses',
+    'assessments.create':            'New assessment',
+    'assessments.submit':            'Assessment submission',
+    'assessments.progress':          'Section progress',
+    'humanResources.save':           'HR section',
+    'healthProducts.save':           'HP section',
+    'report.email':                  'Report email',
+    'trainings.enroll':              'Training enrollment',
+    'trainings.attendance':          'Training attendance',
+};
+
+async function getPendingSummary() {
+    const queue = await offlineStore.getQueue();
+    const groups = {};
+    for (const op of queue) {
+        const label = OP_LABELS[op.type] ?? op.type;
+        groups[label] = (groups[label] ?? 0) + 1;
+    }
+    return { total: queue.length, groups };
 }
 
 // ── Replay pending operations ────────────────────────────────────────────────
@@ -87,23 +156,20 @@ async function flush() {
         // We need the raw API (without offline wrapper) to avoid recursion
         const {_rawApi} = await import("./api.service.js");
 
-        const queue = await offlineStore.getQueue();
-        if (queue.length === 0) {
-            setStatus("idle");
-            _flushing = false;
-            await refreshCount();
-            return;
-        }
-
-        // Sort by timestamp to maintain order
-        queue.sort((a, b) => a.timestamp - b.timestamp);
-
         let successCount = 0;
-        for (const op of queue) {
+
+        // Re-read from IndexedDB on each iteration so that patchQueueIds() changes
+        // made by create-ops (temp→real ID migration) are visible to dependent ops.
+        while (true) {
             if (!navigator.onLine) {
                 setStatus("offline");
                 break;
             }
+
+            const pending = await offlineStore.getQueue();
+            if (pending.length === 0) break;
+            pending.sort((a, b) => a.timestamp - b.timestamp);
+            const op = pending[0];
 
             try {
                 await executeOp(_rawApi, op);
@@ -115,6 +181,14 @@ async function flush() {
 
                 // If it's a 4xx client error (not 401), the data is bad — discard it
                 if (e.status && e.status >= 400 && e.status < 500 && e.status !== 401) {
+                    await offlineStore.saveConflict({
+                        id: 'conflict_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+                        op_type: op.type,
+                        payload: op,
+                        error: e._tempIdGuard ? 'Discarded: contained unresolved temp ID' : (e.message ?? `HTTP ${e.status}`),
+                        created_at: new Date().toISOString(),
+                        resolved: false,
+                    });
                     console.warn(`[SyncQueue] Discarding op ${op.id} due to ${e.status}`);
                     await offlineStore.removeFromQueue(op.id);
                     await refreshCount();
@@ -142,6 +216,7 @@ async function flush() {
 }
 
 async function executeOp(rawApi, op) {
+    assertNoTempIds(op);
     switch (op.type) {
         case "responses.bulkSave":
             return rawApi.responses.bulkSave(
@@ -164,8 +239,21 @@ async function executeOp(rawApi, op) {
                     op.assessmentId, op.responses, op.departmentId ?? null
                     );
 
+        case "assessments.delete": {
+            try {
+                return await rawApi.assessments.delete(op.id);
+            } catch (e) {
+                if (e.status === 404) return null; // already deleted
+                throw e;
+            }
+        }
+
+        case "profile.update":
+            return rawApi.profile.update(op.data);
+
         case "assessments.create": {
             const migrateId = async (fromId, toId) => {
+                await offlineStore.patchQueueIds(fromId, toId);
                 await offlineStore.copyAssessmentData(fromId, toId);
                 await offlineStore.deleteAssessment(fromId);
                 window.dispatchEvent(new CustomEvent("assessment:id-resolved", {
@@ -251,7 +339,13 @@ async function executeOp(rawApi, op) {
             return rawApi.me.attend(op.classId, op.moduleId);
 
         case 'mentorships.create': {
-            const migrateId = async (fromId, toId) => {
+            const migrateId = async (fromId, toId, fromClassId, toClassId) => {
+                await offlineStore.patchQueueIds(fromId, toId);
+                // Also migrate the provisional class ID so any queued mentee/module ops
+                // that reference tempClassId get updated to the real server class ID.
+                if (fromClassId && toClassId) {
+                    await offlineStore.patchQueueIds(fromClassId, toClassId);
+                }
                 const existing = await offlineStore.getMentorship(fromId);
                 if (existing) {
                     await offlineStore.saveMentorship({ ...existing, id: toId, _isOffline: false });
@@ -264,18 +358,20 @@ async function executeOp(rawApi, op) {
             try {
                 const response = await rawApi.mentorshipCreate.create(op.payload);
                 const realId = response?.data?.id;
+                const realClassId = response?.data?.class?.id;
                 if (!realId) throw new Error('[SyncQueue] mentorships.create: server returned no id');
-                await migrateId(op.tempId, realId);
+                await migrateId(op.tempId, realId, op.tempClassId, realClassId);
                 return response;
             } catch (e) {
                 if (e.status === 409) {
                     const realId = e.data?.data?.id;
-                    if (realId) await migrateId(op.tempId, realId);
+                    const realClassId = e.data?.data?.class?.id;
+                    if (realId) await migrateId(op.tempId, realId, op.tempClassId, realClassId);
                     return null;
                 }
                 if (e.status >= 400 && e.status < 500) {
                     await offlineStore.saveConflict({
-                        id: 'conflict_' + Date.now(),
+                        id: 'conflict_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
                         op_type: op.type,
                         payload: op.payload,
                         error: e.message ?? 'Request rejected',
@@ -328,6 +424,224 @@ async function executeOp(rawApi, op) {
 
         case 'mentorships.startClass':
             return rawApi.classLifecycle.start(op.classId);
+
+        case 'mentorships.createClass': {
+            const migrateClassId = async (fromId, toId, trainingId) => {
+                await offlineStore.patchQueueIds(fromId, toId);
+                const list = (await offlineStore.getMentorshipClasses(trainingId)) ?? [];
+                const idx = list.findIndex(c => c.id === fromId);
+                if (idx !== -1) {
+                    list[idx] = { ...list[idx], id: toId, _isOffline: false };
+                    await offlineStore.saveMentorshipClasses(trainingId, list);
+                }
+                window.dispatchEvent(new CustomEvent('mentorship:classId-resolved', {
+                    detail: { tempId: fromId, realId: toId },
+                }));
+            };
+            try {
+                const response = await rawApi.mentorships.createClass(op.trainingId, op.payload);
+                const realId = response?.data?.id;
+                if (!realId) throw new Error('[SyncQueue] mentorships.createClass: server returned no id');
+                await migrateClassId(op.tempId, realId, op.trainingId);
+                return response;
+            } catch (e) {
+                if (e.status === 409) {
+                    const realId = e.data?.data?.id;
+                    if (realId) await migrateClassId(op.tempId, realId, op.trainingId);
+                    return null;
+                }
+                if (e.status >= 400 && e.status < 500) {
+                    await offlineStore.saveConflict({
+                        id: 'conflict_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+                        op_type: op.type,
+                        payload: op,
+                        error: e.message ?? `HTTP ${e.status}`,
+                        created_at: new Date().toISOString(),
+                        resolved: false,
+                    });
+                    // Remove the provisional class from local cache
+                    const list = (await offlineStore.getMentorshipClasses(op.trainingId)) ?? [];
+                    await offlineStore.saveMentorshipClasses(op.trainingId, list.filter(c => c.id !== op.tempId));
+                    return null; // dequeue
+                }
+                throw e;
+            }
+        }
+
+        case 'mentorships.updateClass':
+            return rawApi.mentorships.updateClass(op.trainingId, op.classId, op.payload);
+
+        case 'mentorships.deleteClass': {
+            try {
+                return await rawApi.mentorships.deleteClass(op.trainingId, op.classId);
+            } catch (e) {
+                if (e.status === 404) return null; // already deleted
+                throw e;
+            }
+        }
+
+        case 'mentorships.endClass':
+            return rawApi.classLifecycle.end(op.classId);
+
+        case 'mentorships.createMentee': {
+            const migrateMenteeId = async (fromId, toId, classId) => {
+                await offlineStore.patchQueueIds(fromId, toId);
+                const list = (await offlineStore.getParticipants(classId)) ?? [];
+                const idx = list.findIndex(p => p.id === fromId);
+                if (idx !== -1) {
+                    list[idx] = { ...list[idx], id: toId, _isOffline: false };
+                    await offlineStore.saveParticipants(classId, list);
+                }
+                window.dispatchEvent(new CustomEvent('mentorship:participantId-resolved', {
+                    detail: { tempId: fromId, realId: toId, classId },
+                }));
+            };
+            try {
+                const response = await rawApi.classLifecycle.createMentee(op.classId, op.payload);
+                const realId = response?.data?.participant_id;
+                if (!realId) throw new Error('[SyncQueue] mentorships.createMentee: server returned no participant_id');
+                await migrateMenteeId(op.tempId, realId, op.classId);
+                return response;
+            } catch (e) {
+                if (e.status === 409) {
+                    const realId = e.data?.data?.participant_id;
+                    if (realId) await migrateMenteeId(op.tempId, realId, op.classId);
+                    return null;
+                }
+                if (e.status >= 400 && e.status < 500) {
+                    await offlineStore.saveConflict({
+                        id: 'conflict_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+                        op_type: op.type,
+                        payload: op,
+                        error: e.message ?? `HTTP ${e.status}`,
+                        created_at: new Date().toISOString(),
+                        resolved: false,
+                    });
+                    const list = (await offlineStore.getParticipants(op.classId)) ?? [];
+                    await offlineStore.saveParticipants(op.classId, list.filter(p => p.id !== op.tempId));
+                    return null;
+                }
+                throw e;
+            }
+        }
+
+        case 'mentorships.updateMenteeEmail':
+            return rawApi.classLifecycle.updateMentee(op.classId, op.participantId, op.data);
+
+        case 'mentorships.regenerateToken': {
+            const response = await rawApi.classLifecycle.regenerateToken(op.classId);
+            if (response?.data) {
+                await offlineStore.saveEnrollmentLink(op.classId, response.data);
+            }
+            return response;
+        }
+
+        case 'mentorships.addModule': {
+            const migrateModuleId = async (fromId, toId, classId) => {
+                await offlineStore.patchQueueIds(fromId, toId);
+                const list = (await offlineStore.getModuleList(classId)) ?? [];
+                const idx = list.findIndex(m => m.id === fromId);
+                if (idx !== -1) {
+                    list[idx] = { ...list[idx], id: toId, _isOffline: false };
+                    await offlineStore.saveModuleList(classId, list);
+                }
+                window.dispatchEvent(new CustomEvent('mentorship:moduleId-resolved', {
+                    detail: { tempId: fromId, realId: toId, classId },
+                }));
+            };
+            try {
+                const response = await rawApi.classLifecycle.addModule(op.classId, op.programModuleId);
+                const realId = response?.data?.id;
+                if (!realId) throw new Error('[SyncQueue] mentorships.addModule: server returned no id');
+                await migrateModuleId(op.tempId, realId, op.classId);
+                return response;
+            } catch (e) {
+                if (e.status === 409) {
+                    const realId = e.data?.data?.id;
+                    if (realId) await migrateModuleId(op.tempId, realId, op.classId);
+                    return null;
+                }
+                if (e.status >= 400 && e.status < 500) {
+                    await offlineStore.saveConflict({
+                        id: 'conflict_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+                        op_type: op.type,
+                        payload: op,
+                        error: e.message ?? `HTTP ${e.status}`,
+                        created_at: new Date().toISOString(),
+                        resolved: false,
+                    });
+                    const list = (await offlineStore.getModuleList(op.classId)) ?? [];
+                    await offlineStore.saveModuleList(op.classId, list.filter(m => m.id !== op.tempId));
+                    return null;
+                }
+                throw e;
+            }
+        }
+
+        case 'mentorships.removeModule': {
+            try {
+                return await rawApi.modules.remove(op.moduleId);
+            } catch (e) {
+                if (e.status === 404) return null; // already removed
+                throw e;
+            }
+        }
+
+        case 'mentorships.addSession': {
+            const migrateSessionId = async (fromId, toId, moduleId, realSession) => {
+                await offlineStore.patchQueueIds(fromId, toId);
+                const list = (await offlineStore.getSessionsByModule(moduleId)) ?? [];
+                const idx = list.findIndex(s => s.id === fromId);
+                if (idx !== -1) {
+                    list[idx] = { ...realSession, _isOffline: false };
+                    await offlineStore.saveSessionsByModule(moduleId, list);
+                }
+                window.dispatchEvent(new CustomEvent('mentorship:sessionId-resolved', {
+                    detail: { tempId: fromId, realId: toId, moduleId },
+                }));
+            };
+            try {
+                const response = await rawApi.modules.addSession(op.moduleId, op.templateId);
+                const realSession = response?.data;
+                const realId = realSession?.id;
+                if (!realId) throw new Error('[SyncQueue] mentorships.addSession: server returned no id');
+                await migrateSessionId(op.tempId, realId, op.moduleId, realSession);
+                return response;
+            } catch (e) {
+                if (e.status === 409) {
+                    const realId = e.data?.data?.id;
+                    if (realId && op.tempId) {
+                        const realSession = e.data?.data ?? { id: realId };
+                        await migrateSessionId(op.tempId, realId, op.moduleId, realSession);
+                    }
+                    return null;
+                }
+                if (e.status >= 400 && e.status < 500) {
+                    await offlineStore.saveConflict({
+                        id: 'conflict_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+                        op_type: op.type,
+                        payload: op,
+                        error: e.message ?? `HTTP ${e.status}`,
+                        created_at: new Date().toISOString(),
+                        resolved: false,
+                    });
+                    // Remove the provisional session from local cache
+                    const list = (await offlineStore.getSessionsByModule(op.moduleId)) ?? [];
+                    await offlineStore.saveSessionsByModule(op.moduleId, list.filter(s => s.id !== op.tempId));
+                    return null; // dequeue
+                }
+                throw e;
+            }
+        }
+
+        case 'mentorships.removeSession': {
+            try {
+                return await rawApi.sessions.remove(op.sessionId);
+            } catch (e) {
+                if (e.status === 404) return null; // already removed
+                throw e;
+            }
+        }
 
         case 'trainings.enroll': {
             try {
@@ -411,6 +725,7 @@ const syncQueue = {
     enqueue,
     flush,        // manual or automatic flush
     refreshCount,
+    getPendingSummary,
 
     /** Subscribe to status changes. Returns unsubscribe function. */
     subscribe: (fn) => {
@@ -431,3 +746,4 @@ const syncQueue = {
 };
 
 export default syncQueue;
+
