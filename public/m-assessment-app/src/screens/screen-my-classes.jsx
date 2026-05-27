@@ -116,12 +116,12 @@ export function MyClassesScreen({ user, onModuleDetail }) {
     const [isOffline, setIsOffline]   = useState(false);
 
     useEffect(() => {
+        let cancelled = false;
+
         api.me.classes()
             .then(async d => {
                 let arr = Array.isArray(d?.data) ? d.data : (Array.isArray(d) ? d : []);
-                setIsOffline(!!(d?._fromCache));
 
-                // If modules are not nested, fetch per class
                 const needsModules = arr.some(c => !Array.isArray(c.modules));
                 if (needsModules && navigator.onLine) {
                     arr = await Promise.all(arr.map(async c => {
@@ -137,10 +137,16 @@ export function MyClassesScreen({ user, onModuleDetail }) {
                 } else {
                     arr = arr.map(c => ({ ...c, modules: c.modules ?? [] }));
                 }
-                setClasses(arr);
+
+                if (!cancelled) {
+                    setIsOffline(!navigator.onLine);
+                    setClasses(arr);
+                }
             })
-            .catch(() => setClasses([]))
-            .finally(() => setLoading(false));
+            .catch(() => { if (!cancelled) setClasses([]); })
+            .finally(() => { if (!cancelled) setLoading(false); });
+
+        return () => { cancelled = true; };
     }, []);
 
     const stats = useMemo(() => {
