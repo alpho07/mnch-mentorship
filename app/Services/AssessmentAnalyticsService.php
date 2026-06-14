@@ -333,25 +333,30 @@ class AssessmentAnalyticsService
                       AND t.deleted_at IS NULL) as mentorship_count'
                 ),
             ])
-            ->get();
+            ->orderBy('assessments.assessment_date', 'desc')
+            ->get()
+            ->map(fn ($assessment) => $this->hydrateReadiness($assessment));
 
-        return $assessments->map(function ($assessment) {
-            $hasSkillsLab     = strtolower($assessment->skills_lab_answer ?? '') === 'yes';
-            $hasRoom          = strtolower($assessment->room_answer ?? '') === 'yes';
-            $feedbackGiven    = (bool) $assessment->feedback_given;
-            $hasPriorTraining = (bool) $assessment->trained_before_mentorship;
+        return $assessments;
+    }
 
-            $assessment->has_skills_lab     = $hasSkillsLab;
-            $assessment->has_room           = $hasRoom;
-            $assessment->has_prior_training = $hasPriorTraining;
-            $hasFacility = $hasSkillsLab || $hasRoom;
-            $assessment->eligibility_status = match (true) {
-                $hasFacility && $feedbackGiven => 'eligible',
-                $hasFacility                   => 'partial',
-                default                        => 'not_eligible',
-            };
+    private function hydrateReadiness(Assessment $assessment): Assessment
+    {
+        $hasSkillsLab     = strtolower($assessment->skills_lab_answer ?? '') === 'yes';
+        $hasRoom          = strtolower($assessment->room_answer ?? '') === 'yes';
+        $feedbackGiven    = (bool) $assessment->feedback_given;
+        $hasPriorTraining = (bool) $assessment->trained_before_mentorship;
 
-            return $assessment;
-        });
+        $assessment->has_skills_lab     = $hasSkillsLab;
+        $assessment->has_room           = $hasRoom;
+        $assessment->has_prior_training = $hasPriorTraining;
+        $hasFacility = $hasSkillsLab || $hasRoom;
+        $assessment->eligibility_status = match (true) {
+            $hasFacility && $feedbackGiven => 'eligible',
+            $hasFacility                   => 'partial',
+            default                        => 'not_eligible',
+        };
+
+        return $assessment;
     }
 }

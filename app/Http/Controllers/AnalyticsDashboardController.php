@@ -7,6 +7,7 @@ use App\Models\County;
 use App\Models\Subcounty;
 use App\Models\ClassParticipant;
 use App\Models\ClassAttendance;
+use App\Models\MentorshipClass;
 use App\Models\Training;
 use App\Models\Facility;
 use App\Models\TrainingParticipant;
@@ -1248,11 +1249,75 @@ class AnalyticsDashboardController extends Controller {
             ]);
         }
 
+        // Mentorship-specific chart data
+        $completionDistribution = [];
+        $classStatusBreakdown = [];
+
+        if ($mode === 'mentorship') {
+            $progressRows = DB::table('class_participants')
+                ->join('mentorship_classes', 'mentorship_classes.id', '=', 'class_participants.mentorship_class_id')
+                ->join('trainings', 'trainings.id', '=', 'mentorship_classes.training_id')
+                ->leftJoin('class_modules', 'class_modules.mentorship_class_id', '=', 'mentorship_classes.id')
+                ->leftJoin('mentee_module_progress', function ($join) {
+                    $join->on('mentee_module_progress.class_participant_id', '=', 'class_participants.id')
+                         ->on('mentee_module_progress.class_module_id', '=', 'class_modules.id');
+                })
+                ->where('trainings.type', 'facility_mentorship')
+                ->whereIn('class_participants.status', ['enrolled', 'active', 'completed'])
+                ->when(!empty($year), fn($q) => $q->whereYear('trainings.start_date', $year))
+                ->when($trainingId, fn($q) => $q->where('trainings.id', $trainingId))
+                ->groupBy('class_participants.id')
+                ->selectRaw('
+                    class_participants.id,
+                    COUNT(DISTINCT class_modules.id) as total_modules,
+                    SUM(CASE WHEN mentee_module_progress.status IN ("completed", "exempted") THEN 1 ELSE 0 END) as completed_modules
+                ')
+                ->get();
+
+            $buckets = ['0-25%' => 0, '26-50%' => 0, '51-75%' => 0, '76-99%' => 0, '100%' => 0];
+            foreach ($progressRows as $row) {
+                $total = (int) $row->total_modules;
+                $completed = (int) $row->completed_modules;
+                if ($total === 0) {
+                    continue;
+                }
+                $pct = ($completed / $total) * 100;
+                if ($pct >= 100) {
+                    $buckets['100%']++;
+                } elseif ($pct >= 76) {
+                    $buckets['76-99%']++;
+                } elseif ($pct >= 51) {
+                    $buckets['51-75%']++;
+                } elseif ($pct >= 26) {
+                    $buckets['26-50%']++;
+                } else {
+                    $buckets['0-25%']++;
+                }
+            }
+            $completionDistribution = $buckets;
+
+            $classStatusBreakdown = MentorshipClass::whereHas('training', function ($q) use ($year, $trainingId) {
+                    $q->where('type', 'facility_mentorship');
+                    if (!empty($year)) {
+                        $q->whereYear('start_date', $year);
+                    }
+                    if ($trainingId) {
+                        $q->where('id', $trainingId);
+                    }
+                })
+                ->selectRaw("COALESCE(status, 'draft') as status, COUNT(*) as cnt")
+                ->groupBy('status')
+                ->pluck('cnt', 'status')
+                ->toArray();
+        }
+
         return [
             'departments' => $departmentData,
             'cadres' => $cadreData,
             'facilityTypes' => $facilityTypeData,
-            'monthly' => $monthlyData
+            'monthly' => $monthlyData,
+            'completionDistribution' => $completionDistribution,
+            'classStatusBreakdown' => $classStatusBreakdown,
         ];
     }
 
@@ -1308,18 +1373,39 @@ class AnalyticsDashboardController extends Controller {
             $allFacilities = Facility::count();
             $facilityCoverage = $allFacilities > 0 ? round(($totalFacilities / $allFacilities) * 100, 1) : 0;
 
+            // Mentorship attendance rate
+            $attendanceRate = 0;
+            if ($mode === 'mentorship') {
+                $attendanceStats = DB::table('mentee_module_progress')
+                    ->join('class_modules', 'class_modules.id', '=', 'mentee_module_progress.class_module_id')
+                    ->join('mentorship_classes', 'mentorship_classes.id', '=', 'class_modules.mentorship_class_id')
+                    ->join('trainings', 'trainings.id', '=', 'mentorship_classes.training_id')
+                    ->where('trainings.type', 'facility_mentorship')
+                    ->whereNotIn('mentee_module_progress.status', ['exempted'])
+                    ->when(!empty($year), fn($q) => $q->whereYear('trainings.start_date', $year))
+                    ->when($trainingId, fn($q) => $q->where('trainings.id', $trainingId))
+                    ->selectRaw('COUNT(*) as total_slots, SUM(CASE WHEN mentee_module_progress.status IN ("in_progress", "completed") THEN 1 ELSE 0 END) as present_slots')
+                    ->first();
+
+                if ($attendanceStats && $attendanceStats->total_slots > 0) {
+                    $attendanceRate = round(($attendanceStats->present_slots / $attendanceStats->total_slots) * 100, 1);
+                }
+            }
+
             return [
                 'totalPrograms' => $totalPrograms,
                 'totalParticipants' => $totalParticipants,
                 'totalFacilities' => $totalFacilities,
-                'facilityCoverage' => $facilityCoverage
+                'facilityCoverage' => $facilityCoverage,
+                'attendanceRate' => $attendanceRate,
             ];
         } catch (\Exception $e) {
             return [
                 'totalPrograms' => 0,
                 'totalParticipants' => 0,
                 'totalFacilities' => 0,
-                'facilityCoverage' => 0
+                'facilityCoverage' => 0,
+                'attendanceRate' => 0,
             ];
         }
     }
@@ -1778,8 +1864,85 @@ class AnalyticsDashboardController extends Controller {
                     ->values()
                     ->toArray();
 
+            // 8. Mentorship-specific metrics
+            $attendanceRate = 0;
+            $completionDistribution = [];
+            $classStatusBreakdown = [];
+
+            if ($mode === 'mentorship') {
+                // Overall module attendance rate (confirmed / enrolled slots)
+                $attendanceStats = DB::table('mentee_module_progress')
+                    ->join('class_modules', 'class_modules.id', '=', 'mentee_module_progress.class_module_id')
+                    ->join('mentorship_classes', 'mentorship_classes.id', '=', 'class_modules.mentorship_class_id')
+                    ->join('trainings', 'trainings.id', '=', 'mentorship_classes.training_id')
+                    ->where('trainings.type', 'facility_mentorship')
+                    ->whereNotIn('mentee_module_progress.status', ['exempted'])
+                    ->when(!empty($year), fn($q) => $q->whereYear('trainings.start_date', $year))
+                    ->selectRaw('COUNT(*) as total_slots, SUM(CASE WHEN mentee_module_progress.status IN ("in_progress", "completed") THEN 1 ELSE 0 END) as present_slots')
+                    ->first();
+
+                if ($attendanceStats && $attendanceStats->total_slots > 0) {
+                    $attendanceRate = round(($attendanceStats->present_slots / $attendanceStats->total_slots) * 100, 1);
+                }
+
+                // Mentee module completion distribution
+                $progressRows = DB::table('class_participants')
+                    ->join('mentorship_classes', 'mentorship_classes.id', '=', 'class_participants.mentorship_class_id')
+                    ->join('trainings', 'trainings.id', '=', 'mentorship_classes.training_id')
+                    ->leftJoin('class_modules', 'class_modules.mentorship_class_id', '=', 'mentorship_classes.id')
+                    ->leftJoin('mentee_module_progress', function ($join) {
+                        $join->on('mentee_module_progress.class_participant_id', '=', 'class_participants.id')
+                             ->on('mentee_module_progress.class_module_id', '=', 'class_modules.id');
+                    })
+                    ->where('trainings.type', 'facility_mentorship')
+                    ->whereIn('class_participants.status', ['enrolled', 'active', 'completed'])
+                    ->when(!empty($year), fn($q) => $q->whereYear('trainings.start_date', $year))
+                    ->groupBy('class_participants.id')
+                    ->selectRaw('
+                        class_participants.id,
+                        COUNT(DISTINCT class_modules.id) as total_modules,
+                        SUM(CASE WHEN mentee_module_progress.status IN ("completed", "exempted") THEN 1 ELSE 0 END) as completed_modules
+                    ')
+                    ->get();
+
+                $buckets = ['0-25%' => 0, '26-50%' => 0, '51-75%' => 0, '76-99%' => 0, '100%' => 0];
+                foreach ($progressRows as $row) {
+                    $total = (int) $row->total_modules;
+                    $completed = (int) $row->completed_modules;
+                    if ($total === 0) {
+                        continue;
+                    }
+                    $pct = ($completed / $total) * 100;
+                    if ($pct >= 100) {
+                        $buckets['100%']++;
+                    } elseif ($pct >= 76) {
+                        $buckets['76-99%']++;
+                    } elseif ($pct >= 51) {
+                        $buckets['51-75%']++;
+                    } elseif ($pct >= 26) {
+                        $buckets['26-50%']++;
+                    } else {
+                        $buckets['0-25%']++;
+                    }
+                }
+                $completionDistribution = $buckets;
+
+                // Class lifecycle status breakdown
+                $classStatusBreakdown = MentorshipClass::whereHas('training', function ($q) use ($year) {
+                        $q->where('type', 'facility_mentorship');
+                        if (!empty($year)) {
+                            $q->whereYear('start_date', $year);
+                        }
+                    })
+                    ->selectRaw("COALESCE(status, 'draft') as status, COUNT(*) as cnt")
+                    ->groupBy('status')
+                    ->pluck('cnt', 'status')
+                    ->toArray();
+            }
+
             return compact('statusBreakdown', 'trend12', 'yearComparison', 'topCounties',
-                           'avgParticipants', 'menteeStatus', 'topPrograms');
+                           'avgParticipants', 'menteeStatus', 'topPrograms',
+                           'attendanceRate', 'completionDistribution', 'classStatusBreakdown');
         } catch (\Exception $e) {
             return [
                 'statusBreakdown' => [],
@@ -1789,6 +1952,9 @@ class AnalyticsDashboardController extends Controller {
                 'avgParticipants' => 0,
                 'menteeStatus' => [],
                 'topPrograms' => [],
+                'attendanceRate' => 0,
+                'completionDistribution' => [],
+                'classStatusBreakdown' => [],
             ];
         }
     }
@@ -1861,7 +2027,49 @@ class AnalyticsDashboardController extends Controller {
                 ($draft > 0 ? "; {$draft} in draft" : "") . "."];
         }
 
-        return array_slice($insights, 0, 4);
+        // Mentorship-specific insights
+        if ($mode === 'mentorship') {
+            $attendanceRate = $extendedStats['attendanceRate'] ?? 0;
+            if ($attendanceRate > 0) {
+                if ($attendanceRate >= 80) {
+                    $insights[] = ['type' => 'success', 'icon' => 'clipboard-check', 'text' =>
+                        "Strong module attendance at {$attendanceRate}% — mentees are consistently showing up for sessions."];
+                } elseif ($attendanceRate >= 60) {
+                    $insights[] = ['type' => 'warning', 'icon' => 'clipboard-check', 'text' =>
+                        "Module attendance is {$attendanceRate}% — consider follow-up with mentors to improve session attendance."];
+                } else {
+                    $insights[] = ['type' => 'danger', 'icon' => 'clipboard-check', 'text' =>
+                        "Low module attendance at {$attendanceRate}% — review scheduling, mentor engagement, and mentee barriers."];
+                }
+            }
+
+            $completionDistribution = $extendedStats['completionDistribution'] ?? [];
+            $fullyCompleted = $completionDistribution['100%'] ?? 0;
+            $totalMenteesWithProgress = array_sum($completionDistribution);
+            if ($totalMenteesWithProgress > 0) {
+                $completionRate = round(($fullyCompleted / $totalMenteesWithProgress) * 100);
+                if ($completionRate >= 70) {
+                    $insights[] = ['type' => 'success', 'icon' => 'graduation-cap', 'text' =>
+                        "{$completionRate}% of mentees have completed all assigned modules — mentorship completion is on track."];
+                } elseif ($completionRate >= 40) {
+                    $insights[] = ['type' => 'warning', 'icon' => 'graduation-cap', 'text' =>
+                        "{$completionRate}% of mentees have completed all modules — monitor those in lower completion buckets."];
+                } else {
+                    $insights[] = ['type' => 'danger', 'icon' => 'graduation-cap', 'text' =>
+                        "Only {$completionRate}% of mentees have completed all modules — significant support intervention may be needed."];
+                }
+            }
+
+            $classStatusBreakdown = $extendedStats['classStatusBreakdown'] ?? [];
+            $activeClasses = $classStatusBreakdown['active'] ?? 0;
+            $draftClasses = $classStatusBreakdown['draft'] ?? 0;
+            if ($activeClasses > 0 || $draftClasses > 0) {
+                $insights[] = ['type' => 'primary', 'icon' => 'chalkboard-teacher', 'text' =>
+                    "Class pipeline: {$activeClasses} active classes and {$draftClasses} draft classes across mentorship programs."];
+            }
+        }
+
+        return array_slice($insights, 0, 5);
     }
 
     public function exportReadiness(Request $request)
