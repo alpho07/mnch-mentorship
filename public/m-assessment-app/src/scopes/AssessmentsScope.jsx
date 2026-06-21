@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import api from '../services/api.service.js';
 import { calcGrade } from '../constants.js';
-import { DashboardScreen } from '../screens/screen-dashboard.jsx';
+import { AssessmentAnalyticsHomeScreen } from '../screens/screen-analytics-home.jsx';
 import { AssessmentsListScreen } from '../screens/screen-assessments-list.jsx';
 import { AssessmentDetailScreen } from '../screens/screen-assessment-detail.jsx';
 import { AssessmentFormScreen } from '../screens/screen-assessment-form.jsx';
 import { AssessmentReportScreen } from '../screens/screen-assessment-report.jsx';
 import { ReportsScreen } from '../screens/screen-reports.jsx';
 import { EmailJobsScreen } from '../screens/screen-email-jobs.jsx';
+
 const TABS = [
     { id: 'home',        icon: '🏠', label: 'Home' },
     { id: 'assessments', icon: '📋', label: 'Assessments' },
@@ -72,7 +73,7 @@ export function AssessmentsScope({ user, onLogout, onUserUpdate }) {
 
     return (
         <div style={{ paddingBottom: 64, minHeight: '100vh', background: '#f0f4f8' }}>
-            {tab === 'home' && <DashboardScreen user={user} assessments={assessments} onViewAssessment={(a) => setModal({ type: 'detail', data: a })} loading={loading} error={error} onRetry={refreshAssessments} />}
+            {tab === 'home' && <AssessmentAnalyticsHomeScreen user={user} />}
             {tab === 'assessments' && <AssessmentsListScreen assessments={assessments} sections={sections} onView={(a) => setModal({ type: 'detail', data: a })} loading={loading} onCreate={(a) => { const enriched = enrichAssessment(a); setAssessments(prev => [...prev, enriched]); setModal({ type: 'detail', data: enriched }); }} facilities={facilities} user={user} openSheet={false} onSheetClose={() => {}} />}
             {tab === 'reports' && <ReportsScreen user={user} assessments={assessments} sectionAverages={sectionAverages} loading={loading} onViewAssessment={(a) => setModal({ type: 'detail', data: a })} onViewEmailJobs={() => setModal({ type: 'emailJobs' })} />}
             <BottomNav active={tab} onChange={setTab} />

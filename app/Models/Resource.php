@@ -131,6 +131,10 @@ class Resource extends Model {
         return $this->belongsToMany(Department::class, 'resource_departments');
     }
 
+    public function programModules(): BelongsToMany {
+        return $this->belongsToMany(ProgramModule::class, 'resource_program_modules');
+    }
+
     // === QUERY SCOPES ===
     public function scopePublished(Builder $query): Builder {
         return $query->where('status', 'published')

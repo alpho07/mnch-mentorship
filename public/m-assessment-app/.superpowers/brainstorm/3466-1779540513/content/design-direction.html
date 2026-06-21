@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MNCH Design Direction</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, 'SF Pro Display', 'Segoe UI', sans-serif;
+    background: #0F0F13;
+    color: #fff;
+    min-height: 100vh;
+    padding: 32px 20px 48px;
+  }
+
+  .page-title {
+    text-align: center;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.35);
+    margin-bottom: 10px;
+  }
+  .page-heading {
+    text-align: center;
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: #fff;
+    margin-bottom: 6px;
+  }
+  .page-sub {
+    text-align: center;
+    font-size: 14px;
+    color: rgba(255,255,255,0.4);
+    margin-bottom: 40px;
+  }
+
+  .options-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    max-width: 1060px;
+    margin: 0 auto;
+  }
+
+  .option-card {
+    border-radius: 24px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.3s ease;
+    border: 2px solid transparent;
+    position: relative;
+  }
+  .option-card:hover { transform: translateY(-6px); }
+  .option-card.selected {
+    border-color: #6C63FF;
+    box-shadow: 0 0 0 4px rgba(108,99,255,0.25), 0 24px 48px rgba(108,99,255,0.2);
+  }
+  .option-card.selected::after {
+    content: '✓ Selected';
+    position: absolute;
+    top: 12px; right: 12px;
+    background: #6C63FF;
+    color: white;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 20px;
+    letter-spacing: 0.3px;
+    z-index: 10;
+  }
+
+  .card-label {
+    padding: 14px 18px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .card-letter {
+    width: 28px; height: 28px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 800;
+    flex-shrink: 0;
+  }
+  .card-name { font-size: 15px; font-weight: 700; }
+  .card-tagline { font-size: 11px; opacity: 0.6; margin-top: 1px; }
+
+  /* Phone mockup */
+  .phone {
+    margin: 0 16px 16px;
+    border-radius: 36px;
+    overflow: hidden;
+    height: 520px;
+    position: relative;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  }
+
+  /* ── Option A: Midnight Premium ── */
+  .card-a { background: #0D1117; }
+  .card-a .card-label { background: #0D1117; }
+  .card-a .card-letter { background: rgba(255,200,60,0.15); color: #FFC83C; }
+  .card-a .card-name { color: #FFC83C; }
+  .card-a .card-tagline { color: rgba(255,255,255,0.45); }
+
+  .phone-a {
+    background: #060A12;
+    font-family: -apple-system, 'SF Pro Display', sans-serif;
+  }
+  .phone-a .hero {
+    background: linear-gradient(160deg, #0A1628 0%, #0F2240 50%, #162E50 100%);
+    padding: 32px 20px 28px;
+    position: relative; overflow: hidden;
+  }
+  .phone-a .hero::before {
+    content: '';
+    position: absolute;
+    width: 220px; height: 220px;
+    background: radial-gradient(circle, rgba(255,200,60,0.12) 0%, transparent 70%);
+    top: -80px; right: -60px;
+    border-radius: 50%;
+  }
+  .phone-a .logo-box {
+    width: 52px; height: 52px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #FFD060, #FFA500);
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 16px;
+    box-shadow: 0 8px 24px rgba(255,165,0,0.35);
+  }
+  .phone-a .app-name { color: #FFC83C; font-size: 22px; font-weight: 800; letter-spacing: -0.3px; }
+  .phone-a .app-sub { color: rgba(255,255,255,0.45); font-size: 12px; margin-top: 3px; }
+  .phone-a .stat-row { display: flex; gap: 8px; margin-top: 16px; }
+  .phone-a .stat-pill {
+    flex: 1; background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,200,60,0.15);
+    border-radius: 12px; padding: 10px 12px;
+  }
+  .phone-a .stat-num { color: #FFC83C; font-size: 18px; font-weight: 800; }
+  .phone-a .stat-lbl { color: rgba(255,255,255,0.35); font-size: 10px; margin-top: 1px; }
+  .phone-a .content { padding: 16px 14px; }
+  .phone-a .section-title { color: rgba(255,255,255,0.25); font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 10px; }
+  .phone-a .card-item {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 16px; padding: 14px; margin-bottom: 8px;
+    display: flex; align-items: center; gap: 12;
+  }
+  .phone-a .card-icon {
+    width: 38px; height: 38px; border-radius: 12px;
+    background: linear-gradient(135deg, rgba(255,200,60,0.2), rgba(255,200,60,0.08));
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; font-size: 16px;
+  }
+  .phone-a .card-text { flex: 1; }
+  .phone-a .card-title { color: rgba(255,255,255,0.85); font-size: 13px; font-weight: 600; }
+  .phone-a .card-meta { color: rgba(255,255,255,0.3); font-size: 10px; margin-top: 2px; }
+  .phone-a .progress-bg { height: 3px; background: rgba(255,255,255,0.07); border-radius: 99px; margin-top: 6px; }
+  .phone-a .progress-fill { height: 3px; background: linear-gradient(90deg, #FFC83C, #FFD060); border-radius: 99px; }
+  .phone-a .nav-bar {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    height: 64px;
+    background: rgba(10,20,40,0.95);
+    backdrop-filter: blur(20px);
+    border-top: 1px solid rgba(255,200,60,0.1);
+    display: flex; align-items: center; justify-content: space-around;
+    padding: 0 8px;
+  }
+  .phone-a .nav-item { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 8px 12px; }
+  .phone-a .nav-dot { width: 5px; height: 5px; border-radius: 50%; background: #FFC83C; }
+  .phone-a .nav-label { font-size: 9px; color: rgba(255,255,255,0.3); }
+  .phone-a .nav-label.active { color: #FFC83C; font-weight: 700; }
+
+  /* ── Option B: Soft Luxury ── */
+  .card-b { background: #FAFAF8; }
+  .card-b .card-label { background: #FAFAF8; }
+  .card-b .card-letter { background: rgba(79,70,229,0.1); color: #4F46E5; }
+  .card-b .card-name { color: #1A1A2E; }
+  .card-b .card-tagline { color: rgba(26,26,46,0.4); }
+
+  .phone-b {
+    background: #F5F4F0;
+    font-family: -apple-system, 'SF Pro Display', sans-serif;
+  }
+  .phone-b .hero {
+    background: linear-gradient(160deg, #1A1A2E 0%, #16213E 60%, #0F3460 100%);
+    padding: 28px 18px 24px;
+    position: relative; overflow: hidden;
+    border-radius: 0 0 28px 28px;
+    margin: 0 8px;
+  }
+  .phone-b .hero::before {
+    content: '';
+    position: absolute;
+    width: 180px; height: 180px;
+    background: radial-gradient(circle, rgba(79,70,229,0.3) 0%, transparent 70%);
+    top: -50px; right: -40px;
+    border-radius: 50%;
+  }
+  .phone-b .logo-box {
+    width: 48px; height: 48px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #6C63FF, #4F46E5);
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 14px;
+    box-shadow: 0 6px 20px rgba(108,99,255,0.4);
+  }
+  .phone-b .app-name { color: #fff; font-size: 20px; font-weight: 800; letter-spacing: -0.5px; }
+  .phone-b .app-sub { color: rgba(255,255,255,0.45); font-size: 11px; margin-top: 2px; }
+  .phone-b .stat-row { display: flex; gap: 8px; margin-top: 14px; }
+  .phone-b .stat-pill {
+    flex: 1; background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 14px; padding: 10px 10px;
+    backdrop-filter: blur(10px);
+  }
+  .phone-b .stat-num { color: #fff; font-size: 17px; font-weight: 800; }
+  .phone-b .stat-lbl { color: rgba(255,255,255,0.4); font-size: 9px; margin-top: 1px; }
+  .phone-b .content { padding: 14px 12px; }
+  .phone-b .section-title { color: #9CA3AF; font-size: 10px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; margin-bottom: 10px; }
+  .phone-b .card-item {
+    background: #fff;
+    border: 1px solid #F0EEF8;
+    border-radius: 16px; padding: 13px; margin-bottom: 8px;
+    display: flex; align-items: center; gap: 10px;
+    box-shadow: 0 2px 12px rgba(79,70,229,0.06);
+  }
+  .phone-b .card-icon {
+    width: 36px; height: 36px; border-radius: 11px;
+    background: linear-gradient(135deg, #EEF2FF, #E0E7FF);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; font-size: 15px;
+  }
+  .phone-b .card-title { color: #1A1A2E; font-size: 12px; font-weight: 700; }
+  .phone-b .card-meta { color: #9CA3AF; font-size: 10px; margin-top: 2px; }
+  .phone-b .badge { font-size: 9px; font-weight: 700; padding: 3px 8px; border-radius: 6px; background: #EEF2FF; color: #4F46E5; }
+  .phone-b .nav-bar {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    height: 64px;
+    background: rgba(255,255,255,0.95);
+    backdrop-filter: blur(20px);
+    border-top: 1px solid rgba(240,238,248,0.8);
+    display: flex; align-items: center; justify-content: space-around;
+    padding: 0 8px;
+    box-shadow: 0 -4px 20px rgba(79,70,229,0.06);
+  }
+  .phone-b .nav-item { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 8px 10px; }
+  .phone-b .nav-icon-active {
+    width: 42px; height: 30px; border-radius: 15px;
+    background: linear-gradient(135deg, #6C63FF, #4F46E5);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .phone-b .nav-label { font-size: 9px; color: #9CA3AF; }
+  .phone-b .nav-label.active { color: #4F46E5; font-weight: 700; }
+
+  /* ── Option C: Apple Minimal ── */
+  .card-c { background: #FFFFFF; }
+  .card-c .card-label { background: #FFFFFF; }
+  .card-c .card-letter { background: #F2F2F7; color: #007AFF; }
+  .card-c .card-name { color: #1C1C1E; }
+  .card-c .card-tagline { color: rgba(28,28,30,0.4); }
+
+  .phone-c {
+    background: #F2F2F7;
+    font-family: -apple-system, 'SF Pro Display', sans-serif;
+  }
+  .phone-c .status-bar {
+    height: 44px;
+    background: #1C1C1E;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 20px 0;
+  }
+  .phone-c .status-time { color: #fff; font-size: 12px; font-weight: 700; }
+  .phone-c .status-icons { display: flex; align-items: center; gap: 6px; }
+  .phone-c .hero {
+    background: linear-gradient(170deg, #1C1C1E 0%, #2C2C2E 100%);
+    padding: 20px 18px 24px;
+    position: relative; overflow: hidden;
+  }
+  .phone-c .hero::after {
+    content: '';
+    position: absolute;
+    width: 160px; height: 160px;
+    background: radial-gradient(circle, rgba(0,122,255,0.18) 0%, transparent 70%);
+    top: -40px; right: -20px;
+    border-radius: 50%;
+  }
+  .phone-c .greeting { color: rgba(255,255,255,0.5); font-size: 12px; font-weight: 500; margin-bottom: 3px; }
+  .phone-c .username { color: #fff; font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+  .phone-c .stat-row { display: flex; gap: 8px; margin-top: 16px; }
+  .phone-c .stat-pill {
+    flex: 1; background: rgba(255,255,255,0.08);
+    border-radius: 14px; padding: 10px 10px;
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  .phone-c .stat-num { color: #fff; font-size: 20px; font-weight: 700; }
+  .phone-c .stat-lbl { color: rgba(255,255,255,0.4); font-size: 9px; font-weight: 500; }
+  .phone-c .content { padding: 12px 12px; }
+  .phone-c .section-label {
+    font-size: 20px; font-weight: 700; color: #1C1C1E;
+    letter-spacing: -0.3px; margin-bottom: 12px;
+  }
+  .phone-c .card-item {
+    background: #FFFFFF;
+    border-radius: 16px; padding: 14px; margin-bottom: 8px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .phone-c .card-icon {
+    width: 40px; height: 40px; border-radius: 12px;
+    background: linear-gradient(135deg, #007AFF, #0055D4);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; font-size: 16px;
+  }
+  .phone-c .card-title { color: #1C1C1E; font-size: 13px; font-weight: 600; }
+  .phone-c .card-meta { color: #8E8E93; font-size: 11px; margin-top: 2px; }
+  .phone-c .chevron { color: #C7C7CC; font-size: 14px; }
+  .phone-c .nav-bar {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    height: 68px;
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-top: 0.5px solid rgba(0,0,0,0.12);
+    display: flex; align-items: flex-start; justify-content: space-around;
+    padding: 10px 4px 0;
+  }
+  .phone-c .nav-item { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .phone-c .nav-label { font-size: 9px; color: #8E8E93; }
+  .phone-c .nav-label.active { color: #007AFF; font-weight: 600; }
+
+  .confirm-btn {
+    display: block;
+    margin: 36px auto 0;
+    padding: 14px 40px;
+    background: linear-gradient(135deg, #6C63FF, #4F46E5);
+    color: white;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    box-shadow: 0 8px 24px rgba(108,99,255,0.35);
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .confirm-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(108,99,255,0.45); }
+
+  @media (max-width: 768px) {
+    .options-grid { grid-template-columns: 1fr; gap: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<p class="page-title">Step 1 of 3 — Visual Identity</p>
+<h1 class="page-heading">Choose your design direction</h1>
+<p class="page-sub">Each direction has a distinct personality. Pick the one that feels right for MNCH.</p>
+
+<div class="options-grid">
+
+  <!-- ── A: Midnight Premium ── -->
+  <div class="option-card card-a" onclick="selectCard(this,'a')">
+    <div class="card-label">
+      <div class="card-letter">A</div>
+      <div>
+        <div class="card-name">Midnight Premium</div>
+        <div class="card-tagline">Dark, gold accents · Banking-class polish</div>
+      </div>
+    </div>
+    <div class="phone phone-a">
+      <div class="hero">
+        <div class="logo-box">
+          <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
+            <rect x="10" y="2" width="6" height="22" rx="3" fill="white" fill-opacity="0.95"/>
+            <rect x="2" y="10" width="22" height="6" rx="3" fill="white" fill-opacity="0.95"/>
+            <circle cx="13" cy="13" r="4" fill="white"/>
+          </svg>
+        </div>
+        <div class="app-name">MNCH Kenya</div>
+        <div class="app-sub">MINISTRY OF HEALTH · ASSESSOR</div>
+        <div class="stat-row">
+          <div class="stat-pill"><div class="stat-num">12</div><div class="stat-lbl">ASSESSMENTS</div></div>
+          <div class="stat-pill"><div class="stat-num">78%</div><div class="stat-lbl">AVG SCORE</div></div>
+          <div class="stat-pill"><div class="stat-num">3</div><div class="stat-lbl">ACTIVE</div></div>
+        </div>
+      </div>
+      <div class="content">
+        <div class="section-title">Recent Activity</div>
+        <div class="card-item" style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:14px;margin-bottom:8px;">
+          <div class="card-icon">🏥</div>
+          <div class="card-text">
+            <div class="card-title">Kenyatta Hospital</div>
+            <div class="card-meta">Infrastructure · 2025-05-20</div>
+            <div class="progress-bg"><div class="progress-fill" style="width:82%"></div></div>
+          </div>
+        </div>
+        <div class="card-item" style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:14px;margin-bottom:8px;">
+          <div class="card-icon">🏗️</div>
+          <div class="card-text">
+            <div class="card-title">Pumwani Maternity</div>
+            <div class="card-meta">Quality of Care · In Progress</div>
+            <div class="progress-bg"><div class="progress-fill" style="width:45%"></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="nav-bar">
+        <div class="nav-item">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFC83C" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+          <div class="nav-dot"></div>
+        </div>
+        <div class="nav-item">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <div style="height:5px"></div>
+        </div>
+        <div class="nav-item">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+          <div style="height:5px"></div>
+        </div>
+        <div class="nav-item">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          <div style="height:5px"></div>
+        </div>
+        <div class="nav-item">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <div style="height:5px"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── B: Deep Navy + Violet (Recommended) ── -->
+  <div class="option-card card-b" onclick="selectCard(this,'b')" style="transform: scale(1.03); box-shadow: 0 32px 64px rgba(79,70,229,0.18); border-color: #4F46E5;">
+    <div style="position:absolute;top:12px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#6C63FF,#4F46E5);color:white;font-size:10px;font-weight:800;padding:4px 14px;border-radius:20px;letter-spacing:1px;z-index:10;white-space:nowrap;">★ RECOMMENDED</div>
+    <div class="card-label">
+      <div class="card-letter">B</div>
+      <div>
+        <div class="card-name">Deep Navy + Violet</div>
+        <div class="card-tagline">Rich dark hero · Light cards · Premium feel</div>
+      </div>
+    </div>
+    <div class="phone phone-b">
+      <div style="height:8px;background:#1A1A2E"></div>
+      <div class="hero">
+        <div class="logo-box">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <rect x="9" y="2" width="6" height="20" rx="3" fill="white" fill-opacity="0.95"/>
+            <rect x="2" y="9" width="20" height="6" rx="3" fill="white" fill-opacity="0.95"/>
+            <circle cx="12" cy="12" r="3.5" fill="white"/>
+          </svg>
+        </div>
+        <div class="app-name">MNCH Kenya</div>
+        <div class="app-sub">Mentorship Platform · Ministry of Health</div>
+        <div class="stat-row">
+          <div class="stat-pill"><div class="stat-num">12</div><div class="stat-lbl">Assessments</div></div>
+          <div class="stat-pill"><div class="stat-num">78%</div><div class="stat-lbl">Avg Score</div></div>
+          <div class="stat-pill"><div class="stat-num">3</div><div class="stat-lbl">Active</div></div>
+        </div>
+      </div>
+      <div class="content">
+        <div class="section-title">Recent</div>
+        <div class="card-item">
+          <div class="card-icon">🏥</div>
+          <div style="flex:1">
+            <div class="card-title">Kenyatta Hospital</div>
+            <div class="card-meta">Infrastructure · 82%</div>
+          </div>
+          <div class="badge">Good</div>
+        </div>
+        <div class="card-item">
+          <div class="card-icon">🏗️</div>
+          <div style="flex:1">
+            <div class="card-title">Pumwani Maternity</div>
+            <div class="card-meta">In Progress · 45%</div>
+          </div>
+          <div class="badge" style="background:#FEF9C3;color:#854D0E">Fair</div>
+        </div>
+        <div class="card-item">
+          <div class="card-icon">💊</div>
+          <div style="flex:1">
+            <div class="card-title">Mbagathi Hospital</div>
+            <div class="card-meta">Quality of Care · 91%</div>
+          </div>
+          <div class="badge" style="background:#DCFCE7;color:#166534">A+</div>
+        </div>
+      </div>
+      <div class="nav-bar">
+        <div class="nav-item">
+          <div class="nav-icon-active">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+          </div>
+          <div class="nav-label active">Home</div>
+        </div>
+        <div class="nav-item">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C4C4C4" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <div class="nav-label">Assess</div>
+        </div>
+        <div class="nav-item">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C4C4C4" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+          <div class="nav-label">Mentor</div>
+        </div>
+        <div class="nav-item">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C4C4C4" stroke-width="1.5"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          <div class="nav-label">Reports</div>
+        </div>
+        <div class="nav-item">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C4C4C4" stroke-width="1.5"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <div class="nav-label">Profile</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── C: Apple iOS Minimal ── -->
+  <div class="option-card card-c" onclick="selectCard(this,'c')">
+    <div class="card-label">
+      <div class="card-letter">C</div>
+      <div>
+        <div class="card-name">Apple iOS Minimal</div>
+        <div class="card-tagline">Crisp white · SF-style typography · Subtle blue</div>
+      </div>
+    </div>
+    <div class="phone phone-c">
+      <div class="status-bar">
+        <span class="status-time">9:41</span>
+        <div class="status-icons">
+          <svg width="14" height="10" viewBox="0 0 14 10" fill="white"><rect x="0" y="3" width="3" height="7" rx="1"/><rect x="4" y="2" width="3" height="8" rx="1"/><rect x="8" y="0" width="3" height="10" rx="1"/><rect x="12" y="0" width="2" height="10" rx="1" opacity="0.3"/></svg>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="white"><path d="M1.3 7.4A14 14 0 0112 3a14 14 0 0110.7 4.4"/><path d="M5 11.3A9 9 0 0112 9a9 9 0 017 2.3"/><path d="M8.5 15.1A5 5 0 0112 14a5 5 0 013.5 1.1"/><circle cx="12" cy="19" r="1.5"/></svg>
+          <svg width="25" height="12" viewBox="0 0 25 12" fill="none"><rect x="0.5" y="0.5" width="21" height="11" rx="3.5" stroke="white" stroke-opacity="0.35"/><rect x="2" y="2" width="17" height="8" rx="2" fill="white"/><path d="M23 4v4a2 2 0 000-4z" fill="white" fill-opacity="0.4"/></svg>
+        </div>
+      </div>
+      <div class="hero">
+        <div class="greeting">Good morning 👋</div>
+        <div class="username">Dr. Sarah</div>
+        <div class="stat-row">
+          <div class="stat-pill"><div class="stat-num">12</div><div class="stat-lbl">Total</div></div>
+          <div class="stat-pill"><div class="stat-num">78%</div><div class="stat-lbl">Avg</div></div>
+          <div class="stat-pill"><div class="stat-num">3</div><div class="stat-lbl">Active</div></div>
+        </div>
+      </div>
+      <div class="content">
+        <div class="section-label">Assessments</div>
+        <div class="card-item">
+          <div class="card-icon">🏥</div>
+          <div style="flex:1">
+            <div class="card-title">Kenyatta Hospital</div>
+            <div class="card-meta">Infrastructure · 82% · Good</div>
+          </div>
+          <div class="chevron">›</div>
+        </div>
+        <div class="card-item">
+          <div class="card-icon" style="background:linear-gradient(135deg,#FF9500,#FF6000)">🏗️</div>
+          <div style="flex:1">
+            <div class="card-title">Pumwani Maternity</div>
+            <div class="card-meta">In Progress · 45%</div>
+          </div>
+          <div class="chevron">›</div>
+        </div>
+        <div class="card-item">
+          <div class="card-icon" style="background:linear-gradient(135deg,#34C759,#248A3D)">💊</div>
+          <div style="flex:1">
+            <div class="card-title">Mbagathi Hospital</div>
+            <div class="card-meta">Quality of Care · 91%</div>
+          </div>
+          <div class="chevron">›</div>
+        </div>
+      </div>
+      <div class="nav-bar">
+        <div class="nav-item">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="#007AFF" stroke="none"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+          <div class="nav-label active">Home</div>
+        </div>
+        <div class="nav-item">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <div class="nav-label">Assess</div>
+        </div>
+        <div class="nav-item">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+          <div class="nav-label">Mentor</div>
+        </div>
+        <div class="nav-item">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="1.5"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          <div class="nav-label">Reports</div>
+        </div>
+        <div class="nav-item">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="1.5"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <div class="nav-label">Profile</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<button class="confirm-btn" onclick="confirmSelection()">Confirm Selection →</button>
+
+<script>
+let selected = null;
+
+function selectCard(el, choice) {
+  document.querySelectorAll('.option-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  selected = choice;
+  if (window.recordChoice) window.recordChoice(choice, el.querySelector('.card-name')?.textContent || choice);
+}
+
+function confirmSelection() {
+  if (!selected) { alert('Please select a design direction first.'); return; }
+  if (window.recordChoice) window.recordChoice('confirmed_' + selected, 'Confirmed: ' + selected);
+  document.querySelector('.confirm-btn').textContent = '✓ Selection confirmed!';
+  document.querySelector('.confirm-btn').style.background = 'linear-gradient(135deg,#10B981,#059669)';
+}
+</script>
+</body>
+</html>

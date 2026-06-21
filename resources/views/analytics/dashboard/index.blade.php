@@ -6,6 +6,10 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/intro.js/7.2.0/introjs.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/intro.js/7.2.0/intro.min.js"></script>
 
+<!-- AOS scroll animations -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
+
 <meta name="dashboard-mode" content="{{ $mode ?? 'training' }}">
 <meta name="dashboard-year" content="{{ $selectedYear ?? '' }}">
 
@@ -72,7 +76,7 @@ body { background: var(--gray-50); font-family: 'Segoe UI', system-ui, sans-seri
     padding: 0 1.5rem;
     margin-bottom: 1.5rem;
 }
-.kpi-strip { display: grid; grid-template-columns: repeat(5,1fr); gap: 1rem; }
+.kpi-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 1rem; }
 .kpi-card {
     background: #fff;
     border-radius: 14px;
@@ -90,11 +94,13 @@ body { background: var(--gray-50); font-family: 'Segoe UI', system-ui, sans-seri
 .kpi-card:nth-child(3) { --kpi-accent: var(--emerald); border-top-color: var(--emerald); }
 .kpi-card:nth-child(4) { --kpi-accent: var(--violet);  border-top-color: var(--violet); }
 .kpi-card:nth-child(5) { --kpi-accent: var(--blue);    border-top-color: var(--blue); }
+.kpi-card:nth-child(6) { --kpi-accent: #E11D48;        border-top-color: #E11D48; }
 .kpi-icon { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background: rgba(0,151,167,.1); color: var(--kpi-accent, var(--teal)); font-size: 1rem; margin-bottom: .2rem; }
 .kpi-card:nth-child(2) .kpi-icon { background: rgba(245,158,11,.1); }
 .kpi-card:nth-child(3) .kpi-icon { background: rgba(16,185,129,.1); }
 .kpi-card:nth-child(4) .kpi-icon { background: rgba(139,92,246,.1); }
 .kpi-card:nth-child(5) .kpi-icon { background: rgba(37,99,235,.1); }
+.kpi-card:nth-child(6) .kpi-icon { background: rgba(225,29,72,.1); }
 .kpi-value { font-size: 2rem; font-weight: 800; color: var(--gray-800); line-height: 1; letter-spacing: -0.03em; }
 .kpi-label { font-size: .78rem; font-weight: 600; color: var(--gray-500); text-transform: uppercase; letter-spacing: .05em; }
 .kpi-trend { display: inline-flex; align-items: center; gap: .3rem; font-size: .75rem; font-weight: 600; padding: .2rem .55rem; border-radius: 20px; }
@@ -232,6 +238,10 @@ body { background: var(--gray-50); font-family: 'Segoe UI', system-ui, sans-seri
 .introjs-tooltip{max-width:380px;font-size:13.5px;border-radius:12px;}
 .introjs-button{background:var(--teal);border:none;color:#fff;border-radius:7px;padding:8px 18px;font-weight:600;}
 .introjs-button:hover{background:var(--teal-mid);}
+
+/* ── Scroll animations ── */
+[data-aos] { will-change: transform, opacity; }
+.aos-init { opacity: 0; }
 </style>
 
 <!-- ████████ HERO HEADER ████████ -->
@@ -285,7 +295,7 @@ body { background: var(--gray-50); font-family: 'Segoe UI', system-ui, sans-seri
 @else
 <!-- ████████ KPI STRIP ████████ -->
 <div class="kpi-strip-wrap" data-intro="Key performance metrics for the selected mode and filters." data-step="4">
-    @php
+            @php
         $totalPrograms    = $summaryStats['totalPrograms'] ?? 0;
         $totalParticipants= $summaryStats['totalParticipants'] ?? 0;
         $totalFacilities  = $summaryStats['totalFacilities'] ?? 0;
@@ -293,26 +303,27 @@ body { background: var(--gray-50); font-family: 'Segoe UI', system-ui, sans-seri
         $avgParticipants  = $extendedStats['avgParticipants'] ?? 0;
         $yoy              = $extendedStats['yearComparison'] ?? [];
         $yoyChange        = $yoy['change'] ?? 0;
+        $attendanceRate   = $extendedStats['attendanceRate'] ?? 0;
     @endphp
     <div class="kpi-strip">
-        <div class="kpi-card">
+        <div class="kpi-card" data-aos="fade-up" data-aos-delay="0">
             <div class="kpi-icon"><i class="fas fa-{{ $mode === 'training' ? 'chalkboard-teacher' : 'user-friends' }}"></i></div>
-            <div class="kpi-value" id="kpi-programs">{{ number_format($totalPrograms) }}</div>
+            <div class="kpi-value counter-animate" id="kpi-programs" data-counter="{{ $totalPrograms }}">{{ number_format($totalPrograms) }}</div>
             <div class="kpi-label">{{ $mode === 'training' ? 'Training Programs' : 'Mentorships' }}</div>
         </div>
-        <div class="kpi-card">
+        <div class="kpi-card" data-aos="fade-up" data-aos-delay="100">
             <div class="kpi-icon"><i class="fas fa-users"></i></div>
-            <div class="kpi-value" id="kpi-participants">{{ number_format($totalParticipants) }}</div>
+            <div class="kpi-value counter-animate" id="kpi-participants" data-counter="{{ $totalParticipants }}">{{ number_format($totalParticipants) }}</div>
             <div class="kpi-label">{{ $mode === 'training' ? 'Participants' : 'Mentees' }}</div>
         </div>
-        <div class="kpi-card">
+        <div class="kpi-card" data-aos="fade-up" data-aos-delay="200">
             <div class="kpi-icon"><i class="fas fa-hospital"></i></div>
-            <div class="kpi-value" id="kpi-facilities">{{ number_format($totalFacilities) }}</div>
+            <div class="kpi-value counter-animate" id="kpi-facilities" data-counter="{{ $totalFacilities }}">{{ number_format($totalFacilities) }}</div>
             <div class="kpi-label">Facilities Covered</div>
         </div>
-        <div class="kpi-card">
+        <div class="kpi-card" data-aos="fade-up" data-aos-delay="300">
             <div class="kpi-icon"><i class="fas fa-map-marked-alt"></i></div>
-            <div class="kpi-value" id="kpi-coverage">{{ $facilityCoverage }}%</div>
+            <div class="kpi-value counter-animate" id="kpi-coverage" data-counter="{{ $facilityCoverage }}" data-suffix="%" data-decimals="1">{{ $facilityCoverage }}%</div>
             <div class="kpi-label">Facility Coverage</div>
             @if($facilityCoverage >= 60)
                 <span class="kpi-trend up"><i class="fas fa-arrow-up"></i> Good</span>
@@ -322,9 +333,9 @@ body { background: var(--gray-50); font-family: 'Segoe UI', system-ui, sans-seri
                 <span class="kpi-trend down"><i class="fas fa-arrow-down"></i> Low</span>
             @endif
         </div>
-        <div class="kpi-card">
+        <div class="kpi-card" data-aos="fade-up" data-aos-delay="400">
             <div class="kpi-icon"><i class="fas fa-chart-line"></i></div>
-            <div class="kpi-value">{{ $avgParticipants }}</div>
+            <div class="kpi-value counter-animate" data-counter="{{ $avgParticipants }}" data-decimals="1">{{ $avgParticipants }}</div>
             <div class="kpi-label">Avg {{ $mode === 'training' ? 'per Training' : 'Mentees/Program' }}</div>
             @if($yoyChange > 0)
                 <span class="kpi-trend up"><i class="fas fa-arrow-up"></i> {{ $yoyChange }}% YoY</span>
@@ -334,11 +345,25 @@ body { background: var(--gray-50); font-family: 'Segoe UI', system-ui, sans-seri
                 <span class="kpi-trend flat"><i class="fas fa-minus"></i> Stable</span>
             @endif
         </div>
+        @if($mode === 'mentorship')
+        <div class="kpi-card" data-aos="fade-up" data-aos-delay="500">
+            <div class="kpi-icon"><i class="fas fa-clipboard-check"></i></div>
+            <div class="kpi-value counter-animate" id="kpi-attendance" data-counter="{{ $attendanceRate }}" data-suffix="%" data-decimals="1">{{ $attendanceRate }}%</div>
+            <div class="kpi-label">Module Attendance</div>
+            @if($attendanceRate >= 80)
+                <span class="kpi-trend up"><i class="fas fa-arrow-up"></i> Strong</span>
+            @elseif($attendanceRate >= 60)
+                <span class="kpi-trend flat"><i class="fas fa-minus"></i> Moderate</span>
+            @else
+                <span class="kpi-trend down"><i class="fas fa-arrow-down"></i> Low</span>
+            @endif
+        </div>
+        @endif
     </div>
 </div>
 
 <!-- ████████ FILTERS (collapsible) ████████ -->
-<div class="dash-section">
+<div class="dash-section" data-aos="fade-up" data-aos-delay="50">
     <div class="collapse" id="filtersCollapse" data-intro="Filter by year, program, or search to narrow your analysis." data-step="3">
         <div class="filter-card">
             <div class="row g-3 align-items-end">
@@ -376,11 +401,11 @@ body { background: var(--gray-50); font-family: 'Segoe UI', system-ui, sans-seri
 
 <!-- ████████ INTELLIGENT INSIGHTS ████████ -->
 @if(count($insights) > 0)
-<div class="dash-section">
+<div class="dash-section" data-aos="fade-up">
     <div class="section-title"><i class="fas fa-lightbulb"></i> Intelligent Insights</div>
     <div class="insights-grid">
-        @foreach($insights as $insight)
-        <div class="insight-card {{ $insight['type'] }}">
+        @foreach($insights as $index => $insight)
+        <div class="insight-card {{ $insight['type'] }}" data-aos="fade-up" data-aos-delay="{{ $index * 100 }}">
             <div class="insight-icon"><i class="fas fa-{{ $insight['icon'] }}"></i></div>
             <div class="insight-text">{{ $insight['text'] }}</div>
         </div>
@@ -390,11 +415,11 @@ body { background: var(--gray-50); font-family: 'Segoe UI', system-ui, sans-seri
 @endif
 
 <!-- ████████ CHARTS ROW 1 — Trend + Status ████████ -->
-<div class="dash-section">
+<div class="dash-section" data-aos="fade-up">
     <div class="section-title"><i class="fas fa-chart-area"></i> Trends & Distribution</div>
     <div class="chart-row" data-intro="Monthly trend and program status distribution charts." data-step="9">
         <!-- 12-month trend -->
-        <div class="chart-card chart-2-3">
+        <div class="chart-card chart-2-3" data-aos="fade-right" data-aos-delay="100">
             <div class="chart-card-header">
                 <h6><i class="fas fa-chart-line"></i> 12-Month {{ $mode === 'training' ? 'Enrollment' : 'Activity' }} Trend</h6>
                 <small id="trendSubtitle">Monthly count over the last 12 months</small>
@@ -404,7 +429,7 @@ body { background: var(--gray-50); font-family: 'Segoe UI', system-ui, sans-seri
             </div>
         </div>
         <!-- Status donut -->
-        <div class="chart-card chart-1-3">
+        <div class="chart-card chart-1-3" data-aos="fade-left" data-aos-delay="200">
             <div class="chart-card-header">
                 <h6><i class="fas fa-chart-pie"></i> {{ $mode === 'training' ? 'Training' : 'Mentorship' }} Status</h6>
                 <small>Breakdown by status</small>
@@ -425,10 +450,10 @@ body { background: var(--gray-50); font-family: 'Segoe UI', system-ui, sans-seri
 </div>
 
 <!-- ████████ CHARTS ROW 2 — Department + Cadre ████████ -->
-<div class="dash-section">
+<div class="dash-section" data-aos="fade-up">
     <div class="section-title"><i class="fas fa-users-cog"></i> Participant Breakdown</div>
     <div class="chart-row" data-intro="Breakdown by department and professional cadre." data-step="10">
-        <div class="chart-card chart-half">
+        <div class="chart-card chart-half" data-aos="fade-up" data-aos-delay="100">
             <div class="chart-card-header">
                 <h6><i class="fas fa-building"></i> By Department</h6>
                 <small id="deptChartSubtitle">Top departments by participation</small>
@@ -437,7 +462,7 @@ body { background: var(--gray-50); font-family: 'Segoe UI', system-ui, sans-seri
                 <canvas id="departmentChart" style="max-height:260px;"></canvas>
             </div>
         </div>
-        <div class="chart-card chart-half">
+        <div class="chart-card chart-half" data-aos="fade-up" data-aos-delay="200">
             <div class="chart-card-header">
                 <h6><i class="fas fa-user-md"></i> By Cadre</h6>
                 <small id="cadreChartSubtitle">Professional roles distribution</small>
@@ -450,10 +475,10 @@ body { background: var(--gray-50); font-family: 'Segoe UI', system-ui, sans-seri
 </div>
 
 <!-- ████████ CHARTS ROW 3 — Facility Type + Top Counties ████████ -->
-<div class="dash-section">
+<div class="dash-section" data-aos="fade-up">
     <div class="section-title"><i class="fas fa-hospital-symbol"></i> Coverage & Geographic Reach</div>
     <div class="chart-row" data-intro="Facility type coverage and top counties by participation." data-step="11">
-        <div class="chart-card chart-half">
+        <div class="chart-card chart-half" data-aos="fade-up" data-aos-delay="100">
             <div class="chart-card-header">
                 <h6><i class="fas fa-clinic-medical"></i> Coverage by Facility Type</h6>
                 <small id="facilityChartSubtitle">Penetration by facility category</small>
@@ -462,7 +487,7 @@ body { background: var(--gray-50); font-family: 'Segoe UI', system-ui, sans-seri
                 <canvas id="facilityTypeChart" style="max-height:250px;cursor:pointer;"></canvas>
             </div>
         </div>
-        <div class="chart-card chart-half">
+        <div class="chart-card chart-half" data-aos="fade-up" data-aos-delay="200">
             <div class="chart-card-header">
                 <h6><i class="fas fa-map-marked-alt"></i> Top Counties by {{ $mode === 'training' ? 'Participants' : 'Mentees' }}</h6>
                 <small>Leading counties for {{ $mode }}</small>
@@ -476,10 +501,10 @@ body { background: var(--gray-50); font-family: 'Segoe UI', system-ui, sans-seri
 
 @if($mode === 'mentorship')
 <!-- ████████ CHARTS ROW 4 — Mentee Status (mentorship only) ████████ -->
-<div class="dash-section">
+<div class="dash-section" data-aos="fade-up">
     <div class="section-title"><i class="fas fa-graduation-cap"></i> Mentee & Program Analytics</div>
     <div class="chart-row">
-        <div class="chart-card chart-half">
+        <div class="chart-card chart-half" data-aos="fade-up" data-aos-delay="100">
             <div class="chart-card-header">
                 <h6><i class="fas fa-users"></i> Mentee Status Distribution</h6>
                 <small>Current status of enrolled mentees</small>
@@ -488,7 +513,7 @@ body { background: var(--gray-50); font-family: 'Segoe UI', system-ui, sans-seri
                 <canvas id="menteeStatusChart" style="max-height:200px;max-width:240px;"></canvas>
             </div>
         </div>
-        <div class="chart-card chart-half">
+        <div class="chart-card chart-half" data-aos="fade-up" data-aos-delay="200">
             <div class="chart-card-header">
                 <h6><i class="fas fa-trophy"></i> Top Mentorship Programs</h6>
                 <small>By mentee count</small>
@@ -499,16 +524,41 @@ body { background: var(--gray-50); font-family: 'Segoe UI', system-ui, sans-seri
         </div>
     </div>
 </div>
+
+<!-- ████████ CHARTS ROW 5 — Class Lifecycle & Completion (mentorship only) ████████ -->
+<div class="dash-section" data-aos="fade-up">
+    <div class="section-title"><i class="fas fa-project-diagram"></i> Class Lifecycle & Completion</div>
+    <div class="chart-row">
+        <div class="chart-card chart-half" data-aos="fade-up" data-aos-delay="100">
+            <div class="chart-card-header">
+                <h6><i class="fas fa-chalkboard"></i> Class Lifecycle Status</h6>
+                <small>Draft · Active · Completed · Cancelled</small>
+            </div>
+            <div class="chart-card-body" style="display:flex;flex-direction:column;align-items:center;gap:.75rem;">
+                <canvas id="classStatusChart" style="max-height:200px;max-width:240px;"></canvas>
+            </div>
+        </div>
+        <div class="chart-card chart-half" data-aos="fade-up" data-aos-delay="200">
+            <div class="chart-card-header">
+                <h6><i class="fas fa-chart-bar"></i> Mentee Module Completion</h6>
+                <small>Distribution of modules completed per mentee</small>
+            </div>
+            <div class="chart-card-body">
+                <canvas id="completionDistributionChart" style="max-height:220px;"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
 @endif
 
 <!-- ████████ MAP + PROGRAMS SECTION ████████ -->
-<div class="dash-section">
+<div class="dash-section" data-aos="fade-up">
     <div class="section-title"><i class="fas fa-map"></i> Geographic Coverage Map</div>
 
     @if($mode === 'training')
     <!-- TRAINING: Programs list + Map side by side -->
     <div class="row g-3" data-intro="Interactive Kenya county coverage map with program list." data-step="5">
-        <div class="col-lg-4">
+        <div class="col-lg-4" data-aos="fade-right" data-aos-delay="100">
             <div class="programs-panel">
                 <div class="programs-header">
                     <h6 id="programsTitle">Training Programs</h6>
@@ -552,7 +602,7 @@ body { background: var(--gray-50); font-family: 'Segoe UI', system-ui, sans-seri
                 </div>
             </div>
         </div>
-        <div class="col-lg-8">
+        <div class="col-lg-8" data-aos="fade-left" data-aos-delay="200">
             <div class="chart-card" style="height:100%;">
                 <div class="chart-card-header">
                     <h6><i class="fas fa-map"></i> <span id="mapTitle">Kenya Counties Training Coverage Map</span></h6>
@@ -616,7 +666,7 @@ body { background: var(--gray-50); font-family: 'Segoe UI', system-ui, sans-seri
     @if($mode === 'mentorship')
     <!-- MENTORSHIP: Map + county sidebar -->
     <div class="layout-mentorship">
-        <div class="map-section">
+        <div class="map-section" data-aos="fade-right" data-aos-delay="100">
             <div class="chart-card h-100">
                 <div class="chart-card-header">
                     <h6><i class="fas fa-map"></i> <span id="mapTitle">Kenya Counties Mentorship Coverage Map</span></h6>
@@ -672,7 +722,7 @@ body { background: var(--gray-50); font-family: 'Segoe UI', system-ui, sans-seri
                 </div>
             </div>
         </div>
-        <div class="sidebar-section">
+        <div class="sidebar-section" data-aos="fade-left" data-aos-delay="200">
             <div class="county-sidebar">
                 <div class="sidebar-header">
                     <h6 id="sidebar-title" style="font-weight:700;color:var(--gray-800);margin:0 0 .15rem;">Select a County</h6>
@@ -692,9 +742,9 @@ body { background: var(--gray-50); font-family: 'Segoe UI', system-ui, sans-seri
 
 <!-- Top Programs Table (training mode) -->
 @if($mode === 'training' && count($extendedStats['topPrograms'] ?? []) > 0)
-<div class="dash-section">
+<div class="dash-section" data-aos="fade-up">
     <div class="section-title"><i class="fas fa-trophy"></i> Top Performing Training Programs</div>
-    <div class="chart-card">
+    <div class="chart-card" data-aos="fade-up" data-aos-delay="100">
         <table class="analytics-table">
             <thead>
                 <tr>
@@ -704,8 +754,8 @@ body { background: var(--gray-50); font-family: 'Segoe UI', system-ui, sans-seri
                 </tr>
             </thead>
             <tbody>
-                @foreach($extendedStats['topPrograms'] as $prog)
-                <tr>
+                @foreach($extendedStats['topPrograms'] as $index => $prog)
+                <tr data-aos="fade-up" data-aos-delay="{{ ($index + 1) * 80 }}">
                     <td style="font-weight:600;">{{ $prog['title'] }}</td>
                     <td><strong>{{ number_format($prog['count']) }}</strong></td>
                     <td><span class="status-chip chip-{{ $prog['status'] }}">{{ ucfirst($prog['status'] ?? 'N/A') }}</span></td>
@@ -918,6 +968,11 @@ body { background: var(--gray-50); font-family: 'Segoe UI', system-ui, sans-seri
                         }
                     });
                 });
+
+                // Refresh AOS so dynamically added sidebar items animate
+                if (typeof AOS !== 'undefined') {
+                    setTimeout(() => AOS.refresh(), 50);
+                }
             }
         },
 
@@ -941,6 +996,8 @@ body { background: var(--gray-50); font-family: 'Segoe UI', system-ui, sans-seri
                 if (Dashboard.state.currentMode === 'mentorship') {
                     this.initMenteeStatusChart();
                     this.initTopProgramsChart();
+                    this.initClassStatusChart();
+                    this.initCompletionDistributionChart();
                 }
             },
 
@@ -1125,6 +1182,41 @@ body { background: var(--gray-50); font-family: 'Segoe UI', system-ui, sans-seri
                 });
             },
 
+            initClassStatusChart() {
+                const el = document.getElementById('classStatusChart');
+                if (!el) return;
+                const sb = this.extData.classStatusBreakdown || {};
+                const labels = Object.keys(sb).map(k => k.charAt(0).toUpperCase()+k.slice(1));
+                const data   = Object.values(sb);
+                if (!data.length) return;
+                const statusColors = { draft:'#F59E0B', active:'#10B981', completed:'#2563EB', cancelled:'#EF4444', unknown:'#9CA3AF' };
+                const colors = Object.keys(sb).map(k => statusColors[k] || '#9CA3AF');
+                Dashboard.state.charts.classStatus = new Chart(el, {
+                    type:'doughnut',
+                    data:{ labels, datasets:[{ data, backgroundColor: colors, borderWidth:2, borderColor:'#fff', hoverOffset:4 }] },
+                    options:{ responsive:true, maintainAspectRatio:true, cutout:'60%',
+                        plugins:{ legend:{ position:'bottom', labels:{ font:{size:11}, padding:8, boxWidth:11 } } } }
+                });
+            },
+
+            initCompletionDistributionChart() {
+                const el = document.getElementById('completionDistributionChart');
+                if (!el) return;
+                const dist = this.extData.completionDistribution || {};
+                const bucketOrder = ['0-25%', '26-50%', '51-75%', '76-99%', '100%'];
+                const labels = bucketOrder.filter(k => dist[k] !== undefined);
+                const data = labels.map(k => dist[k] || 0);
+                if (!data.length || data.every(v => v === 0)) return;
+                const bucketColors = ['#EF4444','#F97316','#F59E0B','#3B82F6','#10B981'];
+                Dashboard.state.charts.completionDist = new Chart(el, {
+                    type:'bar',
+                    data:{ labels, datasets:[{ label:'Mentees', data, backgroundColor: bucketColors, borderRadius:6, borderSkipped:false }] },
+                    options:{ responsive:true, maintainAspectRatio:true,
+                        plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ label: c => `${c.raw} mentee${c.raw===1?'':'s'}` } } },
+                        scales:{ x:{ grid:{ display:false }, ticks:{ font:{size:11} } }, y:{ beginAtZero:true, grid:{ color:'rgba(0,0,0,.04)' }, ticks:{ font:{size:11} } } } }
+                });
+            },
+
             async refreshAllCharts(trainingId = null) {
                 try {
                     const p = new URLSearchParams({ mode: Dashboard.state.currentMode });
@@ -1137,12 +1229,31 @@ body { background: var(--gray-50); font-family: 'Segoe UI', system-ui, sans-seri
                     const cd = json.chartData;
                     const ss = json.summaryStats;
 
-                    // Update KPI values
+                    // Update KPI data-counter values and re-animate counters
+                    const setCounter = (id, value) => {
+                        const el = document.getElementById(id);
+                        if (el) {
+                            el.dataset.counter = value;
+                            el.dataset.counterAnimated = 'false';
+                        }
+                    };
+                    setCounter('kpi-programs',     ss.totalPrograms||0);
+                    setCounter('kpi-participants', ss.totalParticipants||0);
+                    setCounter('kpi-facilities',   ss.totalFacilities||0);
+                    setCounter('kpi-coverage',     ss.facilityCoverage||0);
+                    if (Dashboard.state.currentMode === 'mentorship' && ss.attendanceRate !== undefined) {
+                        setCounter('kpi-attendance', ss.attendanceRate||0);
+                    }
+
+                    // Legacy overlay IDs
                     const upd = (id, v) => { const el=document.getElementById(id); if(el) el.textContent=v; };
-                    upd('kpi-programs',     (ss.totalPrograms||0).toLocaleString());
-                    upd('kpi-participants', (ss.totalParticipants||0).toLocaleString());
-                    upd('kpi-facilities',   (ss.totalFacilities||0).toLocaleString());
-                    upd('kpi-coverage',     (ss.facilityCoverage||0)+'%');
+                    upd('totalPrograms',     (ss.totalPrograms||0).toLocaleString());
+                    upd('totalParticipants', (ss.totalParticipants||0).toLocaleString());
+                    upd('totalFacilities',   (ss.totalFacilities||0).toLocaleString());
+                    upd('facilityCoverage',  (ss.facilityCoverage||0)+'%');
+
+                    // Re-animate counters with updated values
+                    try { Dashboard.Counters.refresh(); } catch(e) { console.error('Counter refresh failed:', e); }
                     // Legacy overlay IDs
                     upd('totalPrograms',     (ss.totalPrograms||0).toLocaleString());
                     upd('totalParticipants', (ss.totalParticipants||0).toLocaleString());
@@ -1165,6 +1276,23 @@ body { background: var(--gray-50); font-family: 'Segoe UI', system-ui, sans-seri
                             ch.data.labels = cd.facilityTypes.map(f=>f.name);
                             ch.data.datasets[0].data = cd.facilityTypes.map(f=>f.facilities_with_training||0);
                             ch.data.datasets[1].data = cd.facilityTypes.map(f=>f.total_facilities||0);
+                            ch.update();
+                        }
+                    }
+
+                    // Mentorship-specific chart updates
+                    if (Dashboard.state.currentMode === 'mentorship') {
+                        if (cd.classStatusBreakdown && Dashboard.state.charts.classStatus) {
+                            const ch = Dashboard.state.charts.classStatus;
+                            ch.data.labels = Object.keys(cd.classStatusBreakdown).map(k => k.charAt(0).toUpperCase()+k.slice(1));
+                            ch.data.datasets[0].data = Object.values(cd.classStatusBreakdown);
+                            ch.update();
+                        }
+                        if (cd.completionDistribution && Dashboard.state.charts.completionDist) {
+                            const ch = Dashboard.state.charts.completionDist;
+                            const bucketOrder = ['0-25%', '26-50%', '51-75%', '76-99%', '100%'];
+                            ch.data.labels = bucketOrder.filter(k => cd.completionDistribution[k] !== undefined);
+                            ch.data.datasets[0].data = ch.data.labels.map(k => cd.completionDistribution[k] || 0);
                             ch.update();
                         }
                     }
@@ -1210,6 +1338,77 @@ body { background: var(--gray-50); font-family: 'Segoe UI', system-ui, sans-seri
                 const visible = [...cards].filter(c => c.style.display !== 'none').length;
                 const cnt = document.getElementById('programCount');
                 if (cnt) cnt.textContent = visible;
+            }
+        },
+
+        // ── Animated Counters ──
+        Counters: {
+            observers: [],
+
+            formatNumber(value, decimals = 0) {
+                const num = parseFloat(value) || 0;
+                if (decimals > 0) {
+                    return num.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+                }
+                return Math.round(num).toLocaleString();
+            },
+
+            animate(el) {
+                if (el.dataset.counterAnimated === 'true') return;
+                el.dataset.counterAnimated = 'true';
+
+                const target = parseFloat(el.dataset.counter) || 0;
+                const suffix = el.dataset.suffix || '';
+                const decimals = parseInt(el.dataset.decimals || '0', 10);
+                const duration = parseInt(el.dataset.counterDuration || '1500', 10);
+                const start = performance.now();
+
+                const step = (now) => {
+                    const elapsed = now - start;
+                    const progress = Math.min(elapsed / duration, 1);
+                    // easeOutCubic
+                    const eased = 1 - Math.pow(1 - progress, 3);
+                    const current = target * eased;
+                    el.textContent = this.formatNumber(current, decimals) + suffix;
+                    if (progress < 1) {
+                        requestAnimationFrame(step);
+                    } else {
+                        el.textContent = this.formatNumber(target, decimals) + suffix;
+                    }
+                };
+
+                requestAnimationFrame(step);
+            },
+
+            init() {
+                const counters = document.querySelectorAll('.counter-animate');
+                if (!counters.length) return;
+
+                // Use IntersectionObserver to trigger counters when scrolled into view
+                if ('IntersectionObserver' in window) {
+                    const observer = new IntersectionObserver((entries) => {
+                        entries.forEach(entry => {
+                            if (entry.isIntersecting) {
+                                this.animate(entry.target);
+                                observer.unobserve(entry.target);
+                            }
+                        });
+                    }, { threshold: 0.5 });
+
+                    counters.forEach(counter => observer.observe(counter));
+                    this.observers.push(observer);
+                } else {
+                    // Fallback for older browsers
+                    counters.forEach(counter => this.animate(counter));
+                }
+            },
+
+            // Re-trigger counters after AJAX refresh (new values)
+            refresh() {
+                document.querySelectorAll('.counter-animate').forEach(el => {
+                    el.dataset.counterAnimated = 'false';
+                    this.animate(el);
+                });
             }
         },
 
@@ -1295,7 +1494,21 @@ body { background: var(--gray-50); font-family: 'Segoe UI', system-ui, sans-seri
 
         // ── Bootstrap ──
         init() {
+            // Initialize scroll animations
+            try {
+                if (typeof AOS !== 'undefined') {
+                    AOS.init({
+                        duration: 600,
+                        easing: 'ease-out-cubic',
+                        once: true,
+                        offset: 60,
+                        disable: window.matchMedia('(prefers-reduced-motion: reduce)').matches
+                    });
+                }
+            } catch(e) { console.error('AOS init failed:', e); }
+
             // Each module is isolated — a failure in one doesn't block the others
+            try { Dashboard.Counters.init(); } catch(e) { console.error('Counters init failed:', e); }
             try { Dashboard.Filters.init(); } catch(e) { console.error('Filters init failed:', e); }
             try { Dashboard.Tour.init();    } catch(e) { console.error('Tour init failed:', e); }
             try { Dashboard.Charts.init(); } catch(e) { console.error('Charts init failed:', e); }

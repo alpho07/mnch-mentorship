@@ -35,14 +35,16 @@
         <main class="lg:w-2/3">
             <!-- Resource Header -->
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-8">
-                <!-- Featured Image -->
-                @if($resource->featured_image)
-                <div class="h-64 md:h-80 overflow-hidden">
-                    <img src="{{ Storage::url($resource->featured_image) }}"
-                         alt="{{ $resource->title }}"
-                         class="w-full h-full object-cover">
+                <!-- Featured Image / Placeholder -->
+                <div class="h-48 md:h-64 overflow-hidden">
+                    @if($resource->featured_image)
+                        <img src="{{ Storage::disk('thumbnails')->url($resource->featured_image) }}"
+                             alt="{{ $resource->title }}"
+                             class="w-full h-full object-cover">
+                    @else
+                        <x-resource-placeholder :resource="$resource" icon-size="text-6xl" />
+                    @endif
                 </div>
-                @endif
 
                 <div class="p-6 md:p-8">
                     <!-- Meta Info -->
@@ -100,7 +102,7 @@
                             <div>
                                 <p class="font-medium text-gray-900">{{ $resource->author->full_name }}</p>
                                 <p class="text-sm text-gray-500">
-                                    Published {{ $resource->published_at->format('M j, Y') }}
+                                    Published {{ $resource->published_at?->format('M j, Y') }}
                                     @if($resource->read_time > 0)
                                         • {{ $resource->read_time }} min read
                                     @endif
@@ -134,7 +136,7 @@
                                 </a>
                             @endauth
 
-                            @if($resource->is_downloadable && $resource->file_path)
+                            @if($resource->is_downloadable && ($resource->file_path || $resource->hasPrimaryFile()))
                                 <a href="{{ route('resources.download', $resource->slug) }}"
                                    class="flex items-center px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium">
                                     <i class="fas fa-download mr-2"></i>
@@ -228,6 +230,89 @@
                     </div>
                 @endif
             </div>
+
+            <!-- Inline File Preview -->
+            @php
+                use App\Http\Controllers\Admin\ResourceFileController;
+                $previewFile = $resource->primaryFile;
+                $fileType    = $previewFile?->file_type ?? '';
+                $isPdf    = $fileType === 'application/pdf';
+                $isImage  = str_starts_with($fileType, 'image/');
+                $isVideo  = str_starts_with($fileType, 'video/');
+                $isAudio  = str_starts_with($fileType, 'audio/');
+                $isOffice = in_array($fileType, [
+                    'application/vnd.ms-powerpoint',
+                    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+                    'application/msword',
+                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                    'application/vnd.ms-excel',
+                    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                ]);
+                $hasPreview = $previewFile && $previewFile->exists();
+                $previewUrl = $hasPreview ? route('resources.preview', $resource->slug) : null;
+                $officeViewerUrl = ($hasPreview && $isOffice)
+                    ? 'https://view.officeapps.live.com/op/embed.aspx?src=' . urlencode(ResourceFileController::signedTempUrl($previewFile))
+                    : null;
+            @endphp
+
+            @if($hasPreview && ($isPdf || $isImage || $isVideo || $isAudio || $isOffice))
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-8">
+                <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                    <h2 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                        <i class="fas fa-file text-primary-600"></i>
+                        File Preview
+                    </h2>
+                    <a href="{{ route('resources.download', $resource->slug) }}"
+                       class="inline-flex items-center gap-2 text-sm font-medium text-primary-600 hover:text-primary-700">
+                        <i class="fas fa-download"></i> Download
+                    </a>
+                </div>
+
+                <div class="p-4">
+                    @if($isPdf)
+                        <iframe src="{{ $previewUrl }}"
+                                class="w-full rounded border border-gray-100"
+                                style="height: 70vh;"
+                                title="{{ $resource->title }}">
+                        </iframe>
+
+                    @elseif($isImage)
+                        <div class="flex items-center justify-center bg-gray-50 rounded p-4">
+                            <img src="{{ $previewUrl }}"
+                                 alt="{{ $resource->title }}"
+                                 class="max-w-full max-h-[65vh] object-contain rounded shadow-sm">
+                        </div>
+
+                    @elseif($isVideo)
+                        <div class="bg-black rounded overflow-hidden">
+                            <video controls class="w-full" style="max-height: 60vh;">
+                                <source src="{{ $previewUrl }}" type="{{ $fileType }}">
+                            </video>
+                        </div>
+
+                    @elseif($isAudio)
+                        <div class="flex items-center justify-center py-8 bg-gray-50 rounded">
+                            <audio controls class="w-full max-w-xl">
+                                <source src="{{ $previewUrl }}" type="{{ $fileType }}">
+                            </audio>
+                        </div>
+
+                    @elseif($isOffice && $officeViewerUrl)
+                        <div class="rounded overflow-hidden" style="height: 70vh;">
+                            <iframe src="{{ $officeViewerUrl }}"
+                                    class="w-full h-full"
+                                    frameborder="0"
+                                    allowfullscreen
+                                    title="{{ $resource->title }}">
+                            </iframe>
+                        </div>
+                        <p class="text-xs text-gray-400 text-center mt-2">
+                            Powered by Microsoft Office Online &mdash; requires internet access
+                        </p>
+                    @endif
+                </div>
+            </div>
+            @endif
 
             <!-- Comments Section -->
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 md:p-8">
@@ -333,7 +418,7 @@
                     @endif
                 </div>
 
-                @if($resource->is_downloadable && $resource->file_path)
+                @if($resource->is_downloadable && ($resource->file_path || $resource->hasPrimaryFile()))
                 <div class="mt-6 pt-6 border-t border-gray-200">
                     <a href="{{ route('resources.download', $resource->slug) }}"
                        class="w-full inline-flex items-center justify-center px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium">

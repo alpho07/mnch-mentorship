@@ -65,7 +65,7 @@ return [
 
     'temporary_file_upload' => [
     'disk' => 'local',
-    'rules' => null, // Let Filament handle validation
+    'rules' => ['required', 'file', 'max:102400'], // 100 MB — matches ResourceResource maxSize
     'directory' => 'livewire-tmp',
     'middleware' => null, // REMOVE throttle completely
     'preview_mimes' => [

@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\ProgramModule;
 
 class Program extends Model
 {
@@ -20,6 +21,11 @@ class Program extends Model
     public function modules(): HasMany
     {
         return $this->hasMany(Module::class);
+    }
+
+    public function programModules(): HasMany
+    {
+        return $this->hasMany(ProgramModule::class);
     }
 
     public function trainings(): HasMany

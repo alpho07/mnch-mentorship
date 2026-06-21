@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { AnalyticsHomeScreen }  from '../screens/screen-analytics-home.jsx';
 import { TrainingsListScreen }  from '../screens/screen-trainings-list.jsx';
 import { TrainingDetailScreen } from '../screens/screen-training-detail.jsx';
 
@@ -34,7 +35,7 @@ export function TrainingsScope({ user, onLogout, onUserUpdate }) {
 
     return (
         <div style={{ paddingBottom: 64, minHeight: '100vh', background: '#f0f4f8' }}>
-            {tab === 'home'      && <TrainingsHomeScreen user={user} />}
+            {tab === 'home'      && <AnalyticsHomeScreen mode="training" user={user} />}
             {tab === 'trainings' && <TrainingsListScreen user={user} onOpen={(t) => setModal({ type: 'trainingDetail', data: t })} />}
             <BottomNav active={tab} onChange={setTab} />
         </div>

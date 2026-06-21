@@ -4,17 +4,11 @@
     <!-- Resource Image/Icon -->
     <div class="relative h-32 bg-gradient-to-br from-primary-50 to-primary-100 overflow-hidden">
         @if($resource->featured_image)
-            <img src="{{ Storage::url($resource->featured_image) }}"
+            <img src="{{ Storage::disk('thumbnails')->url($resource->featured_image) }}"
                  alt="{{ $resource->title }}"
                  class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
         @else
-            <div class="w-full h-full flex items-center justify-center">
-                @if($resource->resourceType)
-                    <i class="{{ $resource->resourceType->icon ?? 'fas fa-file' }} text-2xl text-primary-600"></i>
-                @else
-                    <i class="fas fa-file text-2xl text-primary-600"></i>
-                @endif
-            </div>
+            <x-resource-placeholder :resource="$resource" icon-size="text-2xl" :show-label="false" />
         @endif
 
         <!-- Type Badge -->

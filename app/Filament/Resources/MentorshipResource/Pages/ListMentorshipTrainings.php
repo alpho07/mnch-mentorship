@@ -5,53 +5,63 @@ namespace App\Filament\Resources\MentorshipResource\Pages;
 use App\Filament\Resources\MentorshipTrainingResource;
 use App\Models\ClassParticipant;
 use App\Models\Training;
-use App\Models\FacilityAssessment;
 use Filament\Actions;
-use Filament\Resources\Pages\ListRecords;
 use Filament\Resources\Components\Tab;
+use Filament\Resources\Pages\ListRecords;
 use Illuminate\Database\Eloquent\Builder;
 
-class ListMentorshipTrainings extends ListRecords {
-
+class ListMentorshipTrainings extends ListRecords
+{
     protected static string $resource = MentorshipTrainingResource::class;
 
-    //static protected string|null $breadcrumb = 'Mentorship';
+    // static protected string|null $breadcrumb = 'Mentorship';
 
-    protected function getHeaderActions(): array {
+    protected function getHeaderActions(): array
+    {
         return [
-                    Actions\CreateAction::make()
-                    ->label('New Mentorship')
-                    ->icon('heroicon-o-plus')
-                    ->color('primary'),
+            Actions\CreateAction::make()
+                ->label('New Mentorship')
+                ->icon('heroicon-o-plus')
+                ->color('primary'),
         ];
     }
 
-    public function getTitle(): string {
+    public function getTitle(): string
+    {
         return 'Mentorships';
     }
 
-    public function getSubheading(): ?string {
+    public function getSubheading(): ?string
+    {
         $stats = $this->getQuickStats();
+
         return "Facility-based mentorships • {$stats['total']} total • {$stats['active']} active • {$stats['mentees']} mentees";
     }
 
-    // REMOVE the getHeaderWidgets method entirely or fix it like this:
-    protected function getHeaderWidgets(): array {
+    protected function getHeaderWidgets(): array
+    {
+        // When Home analytics tab is active, swap to the embed widget only
+        if (request()->get('tab') === 'home') {
+            return [\App\Filament\Widgets\MentorshipAnalyticsEmbed::class];
+        }
+
         return [
             \App\Filament\Widgets\MentorshipGuidanceNotice::class,
             \App\Filament\Widgets\MentorshipStatsOverview::class,
         ];
     }
 
-    public function getHeaderWidgetsColumns(): int|array {
+    public function getHeaderWidgetsColumns(): int|array
+    {
         return 1;
     }
 
-    public function getTabs(): array {
-        $user        = auth()->user();
+    public function getTabs(): array
+    {
+        $user = auth()->user();
         $isSuperAdmin = $user->hasRole('super_admin');
 
-        $liveCount  = $this->getScopedBaseQuery()->where('is_pilot', false)->count();
+        $liveCount = $this->getScopedBaseQuery()->where('is_pilot', false)->count();
         $pilotCount = $this->getScopedBaseQuery()->where('is_pilot', true)->count();
         $trashCount = $isSuperAdmin
             ? Training::onlyTrashed()->where('type', 'facility_mentorship')->count()
@@ -62,7 +72,7 @@ class ListMentorshipTrainings extends ListRecords {
                 ->icon('heroicon-o-academic-cap')
                 ->badge($liveCount ?: null)
                 ->badgeColor('success')
-                ->modifyQueryUsing(fn(Builder $query) => $query
+                ->modifyQueryUsing(fn (Builder $query) => $query
                     ->whereNull('trainings.deleted_at')
                     ->where('is_pilot', false)),
 
@@ -70,7 +80,7 @@ class ListMentorshipTrainings extends ListRecords {
                 ->icon('heroicon-o-beaker')
                 ->badge($pilotCount ?: null)
                 ->badgeColor('warning')
-                ->modifyQueryUsing(fn(Builder $query) => $query
+                ->modifyQueryUsing(fn (Builder $query) => $query
                     ->whereNull('trainings.deleted_at')
                     ->where('is_pilot', true)),
         ];
@@ -80,8 +90,12 @@ class ListMentorshipTrainings extends ListRecords {
                 ->icon('heroicon-o-trash')
                 ->badge($trashCount ?: null)
                 ->badgeColor('danger')
-                ->modifyQueryUsing(fn(Builder $query) => $query->whereNotNull('trainings.deleted_at'));
+                ->modifyQueryUsing(fn (Builder $query) => $query->whereNotNull('trainings.deleted_at'));
         }
+
+        $tabs['home'] = Tab::make('Home')
+            ->icon('heroicon-o-chart-bar-square')
+            ->modifyQueryUsing(fn (Builder $query) => $query->whereRaw('1 = 0'));
 
         return $tabs;
     }
@@ -89,46 +103,51 @@ class ListMentorshipTrainings extends ListRecords {
     /**
      * Build a base query scoped by role: admins see all, others see only their own.
      */
-    protected function getScopedBaseQuery(): Builder {
+    protected function getScopedBaseQuery(): Builder
+    {
         $query = Training::where('type', 'facility_mentorship');
 
         $user = auth()->user();
-        if (!$user->hasRole(['super_admin', 'admin', 'division'])) {
-            $query->where('mentor_id', $user->id);
+        if (! $user->hasRole(['super_admin', 'admin', 'division'])) {
+            $query->forMentorOrCoMentor($user->id);
         }
 
         return $query;
     }
 
-    protected function getQuickStats(): array {
-        $live = fn() => $this->getScopedBaseQuery()->where('is_pilot', false);
+    protected function getQuickStats(): array
+    {
+        $live = fn () => $this->getScopedBaseQuery()->where('is_pilot', false);
+
         return [
-            'total'     => $live()->count(),
-            'active'    => $live()->where(function (Builder $query) {
-                                $query->whereIn('status', ['active', 'ongoing'])
-                                    ->orWhereHas('mentorshipClasses', fn(Builder $q) => $q->where('status', 'active'));
-                            })->count(),
+            'total' => $live()->count(),
+            'active' => $live()->where(function (Builder $query) {
+                $query->whereIn('status', ['active', 'ongoing'])
+                    ->orWhereHas('mentorshipClasses', fn (Builder $q) => $q->where('status', 'active'));
+            })->count(),
             'completed' => $live()->where('status', 'completed')->count(),
-            'draft'     => $live()->whereIn('status', ['draft', 'new'])->count(),
-            'upcoming'  => $live()->where('start_date', '>', now())->count(),
-            'mentees'   => $this->getScopedMenteesQuery()->distinct('class_participants.user_id')->count('class_participants.user_id'),
+            'draft' => $live()->whereIn('status', ['draft', 'new'])->count(),
+            'upcoming' => $live()->where('start_date', '>', now())->count(),
+            'mentees' => $this->getScopedMenteesQuery()->distinct('class_participants.user_id')->count('class_participants.user_id'),
         ];
     }
 
-    protected function getScopedMenteesQuery(): Builder {
+    protected function getScopedMenteesQuery(): Builder
+    {
         $user = auth()->user();
 
         return ClassParticipant::query()
-                ->whereHas('mentorshipClass.training', function (Builder $query) use ($user) {
-                    $query->where('type', 'facility_mentorship');
+            ->whereHas('mentorshipClass.training', function (Builder $query) use ($user) {
+                $query->where('type', 'facility_mentorship');
 
-                    if (!$user->hasRole(['super_admin', 'admin', 'division'])) {
-                        $query->where('mentor_id', $user->id);
-                    }
-                });
+                if (! $user->hasRole(['super_admin', 'admin', 'division'])) {
+                    $query->where('mentor_id', $user->id);
+                }
+            });
     }
 
-    protected function getTabCount(string $tab): int {
+    protected function getTabCount(string $tab): int
+    {
         $query = $this->getScopedBaseQuery();
 
         return match ($tab) {
@@ -141,7 +160,8 @@ class ListMentorshipTrainings extends ListRecords {
         };
     }
 
-    protected function redirectToAssessment(): void {
+    protected function redirectToAssessment(): void
+    {
         $this->redirect(route('filament.admin.resources.facility-assessments.create'));
     }
 }

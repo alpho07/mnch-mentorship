@@ -1,0 +1,1 @@
+{"nodes": [{"id": "m_assessment_app_index_html", "label": "M Assessment App Entry HTML", "file_type": "document", "source_file": "public/m-assessment-app/index.html", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null, "rationale": "Standard Vite React entry point for the mobile assessment app."}], "edges": [], "hyperedges": []}

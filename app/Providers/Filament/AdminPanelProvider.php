@@ -42,7 +42,7 @@ class AdminPanelProvider extends PanelProvider {
                        // ->passwordResetRequest(CustomRequestPasswordReset::class)
                         ->passwordReset(CustomRequestPasswordReset::class)
                         ->colors([
-                            'primary' => Color::Cyan,
+                            'primary' => Color::Blue,
                         ])
                         ->darkMode(true)
                         ->renderHook(

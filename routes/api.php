@@ -11,7 +11,7 @@ use App\Http\Controllers\Api\HumanResourceController;
 use App\Http\Controllers\Api\HealthProductsController;
 use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\MentorshipController;
-use App\Http\Middleware\MobileApiCors;
+use App\Http\Middleware\MobileApiCors; 
 
 /*
   |--------------------------------------------------------------------------
@@ -119,6 +119,9 @@ Route::prefix('v1')->name('api.v1.')->middleware(MobileApiCors::class)->group(fu
                 Route::get('email/{emailJob}', [ReportController::class, 'emailJobStatus'])->name('email-status');
             });
         });
+
+        // ── Analytics Summary (mobile dashboard) ─────────────────────────────
+        Route::get('analytics/summary', [\App\Http\Controllers\Api\AnalyticsSummaryController::class, 'summary'])->name('analytics.summary');
 
         // ── Aggregate Reports ─────────────────────────────────────────────────
         Route::prefix('reports')->name('reports.')->group(function () {

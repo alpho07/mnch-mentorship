@@ -13,7 +13,7 @@
 @endphp
 
 {{-- ████████ ASSESSMENT FILTERS ████████ --}}
-<div class="dash-section">
+<div class="dash-section" data-aos="fade-up" data-aos-delay="50">
     <div class="collapse show" id="assessmentFilters">
         <div class="filter-card">
             <form method="GET" action="{{ route('analytics.dashboard.index') }}" class="row g-2 align-items-end">
@@ -78,10 +78,11 @@
 
 {{-- ████████ KPI STRIP ████████ --}}
 <div class="kpi-strip-wrap">
+    @php $kpiDelay = 0; @endphp
     <div class="kpi-strip" style="grid-template-columns:repeat(6,1fr);">
-        <div class="kpi-card">
+        <div class="kpi-card" data-aos="fade-up" data-aos-delay="{{ $kpiDelay }}">
             <div class="kpi-icon"><i class="fas fa-hospital"></i></div>
-            <div class="kpi-value">{{ number_format($uniqueAssessments) }}</div>
+            <div class="kpi-value counter-animate" data-counter="{{ $uniqueAssessments }}">0</div>
             <div class="kpi-label">Facility Assessments</div>
             @if($yoyChange > 0)
                 <span class="kpi-trend up"><i class="fas fa-arrow-up"></i> {{ $yoyChange }}% YoY</span>
@@ -91,42 +92,47 @@
                 <span class="kpi-trend flat"><i class="fas fa-building"></i> {{ $facilityCoverage }}% coverage</span>
             @endif
         </div>
-        <div class="kpi-card">
+        @php $kpiDelay += 75; @endphp
+        <div class="kpi-card" data-aos="fade-up" data-aos-delay="{{ $kpiDelay }}">
             <div class="kpi-icon"><i class="fas fa-star-half-alt"></i></div>
-            <div class="kpi-value">{{ $avgScore }}%</div>
+            <div class="kpi-value counter-animate" data-counter="{{ $avgScore }}" data-suffix="%" data-decimals="1">0%</div>
             <div class="kpi-label">Avg Score</div>
             <span class="kpi-trend {{ $avgColor }}">
                 {{ $avgScore >= 80 ? 'Good' : ($avgScore >= 50 ? 'Fair' : 'Needs Work') }}
             </span>
         </div>
-        <div class="kpi-card">
+        @php $kpiDelay += 75; @endphp
+        <div class="kpi-card" data-aos="fade-up" data-aos-delay="{{ $kpiDelay }}">
             <div class="kpi-icon"><i class="fas fa-flask"></i></div>
-            <div class="kpi-value">{{ number_format($withSkillsLab) }}</div>
+            <div class="kpi-value counter-animate" data-counter="{{ $withSkillsLab }}">0</div>
             <div class="kpi-label">Have Skills Lab</div>
             @if($facilitiesAssessed > 0)
                 <span class="kpi-trend flat">{{ round(($withSkillsLab / $facilitiesAssessed) * 100) }}% of assessed</span>
             @endif
         </div>
-        <div class="kpi-card">
+        @php $kpiDelay += 75; @endphp
+        <div class="kpi-card" data-aos="fade-up" data-aos-delay="{{ $kpiDelay }}">
             <div class="kpi-icon"><i class="fas fa-check-double"></i></div>
-            <div class="kpi-value">{{ number_format($eligible) }}</div>
+            <div class="kpi-value counter-animate" data-counter="{{ $eligible }}">0</div>
             <div class="kpi-label">Eligible for Mentorship</div>
             @if($withSkillsLab > 0)
                 @php $partials = $withSkillsLab - $eligible; @endphp
                 <span class="kpi-trend flat">{{ $partials }} partial</span>
             @endif
         </div>
-        <div class="kpi-card">
+        @php $kpiDelay += 75; @endphp
+        <div class="kpi-card" data-aos="fade-up" data-aos-delay="{{ $kpiDelay }}">
             <div class="kpi-icon"><i class="fas fa-handshake"></i></div>
-            <div class="kpi-value">{{ number_format($withMentorships) }}</div>
+            <div class="kpi-value counter-animate" data-counter="{{ $withMentorships }}">0</div>
             <div class="kpi-label">With Mentorships</div>
             @if($facilitiesAssessed > 0)
                 <span class="kpi-trend flat">{{ $mentorshipCoverage }}% of assessed</span>
             @endif
         </div>
-        <div class="kpi-card">
+        @php $kpiDelay += 75; @endphp
+        <div class="kpi-card" data-aos="fade-up" data-aos-delay="{{ $kpiDelay }}">
             <div class="kpi-icon"><i class="fas fa-percentage"></i></div>
-            <div class="kpi-value">{{ $mentorshipCoverage }}%</div>
+            <div class="kpi-value counter-animate" data-counter="{{ $mentorshipCoverage }}" data-suffix="%" data-decimals="1">0%</div>
             <div class="kpi-label">Mentorship Coverage</div>
             @php $uncovered = $facilitiesAssessed - $withMentorships; @endphp
             @if($uncovered > 0)
@@ -140,11 +146,11 @@
 
 {{-- ████████ INSIGHTS ████████ --}}
 @if(!empty($insights))
-<div class="dash-section">
+<div class="dash-section" data-aos="fade-up" data-aos-delay="100">
     <div class="section-title"><i class="fas fa-lightbulb"></i> Insights</div>
     <div class="insights-grid">
-        @foreach($insights as $insight)
-            <div class="insight-card {{ $insight['type'] }}">
+        @foreach($insights as $index => $insight)
+            <div class="insight-card {{ $insight['type'] }}" data-aos="fade-up" data-aos-delay="{{ $index * 75 }}">
                 <div class="insight-icon"><i class="fas fa-{{ $insight['icon'] }}"></i></div>
                 <div class="insight-text">{{ $insight['text'] }}</div>
             </div>
@@ -154,7 +160,7 @@
 @endif
 
 {{-- ████████ CHARTS ROW 1 ████████ --}}
-<div class="dash-section">
+<div class="dash-section" data-aos="fade-up" data-aos-delay="150">
     <div class="chart-row">
         <div class="chart-2-3">
             <div class="chart-card">
@@ -180,7 +186,7 @@
 </div>
 
 {{-- ████████ CHARTS ROW 2 ████████ --}}
-<div class="dash-section">
+<div class="dash-section" data-aos="fade-up" data-aos-delay="200">
     <div class="chart-row">
         <div class="chart-half">
             <div class="chart-card">
@@ -206,7 +212,7 @@
 </div>
 
 {{-- ████████ FACILITIES READINESS TABLE ████████ --}}
-<div class="dash-section" x-data="{
+<div class="dash-section" data-aos="fade-up" data-aos-delay="250" x-data="{
     filterSkillsLab: 'all',
     filterRoom: 'all',
     filterEligibility: 'all',
@@ -215,6 +221,42 @@
     filterMentorships: 'all',
     filterTraining: 'all',
     searchFacility: '',
+    page: 1,
+    perPage: 25,
+
+    get filteredRows() {
+        return Array.from(this.$refs.tableBody.querySelectorAll('tr[data-skills-lab]')).filter(row => this.matches(row));
+    },
+
+    get paginatedRows() {
+        const start = (this.page - 1) * this.perPage;
+        return this.filteredRows.slice(start, start + this.perPage);
+    },
+
+    get totalPages() {
+        return Math.ceil(this.filteredRows.length / this.perPage) || 1;
+    },
+
+    get pages() {
+        const total = this.totalPages;
+        const current = this.page;
+        const pages = [];
+        for (let i = 1; i <= total; i++) {
+            if (i === 1 || i === total || (i >= current - 1 && i <= current + 1)) {
+                pages.push(i);
+            } else if (pages[pages.length - 1] !== '...') {
+                pages.push('...');
+            }
+        }
+        return pages;
+    },
+
+    goToPage(p) {
+        if (p === '...' || p < 1 || p > this.totalPages) return;
+        this.page = p;
+        this.$refs.tableBody.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    },
+
     matches(row) {
         if (this.filterSkillsLab !== 'all' && row.dataset.skillsLab !== this.filterSkillsLab) return false;
         if (this.filterRoom !== 'all' && row.dataset.room !== this.filterRoom) return false;
@@ -225,6 +267,18 @@
         if (this.filterTraining !== 'all' && row.dataset.training !== this.filterTraining) return false;
         if (this.searchFacility.trim() !== '' && !row.dataset.facility.includes(this.searchFacility.toLowerCase().trim())) return false;
         return true;
+    },
+
+    init() {
+        this.$watch('filterSkillsLab', () => this.page = 1);
+        this.$watch('filterRoom', () => this.page = 1);
+        this.$watch('filterEligibility', () => this.page = 1);
+        this.$watch('filterFeedback', () => this.page = 1);
+        this.$watch('filterType', () => this.page = 1);
+        this.$watch('filterMentorships', () => this.page = 1);
+        this.$watch('filterTraining', () => this.page = 1);
+        this.$watch('searchFacility', () => this.page = 1);
+        this.$watch('perPage', () => this.page = 1);
     }
 }">
     <div class="section-title d-flex align-items-center justify-content-between flex-wrap gap-2">
@@ -330,8 +384,8 @@
                     <th>Mentorships</th>
                 </tr>
             </thead>
-            <tbody>
-                @forelse($facilitiesReadiness as $assessment)
+            <tbody x-ref="tableBody">
+                @foreach($facilitiesReadiness as $assessment)
                     @php
                         $slKey       = $assessment->has_skills_lab ? 'yes' : 'no';
                         $rmKey       = $assessment->has_room ? 'yes' : 'no';
@@ -351,7 +405,7 @@
                         };
                     @endphp
                     <tr
-                        x-show="matches($el)"
+                        x-show="paginatedRows.includes($el)"
                         data-skills-lab="{{ $slKey }}"
                         data-room="{{ $rmKey }}"
                         data-eligibility="{{ $eligKey }}"
@@ -451,16 +505,47 @@
                             @endif
                         </td>
                     </tr>
-                @empty
-                    <tr>
-                        <td colspan="11" style="text-align:center;padding:2rem;color:var(--gray-500)">
-                            <i class="fas fa-clipboard-list fa-2x mb-2 d-block"></i>
-                            No assessed facilities found for the current filters.
-                        </td>
-                    </tr>
-                @endforelse
+                @endforeach
+                <tr x-show="filteredRows.length === 0">
+                    <td colspan="11" style="text-align:center;padding:2rem;color:var(--gray-500)">
+                        <i class="fas fa-clipboard-list fa-2x mb-2 d-block"></i>
+                        No assessed facilities found for the current filters.
+                    </td>
+                </tr>
             </tbody>
         </table>
+
+        {{-- Client-side pagination --}}
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 px-3 py-2 border-top" style="background:#fff;" x-show="filteredRows.length > 0">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <select class="form-select form-select-sm" x-model="perPage" style="width:auto;min-width:70px;">
+                    <option value="10">10</option>
+                    <option value="25">25</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                </select>
+                <small class="text-muted" style="font-size:.75rem;">
+                    Showing <span x-text="filteredRows.length ? ((page - 1) * perPage) + 1 : 0"></span>
+                    – <span x-text="Math.min(page * perPage, filteredRows.length)"></span>
+                    of <span x-text="filteredRows.length"></span>
+                </small>
+            </div>
+            <nav aria-label="Facilities readiness pagination">
+                <ul class="pagination pagination-sm mb-0">
+                    <li class="page-item" :class="{ disabled: page === 1 }">
+                        <a class="page-link" href="#" @click.prevent="goToPage(page - 1)">Previous</a>
+                    </li>
+                    <template x-for="p in pages" :key="p">
+                        <li class="page-item" :class="{ active: p === page, disabled: p === '...' }">
+                            <a class="page-link" href="#" @click.prevent="goToPage(p)" x-text="p"></a>
+                        </li>
+                    </template>
+                    <li class="page-item" :class="{ disabled: page === totalPages }">
+                        <a class="page-link" href="#" @click.prevent="goToPage(page + 1)">Next</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
     </div>
 </div>
 

@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MNCH Accent Colour</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, 'SF Pro Display', 'Segoe UI', sans-serif;
+    background: #F2F2F7;
+    color: #1C1C1E;
+    min-height: 100vh;
+    padding: 32px 20px 48px;
+  }
+  .page-title { text-align:center; font-size:12px; font-weight:700; letter-spacing:3px; text-transform:uppercase; color:#8E8E93; margin-bottom:8px; }
+  .page-heading { text-align:center; font-size:26px; font-weight:700; letter-spacing:-0.5px; color:#1C1C1E; margin-bottom:6px; }
+  .page-sub { text-align:center; font-size:14px; color:#8E8E93; margin-bottom:36px; }
+
+  .grid { display:grid; grid-template-columns:repeat(3,1fr); gap:20px; max-width:900px; margin:0 auto; }
+
+  .card {
+    background:#fff;
+    border-radius:24px;
+    overflow:hidden;
+    cursor:pointer;
+    transition:transform 0.3s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.3s;
+    border:2px solid transparent;
+    box-shadow:0 4px 20px rgba(0,0,0,0.06);
+  }
+  .card:hover { transform:translateY(-5px); box-shadow:0 12px 36px rgba(0,0,0,0.1); }
+  .card.selected { border-color:var(--accent); box-shadow:0 0 0 4px rgba(var(--accent-rgb),0.18), 0 12px 36px rgba(var(--accent-rgb),0.15); }
+  .card.selected::after { content:'✓ Selected'; position:absolute; top:10px; right:10px; background:var(--accent); color:#fff; font-size:10px; font-weight:800; padding:4px 10px; border-radius:20px; z-index:10; }
+  .card { position:relative; }
+
+  .card-header { padding:16px 16px 12px; border-bottom:1px solid #F2F2F7; }
+  .accent-name { font-size:15px; font-weight:700; color:#1C1C1E; }
+  .accent-sub { font-size:11px; color:#8E8E93; margin-top:2px; }
+  .swatch-row { display:flex; gap:6px; margin-top:10px; }
+  .swatch { width:28px; height:28px; border-radius:8px; }
+
+  /* phone mockup */
+  .phone {
+    background:#F2F2F7;
+    overflow:hidden;
+  }
+  .status { height:36px; display:flex; align-items:center; justify-content:space-between; padding:8px 16px 0; }
+  .status-time { font-size:12px; font-weight:700; color:#1C1C1E; }
+
+  /* hero */
+  .hero { padding:16px 14px 18px; }
+  .hero-card {
+    border-radius:18px;
+    padding:16px;
+    position:relative; overflow:hidden;
+  }
+  .hero-greeting { font-size:11px; font-weight:500; opacity:0.7; margin-bottom:2px; }
+  .hero-name { font-size:19px; font-weight:700; letter-spacing:-0.4px; }
+  .hero-sub { font-size:10px; opacity:0.5; margin-top:3px; }
+  .hero-stats { display:flex; gap:8px; margin-top:12px; }
+  .hero-stat {
+    flex:1; background:rgba(255,255,255,0.12);
+    border-radius:10px; padding:8px 8px;
+    backdrop-filter:blur(10px);
+  }
+  .stat-n { font-size:16px; font-weight:800; color:#fff; }
+  .stat-l { font-size:8px; color:rgba(255,255,255,0.5); margin-top:1px; font-weight:600; }
+
+  /* content */
+  .content { padding:0 14px 14px; }
+  .section-hd { font-size:17px; font-weight:700; color:#1C1C1E; letter-spacing:-0.3px; margin:10px 0 8px; }
+  .list-card {
+    background:#fff; border-radius:14px;
+    padding:12px 12px; margin-bottom:8px;
+    display:flex; align-items:center; gap:10px;
+    box-shadow:0 1px 4px rgba(0,0,0,0.06);
+  }
+  .list-icon { width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0; }
+  .list-title { font-size:12px; font-weight:600; color:#1C1C1E; }
+  .list-sub { font-size:10px; color:#8E8E93; margin-top:1px; }
+  .chevron { font-size:14px; color:#C7C7CC; margin-left:auto; }
+
+  /* button */
+  .cta-btn {
+    margin:14px 14px 0;
+    padding:13px;
+    border-radius:14px;
+    border:none;
+    width:calc(100% - 28px);
+    color:#fff;
+    font-size:14px;
+    font-weight:700;
+    letter-spacing:0.2px;
+    cursor:pointer;
+  }
+
+  /* nav */
+  .nav {
+    display:flex; align-items:flex-start; justify-content:space-around;
+    padding:10px 4px 4px;
+    background:rgba(255,255,255,0.92);
+    backdrop-filter:blur(20px);
+    border-top:0.5px solid rgba(0,0,0,0.1);
+    margin-top:8px;
+  }
+  .nav-it { display:flex; flex-direction:column; align-items:center; gap:3px; }
+  .nav-lb { font-size:9px; color:#8E8E93; }
+  .nav-lb.on { font-weight:700; }
+
+  .confirm-btn {
+    display:block; margin:32px auto 0;
+    padding:14px 40px; background:#1C1C1E;
+    color:#fff; font-size:15px; font-weight:700;
+    border:none; border-radius:50px; cursor:pointer;
+    box-shadow:0 8px 24px rgba(0,0,0,0.2);
+    transition:transform 0.2s, box-shadow 0.2s;
+  }
+  .confirm-btn:hover { transform:translateY(-2px); box-shadow:0 12px 32px rgba(0,0,0,0.3); }
+
+  @media(max-width:700px){ .grid{grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+
+<p class="page-title">Step 2 of 3 — Accent Colour</p>
+<h1 class="page-heading">Pick your accent colour</h1>
+<p class="page-sub">This colour drives buttons, active nav items, highlights, and badges across the whole app.</p>
+
+<div class="grid">
+
+  <!-- A: iOS Blue -->
+  <div class="card" style="--accent:#007AFF;--accent-rgb:0,122,255" onclick="selectCard(this,'ios-blue')">
+    <div class="card-header">
+      <div class="accent-name">iOS Blue</div>
+      <div class="accent-sub">Classic Apple · Trusted, familiar</div>
+      <div class="swatch-row">
+        <div class="swatch" style="background:#007AFF"></div>
+        <div class="swatch" style="background:#34AADC"></div>
+        <div class="swatch" style="background:#E5F1FF"></div>
+        <div class="swatch" style="background:#1C1C1E"></div>
+      </div>
+    </div>
+    <div class="phone">
+      <div class="status"><span class="status-time">9:41</span><span style="font-size:11px;color:#1C1C1E;opacity:0.4">●●●</span></div>
+      <div class="hero">
+        <div class="hero-card" style="background:linear-gradient(150deg,#1C1C1E 0%,#2C2C2E 100%)">
+          <div class="hero-greeting" style="color:rgba(255,255,255,0.6)">Good morning 👋</div>
+          <div class="hero-name" style="color:#fff">Dr. Sarah</div>
+          <div class="hero-sub" style="color:rgba(255,255,255,0.45)">MNCH Assessor · Nairobi</div>
+          <div class="hero-stats">
+            <div class="hero-stat"><div class="stat-n">12</div><div class="stat-l">ASSESSMENTS</div></div>
+            <div class="hero-stat"><div class="stat-n">78%</div><div class="stat-l">AVG SCORE</div></div>
+            <div class="hero-stat"><div class="stat-n">3</div><div class="stat-l">ACTIVE</div></div>
+          </div>
+          <div style="position:absolute;width:100px;height:100px;border-radius:50%;background:radial-gradient(circle,rgba(0,122,255,0.2) 0%,transparent 70%);top:-30px;right:-20px"></div>
+        </div>
+      </div>
+      <div class="content">
+        <div class="section-hd">Assessments</div>
+        <div class="list-card">
+          <div class="list-icon" style="background:#E5F1FF"><span>🏥</span></div>
+          <div><div class="list-title">Kenyatta Hospital</div><div class="list-sub">82% · Good</div></div>
+          <div class="chevron">›</div>
+        </div>
+        <div class="list-card">
+          <div class="list-icon" style="background:#FFF3E5"><span>🏗️</span></div>
+          <div><div class="list-title">Pumwani Maternity</div><div class="list-sub">In Progress · 45%</div></div>
+          <div class="chevron">›</div>
+        </div>
+        <button class="cta-btn" style="background:linear-gradient(135deg,#007AFF,#34AADC)">+ New Assessment</button>
+      </div>
+      <div class="nav">
+        <div class="nav-it">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="#007AFF"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+          <div class="nav-lb on" style="color:#007AFF">Home</div>
+        </div>
+        <div class="nav-it">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <div class="nav-lb">Assess</div>
+        </div>
+        <div class="nav-it">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+          <div class="nav-lb">Mentor</div>
+        </div>
+        <div class="nav-it">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="1.5"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <div class="nav-lb">Profile</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- B: Teal Indigo (Recommended) -->
+  <div class="card selected" style="--accent:#4F6AF5;--accent-rgb:79,106,245;transform:scale(1.04);box-shadow:0 0 0 4px rgba(79,106,245,0.2),0 20px 48px rgba(79,106,245,0.18);border-color:#4F6AF5;" onclick="selectCard(this,'teal-indigo')">
+    <div style="position:absolute;top:10px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#4F6AF5,#6C63FF);color:#fff;font-size:10px;font-weight:800;padding:4px 14px;border-radius:20px;letter-spacing:1px;z-index:10;white-space:nowrap;">★ RECOMMENDED</div>
+    <div class="card-header">
+      <div class="accent-name">Indigo Sapphire</div>
+      <div class="accent-sub">Rich, professional · Healthcare premium</div>
+      <div class="swatch-row">
+        <div class="swatch" style="background:#4F6AF5"></div>
+        <div class="swatch" style="background:#6C63FF"></div>
+        <div class="swatch" style="background:#EEF2FF"></div>
+        <div class="swatch" style="background:#1A1A2E"></div>
+      </div>
+    </div>
+    <div class="phone">
+      <div class="status"><span class="status-time">9:41</span><span style="font-size:11px;color:#1C1C1E;opacity:0.4">●●●</span></div>
+      <div class="hero">
+        <div class="hero-card" style="background:linear-gradient(150deg,#1A1A2E 0%,#1E2A5E 60%,#2D3B8E 100%)">
+          <div class="hero-greeting" style="color:rgba(255,255,255,0.55)">Good morning 👋</div>
+          <div class="hero-name" style="color:#fff">Dr. Sarah</div>
+          <div class="hero-sub" style="color:rgba(255,255,255,0.4)">MNCH Assessor · Nairobi</div>
+          <div class="hero-stats">
+            <div class="hero-stat"><div class="stat-n">12</div><div class="stat-l">ASSESSMENTS</div></div>
+            <div class="hero-stat"><div class="stat-n">78%</div><div class="stat-l">AVG SCORE</div></div>
+            <div class="hero-stat"><div class="stat-n">3</div><div class="stat-l">ACTIVE</div></div>
+          </div>
+          <div style="position:absolute;width:120px;height:120px;border-radius:50%;background:radial-gradient(circle,rgba(79,106,245,0.3) 0%,transparent 70%);top:-40px;right:-20px"></div>
+          <div style="position:absolute;width:80px;height:80px;border-radius:50%;background:radial-gradient(circle,rgba(108,99,255,0.2) 0%,transparent 70%);bottom:-20px;left:20px"></div>
+        </div>
+      </div>
+      <div class="content">
+        <div class="section-hd">Assessments</div>
+        <div class="list-card">
+          <div class="list-icon" style="background:#EEF2FF"><span>🏥</span></div>
+          <div><div class="list-title">Kenyatta Hospital</div><div class="list-sub">82% · Good</div></div>
+          <div class="chevron" style="color:#4F6AF5;font-weight:700">›</div>
+        </div>
+        <div class="list-card">
+          <div class="list-icon" style="background:#FFF8ED"><span>🏗️</span></div>
+          <div><div class="list-title">Pumwani Maternity</div><div class="list-sub">In Progress · 45%</div></div>
+          <div class="chevron" style="color:#4F6AF5;font-weight:700">›</div>
+        </div>
+        <button class="cta-btn" style="background:linear-gradient(135deg,#4F6AF5,#6C63FF)">+ New Assessment</button>
+      </div>
+      <div class="nav">
+        <div class="nav-it">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="#4F6AF5"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+          <div class="nav-lb on" style="color:#4F6AF5">Home</div>
+        </div>
+        <div class="nav-it">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <div class="nav-lb">Assess</div>
+        </div>
+        <div class="nav-it">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+          <div class="nav-lb">Mentor</div>
+        </div>
+        <div class="nav-it">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="1.5"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <div class="nav-lb">Profile</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- C: Emerald Teal -->
+  <div class="card" style="--accent:#00897B;--accent-rgb:0,137,123" onclick="selectCard(this,'emerald-teal')">
+    <div class="card-header">
+      <div class="accent-name">Emerald Teal</div>
+      <div class="accent-sub">Healthcare-coded · Clean & clinical</div>
+      <div class="swatch-row">
+        <div class="swatch" style="background:#00897B"></div>
+        <div class="swatch" style="background:#26A69A"></div>
+        <div class="swatch" style="background:#E0F2F1"></div>
+        <div class="swatch" style="background:#004D40"></div>
+      </div>
+    </div>
+    <div class="phone">
+      <div class="status"><span class="status-time">9:41</span><span style="font-size:11px;color:#1C1C1E;opacity:0.4">●●●</span></div>
+      <div class="hero">
+        <div class="hero-card" style="background:linear-gradient(150deg,#004D40 0%,#00695C 60%,#00897B 100%)">
+          <div class="hero-greeting" style="color:rgba(255,255,255,0.55)">Good morning 👋</div>
+          <div class="hero-name" style="color:#fff">Dr. Sarah</div>
+          <div class="hero-sub" style="color:rgba(255,255,255,0.4)">MNCH Assessor · Nairobi</div>
+          <div class="hero-stats">
+            <div class="hero-stat"><div class="stat-n">12</div><div class="stat-l">ASSESSMENTS</div></div>
+            <div class="hero-stat"><div class="stat-n">78%</div><div class="stat-l">AVG SCORE</div></div>
+            <div class="hero-stat"><div class="stat-n">3</div><div class="stat-l">ACTIVE</div></div>
+          </div>
+          <div style="position:absolute;width:110px;height:110px;border-radius:50%;background:radial-gradient(circle,rgba(38,166,154,0.3) 0%,transparent 70%);top:-30px;right:-15px"></div>
+        </div>
+      </div>
+      <div class="content">
+        <div class="section-hd">Assessments</div>
+        <div class="list-card">
+          <div class="list-icon" style="background:#E0F2F1"><span>🏥</span></div>
+          <div><div class="list-title">Kenyatta Hospital</div><div class="list-sub">82% · Good</div></div>
+          <div class="chevron" style="color:#00897B">›</div>
+        </div>
+        <div class="list-card">
+          <div class="list-icon" style="background:#FFF8E1"><span>🏗️</span></div>
+          <div><div class="list-title">Pumwani Maternity</div><div class="list-sub">In Progress · 45%</div></div>
+          <div class="chevron" style="color:#00897B">›</div>
+        </div>
+        <button class="cta-btn" style="background:linear-gradient(135deg,#00897B,#26A69A)">+ New Assessment</button>
+      </div>
+      <div class="nav">
+        <div class="nav-it">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="#00897B"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+          <div class="nav-lb on" style="color:#00897B">Home</div>
+        </div>
+        <div class="nav-it">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <div class="nav-lb">Assess</div>
+        </div>
+        <div class="nav-it">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+          <div class="nav-lb">Mentor</div>
+        </div>
+        <div class="nav-it">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="1.5"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <div class="nav-lb">Profile</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<button class="confirm-btn" onclick="confirmSelection()">Confirm Colour →</button>
+
+<script>
+let selected = 'teal-indigo';
+
+function selectCard(el, choice) {
+  document.querySelectorAll('.card').forEach(c => {
+    c.classList.remove('selected');
+    c.style.transform = '';
+    c.style.boxShadow = '0 4px 20px rgba(0,0,0,0.06)';
+    const acc = getComputedStyle(c).getPropertyValue('--accent').trim();
+    c.style.borderColor = 'transparent';
+  });
+  el.classList.add('selected');
+  el.style.transform = 'scale(1.04)';
+  el.style.borderColor = getComputedStyle(el).getPropertyValue('--accent').trim();
+  selected = choice;
+  if (window.recordChoice) window.recordChoice(choice, el.querySelector('.accent-name')?.textContent || choice);
+}
+
+function confirmSelection() {
+  if (!selected) { alert('Please select a colour first.'); return; }
+  if (window.recordChoice) window.recordChoice('confirmed_' + selected, 'Confirmed: ' + selected);
+  const btn = document.querySelector('.confirm-btn');
+  btn.textContent = '✓ Colour confirmed!';
+  btn.style.background = 'linear-gradient(135deg,#10B981,#059669)';
+}
+</script>
+</body>
+</html>

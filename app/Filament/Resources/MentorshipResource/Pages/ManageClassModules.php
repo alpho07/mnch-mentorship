@@ -364,6 +364,17 @@ class ManageClassModules extends Page implements HasTable {
                                         'class' => $this->class->id,
                                         'module' => $record->id,
                                     ])),
+                            Tables\Actions\Action::make('module_resources')
+                            ->label('Resources')
+                            ->icon('heroicon-o-document-text')
+                            ->color('info')
+                            ->iconButton()
+                            ->tooltip('Module Resources')
+                            ->url(fn(ClassModule $record) => MentorshipTrainingResource::getUrl('module-resources', [
+                                        'training' => $this->training->id,
+                                        'class' => $this->class->id,
+                                        'module' => $record->id,
+                                    ])),
                             Tables\Actions\EditAction::make()
                             ->label('Edit')
                             ->icon('heroicon-o-pencil')

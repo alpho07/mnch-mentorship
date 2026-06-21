@@ -11,7 +11,7 @@ use App\Models\ResourceCategory;
 use App\Models\Tag;
 use App\Models\Training;
 use App\Models\TrainingParticipant;
-use App\Models\User;
+use App\Models\User; 
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Illuminate\Support\Facades\Storage;
@@ -325,6 +325,7 @@ class ResourceController extends Controller
             'category',
             'author',
             'tags',
+            'primaryFile',
             'comments' => fn($q) => $q->approved()
                 ->parent()
                 ->latest()
@@ -361,21 +362,35 @@ class ResourceController extends Controller
         // Comprehensive access and security checks
         $this->validateDownloadAccess($resource);
 
-        // Check if file exists and is valid
-        if (!$resource->hasValidFile()) {
+        // Resolve the file path — prefer the resource's own file_path, fall back to primary ResourceFile
+        $filePath = null;
+        $fileName = null;
+        $mimeType = null;
+
+        if ($resource->hasValidFile()) {
+            $filePath = $resource->file_path;
+            $fileName = $this->generateSecureFilename($resource);
+            $mimeType = Storage::disk('resources')->mimeType($filePath);
+        } else {
+            $primaryFile = $resource->primaryFile;
+            if ($primaryFile && $primaryFile->exists()) {
+                $filePath = $primaryFile->file_path;
+                $fileName = $primaryFile->original_name ?: $primaryFile->file_name ?: basename($filePath);
+                $mimeType = $primaryFile->file_type ?: Storage::disk('resources')->mimeType($filePath);
+            }
+        }
+
+        if (!$filePath) {
             abort(404, 'The requested file could not be found or is corrupted.');
         }
 
         // Track download with detailed logging
         $this->trackDownload($resource);
 
-        // Generate secure filename
-        $filename = $this->generateSecureFilename($resource);
-
         // Set appropriate headers for security and performance
         $headers = [
-            'Content-Type' => Storage::disk('resources')->mimeType($resource->file_path),
-            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'Content-Type' => $mimeType,
+            'Content-Disposition' => 'attachment; filename="' . $fileName . '"',
             'Cache-Control' => 'no-cache, no-store, must-revalidate',
             'Pragma' => 'no-cache',
             'Expires' => '0',
@@ -384,19 +399,19 @@ class ResourceController extends Controller
         ];
 
         // Stream the file for better memory usage with large files
-        return response()->stream(function () use ($resource) {
-            $stream = Storage::disk('resources')->readStream($resource->file_path);
-            
+        return response()->stream(function () use ($filePath) {
+            $stream = Storage::disk('resources')->readStream($filePath);
+
             if (!$stream) {
                 abort(500, 'Unable to read file');
             }
-            
+
             // Stream in chunks for better memory management
             while (!feof($stream)) {
                 echo fread($stream, 8192); // 8KB chunks
                 flush();
             }
-            
+
             if (is_resource($stream)) {
                 fclose($stream);
             }
@@ -413,29 +428,47 @@ class ResourceController extends Controller
             abort(403, 'You do not have permission to preview this resource.');
         }
 
-        if (!$resource->hasValidFile()) {
-            abort(404, 'File not found or corrupted');
+        // Resolve file — prefer resource's own file_path, fall back to primaryFile
+        $filePath = null;
+        $mimeType = null;
+
+        if ($resource->hasValidFile()) {
+            $filePath = $resource->file_path;
+            $mimeType = Storage::disk('resources')->mimeType($filePath);
+        } else {
+            $primaryFile = $resource->primaryFile ?? $resource->load('primaryFile')->primaryFile;
+            if ($primaryFile && $primaryFile->exists()) {
+                $filePath = $primaryFile->file_path;
+                $mimeType = $primaryFile->file_type ?: Storage::disk('resources')->mimeType($filePath);
+            }
         }
 
-        if (!$resource->isPreviewable()) {
+        if (!$filePath) {
+            abort(404, 'File not found');
+        }
+
+        $previewableMimes = [
+            'application/pdf',
+            'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
+            'video/mp4', 'video/webm',
+            'audio/mpeg', 'audio/wav', 'audio/ogg',
+            'text/plain', 'text/csv',
+        ];
+
+        if (!in_array($mimeType, $previewableMimes)) {
             abort(400, 'This file type cannot be previewed');
         }
 
-        // Track view for analytics
         $this->trackView($resource, auth()->user(), request(), 'preview');
 
-        $mimeType = Storage::disk('resources')->mimeType($resource->file_path);
-        $filename = basename($resource->file_path);
+        $filename = basename($filePath);
 
-        return response()->stream(function () use ($resource) {
-            $stream = Storage::disk('resources')->readStream($resource->file_path);
-            
+        return response()->stream(function () use ($filePath) {
+            $stream = Storage::disk('resources')->readStream($filePath);
             if (!$stream) {
                 abort(500, 'Unable to read file');
             }
-            
             fpassthru($stream);
-            
             if (is_resource($stream)) {
                 fclose($stream);
             }
@@ -832,7 +865,7 @@ class ResourceController extends Controller
             abort(403, 'This resource is not available for download.');
         }
 
-        if (!$resource->file_path) {
+        if (!$resource->file_path && !$resource->hasPrimaryFile()) {
             abort(404, 'No file is attached to this resource.');
         }
     }

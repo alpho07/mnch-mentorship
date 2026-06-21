@@ -52,6 +52,19 @@ class ListGlobalTrainings extends ListRecords
         return "Multi-facility training programs • {$stats['total']} total • {$stats['ongoing']} active • {$stats['participants']} participants";
     }
 
+    protected function getHeaderWidgets(): array
+    {
+        if (request()->get('tab') === 'home') {
+            return [\App\Filament\Widgets\TrainingAnalyticsEmbed::class];
+        }
+        return [];
+    }
+
+    public function getHeaderWidgetsColumns(): int|array
+    {
+        return 1;
+    }
+
     public function getTabs(): array
     {
         return [
@@ -80,6 +93,10 @@ class ListGlobalTrainings extends ListRecords
                 ->badge($this->getTabCount('trashed'))
                 ->badgeColor('danger')
                 ->icon('heroicon-o-trash'),
+
+            'home' => Tab::make('Home')
+                ->icon('heroicon-o-chart-bar-square')
+                ->modifyQueryUsing(fn (Builder $query) => $query->whereRaw('1 = 0')),
 
             /*'ongoing' => Tab::make('Ongoing')
                 ->modifyQueryUsing(fn (Builder $query) => $query->where('status', 'ongoing'))

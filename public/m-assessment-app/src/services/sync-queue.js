@@ -80,12 +80,14 @@ async function enqueue(op) {
     }
 }
 
-// Guard: reject any op that still carries an unresolved local_* ID.
+// Guard: reject any op whose DEPENDENCY fields still carry an unresolved local_* ID.
+// `tempId` is intentionally excluded — it is the provisional ID of the record being
+// created by this very op, not a dependency on another op's output.
 // Throws with status 400 so flush() discards the op rather than sending bad data.
 function assertNoTempIds(op) {
-    const ID_FIELDS = ['assessmentId', 'classId', 'moduleId', 'sessionId', 'participantId', 'tempId', 'trainingId', 'id'];
+    const DEP_FIELDS = ['assessmentId', 'classId', 'moduleId', 'sessionId', 'participantId', 'trainingId', 'id'];
     const TEMP_PATTERN = /^local_[a-z]+_\d+$/;
-    for (const field of ID_FIELDS) {
+    for (const field of DEP_FIELDS) {
         const val = op[field];
         if (typeof val === 'string' && TEMP_PATTERN.test(val)) {
             console.error(`[SyncQueue] Op ${op.type} has unresolved temp ID in field "${field}": ${val}`);
@@ -103,6 +105,8 @@ const OP_LABELS = {
     'mentorships.updateMenteeEmail': 'Mentee update',
     'mentorships.endClass':          'Class completion',
     'mentorships.regenerateToken':   'Link regeneration',
+    'assessments.delete':            'Assessment deletion',
+    'profile.update':                'Profile update',
     'mentorships.create':            'New mentorship',
     'mentorships.update':            'Mentorship edit',
     'mentorships.submit':            'Mentorship submit',
@@ -152,23 +156,20 @@ async function flush() {
         // We need the raw API (without offline wrapper) to avoid recursion
         const {_rawApi} = await import("./api.service.js");
 
-        const queue = await offlineStore.getQueue();
-        if (queue.length === 0) {
-            setStatus("idle");
-            _flushing = false;
-            await refreshCount();
-            return;
-        }
-
-        // Sort by timestamp to maintain order
-        queue.sort((a, b) => a.timestamp - b.timestamp);
-
         let successCount = 0;
-        for (const op of queue) {
+
+        // Re-read from IndexedDB on each iteration so that patchQueueIds() changes
+        // made by create-ops (temp→real ID migration) are visible to dependent ops.
+        while (true) {
             if (!navigator.onLine) {
                 setStatus("offline");
                 break;
             }
+
+            const pending = await offlineStore.getQueue();
+            if (pending.length === 0) break;
+            pending.sort((a, b) => a.timestamp - b.timestamp);
+            const op = pending[0];
 
             try {
                 await executeOp(_rawApi, op);
@@ -237,6 +238,18 @@ async function executeOp(rawApi, op) {
             return rawApi.healthProducts.save(
                     op.assessmentId, op.responses, op.departmentId ?? null
                     );
+
+        case "assessments.delete": {
+            try {
+                return await rawApi.assessments.delete(op.id);
+            } catch (e) {
+                if (e.status === 404) return null; // already deleted
+                throw e;
+            }
+        }
+
+        case "profile.update":
+            return rawApi.profile.update(op.data);
 
         case "assessments.create": {
             const migrateId = async (fromId, toId) => {
@@ -326,8 +339,13 @@ async function executeOp(rawApi, op) {
             return rawApi.me.attend(op.classId, op.moduleId);
 
         case 'mentorships.create': {
-            const migrateId = async (fromId, toId) => {
+            const migrateId = async (fromId, toId, fromClassId, toClassId) => {
                 await offlineStore.patchQueueIds(fromId, toId);
+                // Also migrate the provisional class ID so any queued mentee/module ops
+                // that reference tempClassId get updated to the real server class ID.
+                if (fromClassId && toClassId) {
+                    await offlineStore.patchQueueIds(fromClassId, toClassId);
+                }
                 const existing = await offlineStore.getMentorship(fromId);
                 if (existing) {
                     await offlineStore.saveMentorship({ ...existing, id: toId, _isOffline: false });
@@ -340,13 +358,15 @@ async function executeOp(rawApi, op) {
             try {
                 const response = await rawApi.mentorshipCreate.create(op.payload);
                 const realId = response?.data?.id;
+                const realClassId = response?.data?.class?.id;
                 if (!realId) throw new Error('[SyncQueue] mentorships.create: server returned no id');
-                await migrateId(op.tempId, realId);
+                await migrateId(op.tempId, realId, op.tempClassId, realClassId);
                 return response;
             } catch (e) {
                 if (e.status === 409) {
                     const realId = e.data?.data?.id;
-                    if (realId) await migrateId(op.tempId, realId);
+                    const realClassId = e.data?.data?.class?.id;
+                    if (realId) await migrateId(op.tempId, realId, op.tempClassId, realClassId);
                     return null;
                 }
                 if (e.status >= 400 && e.status < 500) {
@@ -726,3 +746,4 @@ const syncQueue = {
 };
 
 export default syncQueue;
+

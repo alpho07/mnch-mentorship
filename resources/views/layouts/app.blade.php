@@ -49,16 +49,51 @@
 
         <style>
             .nav-link {
-                @apply text-gray-600 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-150;
+                @apply relative text-gray-600 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200;
+            }
+            .nav-link::after {
+                content: '';
+                @apply absolute bottom-1 left-1/2 w-0 h-0.5 bg-primary-500 rounded-full transition-all duration-200;
+                transform: translateX(-50%);
+            }
+            .nav-link:hover,
+            .nav-link:focus-visible {
+                @apply text-primary-600 -translate-y-0.5 outline-none;
+            }
+            .nav-link:hover::after,
+            .nav-link:focus-visible::after {
+                @apply w-4/5;
             }
             .nav-link.active {
                 @apply text-primary-600 bg-primary-50 font-semibold;
             }
+            .nav-link.active::after {
+                @apply w-4/5;
+            }
             .mobile-nav-link {
-                @apply flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-primary-50 hover:text-primary-700 rounded-xl text-base font-medium transition-colors duration-150;
+                @apply flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-primary-50 hover:text-primary-700 rounded-xl text-base font-medium transition-all duration-200;
+            }
+            .mobile-nav-link:hover,
+            .mobile-nav-link:focus-visible {
+                @apply translate-x-1 outline-none;
             }
             .mobile-nav-link.active {
                 @apply bg-primary-50 text-primary-700 font-semibold;
+            }
+            .mobile-nav-animate {
+                @apply transition-transform duration-200;
+            }
+            .mobile-nav-animate:hover,
+            .mobile-nav-animate:focus-visible {
+                @apply translate-x-1 outline-none;
+            }
+            /* Footer links subtle lift */
+            footer ul a {
+                @apply inline-block transition-all duration-200;
+            }
+            footer ul a:hover,
+            footer ul a:focus-visible {
+                @apply translate-x-0.5 text-primary-400 outline-none;
             }
             /* iOS safe area */
             .safe-area-inset-top    { padding-top: env(safe-area-inset-top, 0px); }
@@ -245,7 +280,7 @@
 
                         {{-- Home --}}
                         <a href="{{ route('home') }}" @click="mobileOpen = false"
-                           class="flex items-center gap-4 px-3 py-3 rounded-2xl transition-all duration-150 {{ $navHome ? 'bg-primary-50' : 'hover:bg-gray-50' }}">
+                           class="mobile-nav-animate flex items-center gap-4 px-3 py-3 rounded-2xl transition-all duration-150 {{ $navHome ? 'bg-primary-50' : 'hover:bg-gray-50' }}">
                             <div class="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-sm"
                                  style="{{ $navHome ? 'background: linear-gradient(135deg,#0097A7 0%,#26C6DA 100%);' : 'background:#F3F4F6;' }}">
                                 <i class="fas fa-home {{ $navHome ? 'text-white' : 'text-gray-500' }}" style="font-size:15px;"></i>
@@ -261,7 +296,7 @@
 
                         {{-- Resources --}}
                         <a href="{{ route('resources.index') }}" @click="mobileOpen = false"
-                           class="flex items-center gap-4 px-3 py-3 rounded-2xl transition-all duration-150 {{ $navResources ? 'bg-primary-50' : 'hover:bg-gray-50' }}">
+                           class="mobile-nav-animate flex items-center gap-4 px-3 py-3 rounded-2xl transition-all duration-150 {{ $navResources ? 'bg-primary-50' : 'hover:bg-gray-50' }}">
                             <div class="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-sm"
                                  style="{{ $navResources ? 'background: linear-gradient(135deg,#0097A7 0%,#26C6DA 100%);' : 'background:#F3F4F6;' }}">
                                 <i class="fas fa-book-open {{ $navResources ? 'text-white' : 'text-gray-500' }}" style="font-size:15px;"></i>
@@ -277,7 +312,7 @@
 
                         {{-- Categories --}}
                         <a href="{{ route('categories.index') }}" @click="mobileOpen = false"
-                           class="flex items-center gap-4 px-3 py-3 rounded-2xl transition-all duration-150 {{ $navCategories ? 'bg-primary-50' : 'hover:bg-gray-50' }}">
+                           class="mobile-nav-animate flex items-center gap-4 px-3 py-3 rounded-2xl transition-all duration-150 {{ $navCategories ? 'bg-primary-50' : 'hover:bg-gray-50' }}">
                             <div class="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-sm"
                                  style="{{ $navCategories ? 'background: linear-gradient(135deg,#0097A7 0%,#26C6DA 100%);' : 'background:#F3F4F6;' }}">
                                 <i class="fas fa-th-large {{ $navCategories ? 'text-white' : 'text-gray-500' }}" style="font-size:15px;"></i>
@@ -293,7 +328,7 @@
 
                         {{-- Dashboard --}}
                         <a href="{{ url('analytics/dashboard') }}" @click="mobileOpen = false"
-                           class="flex items-center gap-4 px-3 py-3 rounded-2xl transition-all duration-150 {{ request()->is('analytics*') ? 'bg-primary-50' : 'hover:bg-gray-50' }}">
+                           class="mobile-nav-animate flex items-center gap-4 px-3 py-3 rounded-2xl transition-all duration-150 {{ request()->is('analytics*') ? 'bg-primary-50' : 'hover:bg-gray-50' }}">
                             <div class="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-sm"
                                  style="{{ request()->is('analytics*') ? 'background: linear-gradient(135deg,#0097A7 0%,#26C6DA 100%);' : 'background:#F3F4F6;' }}">
                                 <i class="fas fa-chart-bar {{ request()->is('analytics*') ? 'text-white' : 'text-gray-500' }}" style="font-size:15px;"></i>

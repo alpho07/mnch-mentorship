@@ -192,7 +192,8 @@ async function syncUserLookupIndex(since) {
     for (const u of users) {
         const key = (u.email ?? '').toLowerCase().trim();
         if (!key) continue;
-        updates[key] = u.is_active === false
+        const inactive = u.is_active === false || u.status === 'inactive' || u.status === 'suspended';
+        updates[key] = inactive
             ? null  // signals removal in mergeUserLookupMap
             : { id: u.id, name: u.name, phone: u.phone ?? null };
     }
@@ -462,7 +463,51 @@ const api = {
     },
 
     // ── Profile ──────────────────────────────────────────────────────────────
-    profile: _rawApi.profile,
+    profile: {
+        get: async () => {
+            try {
+                const data = await _rawApi.profile.get();
+                const u = data?.data ?? data;
+                if (u?.id) await offlineStore.saveUser(u);
+                return data;
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    const cached = await offlineStore.getUser();
+                    if (cached) return { data: cached };
+                }
+                throw e;
+            }
+        },
+        update: async (data) => {
+            try {
+                return await _rawApi.profile.update(data);
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    await syncQueue.enqueue({ type: 'profile.update', data });
+                    return { queued: true };
+                }
+                throw e;
+            }
+        },
+        changePassword: (data) => {
+            if (!navigator.onLine)
+                throw Object.assign(new Error('Password change requires an internet connection.'), { offlineBlocked: true });
+            return _rawApi.profile.changePassword(data);
+        },
+        stats: async () => {
+            try {
+                const data = await _rawApi.profile.stats();
+                await offlineStore.setMeta('profile_stats', data);
+                return data;
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    const cached = await offlineStore.getMeta('profile_stats');
+                    if (cached) return cached;
+                }
+                throw e;
+            }
+        },
+    },
 
     // ── Facilities (cached reads — fetches ALL pages) ─────────────────────────
     facilities: {
@@ -575,7 +620,18 @@ const api = {
             }
         },
         update: _rawApi.assessments.update,
-        delete: _rawApi.assessments.delete,
+        delete: async (id) => {
+            try {
+                return await _rawApi.assessments.delete(id);
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    await offlineStore.deleteAssessment(id);
+                    await syncQueue.enqueue({ type: 'assessments.delete', id });
+                    return { queued: true };
+                }
+                throw e;
+            }
+        },
 
         submit: async (id) => {
             try {
@@ -869,6 +925,49 @@ const api = {
     reports: {
         ..._rawApi.reports,
 
+        show: async (assessmentId) => {
+            const cacheKey = `report_${assessmentId}`;
+            try {
+                const data = await _rawApi.reports.show(assessmentId);
+                await offlineStore.setMeta(cacheKey, data);
+                return data;
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    const cached = await offlineStore.getMeta(cacheKey);
+                    if (cached) return cached;
+                }
+                throw e;
+            }
+        },
+        full: async (assessmentId) => {
+            const cacheKey = `report_${assessmentId}`;
+            try {
+                const data = await _rawApi.reports.full(assessmentId);
+                await offlineStore.setMeta(cacheKey, data);
+                return data;
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    const cached = await offlineStore.getMeta(cacheKey);
+                    if (cached) return cached;
+                }
+                throw e;
+            }
+        },
+        summary: async (assessmentId) => {
+            const cacheKey = `report_summary_${assessmentId}`;
+            try {
+                const data = await _rawApi.reports.summary(assessmentId);
+                await offlineStore.setMeta(cacheKey, data);
+                return data;
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    const cached = await offlineStore.getMeta(cacheKey);
+                    if (cached) return cached;
+                }
+                throw e;
+            }
+        },
+
         // Email report — queues locally when offline, dispatches job when online
         emailReport: async (assessmentId, emails) => {
             // Always save a local pending job immediately so the UI can show it
@@ -1084,7 +1183,24 @@ const api = {
                 throw e;
             }
         },
-        add: _rawApi.modules.add,
+        add: async (classId, programModuleId) => {
+            try {
+                return await _rawApi.modules.add(classId, programModuleId);
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    const tempId = 'local_module_' + Date.now();
+                    const provisional = {
+                        id: tempId, name: 'Module', status: 'pending',
+                        session_count: 0, _isOffline: true,
+                    };
+                    const existing = (await offlineStore.getModuleList(classId)) ?? [];
+                    await offlineStore.saveModuleList(classId, [...existing, provisional]);
+                    await syncQueue.enqueue({ type: 'mentorships.addModule', classId, programModuleId, tempId });
+                    return { data: provisional };
+                }
+                throw e;
+            }
+        },
         remove: async (moduleId, classId) => {
             try {
                 return await _rawApi.modules.remove(moduleId);
@@ -1167,6 +1283,10 @@ const api = {
                 return await _rawApi.attendance.mark(moduleId, participantId, status);
             } catch (e) {
                 if (isNetworkError(e)) {
+                    const existing = (await offlineStore.getAttendance(moduleId)) ?? [];
+                    await offlineStore.saveAttendance(moduleId, existing.map(p =>
+                        p.participant_id === participantId ? { ...p, status } : p
+                    ));
                     await syncQueue.enqueue({ type: 'mentorship.attendance.mark', moduleId, participantId, status });
                     return { queued: true };
                 }
@@ -1259,7 +1379,21 @@ const api = {
                 throw e;
             }
         },
-        participants: _rawApi.trainings.participants,
+        participants: async (id) => {
+            try {
+                const data = await _rawApi.trainings.participants(id);
+                const arr = Array.isArray(data?.data) ? data.data : [];
+                if (arr.length > 0)
+                    await offlineStore.setMeta(`training_participants_${id}`, arr);
+                return data;
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    const cached = await offlineStore.getMeta(`training_participants_${id}`);
+                    if (cached) return { data: cached };
+                }
+                throw e;
+            }
+        },
     },
 
     // ── Lookup (cache-first, no writes) ─────────────────────────────────────
@@ -1341,13 +1475,32 @@ const api = {
                     const map = await offlineStore.getUserLookupMap();
                     const key = (email ?? '').toLowerCase().trim();
                     const found = map?.[key];
-                    if (found) return { data: found };
+                    if (found) return { data: { ...found, email: key } };
                     return null;
                 }
                 throw e;
             }
         },
-        userSearch: _rawApi.lookups.userSearch,
+        userSearch: async (q, perPage = 20) => {
+            try {
+                return await _rawApi.lookups.userSearch(q, perPage);
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    const map = await offlineStore.getUserLookupMap();
+                    if (!map) return { data: [] };
+                    const qLower = (q ?? '').toLowerCase().trim();
+                    const results = Object.entries(map)
+                        .filter(([email, u]) => u && (
+                            email.includes(qLower) ||
+                            (u.name ?? '').toLowerCase().includes(qLower)
+                        ))
+                        .map(([email, u]) => ({ ...u, email }))
+                        .slice(0, perPage);
+                    return { data: results };
+                }
+                throw e;
+            }
+        },
     },
 
     // ── Mentorship creation (online→queue) ───────────────────────────────────
@@ -1359,9 +1512,21 @@ const api = {
             } catch (e) {
                 if (isNetworkError(e)) {
                     const tempId = 'local_' + Date.now();
-                    const local = { ...payload, id: tempId, _isOffline: true, status: 'draft' };
+                    const tempClassId = 'local_class_' + (Date.now() + 1);
+                    const local = {
+                        ...payload,
+                        id: tempId,
+                        _isOffline: true,
+                        status: 'draft',
+                        class: {
+                            id: tempClassId,
+                            name: payload.class_name ?? '',
+                            status: 'draft',
+                            _isOffline: true,
+                        },
+                    };
                     await offlineStore.saveMentorship(local);
-                    await syncQueue.enqueue({ type: 'mentorships.create', tempId, payload });
+                    await syncQueue.enqueue({ type: 'mentorships.create', tempId, tempClassId, payload });
                     return { data: local };
                 }
                 throw e;
@@ -1417,7 +1582,19 @@ const api = {
                 throw e;
             }
         },
-        report: (classId) => _rawApi.classLifecycle.report(classId),
+        report: async (classId) => {
+            try {
+                const data = await _rawApi.classLifecycle.report(classId);
+                await offlineStore.setMeta(`class_report_${classId}`, data);
+                return data;
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    const cached = await offlineStore.getMeta(`class_report_${classId}`);
+                    if (cached) return cached;
+                }
+                throw e;
+            }
+        },
         enrollmentLink: async (classId) => {
             try {
                 const data = await _rawApi.classLifecycle.enrollmentLink(classId);
@@ -1592,25 +1769,38 @@ const api = {
         },
     },
 
-    // ── Resources (cache with 24h TTL) ───────────────────────────────────────
+    // ── Resources (cache with 24h TTL — both typed and untyped) ────────────────
     resources: {
         list: async (type) => {
             const now = Date.now();
-            const cachedAt = (await offlineStore.getResourcesCachedAt()) ?? 0;
             const ttl = 24 * 60 * 60 * 1000;
-            if (!type && now - cachedAt < ttl) {
-                const cached = await offlineStore.getResources();
-                if (cached) return cached;
+
+            if (!type) {
+                const cachedAt = (await offlineStore.getResourcesCachedAt()) ?? 0;
+                if (now - cachedAt < ttl) {
+                    const cached = await offlineStore.getResources();
+                    if (cached) return cached;
+                }
+            } else {
+                const entry = await offlineStore.getMeta(`resources_type_${type}`);
+                if (entry && now - (entry._cachedAt ?? 0) < ttl) return entry.data;
             }
+
             try {
                 const data = await _rawApi.resources.list(type);
                 const list = data?.data ?? data;
                 if (!type) {
                     await offlineStore.saveResources(list);
                     await offlineStore.setResourcesCachedAt(now);
+                } else {
+                    await offlineStore.setMeta(`resources_type_${type}`, { data: list, _cachedAt: now });
                 }
                 return list;
             } catch {
+                if (type) {
+                    const entry = await offlineStore.getMeta(`resources_type_${type}`);
+                    return entry?.data ?? [];
+                }
                 return (await offlineStore.getResources()) ?? [];
             }
         },
@@ -1632,6 +1822,24 @@ const api = {
             }
         },
         progress: _rawApi.participants.progress,
+    },
+
+    // ── Analytics summary (mobile dashboard) ─────────────────────────────────
+    analytics: {
+        summary: async (mode, year = '') => {
+            const cacheKey = `analytics_${mode}${year ? `_${year}` : ''}`;
+            try {
+                const data = await get(`/analytics/summary?mode=${mode}${year ? `&year=${year}` : ''}`);
+                await offlineStore.setMeta(cacheKey, data);
+                return data;
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    const cached = await offlineStore.getMeta(cacheKey);
+                    if (cached) return cached;
+                }
+                throw e;
+            }
+        },
     },
 
     // ── Scope config ─────────────────────────────────────────────────────────
@@ -1672,6 +1880,19 @@ const api = {
                 ]);
             } catch {
                 // Non-critical — best effort
+            }
+        }
+
+        // Cache reports for completed/submitted assessments so they're viewable offline
+        const completed = (assessments ?? []).filter(a => a.status === 'submitted' || a.status === 'completed');
+        for (const a of completed) {
+            try {
+                await Promise.allSettled([
+                    api.reports.show(a.id),
+                    api.reports.summary(a.id),
+                ]);
+            } catch {
+                // Non-critical
             }
         }
 
@@ -1748,3 +1969,5 @@ document.addEventListener('resume', () => {
 });
 
 export default api;
+
+
