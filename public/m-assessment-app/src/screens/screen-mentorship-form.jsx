@@ -298,7 +298,7 @@ export function MentorshipFormScreen({ user, onBack, onCreated, existingMentorsh
 
     const [startDate, setStartDate]           = useState("");
     const [endDate, setEndDate]               = useState("");
-    const [maxParticipants, setMaxParticipants] = useState('20');
+    const [maxParticipants, setMaxParticipants] = useState(20);
     const [className, setClassName]           = useState("Class 1");
     const [classStartDate, setClassStartDate] = useState("");
     const [classEndDate, setClassEndDate]     = useState("");
@@ -416,7 +416,7 @@ export function MentorshipFormScreen({ user, onBack, onCreated, existingMentorsh
                 if (t.facility_id) setFacilityId(String(t.facility_id));
                 if (t.start_date)  setStartDate(t.start_date);
                 if (t.end_date)    setEndDate(t.end_date);
-                if (t.max_participants) setMaxParticipants(String(t.max_participants));
+                if (t.max_participants) setMaxParticipants(t.max_participants);
                 if (t.is_pilot !== undefined) setIsPilot(!!t.is_pilot);
             })
             .catch(() => {})
@@ -594,7 +594,7 @@ export function MentorshipFormScreen({ user, onBack, onCreated, existingMentorsh
                 county_id:        parseInt(countyId),
                 start_date:       startDate,
                 end_date:         endDate,
-                max_participants: Math.max(2, parseInt(maxParticipants) || 2),
+                max_participants: maxParticipants,
                 is_pilot:         isPilot,
             });
             onCreated(res?.data ?? res);
@@ -614,7 +614,7 @@ export function MentorshipFormScreen({ user, onBack, onCreated, existingMentorsh
                 county_id:        parseInt(countyId),
                 start_date:       startDate,
                 end_date:         endDate,
-                max_participants: Math.max(2, parseInt(maxParticipants) || 2),
+                max_participants: maxParticipants,
                 is_pilot:         isPilot,
                 class_name:       className.trim(),
                 class_start_date: effectiveClassStartDate,
@@ -852,11 +852,12 @@ export function MentorshipFormScreen({ user, onBack, onCreated, existingMentorsh
                                 </Field>
                             </div>
 
-                            <Field label="Number of Mentees">
+                            <Field label="Number of Mentees" hint="Recommended minimum: 2. No maximum limit enforced.">
                                 <input
                                     type="number"
                                     value={maxParticipants}
-                                    onChange={e => setMaxParticipants(e.target.value)}
+                                    min={1}
+                                    onChange={e => setMaxParticipants(parseInt(e.target.value) || 20)}
                                     style={inputStyle}
                                 />
                             </Field>
@@ -1181,7 +1182,7 @@ export function MentorshipFormScreen({ user, onBack, onCreated, existingMentorsh
 
             {/* ── Footer Nav ── */}
             {isEditMode ? (
-                <div style={{ padding: "12px 16px", paddingBottom: "calc(12px + env(safe-area-inset-bottom, 0px))", background: T.card, borderTop: `1px solid ${T.borderLight}` }}>
+                <div style={{ padding: "12px 16px", background: T.card, borderTop: `1px solid ${T.borderLight}` }}>
                     <button
                         onClick={handleUpdate}
                         disabled={saving || !step1Valid}
@@ -1191,14 +1192,14 @@ export function MentorshipFormScreen({ user, onBack, onCreated, existingMentorsh
                             color: "#fff", fontSize: 14, fontWeight: 700,
                             cursor: (saving || !step1Valid) ? "not-allowed" : "pointer",
                             opacity: (saving || !step1Valid) ? 0.6 : 1,
-                            boxShadow: "0 4px 12px rgba(0,151,167,0.3)",
+                            boxShadow: "0 4px 12px rgba(79,106,245,0.28)",
                         }}
                     >
                         {saving ? "Saving…" : "Save Changes"}
                     </button>
                 </div>
             ) : step < 5 && (
-                <div style={{ padding: "12px 16px", paddingBottom: "calc(12px + env(safe-area-inset-bottom, 0px))", background: T.card, borderTop: `1px solid ${T.borderLight}`, display: "flex", gap: 10 }}>
+                <div style={{ padding: "12px 16px", background: T.card, borderTop: `1px solid ${T.borderLight}`, display: "flex", gap: 10 }}>
                     {step > 1 && (
                         <button
                             onClick={() => setStep(s => s - 1)}

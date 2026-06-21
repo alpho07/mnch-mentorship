@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MNCH Final Design</title>
+<style>
+* { box-sizing:border-box; margin:0; padding:0; }
+body {
+  font-family:-apple-system,'SF Pro Display','Segoe UI',sans-serif;
+  background:#0F0F18;
+  color:#fff;
+  padding:32px 20px 56px;
+}
+.top { text-align:center; margin-bottom:40px; }
+.top-label { font-size:11px; font-weight:700; letter-spacing:3px; text-transform:uppercase; color:rgba(255,255,255,0.3); margin-bottom:8px; }
+.top-heading { font-size:30px; font-weight:800; letter-spacing:-0.6px; }
+.top-sub { font-size:14px; color:rgba(255,255,255,0.4); margin-top:6px; }
+
+/* Token strip */
+.tokens { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-bottom:44px; }
+.token { background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); border-radius:50px; padding:6px 14px; font-size:12px; color:rgba(255,255,255,0.6); display:flex; align-items:center; gap:6px; }
+.token-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+
+/* Screens row */
+.screens { display:flex; gap:24px; justify-content:center; align-items:flex-start; flex-wrap:wrap; }
+
+/* Phone shell */
+.phone-shell {
+  width:260px; border-radius:44px; overflow:hidden;
+  background:#F2F2F7;
+  box-shadow:0 32px 80px rgba(0,0,0,0.6), inset 0 0 0 1px rgba(255,255,255,0.08);
+  flex-shrink:0;
+  font-family:-apple-system,'SF Pro Display',sans-serif;
+  position:relative;
+}
+.phone-label { text-align:center; margin-top:14px; font-size:11px; color:rgba(255,255,255,0.35); font-weight:600; letter-spacing:1px; text-transform:uppercase; }
+
+/* Status bar */
+.sb { height:40px; display:flex; align-items:center; justify-content:space-between; padding:10px 18px 0; background:#1A1A2E; }
+.sb-time { font-size:12px; font-weight:700; color:#fff; }
+.sb-icons { display:flex; gap:5px; align-items:center; opacity:0.6; }
+
+/* ── LOGIN SCREEN ── */
+.login-hero {
+  background:linear-gradient(160deg,#1A1A2E 0%,#1E2A5E 55%,#2D3B8E 100%);
+  padding:28px 20px 32px;
+  position:relative; overflow:hidden;
+}
+.login-hero::before { content:''; position:absolute; width:180px; height:180px; border-radius:50%; background:radial-gradient(circle,rgba(79,106,245,0.25) 0%,transparent 70%); top:-60px; right:-40px; }
+.login-hero::after { content:''; position:absolute; width:100px; height:100px; border-radius:50%; background:radial-gradient(circle,rgba(108,99,255,0.15) 0%,transparent 70%); bottom:-20px; left:10px; }
+.logo-mark { width:52px; height:52px; border-radius:16px; background:linear-gradient(135deg,#4F6AF5,#6C63FF); display:flex; align-items:center; justify-content:center; margin-bottom:16px; box-shadow:0 8px 24px rgba(79,106,245,0.4); position:relative; z-index:1; }
+.login-title { color:#fff; font-size:22px; font-weight:800; letter-spacing:-0.5px; position:relative; z-index:1; }
+.login-sub { color:rgba(255,255,255,0.45); font-size:11px; margin-top:3px; position:relative; z-index:1; }
+.login-form { padding:20px 16px; background:#F2F2F7; }
+.field-lbl { font-size:11px; font-weight:700; color:#3C3C43; margin-bottom:5px; letter-spacing:0.2px; }
+.field-box { background:#fff; border-radius:12px; padding:13px 14px; margin-bottom:12px; display:flex; align-items:center; gap:10px; box-shadow:0 1px 3px rgba(0,0,0,0.06); }
+.field-box input { border:none; background:transparent; font-size:13px; color:#1C1C1E; outline:none; flex:1; font-family:inherit; }
+.field-focused { box-shadow:0 0 0 3px rgba(79,106,245,0.2), 0 1px 3px rgba(0,0,0,0.06); }
+.btn-primary { width:100%; padding:14px; border-radius:14px; border:none; background:linear-gradient(135deg,#4F6AF5,#6C63FF); color:#fff; font-size:14px; font-weight:700; cursor:pointer; box-shadow:0 6px 20px rgba(79,106,245,0.35); letter-spacing:0.2px; margin-top:4px; }
+
+/* ── DASHBOARD ── */
+.dash-hero {
+  background:linear-gradient(150deg,#1A1A2E 0%,#1E2A5E 55%,#2D3B8E 100%);
+  padding:16px 14px 18px; position:relative; overflow:hidden;
+  border-radius:0 0 24px 24px; margin:0 6px;
+}
+.dash-hero::before { content:''; position:absolute; width:160px; height:160px; border-radius:50%; background:radial-gradient(circle,rgba(79,106,245,0.25) 0%,transparent 70%); top:-50px; right:-30px; }
+.dash-hero::after { content:''; position:absolute; width:80px; height:80px; border-radius:50%; background:radial-gradient(circle,rgba(108,99,255,0.18) 0%,transparent 70%); bottom:-20px; left:20px; }
+.dash-greeting { color:rgba(255,255,255,0.5); font-size:11px; font-weight:500; margin-bottom:2px; position:relative; z-index:1; }
+.dash-name { color:#fff; font-size:20px; font-weight:800; letter-spacing:-0.4px; position:relative; z-index:1; }
+.dash-role { color:rgba(255,255,255,0.35); font-size:10px; margin-top:2px; position:relative; z-index:1; }
+.dash-stats { display:flex; gap:6px; margin-top:12px; position:relative; z-index:1; }
+.stat-pill { flex:1; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:9px 8px; backdrop-filter:blur(8px); }
+.stat-n { color:#fff; font-size:17px; font-weight:800; }
+.stat-l { color:rgba(255,255,255,0.4); font-size:8px; font-weight:600; margin-top:1px; }
+.dash-content { padding:12px 12px 0; }
+.section-hd { font-size:18px; font-weight:700; color:#1C1C1E; letter-spacing:-0.3px; margin:10px 0 8px; }
+.list-card { background:#fff; border-radius:14px; padding:12px; margin-bottom:7px; display:flex; align-items:center; gap:10px; box-shadow:0 1px 4px rgba(0,0,0,0.05),0 4px 12px rgba(79,106,245,0.05); }
+.lc-icon { width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:15px; flex-shrink:0; }
+.lc-title { font-size:12px; font-weight:600; color:#1C1C1E; }
+.lc-sub { font-size:10px; color:#8E8E93; margin-top:1px; }
+.lc-badge { font-size:9px; font-weight:800; padding:3px 8px; border-radius:20px; margin-left:auto; flex-shrink:0; }
+.dash-fab { position:absolute; bottom:72px; right:10px; width:44px; height:44px; border-radius:14px; background:linear-gradient(135deg,#4F6AF5,#6C63FF); display:flex; align-items:center; justify-content:center; box-shadow:0 6px 20px rgba(79,106,245,0.4); }
+
+/* ── ASSESSMENT DETAIL ── */
+.detail-header { background:linear-gradient(150deg,#1A1A2E 0%,#1E2A5E 55%,#2D3B8E 100%); padding:14px 14px 20px; position:relative; overflow:hidden; border-radius:0 0 28px 28px; margin:0 6px; }
+.detail-header::before { content:''; position:absolute; width:130px; height:130px; border-radius:50%; background:radial-gradient(circle,rgba(79,106,245,0.2) 0%,transparent 70%); top:-30px; right:-20px; }
+.back-row { display:flex; align-items:center; gap:6px; margin-bottom:10px; }
+.back-btn { color:rgba(255,255,255,0.6); font-size:11px; display:flex; align-items:center; gap:3px; }
+.detail-facility { color:#fff; font-size:16px; font-weight:800; letter-spacing:-0.3px; position:relative; z-index:1; }
+.detail-sub { color:rgba(255,255,255,0.4); font-size:10px; margin-top:2px; position:relative; z-index:1; }
+.score-row { display:flex; align-items:center; gap:12px; margin-top:14px; position:relative; z-index:1; }
+.score-ring-wrap { position:relative; width:56px; height:56px; flex-shrink:0; }
+.score-text { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; color:#fff; }
+.detail-content { padding:12px 12px 0; }
+.section-card { background:#fff; border-radius:14px; padding:12px; margin-bottom:7px; box-shadow:0 1px 4px rgba(0,0,0,0.05); }
+.sc-row { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+.sc-icon { width:30px; height:30px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:13px; flex-shrink:0; }
+.sc-name { font-size:12px; font-weight:600; color:#1C1C1E; }
+.sc-pct { font-size:11px; font-weight:800; margin-left:auto; }
+.progress-bg { height:4px; background:#F2F2F7; border-radius:99px; overflow:hidden; }
+.progress-fill { height:4px; border-radius:99px; }
+
+/* ── NAV BAR ── */
+.nav-bar { display:flex; align-items:flex-start; justify-content:space-around; padding:10px 4px 6px; background:rgba(255,255,255,0.94); backdrop-filter:blur(20px) saturate(180%); border-top:0.5px solid rgba(0,0,0,0.1); }
+.nav-it { display:flex; flex-direction:column; align-items:center; gap:3px; padding:0 6px; }
+.nav-lbl { font-size:9px; color:#8E8E93; font-weight:500; }
+.nav-lbl.on { color:#4F6AF5; font-weight:700; }
+.nav-pill { background:linear-gradient(135deg,#4F6AF5,#6C63FF); border-radius:14px; padding:5px 12px; display:flex; align-items:center; justify-content:center; }
+
+/* Approval section */
+.approve-section { max-width:680px; margin:48px auto 0; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:24px; padding:28px 28px; }
+.approve-heading { font-size:20px; font-weight:800; letter-spacing:-0.3px; margin-bottom:6px; }
+.approve-sub { font-size:13px; color:rgba(255,255,255,0.4); margin-bottom:20px; line-height:1.6; }
+.token-list { list-style:none; }
+.token-list li { font-size:13px; color:rgba(255,255,255,0.6); padding:5px 0; display:flex; align-items:center; gap:8px; }
+.token-list li::before { content:''; width:6px; height:6px; border-radius:50%; background:#4F6AF5; flex-shrink:0; }
+.approve-actions { display:flex; gap:10px; margin-top:24px; }
+.btn-approve { flex:1; padding:14px; border-radius:14px; border:none; background:linear-gradient(135deg,#4F6AF5,#6C63FF); color:#fff; font-size:14px; font-weight:700; cursor:pointer; box-shadow:0 6px 20px rgba(79,106,245,0.3); transition:transform 0.2s, box-shadow 0.2s; }
+.btn-approve:hover { transform:translateY(-2px); box-shadow:0 10px 28px rgba(79,106,245,0.4); }
+.btn-revise { flex:1; padding:14px; border-radius:14px; border:1px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.04); color:rgba(255,255,255,0.6); font-size:14px; font-weight:600; cursor:pointer; }
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div class="top-label">Step 3 of 3 — Final Design</div>
+  <div class="top-heading">Your new MNCH interface</div>
+  <div class="top-sub">Apple iOS Minimal · Indigo Sapphire · SF Pro typography</div>
+</div>
+
+<!-- Token strip -->
+<div class="tokens">
+  <div class="token"><div class="token-dot" style="background:#4F6AF5"></div>Primary #4F6AF5</div>
+  <div class="token"><div class="token-dot" style="background:#6C63FF"></div>Secondary #6C63FF</div>
+  <div class="token"><div class="token-dot" style="background:#1A1A2E"></div>Hero Dark #1A1A2E</div>
+  <div class="token"><div class="token-dot" style="background:#F2F2F7"></div>Background #F2F2F7</div>
+  <div class="token"><div class="token-dot" style="background:#1C1C1E"></div>Text #1C1C1E</div>
+  <div class="token"><div class="token-dot" style="background:#8E8E93"></div>Muted #8E8E93</div>
+  <div class="token"><span style="font-size:12px">Aa</span>-apple-system / SF Pro</div>
+  <div class="token">radius 18px cards · 14px cells · 50px pills</div>
+</div>
+
+<!-- Screens -->
+<div class="screens">
+
+  <!-- ── LOGIN ── -->
+  <div>
+    <div class="phone-shell">
+      <div class="sb" style="background:#1A1A2E">
+        <span class="sb-time">9:41</span>
+        <div class="sb-icons">
+          <svg width="13" height="10" viewBox="0 0 13 10" fill="white"><rect x="0" y="3" width="2.5" height="7" rx="1"/><rect x="3.5" y="2" width="2.5" height="8" rx="1"/><rect x="7" y="0" width="2.5" height="10" rx="1"/><rect x="10.5" y="0" width="2.5" height="10" rx="1" opacity="0.3"/></svg>
+          <svg width="23" height="11" viewBox="0 0 23 11" fill="none"><rect x="0.5" y="0.5" width="19" height="10" rx="3" stroke="white" stroke-opacity="0.35"/><rect x="2" y="2" width="15" height="7" rx="1.5" fill="white"/><path d="M21 3.5v3a1.5 1.5 0 000-3z" fill="white" fill-opacity="0.4"/></svg>
+        </div>
+      </div>
+      <div class="login-hero">
+        <div class="logo-mark">
+          <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
+            <rect x="10" y="2" width="6" height="22" rx="3" fill="white" fill-opacity="0.95"/>
+            <rect x="2" y="10" width="22" height="6" rx="3" fill="white" fill-opacity="0.95"/>
+            <circle cx="13" cy="13" r="4" fill="white"/>
+          </svg>
+        </div>
+        <div class="login-title">MNCH Kenya</div>
+        <div class="login-sub">Mentorship Platform · Ministry of Health</div>
+      </div>
+      <div class="login-form">
+        <div style="font-size:18px;font-weight:800;color:#1C1C1E;letter-spacing:-0.4px;margin-bottom:3px;">Welcome back</div>
+        <div style="font-size:12px;color:#8E8E93;margin-bottom:18px;">Sign in to your account</div>
+        <div class="field-lbl">Email Address</div>
+        <div class="field-box">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          <input value="sarah@mnch.go.ke" style="pointer-events:none;color:#1C1C1E;font-size:12px">
+        </div>
+        <div class="field-lbl">Password</div>
+        <div class="field-box field-focused">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4F6AF5" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+          <input type="password" value="password" style="pointer-events:none;color:#1C1C1E;font-size:12px">
+        </div>
+        <button class="btn-primary">Sign In</button>
+        <div style="text-align:center;margin-top:12px;font-size:11px;color:#4F6AF5;font-weight:600;">Forgot password?</div>
+      </div>
+    </div>
+    <div class="phone-label">Login</div>
+  </div>
+
+  <!-- ── DASHBOARD ── -->
+  <div>
+    <div class="phone-shell">
+      <div class="sb" style="background:#1A1A2E">
+        <span class="sb-time">9:41</span>
+        <div class="sb-icons">
+          <svg width="13" height="10" viewBox="0 0 13 10" fill="white"><rect x="0" y="3" width="2.5" height="7" rx="1"/><rect x="3.5" y="2" width="2.5" height="8" rx="1"/><rect x="7" y="0" width="2.5" height="10" rx="1"/><rect x="10.5" y="0" width="2.5" height="10" rx="1" opacity="0.3"/></svg>
+          <svg width="23" height="11" viewBox="0 0 23 11" fill="none"><rect x="0.5" y="0.5" width="19" height="10" rx="3" stroke="white" stroke-opacity="0.35"/><rect x="2" y="2" width="15" height="7" rx="1.5" fill="white"/><path d="M21 3.5v3a1.5 1.5 0 000-3z" fill="white" fill-opacity="0.4"/></svg>
+        </div>
+      </div>
+      <div class="dash-hero">
+        <div class="dash-greeting">Good morning 👋</div>
+        <div class="dash-name">Dr. Sarah Wanjiku</div>
+        <div class="dash-role">MNCH Assessor · Nairobi County</div>
+        <div class="dash-stats">
+          <div class="stat-pill"><div class="stat-n">12</div><div class="stat-l">TOTAL</div></div>
+          <div class="stat-pill"><div class="stat-n">78%</div><div class="stat-l">AVG SCORE</div></div>
+          <div class="stat-pill"><div class="stat-n">3</div><div class="stat-l">ACTIVE</div></div>
+          <div class="stat-pill"><div class="stat-n">8</div><div class="stat-l">DONE</div></div>
+        </div>
+      </div>
+      <div class="dash-content" style="overflow:hidden;max-height:310px;">
+        <div class="section-hd">Recent Assessments</div>
+        <div class="list-card">
+          <div class="lc-icon" style="background:#EEF2FF">🏥</div>
+          <div style="flex:1;min-width:0">
+            <div class="lc-title">Kenyatta Nat'l Hospital</div>
+            <div class="lc-sub">Infrastructure · 20 May 2025</div>
+          </div>
+          <div class="lc-badge" style="background:#DCFCE7;color:#166534">82%</div>
+        </div>
+        <div class="list-card">
+          <div class="lc-icon" style="background:#FFF8ED">🏗️</div>
+          <div style="flex:1;min-width:0">
+            <div class="lc-title">Pumwani Maternity</div>
+            <div class="lc-sub">Quality of Care · In progress</div>
+          </div>
+          <div class="lc-badge" style="background:#FEF9C3;color:#854D0E">45%</div>
+        </div>
+        <div class="list-card">
+          <div class="lc-icon" style="background:#EEF2FF">💊</div>
+          <div style="flex:1;min-width:0">
+            <div class="lc-title">Mbagathi Hospital</div>
+            <div class="lc-sub">Health Products · 18 May 2025</div>
+          </div>
+          <div class="lc-badge" style="background:#DCFCE7;color:#166534">91%</div>
+        </div>
+        <div class="list-card">
+          <div class="lc-icon" style="background:#FEE2E2">⚕️</div>
+          <div style="flex:1;min-width:0">
+            <div class="lc-title">Langata Sub-county</div>
+            <div class="lc-sub">Skills Lab · 15 May 2025</div>
+          </div>
+          <div class="lc-badge" style="background:#FEE2E2;color:#991B1B">38%</div>
+        </div>
+      </div>
+      <div class="dash-fab">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </div>
+      <div style="height:8px"></div>
+      <div class="nav-bar">
+        <div class="nav-it">
+          <div class="nav-pill"><svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg></div>
+          <div class="nav-lbl on">Home</div>
+        </div>
+        <div class="nav-it">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <div class="nav-lbl">Assess</div>
+        </div>
+        <div class="nav-it">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+          <div class="nav-lbl">Mentor</div>
+        </div>
+        <div class="nav-it">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="1.5"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          <div class="nav-lbl">Reports</div>
+        </div>
+        <div class="nav-it">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="1.5"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <div class="nav-lbl">Profile</div>
+        </div>
+      </div>
+    </div>
+    <div class="phone-label">Dashboard</div>
+  </div>
+
+  <!-- ── ASSESSMENT DETAIL ── -->
+  <div>
+    <div class="phone-shell">
+      <div class="sb" style="background:#1A1A2E">
+        <span class="sb-time">9:41</span>
+        <div class="sb-icons">
+          <svg width="13" height="10" viewBox="0 0 13 10" fill="white"><rect x="0" y="3" width="2.5" height="7" rx="1"/><rect x="3.5" y="2" width="2.5" height="8" rx="1"/><rect x="7" y="0" width="2.5" height="10" rx="1"/></svg>
+          <svg width="23" height="11" viewBox="0 0 23 11" fill="none"><rect x="0.5" y="0.5" width="19" height="10" rx="3" stroke="white" stroke-opacity="0.35"/><rect x="2" y="2" width="14" height="7" rx="1.5" fill="white"/></svg>
+        </div>
+      </div>
+      <div class="detail-header">
+        <div class="back-row">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+          <span style="font-size:11px;color:rgba(255,255,255,0.5);font-weight:600">Assessments</span>
+        </div>
+        <div class="detail-facility">Kenyatta Nat'l Hospital</div>
+        <div class="detail-sub">Infrastructure Assessment · 20 May 2025</div>
+        <div class="score-row">
+          <div class="score-ring-wrap">
+            <svg width="56" height="56" style="transform:rotate(-90deg)">
+              <circle cx="28" cy="28" r="22" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="5"/>
+              <circle cx="28" cy="28" r="22" fill="none" stroke="#10B981" stroke-width="5"
+                stroke-dasharray="138.2" stroke-dashoffset="24.9" stroke-linecap="round"/>
+            </svg>
+            <div class="score-text">82%</div>
+          </div>
+          <div>
+            <div style="color:#fff;font-size:14px;font-weight:800;letter-spacing:-0.3px;">Good</div>
+            <div style="color:rgba(255,255,255,0.4);font-size:10px;margin-top:2px;">Overall Score</div>
+            <div style="display:flex;gap:6px;margin-top:8px;">
+              <div style="background:rgba(255,255,255,0.08);border-radius:6px;padding:4px 8px;font-size:9px;color:rgba(255,255,255,0.6);">6/6 sections</div>
+              <div style="background:rgba(16,185,129,0.18);border-radius:6px;padding:4px 8px;font-size:9px;color:#34D399;">Submitted</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="detail-content" style="overflow:hidden">
+        <div style="font-size:14px;font-weight:700;color:#1C1C1E;letter-spacing:-0.2px;margin:10px 0 8px;">Section Scores</div>
+        <div class="section-card">
+          <div class="sc-row">
+            <div class="sc-icon" style="background:#EDE9FE">🏗️</div>
+            <div class="sc-name">Infrastructure</div>
+            <div class="sc-pct" style="color:#10B981">88%</div>
+          </div>
+          <div class="progress-bg"><div class="progress-fill" style="width:88%;background:linear-gradient(90deg,#10B981,#34D399)"></div></div>
+        </div>
+        <div class="section-card">
+          <div class="sc-row">
+            <div class="sc-icon" style="background:#DCFCE7">🔬</div>
+            <div class="sc-name">Skills Lab</div>
+            <div class="sc-pct" style="color:#10B981">76%</div>
+          </div>
+          <div class="progress-bg"><div class="progress-fill" style="width:76%;background:linear-gradient(90deg,#4F6AF5,#6C63FF)"></div></div>
+        </div>
+        <div class="section-card">
+          <div class="sc-row">
+            <div class="sc-icon" style="background:#FEF9C3">👥</div>
+            <div class="sc-name">Human Resources</div>
+            <div class="sc-pct" style="color:#F59E0B">62%</div>
+          </div>
+          <div class="progress-bg"><div class="progress-fill" style="width:62%;background:linear-gradient(90deg,#F59E0B,#FBBF24)"></div></div>
+        </div>
+        <div class="section-card">
+          <div class="sc-row">
+            <div class="sc-icon" style="background:#FEE2E2">💊</div>
+            <div class="sc-name">Health Products</div>
+            <div class="sc-pct" style="color:#EF4444">41%</div>
+          </div>
+          <div class="progress-bg"><div class="progress-fill" style="width:41%;background:linear-gradient(90deg,#EF4444,#F87171)"></div></div>
+        </div>
+      </div>
+      <div style="height:8px"></div>
+      <div class="nav-bar">
+        <div class="nav-it">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+          <div class="nav-lbl">Home</div>
+        </div>
+        <div class="nav-it">
+          <div class="nav-pill"><svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/></svg></div>
+          <div class="nav-lbl on">Assess</div>
+        </div>
+        <div class="nav-it">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+          <div class="nav-lbl">Mentor</div>
+        </div>
+        <div class="nav-it">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="1.5"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          <div class="nav-lbl">Reports</div>
+        </div>
+        <div class="nav-it">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="1.5"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <div class="nav-lbl">Profile</div>
+        </div>
+      </div>
+    </div>
+    <div class="phone-label">Assessment Detail</div>
+  </div>
+
+</div>
+
+<!-- Approval -->
+<div class="approve-section">
+  <div class="approve-heading">Design System Summary</div>
+  <div class="approve-sub">Here's what will be applied across all screens when you approve:</div>
+  <ul class="token-list">
+    <li><strong style="color:#fff">Typography:</strong> -apple-system / SF Pro — same font stack as iPhone. Letter-spacing tightened to −0.4px on headings for that premium feel.</li>
+    <li><strong style="color:#fff">Colours:</strong> Hero panels deep navy → indigo (#1A1A2E → #2D3B8E). Accent #4F6AF5 on buttons, active nav, badges, progress fills. Background #F2F2F7 (iOS system grey).</li>
+    <li><strong style="color:#fff">Cards:</strong> Pure white #FFFFFF, border-radius 14–18px, ultra-subtle shadow. No coloured borders — colour lives in icons and badges only.</li>
+    <li><strong style="color:#fff">Navigation:</strong> Frosted-glass bottom bar. Active tab gets a filled indigo pill behind the icon + coloured label. Inactive icons neutral grey.</li>
+    <li><strong style="color:#fff">Animations:</strong> fadeInUp (0.4s, staggered per card), scaleIn on modals, spring cubic-bezier(0.34,1.56,0.64,1) on interactive elements.</li>
+    <li><strong style="color:#fff">Scope:</strong> constants.js token update + index.css keyframes + all screen files restyled (login, dashboard, lists, detail, forms, nav).</li>
+  </ul>
+  <div class="approve-actions">
+    <button class="btn-approve" onclick="approve()">Approve — Build It →</button>
+    <button class="btn-revise" onclick="revise()">Request Changes</button>
+  </div>
+</div>
+
+<script>
+function approve() {
+  if (window.recordChoice) window.recordChoice('approved', 'Design approved — proceed to implementation');
+  document.querySelector('.btn-approve').textContent = '✓ Approved! Building now…';
+  document.querySelector('.btn-approve').style.background = 'linear-gradient(135deg,#10B981,#059669)';
+}
+function revise() {
+  if (window.recordChoice) window.recordChoice('revise', 'User requested changes');
+}
+</script>
+</body>
+</html>

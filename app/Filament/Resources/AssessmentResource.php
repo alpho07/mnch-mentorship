@@ -191,7 +191,7 @@ class AssessmentResource extends Resource {
                             ->label('Last 30 Days')
                             ->query(fn(Builder $query): Builder => $query->where('created_at', '>=', now()->subDays(30)))
                             ->toggle(),
-                                ], layout: FiltersLayout::AboveContent)
+                                ], layout: FiltersLayout::Dropdown)
                         ->filtersFormColumns(3)
                         ->actions([
                             Tables\Actions\ActionGroup::make([

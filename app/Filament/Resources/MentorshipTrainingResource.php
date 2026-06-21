@@ -133,7 +133,7 @@ class MentorshipTrainingResource extends Resource
             return;
         }
 
-        $query->where('mentor_id', $user->id);
+        $query->forMentorOrCoMentor($user->id);
     }
 
     public static function getNavigationLabel(): string

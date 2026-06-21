@@ -1,0 +1,134 @@
+<h2>Mentorship Overview Screen — confirm layout</h2>
+<p class="subtitle">Mentor taps a card → sees this screen before the existing detail tabs</p>
+
+<div class="mockup">
+  <div class="mockup-header">screen-mentorship-overview.jsx</div>
+  <div class="mockup-body" style="padding:0;font-family:-apple-system,sans-serif;background:#F2F2F7;border-radius:0 0 10px 10px;overflow:hidden">
+
+    <!-- Hero -->
+    <div style="background:linear-gradient(150deg,#1A1A2E,#1E2A5E,#2D3B8E);padding:14px 16px 20px;position:relative;overflow:hidden">
+      <div style="position:absolute;width:160px;height:160px;border-radius:50%;background:radial-gradient(circle,rgba(79,106,245,0.20) 0%,transparent 70%);top:-50px;right:-40px"></div>
+      <!-- Back -->
+      <div style="display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,0.10);border-radius:10px;padding:5px 12px;color:white;font-size:11px;font-weight:600;margin-bottom:10px">← Back</div>
+      <div style="color:rgba(255,255,255,0.5);font-size:10px;letter-spacing:1px;font-weight:700">MENTORSHIP</div>
+      <div style="color:white;font-size:17px;font-weight:800;margin-top:2px;line-height:1.2">Facility Mentorship<br>– Pumwani</div>
+      <div style="color:rgba(255,255,255,0.5);font-size:11px;margin-top:4px">Jan 2026 – Jun 2026 · Pumwani Maternity</div>
+      <!-- Stat pills -->
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <div style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:6px 12px;text-align:center">
+          <div style="color:white;font-size:16px;font-weight:800">24</div>
+          <div style="color:rgba(255,255,255,0.5);font-size:9px;font-weight:600">Mentees</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:6px 12px;text-align:center">
+          <div style="color:white;font-size:16px;font-weight:800">3</div>
+          <div style="color:rgba(255,255,255,0.5);font-size:9px;font-weight:600">Classes</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:6px 12px;text-align:center">
+          <div style="color:#10B981;font-size:16px;font-weight:800">65%</div>
+          <div style="color:rgba(255,255,255,0.5);font-size:9px;font-weight:600">Progress</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:6px 12px;text-align:center">
+          <div style="color:white;font-size:16px;font-weight:800"><span style="background:rgba(79,106,245,0.6);border-radius:6px;padding:1px 6px;font-size:10px">Active</span></div>
+          <div style="color:rgba(255,255,255,0.5);font-size:9px;font-weight:600;margin-top:4px">Status</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Action strip -->
+    <div style="background:white;padding:8px 16px;display:flex;gap:8px;border-bottom:0.5px solid rgba(0,0,0,0.06)">
+      <button style="flex:1;background:linear-gradient(135deg,#4F6AF5,#6C63FF);color:white;border:none;border-radius:10px;padding:8px;font-size:11px;font-weight:700">View Detail &amp; Reports →</button>
+      <button style="background:rgba(79,106,245,0.08);color:#4F6AF5;border:none;border-radius:10px;padding:8px 14px;font-size:11px;font-weight:700">Edit</button>
+    </div>
+
+    <div style="padding:12px 16px;overflow-y:auto">
+
+      <!-- Mentees by Class -->
+      <div style="font-size:11px;font-weight:700;color:#636366;letter-spacing:.5px;margin-bottom:8px">MENTEES BY CLASS</div>
+
+      <!-- Class 1 -->
+      <div style="background:white;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.05);margin-bottom:10px;overflow:hidden">
+        <div style="padding:10px 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:0.5px solid rgba(0,0,0,0.06)">
+          <div>
+            <div style="font-size:12px;font-weight:700;color:#1C1C1E">ANC Skills — Class A</div>
+            <div style="font-size:10px;color:#636366;margin-top:1px">8 mentees · 70% progress</div>
+          </div>
+          <span style="background:rgba(16,185,129,0.1);color:#059669;font-size:9px;font-weight:700;padding:3px 8px;border-radius:20px">Active</span>
+        </div>
+        <!-- Mentee rows -->
+        <div style="padding:6px 0">
+          <div style="display:flex;align-items:center;gap:10px;padding:5px 12px">
+            <div style="width:28px;height:28px;background:linear-gradient(135deg,#4F6AF5,#6C63FF);border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-size:10px;font-weight:800;flex-shrink:0">GK</div>
+            <div style="flex:1">
+              <div style="font-size:11px;font-weight:600;color:#1C1C1E">Grace Kamau</div>
+              <div style="font-size:9px;color:#636366">Nurse · 3/4 modules</div>
+            </div>
+            <div style="background:#F2F2F7;border-radius:6px;width:50px;height:4px;overflow:hidden">
+              <div style="background:linear-gradient(90deg,#4F6AF5,#6C63FF);height:4px;width:75%"></div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;padding:5px 12px">
+            <div style="width:28px;height:28px;background:linear-gradient(135deg,#10B981,#34D399);border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-size:10px;font-weight:800;flex-shrink:0">AM</div>
+            <div style="flex:1">
+              <div style="font-size:11px;font-weight:600;color:#1C1C1E">Aisha Mwenda</div>
+              <div style="font-size:9px;color:#636366">Midwife · 4/4 modules</div>
+            </div>
+            <div style="background:#F2F2F7;border-radius:6px;width:50px;height:4px;overflow:hidden">
+              <div style="background:linear-gradient(90deg,#10B981,#34D399);height:4px;width:100%"></div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;padding:5px 12px">
+            <div style="width:28px;height:28px;background:linear-gradient(135deg,#F59E0B,#FBBF24);border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-size:10px;font-weight:800;flex-shrink:0">JO</div>
+            <div style="flex:1">
+              <div style="font-size:11px;font-weight:600;color:#1C1C1E">James Otieno</div>
+              <div style="font-size:9px;color:#636366">CHW · 1/4 modules</div>
+            </div>
+            <div style="background:#F2F2F7;border-radius:6px;width:50px;height:4px;overflow:hidden">
+              <div style="background:linear-gradient(90deg,#F59E0B,#FBBF24);height:4px;width:25%"></div>
+            </div>
+          </div>
+          <div style="padding:5px 12px;font-size:10px;color:#4F6AF5;font-weight:600">+5 more mentees →</div>
+        </div>
+      </div>
+
+      <!-- Class 2 collapsed -->
+      <div style="background:white;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.05);margin-bottom:10px">
+        <div style="padding:10px 12px;display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font-size:12px;font-weight:700;color:#1C1C1E">BEmONC Skills — Class B</div>
+            <div style="font-size:10px;color:#636366;margin-top:1px">16 mentees · 40% progress</div>
+          </div>
+          <span style="color:#4F6AF5;font-size:11px;font-weight:700">▸ Expand</span>
+        </div>
+      </div>
+
+      <!-- Class 3 collapsed -->
+      <div style="background:white;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.05)">
+        <div style="padding:10px 12px;display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font-size:12px;font-weight:700;color:#1C1C1E">PNC Module — Class C</div>
+            <div style="font-size:10px;color:#636366;margin-top:1px">0 mentees · Not started</div>
+          </div>
+          <span style="color:#4F6AF5;font-size:11px;font-weight:700">▸ Expand</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="options" style="margin-top:20px">
+  <div class="option" data-choice="approve" onclick="toggleSelect(this)">
+    <div class="letter">✓</div>
+    <div class="content">
+      <h3>Looks good — approve this design</h3>
+      <p>Hero stats + mentees by class (expandable), "View Detail" button leads to existing screen</p>
+    </div>
+  </div>
+  <div class="option" data-choice="revise" onclick="toggleSelect(this)">
+    <div class="letter">✎</div>
+    <div class="content">
+      <h3>Needs changes</h3>
+      <p>Tell me what to adjust in the terminal</p>
+    </div>
+  </div>
+</div>

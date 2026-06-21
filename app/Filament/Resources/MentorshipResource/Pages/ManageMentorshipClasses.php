@@ -3,10 +3,13 @@
 namespace App\Filament\Resources\MentorshipResource\Pages;
 
 use App\Filament\Resources\MentorshipTrainingResource;
+use App\Mail\CoMentorInvitation;
 use App\Models\ClassModule;
 use App\Models\MentorshipClass;
+use App\Models\MentorshipCoMentor;
 use App\Models\Program;
 use App\Models\Training;
+use App\Models\User;
 use Filament\Actions;
 use Filament\Forms;
 use Filament\Notifications\Notification;
@@ -15,6 +18,9 @@ use Filament\Tables;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\HtmlString;
+use Illuminate\Support\Str;
 
 class ManageMentorshipClasses extends Page implements HasTable
 {
@@ -122,6 +128,41 @@ class ManageMentorshipClasses extends Page implements HasTable
                         ->helperText('Make this detailed: describe the gap identified, the mentorship focus, and how the class will be done.'),
                 ])
                 ->action(fn (array $data) => $this->createClass($data)),
+            Actions\Action::make('invite_co_mentor')
+                ->label('Invite Co-Mentor')
+                ->icon('heroicon-o-user-plus')
+                ->color('warning')
+                ->slideOver()
+                ->modalWidth('2xl')
+                ->modalHeading('Invite Co-Mentor')
+                ->modalDescription("Invite another mentor to collaborate on '{$this->record->title}'.")
+                ->form([
+                    Forms\Components\Select::make('user_id')
+                        ->label('Select Mentor')
+                        ->options(function () {
+                            $existingCoMentorIds = $this->record->coMentors()->pluck('user_id')->toArray();
+                            $existingCoMentorIds[] = $this->record->mentor_id;
+
+                            return User::whereNotIn('id', $existingCoMentorIds)
+                                ->where('status', 'active')
+                                ->whereHas('roles', fn ($q) => $q->where('name', 'like', '%mentor%'))
+                                ->orderBy('first_name')
+                                ->get()
+                                ->mapWithKeys(fn ($user) => [
+                                    $user->id => $user->full_name.
+                                    ' ('.($user->facility?->name ?? 'No Facility').') - '.
+                                    ($user->cadre?->name ?? 'No Cadre'),
+                                ]);
+                        })
+                        ->required()
+                        ->searchable()
+                        ->helperText('Select a user to invite as co-mentor'),
+                    Forms\Components\Textarea::make('invitation_message')
+                        ->label('Invitation Message (Optional)')
+                        ->rows(3)
+                        ->placeholder('Add a personal message to the invitation'),
+                ])
+                ->action(fn (array $data) => $this->inviteCoMentor($data)),
             Actions\Action::make('back_to_training')
                 ->label('Back to Mentorships')
                 ->icon('heroicon-o-arrow-left')
@@ -404,6 +445,46 @@ class ManageMentorshipClasses extends Page implements HasTable
             'training' => $this->record->id,
             'class' => $class->id,
         ]));
+    }
+
+    private function inviteCoMentor(array $data): void
+    {
+        $token = Str::random(64);
+
+        $coMentor = MentorshipCoMentor::create([
+            'training_id' => $this->record->id,
+            'user_id' => $data['user_id'],
+            'invited_by' => auth()->id(),
+            'invited_at' => now(),
+            'status' => 'pending',
+            'invitation_token' => $token,
+            'permissions' => [
+                'can_facilitate' => true,
+                'can_create_classes' => false,
+                'can_invite_mentors' => false,
+            ],
+        ]);
+
+        $user = User::find($data['user_id']);
+        $invitationLink = url("/co-mentor/accept/{$token}");
+
+        // Send invitation email
+        if ($user->email) {
+            Mail::to($user->email)->send(new CoMentorInvitation($this->record, $coMentor, $data['invitation_message'] ?? null));
+        }
+
+        Notification::make()
+            ->success()
+            ->title('Co-Mentor Invited Successfully')
+            ->body(new HtmlString(
+                "<p><strong>{$user->full_name}</strong> has been invited as a co-mentor.</p>".
+                ($user->email ? "<p class='mt-2 text-sm text-gray-600'>An invitation email has been sent to <strong>{$user->email}</strong>.</p>" : '').
+                "<p class='mt-2 text-sm font-medium'>Invitation Link:</p>".
+                "<div class='font-mono text-xs break-all bg-gray-100 dark:bg-gray-800 p-2 rounded mt-1'>{$invitationLink}</div>".
+                "<p class='mt-2 text-xs text-gray-500'>Share this link with the co-mentor to accept the invitation.</p>"
+            ))
+            ->persistent()
+            ->send();
     }
 
     /**

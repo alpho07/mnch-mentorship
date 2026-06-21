@@ -23,12 +23,17 @@ class ManageModuleResources extends Page implements HasTable
     use InteractsWithTable;
 
     protected static string $resource = MentorshipTrainingResource::class;
+
     protected static string $view = 'filament.pages.manage-module-resources';
+
     protected static bool $shouldRegisterNavigation = false;
 
     public Training $training;
+
     public MentorshipClass $class;
+
     public ClassModule $module;
+
     public ProgramModule $programModule;
 
     public function mount(Training $training, MentorshipClass $class, ClassModule $module): void
@@ -47,6 +52,7 @@ class ManageModuleResources extends Page implements HasTable
     public function getSubheading(): ?string
     {
         $count = $this->programModule->resources()->count();
+
         return "{$count} resource(s) linked to this module";
     }
 
@@ -64,7 +70,7 @@ class ManageModuleResources extends Page implements HasTable
                 ->color('gray')
                 ->url(fn () => MentorshipTrainingResource::getUrl('class-modules', [
                     'training' => $this->training->id,
-                    'class'    => $this->class->id,
+                    'class' => $this->class->id,
                 ])),
 
             Actions\Action::make('attach_resources')
@@ -82,6 +88,7 @@ class ManageModuleResources extends Page implements HasTable
                         ->multiple()
                         ->options(function () {
                             $alreadyLinked = $this->programModule->resources()->pluck('resources.id')->toArray();
+
                             return Resource::whereNotIn('id', $alreadyLinked)
                                 ->orderBy('title')
                                 ->pluck('title', 'id');
@@ -92,9 +99,9 @@ class ManageModuleResources extends Page implements HasTable
                 ])
                 ->action(function (array $data) {
                     $ids = $data['resource_ids'] ?? [];
-                    if (!empty($ids)) {
+                    if (! empty($ids)) {
                         $this->programModule->resources()->syncWithoutDetaching($ids);
-                        Notification::make()->success()->title(count($ids) . ' resource(s) attached')->send();
+                        Notification::make()->success()->title(count($ids).' resource(s) attached')->send();
                     }
                 }),
         ];
@@ -125,18 +132,46 @@ class ManageModuleResources extends Page implements HasTable
                     ->label('Type')
                     ->badge()
                     ->color('success'),
-                Tables\Columns\TextColumn::make('files_count')
-                    ->label('Files')
-                    ->numeric()
-                    ->color('primary')
-                    ->icon('heroicon-o-document'),
+                Tables\Columns\TextColumn::make('resource_content_type')
+                    ->label('Content')
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'file_link' => 'success',
+                        'file' => 'info',
+                        'link' => 'warning',
+                        default => 'gray',
+                    })
+                    ->icon(fn (string $state): string => match ($state) {
+                        'file_link' => 'heroicon-o-document-text',
+                        'file' => 'heroicon-o-document',
+                        'link' => 'heroicon-o-link',
+                        default => 'heroicon-o-lock-closed',
+                    })
+                    ->getStateUsing(function (Resource $record): string {
+                        $hasFile = $record->primaryFile?->exists() ?? false;
+                        $hasLink = filled($record->external_url);
+
+                        return match (true) {
+                            $hasFile && $hasLink => 'file_link',
+                            $hasFile => 'file',
+                            $hasLink => 'link',
+                            default => 'access_only',
+                        };
+                    })
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'file_link' => 'File + Link',
+                        'file' => 'File Only',
+                        'link' => 'Link Only',
+                        'access_only' => 'Access Only',
+                        default => $state,
+                    }),
                 Tables\Columns\TextColumn::make('status')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
-                        'draft'     => 'warning',
+                        'draft' => 'warning',
                         'published' => 'success',
-                        'archived'  => 'danger',
-                        default     => 'gray',
+                        'archived' => 'danger',
+                        default => 'gray',
                     }),
                 Tables\Columns\TextColumn::make('published_at')
                     ->label('Published')
@@ -159,7 +194,7 @@ class ManageModuleResources extends Page implements HasTable
                     ->modalWidth('5xl')
                     ->modalSubmitAction(false)
                     ->modalCancelActionLabel('Close')
-                    ->visible(fn (Resource $record) => $record->primaryFile?->exists()),
+                    ->visible(fn (Resource $record): bool => $record->primaryFile?->exists() ?? false),
 
                 Tables\Actions\Action::make('download_file')
                     ->label('Download')
@@ -167,10 +202,29 @@ class ManageModuleResources extends Page implements HasTable
                     ->color('success')
                     ->iconButton()
                     ->tooltip('Download file')
-                    ->url(fn (Resource $record) => $record->primaryFile
+                    ->url(fn (Resource $record): ?string => $record->primaryFile?->exists()
                         ? route('admin.resource-files.download', $record->primaryFile)
                         : null)
-                    ->visible(fn (Resource $record) => $record->primaryFile?->exists()),
+                    ->visible(fn (Resource $record): bool => $record->primaryFile?->exists() ?? false),
+
+                Tables\Actions\Action::make('visit_link')
+                    ->label('Visit Link')
+                    ->icon('heroicon-o-link')
+                    ->color('warning')
+                    ->iconButton()
+                    ->tooltip('Open external link')
+                    ->url(fn (Resource $record): ?string => $record->external_url)
+                    ->openUrlInNewTab()
+                    ->visible(fn (Resource $record): bool => filled($record->external_url)),
+
+                Tables\Actions\Action::make('view_resource')
+                    ->label('View Resource')
+                    ->icon('heroicon-o-lock-open')
+                    ->color('gray')
+                    ->iconButton()
+                    ->tooltip('View resource details')
+                    ->url(fn (Resource $record): string => ResourceResource::getUrl('view', ['record' => $record]))
+                    ->visible(fn (Resource $record): bool => ! ($record->primaryFile?->exists() ?? false) && blank($record->external_url)),
 
                 Tables\Actions\Action::make('edit_resource')
                     ->label('Edit')

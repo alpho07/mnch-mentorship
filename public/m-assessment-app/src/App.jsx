@@ -59,8 +59,25 @@ export default function App() {
 
     if (loading) {
         return (
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", background: T.bg }}>
-                <div style={{ color: T.textSub, fontSize: 14 }}>Loading…</div>
+            <div style={{
+                display: "flex", flexDirection: "column",
+                alignItems: "center", justifyContent: "center",
+                height: "100vh", background: T.bg,
+                fontFamily: "-apple-system, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif",
+                gap: 16,
+            }}>
+                <div style={{
+                    width: 52, height: 52, borderRadius: 16,
+                    background: T.gradientPrimary,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    boxShadow: `0 8px 24px ${T.primaryGlow}`,
+                }}>
+                    <svg width="26" height="26" viewBox="0 0 24 24" style={{ animation: "spin 1s linear infinite" }}>
+                        <circle cx="12" cy="12" r="10" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="3"/>
+                        <path d="M12 2a10 10 0 019.95 9" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round"/>
+                    </svg>
+                </div>
+                <div style={{ color: T.textMuted, fontSize: 13, fontWeight: 500 }}>Loading…</div>
             </div>
         );
     }

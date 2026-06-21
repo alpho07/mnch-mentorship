@@ -8,6 +8,7 @@ use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Resources\Components\Tab;
 use Filament\Tables;
+use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -157,6 +158,7 @@ class ListAssessments extends ListRecords {
                                 'red' => 'Red',
                             ]),
                         ])
+                        ->filtersLayout(FiltersLayout::Dropdown)
                         ->actions([
                             // View Summary Action
                             Tables\Actions\Action::make('view_summary')

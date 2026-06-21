@@ -8,25 +8,26 @@ use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Database\Eloquent\Builder;
 
-class MentorshipStatsOverview extends BaseWidget {
-
-    protected function getStats(): array {
+class MentorshipStatsOverview extends BaseWidget
+{
+    protected function getStats(): array
+    {
         $stats = $this->getQuickStats();
 
         return [
-                    Stat::make('All Mentorships', $stats['total'])
-                    ->description('All mentorships')
-                    ->descriptionIcon('heroicon-m-academic-cap')
-                    ->color('primary'),
-                    Stat::make('Active Mentorships', $stats['active'])
-                    ->description('Currently running')
-                    ->descriptionIcon('heroicon-m-play')
-                    ->color('success'),
-                    Stat::make('Total Mentees', $stats['mentees'])
-                    ->description('Total Enrolled')
-                    ->descriptionIcon('heroicon-m-users')
-                    ->color('info'),
-                /* Stat::make('Upcoming Programs', $stats['upcoming'])
+            Stat::make('All Mentorships', $stats['total'])
+                ->description('All mentorships')
+                ->descriptionIcon('heroicon-m-academic-cap')
+                ->color('primary'),
+            Stat::make('Active Mentorships', $stats['active'])
+                ->description('Currently running')
+                ->descriptionIcon('heroicon-m-play')
+                ->color('success'),
+            Stat::make('Total Mentees', $stats['mentees'])
+                ->description('Total Enrolled')
+                ->descriptionIcon('heroicon-m-users')
+                ->color('info'),
+            /* Stat::make('Upcoming Programs', $stats['upcoming'])
                   ->description('Scheduled to start')
                   ->descriptionIcon('heroicon-m-calendar')
                   ->color('warning'), */
@@ -36,27 +37,29 @@ class MentorshipStatsOverview extends BaseWidget {
     /**
      * Build a base query scoped by role: admins see all, others see only their own.
      */
-    protected function getScopedBaseQuery(): Builder {
+    protected function getScopedBaseQuery(): Builder
+    {
         $query = Training::where('type', 'facility_mentorship')
             ->where('is_pilot', false);   // pilots excluded from all KPI counts
 
         $user = auth()->user();
-        if (!$user->hasRole(['super_admin', 'admin', 'division'])) {
-            $query->where('mentor_id', $user->id);
+        if (! $user->hasRole(['super_admin', 'admin', 'division'])) {
+            $query->forMentorOrCoMentor($user->id);
         }
 
         return $query;
     }
 
-    protected function getQuickStats(): array {
+    protected function getQuickStats(): array
+    {
         return [
             'total' => $this->getScopedBaseQuery()->count(),
             'active' => $this->getScopedBaseQuery()
-                    ->where(function (Builder $query) {
-                        $query->whereIn('status', ['active', 'ongoing'])
-                                ->orWhereHas('mentorshipClasses', fn(Builder $classQuery) => $classQuery->where('status', 'active'));
-                    })
-                    ->count(),
+                ->where(function (Builder $query) {
+                    $query->whereIn('status', ['active', 'ongoing'])
+                        ->orWhereHas('mentorshipClasses', fn (Builder $classQuery) => $classQuery->where('status', 'active'));
+                })
+                ->count(),
             'completed' => $this->getScopedBaseQuery()->where('status', 'completed')->count(),
             'draft' => $this->getScopedBaseQuery()->whereIn('status', ['draft', 'new'])->count(),
             'upcoming' => $this->getScopedBaseQuery()->where('start_date', '>', now())->count(),
@@ -64,16 +67,17 @@ class MentorshipStatsOverview extends BaseWidget {
         ];
     }
 
-    protected function getScopedMenteesQuery(): Builder {
+    protected function getScopedMenteesQuery(): Builder
+    {
         $user = auth()->user();
 
         return ClassParticipant::query()
-                ->whereHas('mentorshipClass.training', function (Builder $query) use ($user) {
-                    $query->where('type', 'facility_mentorship');
+            ->whereHas('mentorshipClass.training', function (Builder $query) use ($user) {
+                $query->where('type', 'facility_mentorship');
 
-                    if (!$user->hasRole(['super_admin', 'admin', 'division'])) {
-                        $query->where('mentor_id', $user->id);
-                    }
-                });
+                if (! $user->hasRole(['super_admin', 'admin', 'division'])) {
+                    $query->forMentorOrCoMentor($user->id);
+                }
+            });
     }
 }

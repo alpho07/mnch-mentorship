@@ -534,6 +534,7 @@
                 <div class="info-block-title">Facility & Period</div>
                 <div class="info-row"><span class="info-label">Facility</span><span class="info-value">{{ $class->training->facility->name ?? '—' }}</span></div>
                 <div class="info-row"><span class="info-label">Lead Mentor</span><span class="info-value">{{ $class->training->mentor->name ?? '—' }}</span></div>
+                <div class="info-row"><span class="info-label">Co-Mentor(s)</span><span class="info-value">{{ $coMentors->isNotEmpty() ? $coMentors->implode(', ') : '—' }}</span></div>
                 <div class="info-row"><span class="info-label">Start Date</span><span class="info-value">{{ $class->start_date ? \Carbon\Carbon::parse($class->start_date)->format('d M Y') : '—' }}</span></div>
                 <div class="info-row"><span class="info-label">End Date</span><span class="info-value">{{ $class->end_date ? \Carbon\Carbon::parse($class->end_date)->format('d M Y') : '—' }}</span></div>
             </div>

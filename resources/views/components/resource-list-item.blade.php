@@ -7,16 +7,11 @@
         <div
             class="md:w-40 md:h-32 w-full h-40 bg-gradient-to-br from-primary-50 to-primary-100 rounded-lg overflow-hidden flex-shrink-0">
             @if ($resource->featured_image)
-                <img src="{{ Storage::url($resource->featured_image) }}" alt="{{ $resource->title }}"
-                    class="w-full h-full object-cover">
+                <img src="{{ Storage::disk('thumbnails')->url($resource->featured_image) }}"
+                     alt="{{ $resource->title }}"
+                     class="w-full h-full object-cover">
             @else
-                <div class="w-full h-full flex items-center justify-center">
-                    @if ($resource->resourceType)
-                        <i class="{{ $resource->resourceType->icon ?? 'fas fa-file' }} text-2xl text-primary-600"></i>
-                    @else
-                        <i class="fas fa-file text-2xl text-primary-600"></i>
-                    @endif
-                </div>
+                <x-resource-placeholder :resource="$resource" icon-size="text-2xl" :show-label="false" />
             @endif
         </div>
 
@@ -70,7 +65,7 @@
                             </button>
                         @endauth
 
-                        @if ($resource->is_downloadable && $resource->file_path)
+                        @if ($resource->is_downloadable && ($resource->file_path || $resource->hasPrimaryFile()))
                             <a href="{{ route('resources.download', $resource->slug) }}"
                                 class="p-2 text-gray-400 hover:text-primary-600 transition-colors" title="Download">
                                 <i class="fas fa-download"></i>
