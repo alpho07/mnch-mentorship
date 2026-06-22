@@ -32,6 +32,7 @@ class RolePermissionSeeder extends Seeder
             'spoke_mentor_lead',
             'mentee',
             'newbie',
+            'head_drmh',
         ];
 
         foreach ($roles as $role) {

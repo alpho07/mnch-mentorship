@@ -1,8 +1,8 @@
 # Maternal Health Mentorship — Implementation Plan
 
-> Status: Design decisions finalized. Ready for backend implementation.
+> Status: Phase 8 complete. Ready for QA / integration.
 > Created: 2026-06-15
-> Updated: 2026-06-21
+> Updated: 2026-06-22
 > Context: Adding a Maternal Health (EmONC) mentorship program to the existing MNCH platform without disrupting Infant Care, Newborn Care, and Child Care programs.
 
 ---
@@ -265,7 +265,7 @@ Add a new `newbie` role alongside the existing `mentee` role.
 - Update `ProgramModule` model with `parent/children` relationships.
 - Update Filament `ProgramModuleResource` to support hierarchy display.
 
-> **Note:** Phase 2 (Activities) was implemented alongside Phase 1.
+> **Note:** Phase 2 (Activities) was implemented alongside Phase 1. Phase 8 has been completed in full (A–F).
 
 ### Phase 2 — Activities ✅
 - Create `activities` table and model (CME, Hands-on Demo, Drill seeded by default).
@@ -301,12 +301,30 @@ Add a new `newbie` role alongside the existing `mentee` role.
 - `ModuleUsageService::getAvailableModules()` now shows only parent modules and hides parents whose tracks are already assigned.
 - `ModuleUsageService::assignModulesToClass()` expands parent modules into per-track `ClassModule` records.
 - API `POST /api/v1/classes/{class}/modules` updated to use the service and expand tracks; returns an array of created class modules.
-- Added `start_date` / `end_date` columns to `program_modules` (curriculum-level) so non-EmONC programs can define module timelines without relying on `class_modules`.
-- Removed `start_date` / `end_date` editing from `ClassModule`; these are not used for EmONC.
+- Added `start_date` / `end_date` columns to `program_modules` (curriculum-level) so non-EmONC programs can define module timelines.
+- `ClassModule` also supports `start_date` / `end_date`; these can be set when adding modules to a class and edited per class module.
 - On the mentorship creation/edit form, `start_date` / `end_date` are hidden when the selected programme is **Maternal Health (EmONC)**; they remain visible for Infant/Child and Newborn programmes.
 - On the class creation/edit form (within a mentorship), `start_date` / `end_date` are also hidden for **Maternal Health (EmONC)** and null-safe when mentorship dates are not set.
 - The programme card picker now places the **Maternal Health (EmONC)** card in the 3rd position.
-- Class module assignment for **EmONC** uses a custom hierarchical picker that shows modules with their tracks; the parent module checkbox is disabled but ticks when any of its tracks are selected, and only tracks become `ClassModule` records.
+- Class module assignment for **EmONC** uses a custom hierarchical picker that shows modules with their tracks; clicking a module header selects/clears all tracks, clicking a track toggles it, and the module header ticks when any track is selected.
+- The class modules table shows the parent module name in blue above the track name for **EmONC**, and the sessions column becomes an **Activities** column showing activity counts.
+- Added **Add Mentees** header action on the class modules page to jump to class-level mentee management.
+- Added per-track **Activities** action for **EmONC** that opens a mentee × activity matrix; mentors can check which enrolled mentees participate in each activity. Enrollments are stored in `class_module_activity_participants`.
+- Activity enrollment modal now uses a custom `ActivityEnrollmentMatrix` form component with Filament's native **Submit/Cancel** buttons and success/error notifications.
+- **Module Summary** page updated for **EmONC** to show program name, module name, track (when applicable), and an **Activity Enrollments** section listing mentees per activity (showing `0 mentees enrolled` when none).
+- For **EmONC**, the **Sessions**, **Summary**, and **Analytics** action icons are hidden on the class modules table; only Start, Mentees, Activities, Resources, Edit, and Remove remain.
+- **Module Resources** page redesigned as an accordion view with sections for Introduction, Pre-Test, Hands-on Videos, Case Scenarios, Post-Test, and Attached Resources.
+- Mentee enrollment invitation emails now include a **Modules & Activities** section for **EmONC**, listing each module/track and its activities.
+- **Phase 6 — Mentee dashboard** implemented and polished:
+  - New `/my-class/{class}/module/{classModule}` page (`MenteeClassProgressController@module`).
+  - Module header shows program, module name, and track (when applicable).
+  - Pre-test must be **attempted** (not necessarily passed) before module content is unlocked for **EmONC**.
+  - Unlocked content displays Introduction, Hands-on Videos, and Case Scenarios.
+  - Mentees can submit a hands-on video by **file upload** or **external link** (YouTube/direct video with preview).
+  - Post-test is available only after the hands-on video has been submitted; retakes are allowed via the post-test.
+  - Results section shows pre-test, post-test, and average scores.
+  - Activity enrollment **and completion** status are shown for **EmONC** modules.
+  - Added migration to store `pre_test_attempt_id`, `post_test_attempt_id`, and hands-on video fields on `mentee_module_progress`.
 - Attached activities, content, and quizzes remain accessible per track through the track's `ProgramModule` relationships.
 
 ### Phase 6 — Mentee dashboard implementation
@@ -317,31 +335,107 @@ Add a new `newbie` role alongside the existing `mentee` role.
 - Display results and average score.
 - Activity-gated visibility.
 
-### Phase 7 — Scoring and certification
-- Rubric scoring UI for mentor.
-- Two-step certificate approval (mentor → Head DRMH).
-- PDF certificate generation.
+### Phase 7 — Scoring and certification ✅
+- **Activity completion tracking:**
+  - Added `status`, `completed_at`, and `completed_by` to `class_module_activity_participants`.
+  - New **Complete Activities** table action on the class modules page opens a mentee × activity completion matrix.
+  - When all activities for a mentee are marked complete, that mentee's `MenteeModuleProgress` is auto-completed.
+  - When all enrolled mentees are complete, the `ClassModule` is auto-completed.
+- **Hands-on video review (mentor):**
+  - Added `video_review_status`, `video_reviewed_at`, `video_reviewed_by`, and `video_review_notes` to `mentee_module_progress`.
+  - Mentors can review submitted videos on the module mentees page, mark them **Passed** or **Failed**, and add notes.
+  - Video review status is shown as a column in the module mentees table.
+- **Certificate approval flow (Mentor → Head DRMH):**
+  - Added `mentor_approved_at`, `mentor_approved_by`, `head_drmh_approved_at`, and `head_drmh_approved_by` to `class_participants`.
+  - Class-level mentees table shows Mentor Approval and Head DRMH certification status.
+  - Mentor approval action is visible to class mentors, co-mentors, and admins; requires all module progress completed and all video reviews passed.
+  - Head DRMH certification action is visible to users with the `head_drmh` role (or `super_admin`/`admin`).
+  - Certificate download action appears only after both approvals are recorded.
+- **PDF certificate:**
+  - Updated certificate view with placeholder boxes for logos and seals.
+  - Signature blocks now show the actual mentor and Head DRMH approver names with approval dates.
+  - For **EmONC**, certificate generation is blocked until both approvals are recorded; non-EmONC programs keep the existing completion-based certificate behavior.
+- **Route cleanup:** removed duplicate `/enroll/{token}` route definitions in `routes/web.php`.
+
+### Phase 8 — Advanced features ✅
+
+Phase 8 covered all six requested areas (A–F):
+
+#### 8.1 Reporting & Analytics
+- Created `EmoncReportingService` to build EmONC-specific class reports.
+- Extended the HTML/PDF class report with an EmONC summary section.
+- Mentor dashboard now shows pending activity completions, pending video reviews, pending mentor approvals, and pending Head DRMH certifications.
+
+#### 8.2 Notifications & Reminders
+- Created `EmoncNotificationService` and `EmoncNotificationMail`.
+- Sends email notifications when:
+  - A mentor marks activities complete for a class module.
+  - A mentee submits a hands-on video.
+  - A mentor completes a video review (pass/fail).
+  - A mentor approves a mentee for certification.
+  - A Head DRMH certifies a mentee.
+- Notifications are sent to the relevant mentee, mentor, co-mentors, or Head DRMH users.
+
+#### 8.3 Mobile API completion
+- Extended `MenteeApiController` with endpoints for:
+  - Class-level module listing and activity status.
+  - Module detail with content, quiz status, and video submission status.
+  - Quiz start and submission (reusing `QuizAttemptService`).
+  - Hands-on video upload via API.
+- Responses mirror the web mentee dashboard data model for consistent mobile rendering.
+
+#### 8.4 Bulk Operations
+- Added bulk actions on the class mentees table:
+  - **Bulk Mentor Approve** — approves all selected certified-completed mentees.
+  - **Bulk Head DRMH Certify** — certifies all selected mentor-approved mentees.
+  - **Download Selected Certificates** — generates a ZIP of all selected certificates.
+  - **Export Class Progress CSV** — exports per-module completion, video review, and approval status.
+- Added bulk **Pass Video Review** on the module mentees table.
+
+#### 8.5 UX / Accessibility / Offline
+- Improved mentee module-detail page:
+  - Added a skip-to-content link.
+  - Added visible focus rings for keyboard navigation.
+  - Added `aria-label` attributes to interactive controls.
+  - Increased touch targets for quiz options.
+  - Ensured responsive layout on small screens.
+- Note: full offline service-worker support is out of scope for this phase; the UI is now mobile-first and accessible.
+
+#### 8.6 Certificates & Badges v2
+- Added public certificate verification page at `/certificates/{class}/{participant}/verify`.
+- PDF certificate now includes a QR code linking to the verification page (generated via external QR service; no package required).
+- Added a digital badge endpoint at `/certificates/{class}/{participant}/badge` that returns an SVG badge for certified mentees.
+- Verification page shows approval chain details and a link to view the badge.
 
 ---
 
 ## 6. Open questions / decisions log
 
 | # | Question | Decision |
-|---|----------|----------|
+|---|---|----------|
 | 1 | Program naming | Use **Maternal Health (EmONC)** as the program name. |
 | 2 | Track storage | Use self-referential `ProgramModule` with `parent_id` (Option B). |
 | 3 | Pre-test / post-test model | Create a new quiz system (`ProgramModuleQuiz`, `QuizQuestion`, `QuizOption`, `QuizAttempt`, `QuizResponse`) — Option A. |
 | 4 | Activity attachment | Configurable via checkboxes on `ProgramModule`; attachable to modules and tracks. |
-| 5 | Activity unlocking sequence | TBD — backend will support flexible gating; exact sequence decided during mentee dashboard phase. |
-| 6 | Hands-on rubric | TBD — configurable checklist per module/track vs generic criteria. |
-| 7 | Certificate approval flow | TBD — enforce both Mentor approval and Head DRMH certification, or mentor-only for now. |
+| 5 | Activity completion / module completion | Mark individual activities complete per mentee; auto-complete mentee progress when all activities done; auto-complete class module when all mentees done. |
+| 6 | Hands-on rubric | Binary pass/fail review of the mandatory hands-on video per module/track. Full scoring deferred. |
+| 7 | Failed quiz retake | Retake happens via the post-test. Pre-test is diagnostic and unlocks content on attempt. |
+| 8 | Certificate approval flow | Two-step: Mentor approves, then Head DRMH certifies. Certificate is locked until both steps are complete. |
+| 9 | `head_drmh` role | Created in `RolePermissionSeeder`; Head DRMH can certify mentees after mentor approval. |
+| 10 | Mentee creating mentorships | Per-user checkbox `can_create_mentorships` on the user management page. Users with this flag (regardless of role) can access `MentorshipTrainingResource` and create mentorships; scoped to their own mentorships. |
 
 ---
 
 ## 7. Notes for resumption
 
+> For a complete technical continuation guide (architecture, data model, services, routes, file index, testing notes, and known issues), see `docs/EMONC-IMPLEMENTATION-GUIDE.md`.
+
 - Existing Infant Care, Newborn Care, and Child Care programs should remain untouched.
 - The new Maternal Health flow will reuse the same tables but add program-specific curriculum content and activity tracking.
 - All changes should be implemented via migrations and should be backward-compatible where possible.
 - After adding new Filament resources, run `php artisan shield:generate --all` to regenerate permissions.
-- The current focus is **backend/admin only**; mentee-facing pages come after the backend is complete.
+- Backend/admin and mentee-facing Phase 6 pages are complete; Phase 7 (activity completion, video review, certificate approval) and Phase 8 (reporting, notifications, mobile API, bulk operations, UX/accessibility, certificates/badges v2) are also complete.
+- The `head_drmh` role is created in `RolePermissionSeeder` and is used for Head DRMH certification.
+- A per-user `can_create_mentorships` flag controls whether a user (including a mentee) can create mentorships. Admins toggle this on the user edit page.
+- New public certificate routes exist: `/certificates/{class}/{participant}/verify` and `/certificates/{class}/{participant}/badge`.
+- QR code on the PDF certificate uses `https://api.qrserver.com/v1/create-qr-code/`. Verify external QR service availability in air-gapped deployments.

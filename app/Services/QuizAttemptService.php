@@ -167,13 +167,15 @@ class QuizAttemptService
     public function getLatestAttempts(User $user, ProgramModuleQuiz $quiz): array
     {
         return [
-            'pre_test' => QuizAttempt::where('user_id', $user->id)
+            'pre_test' => QuizAttempt::with(['responses.option'])
+                ->where('user_id', $user->id)
                 ->where('program_module_quiz_id', $quiz->id)
                 ->where('attempt_type', 'pre_test')
                 ->whereNotNull('completed_at')
                 ->latest('completed_at')
                 ->first(),
-            'post_test' => QuizAttempt::where('user_id', $user->id)
+            'post_test' => QuizAttempt::with(['responses.option'])
+                ->where('user_id', $user->id)
                 ->where('program_module_quiz_id', $quiz->id)
                 ->where('attempt_type', 'post_test')
                 ->whereNotNull('completed_at')

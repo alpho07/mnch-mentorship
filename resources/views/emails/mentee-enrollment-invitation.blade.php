@@ -337,6 +337,28 @@
                     </div>
                 </div>
 
+        @if($isEmonc && count($moduleRows))
+                {{-- EmONC modules & activities --}}
+                <div class="class-box" style="border-left-color: #059669;">
+                    <div class="class-box-title" style="color: #059669;">Modules & Activities</div>
+                    @foreach($moduleRows as $row)
+                        <div class="class-row" style="flex-direction: column; align-items: flex-start; margin-bottom: 12px; gap: 2px;">
+                            <span class="class-value">{{ $row['module_name'] }}</span>
+                            @if($row['track_name'])
+                                <span class="class-value" style="font-size: 12px; color: #1d4ed8;">Track: {{ $row['track_name'] }}</span>
+                            @endif
+                            @if(count($row['activities']))
+                                <span style="font-size: 12.5px; color: #475569;">
+                                    Activities: {{ implode(', ', $row['activities']) }}
+                                </span>
+                            @else
+                                <span style="font-size: 12.5px; color: #94a3b8;">No activities configured</span>
+                            @endif
+                        </div>
+                    @endforeach
+                </div>
+        @endif
+
         {{-- CTA --}}
                 <div class="cta-wrap">
                     <a href="{{ $enrollmentLink }}" class="cta-btn">

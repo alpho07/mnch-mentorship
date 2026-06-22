@@ -1,0 +1,92 @@
+<h2>Proposed EmONC Mentor Dashboard</h2>
+<p class="subtitle">Rich view with KPIs, pending actions, completion map, and activity status. Click anything to select feedback.</p>
+
+<div class="mockup">
+  <div class="mockup-header">Mentorships &gt; Maternal Health (EmONC)</div>
+  <div class="mockup-body" style="padding:20px;background:#f8fafc">
+
+    <!-- KPI row -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
+      <div style="background:#fff;border-radius:10px;padding:14px;border:1px solid #e2e8f0">
+        <div style="font-size:11px;color:#64748b;font-weight:600;letter-spacing:0.05em">ACTIVE MENTEES</div>
+        <div style="font-size:26px;font-weight:800;color:#0f172a;margin-top:4px">24</div>
+      </div>
+      <div style="background:#fff;border-radius:10px;padding:14px;border:1px solid #e2e8f0">
+        <div style="font-size:11px;color:#64748b;font-weight:600;letter-spacing:0.05em">MODULES COMPLETED</div>
+        <div style="font-size:26px;font-weight:800;color:#0f172a;margin-top:4px">86</div>
+      </div>
+      <div style="background:#fff;border-radius:10px;padding:14px;border:1px solid #e2e8f0;border-left:4px solid #f59e0b">
+        <div style="font-size:11px;color:#64748b;font-weight:600;letter-spacing:0.05em">PENDING VIDEO REVIEWS</div>
+        <div style="font-size:26px;font-weight:800;color:#b45309;margin-top:4px">7</div>
+      </div>
+      <div style="background:#fff;border-radius:10px;padding:14px;border:1px solid #e2e8f0;border-left:4px solid #3b82f6">
+        <div style="font-size:11px;color:#64748b;font-weight:600;letter-spacing:0.05em">PENDING APPROVALS</div>
+        <div style="font-size:26px;font-weight:800;color:#1d4ed8;margin-top:4px">5</div>
+      </div>
+    </div>
+
+    <!-- Pending actions -->
+    <div style="background:#fff;border-radius:10px;padding:16px;border:1px solid #e2e8f0;margin-bottom:20px">
+      <div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:12px">Pending actions</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <span style="background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">3 video reviews</span>
+        <span style="background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">2 mentor approvals</span>
+        <span style="background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">2 Head DRMH certifications</span>
+      </div>
+    </div>
+
+    <!-- Completion matrix -->
+    <div style="background:#fff;border-radius:10px;padding:16px;border:1px solid #e2e8f0">
+      <div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:12px">Per-mentee activity completion map</div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead>
+          <tr style="background:#f1f5f9">
+            <th style="text-align:left;padding:10px;border-bottom:1px solid #e2e8f0">Mentee</th>
+            <th style="text-align:left;padding:10px;border-bottom:1px solid #e2e8f0">Module 5: PPH</th>
+            <th style="text-align:left;padding:10px;border-bottom:1px solid #e2e8f0">Track 1</th>
+            <th style="text-align:left;padding:10px;border-bottom:1px solid #e2e8f0">Track 2</th>
+            <th style="text-align:left;padding:10px;border-bottom:1px solid #e2e8f0">Module 6</th>
+            <th style="text-align:left;padding:10px;border-bottom:1px solid #e2e8f0">Certificate</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="padding:10px;border-bottom:1px solid #f1f5f9;font-weight:600">Jane Doe</td>
+            <td style="padding:10px;border-bottom:1px solid #f1f5f9"><span style="color:#16a34a;font-weight:600">CME ✓ Drill ✓</span><br><span style="color:#dc2626">Hands-on ✗</span></td>
+            <td style="padding:10px;border-bottom:1px solid #f1f5f9"><span style="color:#16a34a">✓ done</span></td>
+            <td style="padding:10px;border-bottom:1px solid #f1f5f9"><span style="color:#f59e0b">⏳ pending</span></td>
+            <td style="padding:10px;border-bottom:1px solid #f1f5f9"><span style="color:#94a3b8">— not started</span></td>
+            <td style="padding:10px;border-bottom:1px solid #f1f5f9"><span style="color:#94a3b8">Blocked</span></td>
+          </tr>
+          <tr>
+            <td style="padding:10px;border-bottom:1px solid #f1f5f9;font-weight:600">John Kimani</td>
+            <td style="padding:10px;border-bottom:1px solid #f1f5f9"><span style="color:#16a34a;font-weight:600">CME ✓ Drill ✓ Hands-on ✓</span></td>
+            <td style="padding:10px;border-bottom:1px solid #f1f5f9"><span style="color:#16a34a">✓ done</span></td>
+            <td style="padding:10px;border-bottom:1px solid #f1f5f9"><span style="color:#16a34a">✓ done</span></td>
+            <td style="padding:10px;border-bottom:1px solid #f1f5f9"><span style="color:#f59e0b">⏳ in progress</span></td>
+            <td style="padding:10px;border-bottom:1px solid #f1f5f9"><span style="color:#f59e0b">Awaiting mentor</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+</div>
+
+<div class="pros-cons">
+  <div class="pros">
+    <h4>Pros</h4>
+    <ul>
+      <li>One page shows status, bottlenecks, and next actions</li>
+      <li>Color-coded activity chips make blockers obvious</li>
+      <li>Clicking a pending count jumps to the filtered worklist</li>
+    </ul>
+  </div>
+  <div class="cons">
+    <h4>Open questions</h4>
+    <ul>
+      <li>Should the matrix be by module or by track?</li>
+      <li>Do you want a county/facility map above the matrix?</li>
+    </ul>
+  </div>
+</div>

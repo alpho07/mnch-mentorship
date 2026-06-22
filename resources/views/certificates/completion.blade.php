@@ -295,6 +295,10 @@
             }
         </style>
     </head>
+@php
+    $verifyUrl = route('certificates.verify', [$class, $participant], true);
+    $qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=' . urlencode($verifyUrl);
+@endphp
     <body>
     <div class="cert-page">
 
@@ -313,6 +317,15 @@
 
         {{-- Org header --}}
         <div class="cert-top">
+            <div style="display:flex;justify-content:center;align-items:center;gap:10mm;margin-bottom:3mm;">
+                {{-- Logo placeholders --}}
+                <div style="width:18mm;height:18mm;border:1px dashed #94a3b8;border-radius:2mm;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:6pt;text-align:center;">
+                    Logo<br>Placeholder
+                </div>
+                <div style="width:18mm;height:18mm;border:1px dashed #94a3b8;border-radius:2mm;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:6pt;text-align:center;">
+                    Seal<br>Placeholder
+                </div>
+            </div>
             <div class="cert-org">Ministry of Health · Kenya</div>
             <div class="cert-program">Maternal, Newborn & Child Health Mentorship Platform</div>
         </div>
@@ -353,13 +366,13 @@
         <div class="cert-signatures">
             <div class="sig-block">
                 <div class="sig-line"></div>
-                <div class="sig-name">{{ $class->training->mentor->name ?? 'Lead Mentor' }}</div>
-                <div class="sig-title">Facility Mentor</div>
+                <div class="sig-name">{{ $participant->mentorApprovedBy?->name ?? ($class->training->mentor?->name ?? 'Lead Mentor') }}</div>
+                <div class="sig-title">Facility Mentor · Approved {{ $participant->mentor_approved_at?->format('d M Y') }}</div>
             </div>
             <div class="sig-block">
                 <div class="sig-line"></div>
-                <div class="sig-name">Director, MNCH Division</div>
-                <div class="sig-title">Ministry of Health, Kenya</div>
+                <div class="sig-name">{{ $participant->headDrmhApprovedBy?->name ?? 'Director, MNCH Division' }}</div>
+                <div class="sig-title">Head DRMH · Certified {{ $participant->head_drmh_approved_at?->format('d M Y') }}</div>
             </div>
         </div>
 
@@ -367,6 +380,12 @@
         <div class="cert-seal">
             <div class="seal-icon">🏅</div>
             <div class="seal-text">MNCH<br>Certified</div>
+        </div>
+
+        {{-- QR verification --}}
+        <div style="position:absolute;bottom:14mm;left:18mm;z-index:10;text-align:center;">
+            <img src="{{ $qrUrl }}" alt="Verify certificate" style="width:18mm;height:18mm;">
+            <div style="font-size:6pt;color:#94a3b8;margin-top:1mm;">Scan to verify</div>
         </div>
 
         {{-- Bottom meta --}}

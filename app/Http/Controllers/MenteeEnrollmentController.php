@@ -51,7 +51,12 @@ class MenteeEnrollmentController extends Controller
 
         $class->loadMissing(['classModules.programModule', 'training']);
 
-        return view('mentee.enroll', compact('class'));
+        $pendingIntent = session('enrollment_intent');
+        $pendingForThisClass = is_array($pendingIntent)
+            && ($pendingIntent['class_id'] ?? null) === $class->id
+            && ($pendingIntent['user_id'] ?? null);
+
+        return view('mentee.enroll', compact('class', 'pendingForThisClass', 'pendingIntent'));
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -73,7 +78,7 @@ class MenteeEnrollmentController extends Controller
         ]);
 
         $email = $request->input('email');
-        $user  = User::where('email', $email)->first();
+        $user = User::where('email', $email)->first();
 
         if (! $user) {
             return redirect()->back()
@@ -89,22 +94,25 @@ class MenteeEnrollmentController extends Controller
         if ($existing) {
             // Already enrolled — direct them to login and they'll see their progress
             session()->put('url.intended', route('mentee.class.progress', ['class' => $class->id]));
+
             return redirect()->route('filament.admin.auth.login')
                 ->with('info', 'You are already enrolled. Please log in to view your progress.');
         }
 
         // Store enrollment intent in session — completed after login
         session()->put('enrollment_intent', [
-            'token'    => $token,
+            'token' => $token,
             'class_id' => $class->id,
-            'user_id'  => $user->id,
+            'user_id' => $user->id,
+            'email' => $email,
         ]);
 
         // After login, Laravel will redirect to intended URL
         session()->put('url.intended', route('mentee.enroll.complete', ['token' => $token]));
+        session()->put('login_email', $email);
 
         return redirect()->route('filament.admin.auth.login')
-            ->with('info', 'Please log in to complete your enrollment in ' . $class->name . '.');
+            ->with('info', 'Please log in to complete your enrollment in '.$class->name.'.');
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -120,6 +128,7 @@ class MenteeEnrollmentController extends Controller
 
         if (! $userId) {
             session()->put('url.intended', request()->fullUrl());
+
             return redirect()->route('filament.admin.auth.login')
                 ->with('info', 'Please log in to complete your enrollment.');
         }
@@ -140,6 +149,7 @@ class MenteeEnrollmentController extends Controller
 
         if ($intent && isset($intent['user_id']) && $intent['user_id'] !== $userId) {
             session()->forget('enrollment_intent');
+
             return redirect()->route('filament.admin.auth.login')
                 ->with('error', 'Enrollment was initiated for a different account. Please log in with the correct account.');
         }
@@ -151,6 +161,7 @@ class MenteeEnrollmentController extends Controller
 
         if ($existing) {
             session()->forget('enrollment_intent');
+
             return redirect()->route('mentee.class.progress', ['class' => $class->id])
                 ->with('info', 'You are already enrolled in this class.');
         }
@@ -159,9 +170,9 @@ class MenteeEnrollmentController extends Controller
         DB::transaction(function () use ($class, $userId) {
             $participant = ClassParticipant::create([
                 'mentorship_class_id' => $class->id,
-                'user_id'             => $userId,
-                'status'              => 'enrolled',
-                'enrolled_at'         => now(),
+                'user_id' => $userId,
+                'status' => 'enrolled',
+                'enrolled_at' => now(),
             ]);
 
             $this->moduleUsageService->cascadeAllModulesToParticipant($class, $participant);
@@ -170,7 +181,7 @@ class MenteeEnrollmentController extends Controller
         session()->forget('enrollment_intent');
 
         return redirect()->route('mentee.class.progress', ['class' => $class->id])
-            ->with('success', 'You have successfully enrolled in ' . $class->name . '! Welcome aboard.');
+            ->with('success', 'You have successfully enrolled in '.$class->name.'! Welcome aboard.');
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -183,4 +194,4 @@ class MenteeEnrollmentController extends Controller
             ->where('enrollment_link_active', true)
             ->first();
     }
-} 
+}

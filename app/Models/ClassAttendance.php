@@ -8,7 +8,7 @@ use LogicException;
 
 /**
  * Immutable attendance record.
- * 
+ *
  * DOMAIN INVARIANTS:
  * - UNIQUE(class_id, COALESCE(session_id, 0), user_id)
  * - Records are IMMUTABLE once created (no update, no delete)
@@ -43,7 +43,7 @@ class ClassAttendance extends Model
     {
         if ($this->exists) {
             throw new LogicException(
-                'ClassAttendance records are immutable. Cannot update attendance ID: ' . $this->id
+                'ClassAttendance records are immutable. Cannot update attendance ID: '.$this->id
             );
         }
 
@@ -56,7 +56,7 @@ class ClassAttendance extends Model
     public function delete()
     {
         throw new LogicException(
-            'ClassAttendance records are immutable. Cannot delete attendance ID: ' . $this->id
+            'ClassAttendance records are immutable. Cannot delete attendance ID: '.$this->id
         );
     }
 
@@ -77,6 +77,11 @@ class ClassAttendance extends Model
     public function marker(): BelongsTo
     {
         return $this->belongsTo(User::class, 'marked_by');
+    }
+
+    public function classModule(): BelongsTo
+    {
+        return $this->belongsTo(ClassModule::class, 'class_module_id');
     }
 
     // ==========================================

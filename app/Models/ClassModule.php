@@ -22,6 +22,8 @@ class ClassModule extends Model
         'requires_assessment',
         'min_attendance_percentage',
         'order_sequence',
+        'start_date',
+        'end_date',
         'notes',
         'attendance_token',
         'attendance_link_active',
@@ -33,6 +35,8 @@ class ClassModule extends Model
         'requires_assessment' => 'boolean',
         'attendance_link_active' => 'boolean',
         'min_attendance_percentage' => 'decimal:2',
+        'start_date' => 'date',
+        'end_date' => 'date',
     ];
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -47,6 +51,11 @@ class ClassModule extends Model
     public function programModule(): BelongsTo
     {
         return $this->belongsTo(ProgramModule::class, 'program_module_id');
+    }
+
+    public function activityEnrollments(): HasMany
+    {
+        return $this->hasMany(ClassModuleActivityParticipant::class, 'class_module_id');
     }
 
     public function sessions(): HasMany

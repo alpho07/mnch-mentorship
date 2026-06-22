@@ -2,14 +2,18 @@
 
 namespace App\Filament\Resources\MentorshipResource\Pages;
 
+use App\Filament\Forms\Components\ActivityCompletionMatrix;
+use App\Filament\Forms\Components\ActivityEnrollmentMatrix;
 use App\Filament\Forms\Components\EmoncModulePicker;
 use App\Filament\Resources\MentorshipTrainingResource;
 use App\Models\ClassModule;
+use App\Models\ClassModuleActivityParticipant;
 use App\Models\ClassParticipant;
 use App\Models\MenteeModuleProgress;
 use App\Models\MentorshipClass;
 use App\Models\Program;
 use App\Models\Training;
+use App\Services\EmoncNotificationService;
 use App\Services\ModuleUsageService;
 use Filament\Actions;
 use Filament\Forms;
@@ -19,6 +23,7 @@ use Filament\Tables;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\DB;
 
 class ManageClassModules extends Page implements HasTable
 {
@@ -117,6 +122,15 @@ class ManageClassModules extends Page implements HasTable
                         ? $this->emoncModulePickerSchema()
                         : $this->standardModulePickerSchema($availableModules),
                     [
+                        Forms\Components\Grid::make(2)->schema([
+                            Forms\Components\DatePicker::make('module_start_date')
+                                ->label('Start Date')
+                                ->native(false),
+                            Forms\Components\DatePicker::make('module_end_date')
+                                ->label('End Date')
+                                ->native(false)
+                                ->afterOrEqual('module_start_date'),
+                        ]),
                         Forms\Components\Toggle::make('auto_create_sessions')
                             ->label('Auto-populate sessions from program template')
                             ->default(true),
@@ -126,7 +140,24 @@ class ManageClassModules extends Page implements HasTable
                     ]
                 ))
                 ->action(function (array $data) use ($service) {
-                    $created = $service->assignModulesToClass($this->training, $this->class, $data['module_ids']);
+                    $createdModuleIds = [];
+                    $created = $service->assignModulesToClass(
+                        $this->training,
+                        $this->class,
+                        $data['module_ids'],
+                        null,
+                        function (ClassModule $classModule) use (&$createdModuleIds) {
+                            $createdModuleIds[] = $classModule->id;
+                        }
+                    );
+
+                    if ($created > 0 && (! empty($data['module_start_date']) || ! empty($data['module_end_date']))) {
+                        ClassModule::whereIn('id', $createdModuleIds)->update([
+                            'start_date' => $data['module_start_date'] ?? null,
+                            'end_date' => $data['module_end_date'] ?? null,
+                        ]);
+                    }
+
                     $createdSessions = 0;
 
                     if (($data['auto_create_sessions'] ?? true) && $created > 0) {
@@ -141,6 +172,15 @@ class ManageClassModules extends Page implements HasTable
                     $sessionText = $createdSessions > 0 ? " with {$createdSessions} sessions auto-created" : '';
                     Notification::make()->success()->title("{$created} class module(s) added{$sessionText}")->send();
                 }),
+            Actions\Action::make('manage_class_mentees')
+                ->label('Add Mentees')
+                ->icon('heroicon-o-user-plus')
+                ->color('success')
+                ->visible(fn () => $this->class->status !== 'completed')
+                ->url(fn () => MentorshipTrainingResource::getUrl('class-mentees', [
+                    'training' => $this->training->id,
+                    'class' => $this->class->id,
+                ])),
             Actions\Action::make('view_report')
                 ->label('Class Report')
                 ->icon('heroicon-o-document-chart-bar')
@@ -193,7 +233,7 @@ class ManageClassModules extends Page implements HasTable
         return $table
             ->query(
                 ClassModule::query()
-                    ->with(['programModule', 'sessions', 'menteeProgress'])
+                    ->with(['programModule.parent', 'programModule.activities', 'sessions', 'menteeProgress'])
                     ->where('mentorship_class_id', $this->class->id)
                     ->orderBy('order_sequence')
             )
@@ -225,16 +265,49 @@ class ManageClassModules extends Page implements HasTable
                         'completed' => 'heroicon-m-check-circle',
                         default => null,
                     }),
-                Tables\Columns\TextColumn::make('programModule.name')
-                    ->label('Module')
-                    ->searchable()
+                Tables\Columns\TextColumn::make('module_name')
+                    ->label($this->isEmonc() ? 'Module / Track' : 'Module')
+                    ->searchable(query: function (Builder $query, string $search) {
+                        $query->whereHas('programModule', fn ($q) => $q->where('name', 'like', "%{$search}%")
+                            ->orWhereHas('parent', fn ($pq) => $pq->where('name', 'like', "%{$search}%")
+                            )
+                        );
+                    })
                     ->weight('medium')
+                    ->html()
+                    ->getStateUsing(function (ClassModule $record) {
+                        $programModule = $record->programModule;
+
+                        if (! $programModule) {
+                            return 'Module';
+                        }
+
+                        $trackName = e($programModule->name);
+
+                        if ($programModule->parent) {
+                            $parentName = e($programModule->parent->name);
+
+                            return "<span class='text-primary-600 dark:text-primary-400 font-semibold'>{$parentName}</span><br><span class='text-sm text-gray-600 dark:text-gray-400'>{$trackName}</span>";
+                        }
+
+                        return $trackName;
+                    })
                     ->description(fn (ClassModule $record) => $record->programModule?->description ? \Illuminate\Support\Str::limit($record->programModule->description, 80) : null),
-                Tables\Columns\TextColumn::make('sessions_count')
-                    ->label('Sessions')
-                    ->getStateUsing(fn (ClassModule $record) => $record->sessions->count())
+                Tables\Columns\TextColumn::make($this->isEmonc() ? 'activities_count' : 'sessions_count')
+                    ->label($this->isEmonc() ? 'Activities' : 'Sessions')
+                    ->getStateUsing(fn (ClassModule $record) => $this->isEmonc()
+                        ? $record->programModule?->activities?->count() ?? 0
+                        : $record->sessions->count())
                     ->alignCenter()
                     ->color('gray'),
+                Tables\Columns\TextColumn::make('start_date')
+                    ->label('Start')
+                    ->date('d M Y')
+                    ->placeholder('—'),
+                Tables\Columns\TextColumn::make('end_date')
+                    ->label('End')
+                    ->date('d M Y')
+                    ->placeholder('—'),
                 // ── Attendance ────────────────────────────────────────────────
                 // Uses MenteeModuleProgress (status in_progress|completed) as the
                 // source of truth — correct for both new records (class_module_id
@@ -409,6 +482,7 @@ class ManageClassModules extends Page implements HasTable
                     ->color('gray')
                     ->iconButton()
                     ->tooltip('Sessions')
+                    ->visible(fn () => ! $this->isEmonc())
                     ->url(fn (ClassModule $record) => MentorshipTrainingResource::getUrl('module-sessions', [
                         'training' => $this->training->id,
                         'class' => $this->class->id,
@@ -425,12 +499,172 @@ class ManageClassModules extends Page implements HasTable
                         'class' => $this->class->id,
                         'module' => $record->id,
                     ])),
+                Tables\Actions\Action::make('manage_activity_mentees')
+                    ->label('Activities')
+                    ->icon('heroicon-o-clipboard-document-check')
+                    ->color('success')
+                    ->iconButton()
+                    ->tooltip('Enroll Mentees in Activities')
+                    ->visible(fn () => $this->isEmonc())
+                    ->modalWidth('5xl')
+                    ->modalHeading(fn (ClassModule $record) => 'Activity Enrollments — '.($record->programModule?->name ?? 'Module'))
+                    ->modalDescription('Check the activities each mentee should be enrolled in for this track.')
+                    ->form(function (ClassModule $record) {
+                        $participants = ClassParticipant::with('user')
+                            ->where('mentorship_class_id', $this->class->id)
+                            ->whereIn('status', ['enrolled', 'active'])
+                            ->get()
+                            ->map(fn ($p) => [
+                                'id' => $p->id,
+                                'name' => $p->user?->name ?? 'Unknown',
+                                'email' => $p->user?->email ?? '',
+                            ])
+                            ->toArray();
+
+                        $activities = $record->programModule?->activities
+                            ?->map(fn ($a) => [
+                                'id' => $a->id,
+                                'name' => $a->name,
+                            ])
+                            ->toArray() ?? [];
+
+                        $enrolledActivityIds = $record->activityEnrollments
+                            ->groupBy('class_participant_id')
+                            ->map(fn ($items) => $items->pluck('activity_id')->toArray())
+                            ->toArray();
+
+                        $defaultPayload = collect($enrolledActivityIds)
+                            ->map(fn ($activityIds, $participantId) => [
+                                'participantId' => (int) $participantId,
+                                'activityIds' => $activityIds,
+                            ])
+                            ->values()
+                            ->all();
+
+                        return [
+                            ActivityEnrollmentMatrix::make('enrollment_matrix')
+                                ->label('')
+                                ->participants($participants)
+                                ->activities($activities)
+                                ->enrolledActivityIds($enrolledActivityIds)
+                                ->default(json_encode($defaultPayload)),
+                        ];
+                    })
+                    ->action(function (array $data, ClassModule $record) {
+                        $enrollments = json_decode($data['enrollment_matrix'] ?? '[]', true) ?? [];
+
+                        try {
+                            $this->saveActivityEnrollments($record->id, $enrollments);
+                        } catch (\Throwable $e) {
+                            Notification::make()
+                                ->danger()
+                                ->title('Error saving enrollments')
+                                ->body($e->getMessage())
+                                ->send();
+                        }
+                    })
+                    ->modalCancelActionLabel('Close'),
+                Tables\Actions\Action::make('mark_activities_complete')
+                    ->label('Complete Activities')
+                    ->icon('heroicon-o-check-circle')
+                    ->color('warning')
+                    ->iconButton()
+                    ->tooltip('Mark Activities as Complete')
+                    ->visible(fn () => $this->isEmonc())
+                    ->modalWidth('5xl')
+                    ->modalHeading(fn (ClassModule $record) => 'Activity Completion — '.($record->programModule?->name ?? 'Module'))
+                    ->modalDescription('Check the activities each mentee has completed for this track.')
+                    ->form(function (ClassModule $record) {
+                        $participants = ClassParticipant::with('user')
+                            ->where('mentorship_class_id', $this->class->id)
+                            ->whereIn('status', ['enrolled', 'active', 'completed'])
+                            ->get();
+
+                        $participantIds = $participants->pluck('id');
+
+                        $participantArray = $participants
+                            ->map(fn ($p) => [
+                                'id' => $p->id,
+                                'name' => $p->user?->name ?? 'Unknown',
+                                'email' => $p->user?->email ?? '',
+                            ])
+                            ->toArray();
+
+                        $progressMap = \App\Models\MenteeModuleProgress::where('class_module_id', $record->id)
+                            ->whereIn('class_participant_id', $participantIds)
+                            ->get()
+                            ->keyBy('class_participant_id');
+
+                        $videoReviews = $participants
+                            ->mapWithKeys(fn ($p) => [
+                                $p->id => $progressMap->get($p->id)?->video_review_status ?? 'not_submitted',
+                            ])
+                            ->toArray();
+
+                        $certificateStatuses = $participants
+                            ->mapWithKeys(fn ($p) => [
+                                $p->id => [
+                                    'mentor_approved' => ! empty($p->mentor_approved_at),
+                                    'head_drmh_approved' => ! empty($p->head_drmh_approved_at),
+                                    'certified' => $p->isCertified(),
+                                ],
+                            ])
+                            ->toArray();
+
+                        $activities = $record->programModule?->activities
+                            ?->map(fn ($a) => [
+                                'id' => $a->id,
+                                'name' => $a->name,
+                            ])
+                            ->toArray() ?? [];
+
+                        $completedActivityIds = $record->activityEnrollments()
+                            ->where('status', 'completed')
+                            ->get()
+                            ->groupBy('class_participant_id')
+                            ->map(fn ($items) => $items->pluck('activity_id')->toArray())
+                            ->toArray();
+
+                        $defaultPayload = collect($completedActivityIds)
+                            ->map(fn ($activityIds, $participantId) => [
+                                'participantId' => (int) $participantId,
+                                'activityIds' => $activityIds,
+                            ])
+                            ->values()
+                            ->all();
+
+                        return [
+                            ActivityCompletionMatrix::make('completion_matrix')
+                                ->label('')
+                                ->participants($participantArray)
+                                ->activities($activities)
+                                ->completedActivityIds($completedActivityIds)
+                                ->videoReviews($videoReviews)
+                                ->certificateStatuses($certificateStatuses)
+                                ->default(json_encode($defaultPayload)),
+                        ];
+                    })
+                    ->action(function (array $data, ClassModule $record) {
+                        $completions = json_decode($data['completion_matrix'] ?? '[]', true) ?? [];
+
+                        try {
+                            $this->saveActivityCompletions($record->id, $completions);
+                        } catch (\Throwable $e) {
+                            Notification::make()
+                                ->danger()
+                                ->title('Error saving activity completions')
+                                ->body($e->getMessage())
+                                ->send();
+                        }
+                    })
+                    ->modalCancelActionLabel('Close'),
                 Tables\Actions\Action::make('module_summary')
                     ->label('Summary')
                     ->icon('heroicon-o-chart-bar')
                     ->color('gray')
                     ->iconButton()
                     ->tooltip('Summary & Analytics')
+                    ->visible(fn () => ! $this->isEmonc())
                     ->url(fn (ClassModule $record) => MentorshipTrainingResource::getUrl('module-summary', [
                         'training' => $this->training->id,
                         'class' => $this->class->id,
@@ -459,6 +693,15 @@ class ManageClassModules extends Page implements HasTable
                             ->default(75),
                         Forms\Components\Toggle::make('requires_assessment')
                             ->label('Requires Assessment'),
+                        Forms\Components\Grid::make(2)->schema([
+                            Forms\Components\DatePicker::make('start_date')
+                                ->label('Start Date')
+                                ->native(false),
+                            Forms\Components\DatePicker::make('end_date')
+                                ->label('End Date')
+                                ->native(false)
+                                ->afterOrEqual('start_date'),
+                        ]),
                         Forms\Components\TextInput::make('order_sequence')
                             ->label('Display Order')
                             ->numeric()
@@ -508,5 +751,173 @@ class ManageClassModules extends Page implements HasTable
         return $service->getAvailableModules($this->training, $this->class)
             ->mapWithKeys(fn ($module) => [$module->id => $module->name])
             ->toArray();
+    }
+
+    public function saveActivityEnrollments(int $classModuleId, array $enrollments): void
+    {
+        $classModule = ClassModule::with('programModule.activities')->findOrFail($classModuleId);
+        $activityIds = $classModule->programModule?->activities?->pluck('id')->toArray() ?? [];
+        $participantIds = ClassParticipant::where('mentorship_class_id', $this->class->id)
+            ->whereIn('status', ['enrolled', 'active'])
+            ->pluck('id')
+            ->toArray();
+
+        $toInsert = [];
+        foreach ($enrollments as $entry) {
+            $participantId = (int) ($entry['participantId'] ?? 0);
+            $activities = $entry['activityIds'] ?? [];
+
+            if (! in_array($participantId, $participantIds)) {
+                continue;
+            }
+
+            foreach ($activities as $activityId) {
+                $activityId = (int) $activityId;
+                if (! in_array($activityId, $activityIds)) {
+                    continue;
+                }
+                $toInsert[] = [
+                    'class_module_id' => $classModule->id,
+                    'class_participant_id' => $participantId,
+                    'activity_id' => $activityId,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+            }
+        }
+
+        DB::transaction(function () use ($classModule, $participantIds, $activityIds, $toInsert) {
+            ClassModuleActivityParticipant::where('class_module_id', $classModule->id)
+                ->whereIn('class_participant_id', $participantIds)
+                ->whereIn('activity_id', $activityIds)
+                ->delete();
+
+            if (! empty($toInsert)) {
+                ClassModuleActivityParticipant::insert($toInsert);
+            }
+        });
+
+        Notification::make()->success()->title('Activity enrollments saved')->send();
+    }
+
+    public function saveActivityCompletions(int $classModuleId, array $completions): void
+    {
+        $classModule = ClassModule::with('programModule.activities')->findOrFail($classModuleId);
+        $activityIds = $classModule->programModule?->activities?->pluck('id')->toArray() ?? [];
+        $participantIds = ClassParticipant::where('mentorship_class_id', $this->class->id)
+            ->whereIn('status', ['enrolled', 'active'])
+            ->pluck('id')
+            ->toArray();
+
+        $completedKeys = [];
+        foreach ($completions as $entry) {
+            $participantId = (int) ($entry['participantId'] ?? 0);
+            foreach ($entry['activityIds'] ?? [] as $activityId) {
+                $completedKeys["{$participantId}:".(int) $activityId] = true;
+            }
+        }
+
+        $newlyCompletedParticipantIds = [];
+
+        DB::transaction(function () use ($classModule, $participantIds, $activityIds, $completedKeys, $completions, &$newlyCompletedParticipantIds) {
+            $existing = ClassModuleActivityParticipant::where('class_module_id', $classModule->id)
+                ->whereIn('class_participant_id', $participantIds)
+                ->whereIn('activity_id', $activityIds)
+                ->get();
+
+            foreach ($existing as $record) {
+                $key = "{$record->class_participant_id}:{$record->activity_id}";
+                $shouldBeCompleted = isset($completedKeys[$key]);
+
+                if ($shouldBeCompleted && $record->status !== 'completed') {
+                    $record->update([
+                        'status' => 'completed',
+                        'completed_at' => now(),
+                        'completed_by' => auth()->id(),
+                    ]);
+                } elseif (! $shouldBeCompleted && $record->status === 'completed') {
+                    $record->update([
+                        'status' => 'pending',
+                        'completed_at' => null,
+                        'completed_by' => null,
+                    ]);
+                }
+            }
+
+            foreach ($completions as $entry) {
+                $participantId = (int) ($entry['participantId'] ?? 0);
+
+                if (! in_array($participantId, $participantIds)) {
+                    continue;
+                }
+
+                foreach ($entry['activityIds'] ?? [] as $activityId) {
+                    $activityId = (int) $activityId;
+
+                    if (! in_array($activityId, $activityIds)) {
+                        continue;
+                    }
+
+                    $exists = $existing->contains(
+                        fn ($r) => $r->class_participant_id === $participantId && $r->activity_id === $activityId
+                    );
+
+                    if (! $exists) {
+                        ClassModuleActivityParticipant::create([
+                            'class_module_id' => $classModule->id,
+                            'class_participant_id' => $participantId,
+                            'activity_id' => $activityId,
+                            'status' => 'completed',
+                            'completed_at' => now(),
+                            'completed_by' => auth()->id(),
+                        ]);
+                    }
+                }
+            }
+
+            // ── Auto-complete mentee progress when all activities done ───────
+            foreach ($participantIds as $participantId) {
+                $completedCount = ClassModuleActivityParticipant::where('class_module_id', $classModule->id)
+                    ->where('class_participant_id', $participantId)
+                    ->where('status', 'completed')
+                    ->count();
+
+                if ($completedCount === count($activityIds)) {
+                    $progress = MenteeModuleProgress::firstOrCreate(
+                        [
+                            'class_participant_id' => $participantId,
+                            'class_module_id' => $classModule->id,
+                        ],
+                        ['status' => 'not_started']
+                    );
+
+                    if (! in_array($progress->status, ['completed', 'exempted'])) {
+                        $progress->markCompleted();
+                        $newlyCompletedParticipantIds[] = $participantId;
+                    }
+                }
+            }
+
+            // ── Auto-complete class module when all enrolled mentees are done ─
+            $totalParticipants = count($participantIds);
+            $completedParticipants = MenteeModuleProgress::where('class_module_id', $classModule->id)
+                ->whereIn('status', ['completed', 'exempted'])
+                ->count();
+
+            if ($totalParticipants > 0 && $completedParticipants === $totalParticipants && $classModule->status === 'in_progress') {
+                $classModule->complete();
+            }
+        });
+
+        // ── Notify mentees whose module progress was auto-completed ─────────
+        if (! empty($newlyCompletedParticipantIds)) {
+            $notificationService = app(EmoncNotificationService::class);
+            $participants = ClassParticipant::with('user')->whereIn('id', $newlyCompletedParticipantIds)->get();
+            foreach ($participants as $participant) {
+                $notificationService->activityCompleted($participant, $classModule);
+            }
+        }
+
+        Notification::make()->success()->title('Activity completions saved')->send();
     }
 }

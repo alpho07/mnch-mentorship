@@ -49,6 +49,26 @@
             </div>
         @endif
 
+        {{-- Pending enrollment resume notice --}}
+        @if($pendingForThisClass)
+            <div class="rounded-xl bg-emerald-50 border border-emerald-200 px-5 py-4 flex items-start gap-3">
+                <svg class="w-5 h-5 text-emerald-600 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <div class="flex-1">
+                    <p class="text-sm font-semibold text-emerald-800">You have a pending enrollment</p>
+                    <p class="text-xs text-emerald-700 mt-1">
+                        You started enrolling with <strong>{{ $pendingIntent['email'] ?? 'your email' }}</strong> but didn't finish logging in.
+                        You can come back any time and click below to continue.
+                    </p>
+                    <a href="{{ route('filament.admin.auth.login') }}"
+                       class="inline-flex items-center gap-1.5 mt-3 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition-colors">
+                        Continue Enrollment →
+                    </a>
+                </div>
+            </div>
+        @endif
+
         {{-- Class card --}}
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
 
@@ -115,14 +135,25 @@
                         <h3 class="text-sm font-semibold text-slate-700 mb-3">Curriculum</h3>
                         <div class="space-y-2">
                             @foreach($class->classModules->sortBy('order_sequence') as $cm)
-                            <div class="flex items-center gap-3 px-4 py-3 bg-slate-50 rounded-xl">
-                                <div class="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold flex-shrink-0">
-                                        {{ $loop->iteration }}
+                                @php
+                                    $programModule = $cm->programModule;
+                                    $isTrack = $programModule?->parent !== null;
+                                @endphp
+                                <div class="flex flex-col gap-1 px-4 py-3 bg-slate-50 rounded-xl">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold flex-shrink-0">
+                                            {{ $loop->iteration }}
+                                        </div>
+                                        <span class="text-sm text-slate-700 font-medium">
+                                            {{ $programModule?->name ?? 'Module ' . $loop->iteration }}
+                                        </span>
+                                    </div>
+                                    @if($isTrack)
+                                        <div class="pl-9 text-xs text-blue-600 font-medium">
+                                            Track: {{ $programModule->parent->name }}
+                                        </div>
+                                    @endif
                                 </div>
-                                <span class="text-sm text-slate-700 font-medium">
-                                        {{ $cm->programModule?->name ?? 'Module ' . $loop->iteration }}
-                                </span>
-                            </div>
                             @endforeach
                         </div>
                     </div>
@@ -134,6 +165,15 @@
                         <p class="text-xs text-slate-500 mb-4">
                             Enter the email address associated with your account on this platform.
                         </p>
+
+                        <div class="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 flex items-start gap-3 mb-4">
+                            <svg class="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            <p class="text-xs text-amber-800 leading-relaxed">
+                                <strong>Login required:</strong> You will need to log in to confirm your attendance and track your progress in this class.
+                            </p>
+                        </div>
 
                         <form method="POST" action="{{ route('mentee.enroll.submit', ['token' => request()->route('token')]) }}" class="space-y-4">
                         @csrf

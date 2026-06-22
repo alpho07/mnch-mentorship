@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\ClassParticipant;
 use App\Models\MenteeModuleProgress;
 use App\Models\MentorshipClass;
+use App\Services\EmoncReportingService;
 use Illuminate\Support\Facades\Auth;
 use Spatie\Browsershot\Browsershot;
 
@@ -74,7 +75,30 @@ class ClassReportController extends Controller
             ->filter()
             ->values();
 
-        return compact('class', 'modules', 'mentees', 'totalEnrolled', 'totalCompleted', 'avgAttendance', 'coMentors');
+        $emoncData = $this->buildEmoncData($class);
+
+        return array_merge(
+            compact('class', 'modules', 'mentees', 'totalEnrolled', 'totalCompleted', 'avgAttendance', 'coMentors'),
+            $emoncData
+        );
+    }
+
+    private function buildEmoncData(MentorshipClass $class): array
+    {
+        $programName = strtolower($class->training->program?->name ?? '');
+        $isEmonc = str_contains($programName, 'maternal') && str_contains($programName, 'emonc');
+
+        if (! $isEmonc) {
+            return [
+                'isEmonc' => false,
+                'emoncReport' => null,
+            ];
+        }
+
+        return [
+            'isEmonc' => true,
+            'emoncReport' => app(EmoncReportingService::class)->buildClassReport($class),
+        ];
     }
 
     public function certificateHtml(MentorshipClass $class, ClassParticipant $participant)
@@ -85,7 +109,7 @@ class ClassReportController extends Controller
         $class->load(['training.program', 'training.facility', 'training.mentor']);
         $participant->load('user');
 
-        abort_unless($participant->status === 'completed', 403, 'Mentee has not completed the class.');
+        $this->ensureCanViewCertificate($class, $participant);
 
         $modules = $class->classModules()->with('programModule')->orderBy('order_sequence')->get();
 
@@ -128,7 +152,7 @@ class ClassReportController extends Controller
         abort_unless($participant->mentorship_class_id === $class->id, 404);
         $class->load(['training.program', 'training.facility', 'training.mentor']);
         $participant->load('user');
-        abort_unless($participant->status === 'completed', 403, 'Mentee has not completed the class.');
+        $this->ensureCanViewCertificate($class, $participant);
 
         $modules = $class->classModules()->with('programModule')->orderBy('order_sequence')->get();
         $html = view('certificates.completion', compact('class', 'participant', 'modules'))->render();
@@ -146,6 +170,45 @@ class ClassReportController extends Controller
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => "attachment; filename=\"{$filename}\"",
         ]);
+    }
+
+    private function ensureCanViewCertificate(MentorshipClass $class, ClassParticipant $participant): void
+    {
+        $programName = strtolower($class->training->program?->name ?? '');
+        $isEmonc = str_contains($programName, 'maternal') && str_contains($programName, 'emonc');
+
+        if ($isEmonc) {
+            abort_unless($participant->isCertified(), 403, 'This mentee has not completed the mentor and Head DRMH approval process.');
+
+            return;
+        }
+
+        abort_unless($participant->status === 'completed', 403, 'Mentee has not completed the class.');
+    }
+
+    public function verifyCertificate(MentorshipClass $class, ClassParticipant $participant)
+    {
+        abort_unless($participant->mentorship_class_id === $class->id, 404);
+
+        $isValid = $participant->isCertified();
+
+        $class->load(['training.program', 'training.facility', 'training.mentor']);
+        $participant->load(['user', 'mentorApprovedBy', 'headDrmhApprovedBy']);
+
+        return view('certificates.verify', compact('class', 'participant', 'isValid'));
+    }
+
+    public function badge(MentorshipClass $class, ClassParticipant $participant)
+    {
+        abort_unless($participant->mentorship_class_id === $class->id, 404);
+        abort_unless($participant->isCertified(), 403);
+
+        $participant->load('user');
+        $class->load('training.program');
+
+        $svg = view('certificates.badge', compact('class', 'participant'))->render();
+
+        return response($svg, 200, ['Content-Type' => 'image/svg+xml']);
     }
 
     private function makeBrowsershot(string $html): \Spatie\Browsershot\Browsershot

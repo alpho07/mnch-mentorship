@@ -1,0 +1,79 @@
+<h2>Mentor: Mark Activities Complete per Mentee</h2>
+<p class="subtitle">This is the mentor view for tracking enrollment and completion of activities under a module/track.</p>
+
+<div class="mockup">
+  <div class="mockup-header">Class: EmONC Cohort A &gt; Module 5: PPH &gt; Track 1</div>
+  <div class="mockup-body" style="padding:20px;background:#f8fafc">
+
+    <!-- Summary cards -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px">
+      <div style="background:#fff;border-radius:10px;padding:12px;border:1px solid #e2e8f0">
+        <div style="font-size:11px;color:#64748b;font-weight:700">ENROLLED</div>
+        <div style="font-size:22px;font-weight:800;color:#0f172a">12</div>
+      </div>
+      <div style="background:#fff;border-radius:10px;padding:12px;border:1px solid #e2e8f0">
+        <div style="font-size:11px;color:#64748b;font-weight:700">CME DONE</div>
+        <div style="font-size:22px;font-weight:800;color:#16a34a">10</div>
+      </div>
+      <div style="background:#fff;border-radius:10px;padding:12px;border:1px solid #e2e8f0">
+        <div style="font-size:11px;color:#64748b;font-weight:700">HANDS-ON DONE</div>
+        <div style="font-size:22px;font-weight:800;color:#f59e0b">6</div>
+      </div>
+      <div style="background:#fff;border-radius:10px;padding:12px;border:1px solid #e2e8f0">
+        <div style="font-size:11px;color:#64748b;font-weight:700">DRILL DONE</div>
+        <div style="font-size:22px;font-weight:800;color:#3b82f6">8</div>
+      </div>
+    </div>
+
+    <!-- Activity completion matrix -->
+    <div style="background:#fff;border-radius:12px;padding:16px;border:1px solid #e2e8f0">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div style="font-size:14px;font-weight:800;color:#0f172a">Activity completion matrix</div>
+        <button style="background:#4f46e5;color:#fff;border:none;padding:7px 14px;border-radius:8px;font-size:12px;font-weight:700">Save changes</button>
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead>
+          <tr style="background:#f1f5f9">
+            <th style="text-align:left;padding:10px;border-bottom:1px solid #e2e8f0">Mentee</th>
+            <th style="text-align:center;padding:10px;border-bottom:1px solid #e2e8f0">CME</th>
+            <th style="text-align:center;padding:10px;border-bottom:1px solid #e2e8f0">Hands-on Demo</th>
+            <th style="text-align:center;padding:10px;border-bottom:1px solid #e2e8f0">Drill</th>
+            <th style="text-align:center;padding:10px;border-bottom:1px solid #e2e8f0">All done?</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="padding:10px;border-bottom:1px solid #f1f5f9;font-weight:600">Jane Doe</td>
+            <td style="text-align:center;padding:10px;border-bottom:1px solid #f1f5f9"><input type="checkbox" checked style="width:18px;height:18px;accent-color:#22c55e"></td>
+            <td style="text-align:center;padding:10px;border-bottom:1px solid #f1f5f9"><input type="checkbox" style="width:18px;height:18px;accent-color:#22c55e"></td>
+            <td style="text-align:center;padding:10px;border-bottom:1px solid #f1f5f9"><input type="checkbox" checked style="width:18px;height:18px;accent-color:#22c55e"></td>
+            <td style="text-align:center;padding:10px;border-bottom:1px solid #f1f5f9"><span style="color:#f59e0b;font-weight:700">No</span></td>
+          </tr>
+          <tr>
+            <td style="padding:10px;border-bottom:1px solid #f1f5f9;font-weight:600">John Kimani</td>
+            <td style="text-align:center;padding:10px;border-bottom:1px solid #f1f5f9"><input type="checkbox" checked style="width:18px;height:18px;accent-color:#22c55e"></td>
+            <td style="text-align:center;padding:10px;border-bottom:1px solid #f1f5f9"><input type="checkbox" checked style="width:18px;height:18px;accent-color:#22c55e"></td>
+            <td style="text-align:center;padding:10px;border-bottom:1px solid #f1f5f9"><input type="checkbox" checked style="width:18px;height:18px;accent-color:#22c55e"></td>
+            <td style="text-align:center;padding:10px;border-bottom:1px solid #f1f5f9"><span style="color:#16a34a;font-weight:700">Yes</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Mentor note -->
+    <div style="margin-top:14px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:12px;font-size:12px;color:#1e40af">
+      <strong>Tip:</strong> Checking the last activity automatically marks the mentee's module progress as completed and triggers the mentor-approval eligibility check.
+    </div>
+
+  </div>
+</div>
+
+<div class="section">
+  <h3>Behavior this view enables</h3>
+  <ul>
+    <li>See every mentee enrolled in this module/track.</li>
+    <li>See which activities each mentee has completed, is pending, or was never enrolled in.</li>
+    <li>Tick activities complete in bulk; system updates progress and certificate readiness.</li>
+    <li>Clear map: "Jane completed CME and Drill, Hands-on pending → no certificate yet."</li>
+  </ul>
+</div>

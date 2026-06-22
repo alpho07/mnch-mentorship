@@ -41,15 +41,25 @@ class MentorshipTrainingResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->check() && auth()->user()->hasRole([
-            'super_admin', 'admin', 'division', 'facility_mentor', 'national_mentor',
-            'facility_mentor_lead', 'county_mentor_lead', 'subcounty_mentor_lead',
-        ]);
+        return auth()->check() && static::userCanAccess(auth()->user());
     }
 
     public static function canAccess(): bool
     {
-        return auth()->check() && auth()->user()->hasRole([
+        return auth()->check() && static::userCanAccess(auth()->user());
+    }
+
+    private static function userCanAccess(?User $user): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        if ($user->canCreateMentorships()) {
+            return true;
+        }
+
+        return $user->hasRole([
             'super_admin', 'admin', 'division', 'facility_mentor', 'national_mentor',
             'facility_mentor_lead', 'county_mentor_lead', 'subcounty_mentor_lead',
         ]);
@@ -544,6 +554,7 @@ class MentorshipTrainingResource extends Resource
             'class-mentees' => Pages\ManageClassMentees::route('/{training}/classes/{class}/mentees'),
             'module-sessions' => Pages\ManageModuleSessions::route('/{training}/classes/{class}/modules/{module}/sessions'),
             'module-mentees' => Pages\ManageModuleMentees::route('/{training}/classes/{class}/modules/{module}/mentees'),
+            'module-mentee-review' => Pages\ReviewModuleMentee::route('/{training}/classes/{class}/modules/{module}/mentees/{participant}/review'),
             'module-summary' => Pages\ModuleSummary::route('/{training}/classes/{class}/modules/{module}/summary'),
             'module-resources' => Pages\ManageModuleResources::route('/{training}/classes/{class}/modules/{module}/resources'),
             // 'mentee-dashboard' => Pages\MenteeDashboard::route('/mentee-dashboard'),

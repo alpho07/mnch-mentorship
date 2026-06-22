@@ -1,37 +1,33 @@
-<?php 
+<?php
 
-use Illuminate\Support\Facades\Route;
-use League\Csv\Writer;
-use App\Http\Controllers\Frontend\ResourceController;
-use App\Http\Controllers\Frontend\CategoryController;
-use App\Http\Controllers\Frontend\SearchController;
-use App\Http\Controllers\Frontend\CommentController;
-use App\Http\Controllers\Frontend\InteractionController;
-use App\Http\Controllers\TrainingHeatmapController;
-use App\Http\Controllers\TrainingPagesController;
+use App\Http\Controllers\AccountVerificationController;
 use App\Http\Controllers\Analytics\KenyaHeatmapController;
-use App\Http\Controllers\Analytics\TrainingExplorerController;
-use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Analytics\ProgressiveDashboardController;
+use App\Http\Controllers\Analytics\TrainingExplorerController;
 use App\Http\Controllers\AnalyticsDashboardController;
 use App\Http\Controllers\AssessmentReportController;
-use App\Http\Controllers\MenteeEnrollmentController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\Frontend\CategoryController;
+use App\Http\Controllers\Frontend\CommentController;
+use App\Http\Controllers\Frontend\InteractionController;
+use App\Http\Controllers\Frontend\ResourceController;
+use App\Http\Controllers\Frontend\SearchController;
 use App\Http\Controllers\MenteeClassProgressController;
+use App\Http\Controllers\MenteeEnrollmentController;
 use App\Http\Controllers\ModuleAttendanceController;
-use App\Http\Controllers\AccountVerificationController;
-use Illuminate\Http\Request;  
-
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Route;
 /*
   |--------------------------------------------------------------------------
   | Web Routes - Complete Resource Management System
   |--------------------------------------------------------------------------
  */
-use Illuminate\Support\Facades\Mail;
+use League\Csv\Writer;
 
 Route::get('/test-mail', function () {
     Mail::raw('Gmail is working!', function ($message) {
         $message->to('alpho07@gmail.com')
-                ->subject('Test Email');
+            ->subject('Test Email');
     });
 
     return 'Email sent!';
@@ -44,21 +40,24 @@ Route::middleware(['auth'])->prefix('admin/reports')->name('reports.')->group(fu
     Route::get('/class/{class}/certificate/{participant}/preview', [\App\Http\Controllers\ClassReportController::class, 'certificateHtml'])->name('reports.class.certificate.preview');
 });
 
+Route::get('/certificates/{class}/{participant}/verify', [\App\Http\Controllers\ClassReportController::class, 'verifyCertificate'])->name('certificates.verify');
+Route::get('/certificates/{class}/{participant}/badge', [\App\Http\Controllers\ClassReportController::class, 'badge'])->name('certificates.badge');
+
 Route::get('/admin/set-password/{token}', App\Livewire\Auth\CustomResetPassword::class)
-        ->middleware(['web', 'guest'])
-        ->name('password.reset.custom');
+    ->middleware(['web', 'guest'])
+    ->name('password.reset.custom');
 
 Route::middleware('guest')->group(function () {
 
     // GET  /account/verify/{user}?expires=...&signature=...
     // Shows the "Hello {name}, set your password" page
     Route::get('/account/verify/{user}', [AccountVerificationController::class, 'show'])
-            ->name('account.verify.show');
+        ->name('account.verify.show');
 
     // POST /account/verify/{user}?expires=...&signature=...
     // Validates password, marks verified, auto-logs in, redirects to /admin
     Route::post('/account/verify/{user}', [AccountVerificationController::class, 'update'])
-            ->name('account.verify.update');
+        ->name('account.verify.update');
 });
 
 // Livewire upload bypass — extends FileUploadController, skips signature check
@@ -79,6 +78,7 @@ Route::get('/check-upload-config', function () {
 
 Route::get('/test-signature', function () {
     $url = URL::temporarySignedRoute('test', now()->addMinutes(1));
+
     return [
         'generated_url' => $url,
         'current_app_url' => config('app.url'),
@@ -90,51 +90,57 @@ Route::get('/test-signature', function () {
 // Override Livewire upload to bypass signature
 // Module attendance routes (public/guest access)
 Route::get('/module/attend/{token}', [ModuleAttendanceController::class, 'attend'])
-        ->name('module.attend');
+    ->name('module.attend');
 
 Route::post('/module/attend/{token}', [ModuleAttendanceController::class, 'processAttendance'])
-        ->name('module.attend.submit');
+    ->name('module.attend.submit');
 
 // Mentee enrollment routes (public/guest access)
-Route::get('/enroll/{token}', [MenteeEnrollmentController::class, 'enroll'])
-        ->name('mentee.enroll');
+Route::get('/enroll/{token}', [MenteeEnrollmentController::class, 'show'])
+    ->name('mentee.enroll');
 
-Route::post('/enroll/{token}', [MenteeEnrollmentController::class, 'processEnrollmentSubmission'])
-        ->name('mentee.enroll.submit');
+Route::post('/enroll/{token}', [MenteeEnrollmentController::class, 'submit'])
+    ->name('mentee.enroll.submit');
 
 // Mentee authenticated routes
 Route::middleware(['auth'])->group(function () {
     Route::get('/my-class/{class}', [MenteeClassProgressController::class, 'show'])
-            ->name('mentee.class.progress');
+        ->name('mentee.class.progress');
+
+    Route::get('/my-class/{class}/module/{classModule}', [MenteeClassProgressController::class, 'module'])
+        ->name('mentee.class.module');
+
+    Route::post('/my-class/{class}/module/{classModule}/quiz/{quiz}/start', [MenteeClassProgressController::class, 'startQuiz'])
+        ->name('mentee.class.quiz.start');
+
+    Route::post('/my-class/{class}/module/{classModule}/quiz/{attempt}/submit', [MenteeClassProgressController::class, 'submitQuiz'])
+        ->name('mentee.class.quiz.submit');
+
+    Route::post('/my-class/{class}/module/{classModule}/video', [MenteeClassProgressController::class, 'uploadHandsOnVideo'])
+        ->name('mentee.class.video.upload');
 });
 
 Route::get('/attend/{token}', [App\Http\Controllers\ModuleAttendanceController::class, 'confirm'])
-        ->name('module.attendance');
-
-Route::get('/enroll/{token}', [MenteeEnrollmentController::class, 'show'])
-        ->name('mentee.enroll');
-
-Route::post('/enroll/{token}', [MenteeEnrollmentController::class, 'submit'])
-        ->name('mentee.enroll.submit');
+    ->name('module.attendance');
 
 // ── Auth required — complete enrollment after login ───────────────────────────
 Route::middleware(['auth'])->group(function () {
     Route::get('/enroll/{token}/complete', [MenteeEnrollmentController::class, 'complete'])
-            ->name('mentee.enroll.complete');
+        ->name('mentee.enroll.complete');
 });
 
 Route::middleware(['auth'])->group(function () {
     Route::get('/assessments/{assessment}/report', [AssessmentReportController::class, 'show'])
-            ->name('assessment.report');
+        ->name('assessment.report');
 
     Route::get('/assessments/{assessment}/download', [AssessmentReportController::class, 'download'])
-            ->name('assessment.download');
+        ->name('assessment.download');
 
     Route::get('/assessments/{assessment}/executive', [\App\Http\Controllers\AssessmentExecutiveDashboardController::class, 'show'])
-            ->name('assessment.executive');
+        ->name('assessment.executive');
 
     Route::get('/assessments/{assessment}/executive/export', [\App\Http\Controllers\AssessmentExecutiveDashboardController::class, 'export'])
-            ->name('assessment.executive.export');
+        ->name('assessment.executive.export');
 });
 
 Route::prefix('analytics/dashboard')->name('analytics.dashboard.')->group(function () {
@@ -159,15 +165,15 @@ Route::prefix('analytics/dashboard')->name('analytics.dashboard.')->group(functi
     Route::get('/county/{county}/program/{program}', [AnalyticsDashboardController::class, 'program'])->name('program');
 
     Route::get('/county/{county}/facilities', [AnalyticsDashboardController::class, 'countyFacilities'])
-            ->name('analytics.dashboard.county.facilities');
+        ->name('analytics.dashboard.county.facilities');
 
     Route::get('/county/{county}/facility/{facility}/programs', [AnalyticsDashboardController::class, 'facilityPrograms'])
-            ->name('analytics.dashboard.facility.programs');
+        ->name('analytics.dashboard.facility.programs');
 
-// Add this route for mentorship participants (without facility level)
+    // Add this route for mentorship participants (without facility level)
     Route::get('/county/{county}/program/{program}/participant/{participant}',
-                    [AnalyticsDashboardController::class, 'mentorshipParticipant'])
-            ->name('analytics.dashboard.mentorship.participant');
+        [AnalyticsDashboardController::class, 'mentorshipParticipant'])
+        ->name('analytics.dashboard.mentorship.participant');
     // Facility level
     Route::get('/county/{county}/program/{program}/facility/{facility}', [AnalyticsDashboardController::class, 'facility'])->name('facility');
 
@@ -234,27 +240,28 @@ Route::prefix('admin/analytics/progressive-dashboard')->middleware(['auth', 'adm
 
     Route::get('system-info', function () {
         return response()->json([
-                    'php_version' => PHP_VERSION,
-                    'laravel_version' => app()->version(),
-                    'cache_driver' => config('cache.default'),
-                    'database_connection' => config('database.default'),
-                    'memory_usage' => memory_get_usage(true),
-                    'peak_memory' => memory_get_peak_usage(true),
-                    'disk_space' => disk_free_space('/'),
+            'php_version' => PHP_VERSION,
+            'laravel_version' => app()->version(),
+            'cache_driver' => config('cache.default'),
+            'database_connection' => config('database.default'),
+            'memory_usage' => memory_get_usage(true),
+            'peak_memory' => memory_get_peak_usage(true),
+            'disk_space' => disk_free_space('/'),
         ]);
     })->name('system-info');
 
     Route::post('rebuild-cache', function () {
         \Illuminate\Support\Facades\Cache::flush();
+
         return response()->json(['message' => 'All caches rebuilt successfully']);
     })->name('rebuild-cache');
 
     Route::get('performance-metrics', function () {
         return response()->json([
-                    'cache_hit_rate' => 85.4,
-                    'average_response_time' => 245,
-                    'active_users' => 23,
-                    'total_requests_today' => 1247,
+            'cache_hit_rate' => 85.4,
+            'average_response_time' => 245,
+            'active_users' => 23,
+            'total_requests_today' => 1247,
         ]);
     })->name('performance-metrics');
 });
@@ -287,8 +294,8 @@ Route::prefix('dashboard')->name('main-dashboard.')->group(function () {
 Route::prefix('co-mentor')->name('co-mentor.accept')->group(function () {
     Route::get('/accept/{token}', [\App\Http\Controllers\CoMentorController::class, 'show']);
     Route::post('/accept/{token}', [\App\Http\Controllers\CoMentorController::class, 'process'])
-            ->middleware('auth')
-            ->name('.process');
+        ->middleware('auth')
+        ->name('.process');
 });
 
 Route::get('login-v1', function () {
@@ -303,21 +310,21 @@ Route::get('resource-files/{file}/temp-view', [App\Http\Controllers\Admin\Resour
 Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () {
     // Resource file operations
     Route::get('resource-files/{file}/download', [App\Http\Controllers\Admin\ResourceFileController::class, 'download'])
-            ->name('resource-files.download');
+        ->name('resource-files.download');
     Route::get('resource-files/{file}/preview', [App\Http\Controllers\Admin\ResourceFileController::class, 'preview'])
-            ->name('resource-files.preview');
+        ->name('resource-files.preview');
 
     // Resource operations (for primary file or single resource)
     Route::get('resources/{resource}/download', [App\Http\Controllers\Admin\ResourceController::class, 'download'])
-            ->name('resources.download');
+        ->name('resources.download');
     Route::get('resources/{resource}/preview', [App\Http\Controllers\Admin\ResourceController::class, 'preview'])
-            ->name('resources.preview');
+        ->name('resources.preview');
 });
 
 // Alternative: If you want to handle it within Filament's context
 Route::middleware(['auth', 'web'])->group(function () {
     Route::get('/training-export/download/{export_id}', [\App\Http\Controllers\TrainingExportController::class, 'download'])
-            ->name('training-export.download');
+        ->name('training-export.download');
 });
 
 // Training participant template download
@@ -333,7 +340,7 @@ Route::get('/{training}/participants/template', function ($trainingId) {
         'facility_name',
         'facility_mfl_code',
         'department_name',
-        'cadre_name'
+        'cadre_name',
     ]);
 
     // Add sample data
@@ -345,7 +352,7 @@ Route::get('/{training}/participants/template', function ($trainingId) {
         'Kenyatta National Hospital',
         'KNH001',
         'Nursing',
-        'Registered Nurse'
+        'Registered Nurse',
     ]);
 
     $csv->insertOne([
@@ -356,7 +363,7 @@ Route::get('/{training}/participants/template', function ($trainingId) {
         'Moi Teaching Hospital',
         'MTH002',
         'Laboratory',
-        'Lab Technician'
+        'Lab Technician',
     ]);
 
     $filename = 'participants_import_template.csv';
@@ -375,8 +382,8 @@ Route::prefix('resources')->name('resources.')->group(function () {
     // === MAIN RESOURCE ROUTES ===
     Route::get('/', [ResourceController::class, 'index'])->name('index');
     Route::get('/search', [SearchController::class, 'index'])
-            ->name('search')
-            ->middleware('throttle:search');
+        ->name('search')
+        ->middleware('throttle:search');
     Route::get('/browse', [ResourceController::class, 'browse'])->name('browse');
 
     // === USER-SPECIFIC ROUTES (AUTHENTICATED) ===
@@ -395,15 +402,15 @@ Route::prefix('resources')->name('resources.')->group(function () {
 
     // === FILE HANDLING ROUTES ===
     Route::get('/{resource:slug}/download', [ResourceController::class, 'download'])
-            ->name('download');
-    //->middleware('throttle:downloads');
+        ->name('download');
+    // ->middleware('throttle:downloads');
 
     Route::get('/{resource:slug}/preview', [ResourceController::class, 'preview'])
-            ->name('preview');
-    //->middleware('throttle:previews');
+        ->name('preview');
+    // ->middleware('throttle:previews');
 
     Route::get('/{resource:slug}/thumbnail', [ResourceController::class, 'thumbnail'])
-            ->name('thumbnail');
+        ->name('thumbnail');
 
     // === RESOURCE INTERACTIONS (AUTHENTICATED USERS) ===
     Route::middleware(['auth', 'throttle:interactions'])->group(function () {
@@ -415,21 +422,21 @@ Route::prefix('resources')->name('resources.')->group(function () {
     // === COMMENT ROUTES ===
     Route::middleware('auth')->group(function () {
         Route::post('/{resource:slug}/comment', [CommentController::class, 'store'])
-                ->name('comment.store')
-                ->middleware('throttle:comments');
+            ->name('comment.store')
+            ->middleware('throttle:comments');
 
         Route::put('/comment/{comment}', [CommentController::class, 'update'])
-                ->name('comment.update')
-                ->middleware('throttle:comment-updates');
+            ->name('comment.update')
+            ->middleware('throttle:comment-updates');
 
         Route::delete('/comment/{comment}', [CommentController::class, 'destroy'])
-                ->name('comment.destroy');
+            ->name('comment.destroy');
     });
 
     // Public comment routes for guests
     Route::post('/{resource:slug}/comment/guest', [CommentController::class, 'storeGuest'])
-            ->name('comment.guest')
-            ->middleware('throttle:guest-comments');
+        ->name('comment.guest')
+        ->middleware('throttle:guest-comments');
 });
 
 // ===== CATEGORY ROUTES =====
@@ -444,19 +451,19 @@ Route::prefix('api/v1')->name('api.')->middleware('throttle:api')->group(functio
     // === AUTHENTICATED API ENDPOINTS ===
     Route::middleware('auth')->group(function () {
         Route::post('/resources/{resource:slug}/interactions/{type}', [InteractionController::class, 'toggle'])
-                ->name('interactions.toggle')
-                ->where('type', 'like|dislike|bookmark|share');
+            ->name('interactions.toggle')
+            ->where('type', 'like|dislike|bookmark|share');
 
         Route::get('/resources/{resource:slug}/stats', function (\App\Models\Resource $resource) {
-            if (!$resource->canUserAccess(auth()->user())) {
+            if (! $resource->canUserAccess(auth()->user())) {
                 abort(403);
             }
 
             return response()->json([
-                        'views' => $resource->view_count,
-                        'downloads' => $resource->download_count,
-                        'likes' => $resource->like_count,
-                        'comments' => $resource->comments()->approved()->count(),
+                'views' => $resource->view_count,
+                'downloads' => $resource->download_count,
+                'likes' => $resource->like_count,
+                'comments' => $resource->comments()->approved()->count(),
             ]);
         })->name('resource.stats');
     });
@@ -465,52 +472,52 @@ Route::prefix('api/v1')->name('api.')->middleware('throttle:api')->group(functio
 // ===== UTILITY & SEO ROUTES =====
 Route::get('/health', function () {
     return cache()->remember('health_check', 60, function () {
-                return response()->json([
-                            'status' => 'ok',
-                            'timestamp' => now(),
-                            'resources_count' => \App\Models\Resource::published()->count(),
-                            'categories_count' => \App\Models\ResourceCategory::active()->count(),
-                ]);
-            });
+        return response()->json([
+            'status' => 'ok',
+            'timestamp' => now(),
+            'resources_count' => \App\Models\Resource::published()->count(),
+            'categories_count' => \App\Models\ResourceCategory::active()->count(),
+        ]);
+    });
 })->name('health');
 
 Route::get('/sitemap.xml', function () {
     return cache()->remember('sitemap', 3600, function () {
-                $resources = \App\Models\Resource::published()
-                        ->public()
-                        ->select(['slug', 'updated_at'])
-                        ->get();
+        $resources = \App\Models\Resource::published()
+            ->public()
+            ->select(['slug', 'updated_at'])
+            ->get();
 
-                $categories = \App\Models\ResourceCategory::active()
-                        ->select(['slug', 'updated_at'])
-                        ->get();
+        $categories = \App\Models\ResourceCategory::active()
+            ->select(['slug', 'updated_at'])
+            ->get();
 
-                return response()->view('sitemap', compact('resources', 'categories'))
-                                ->header('Content-Type', 'text/xml');
-            });
+        return response()->view('sitemap', compact('resources', 'categories'))
+            ->header('Content-Type', 'text/xml');
+    });
 })->name('sitemap');
 
 Route::get('/feed', function () {
     return cache()->remember('rss_feed', 1800, function () {
-                $resources = \App\Models\Resource::published()
-                        ->public()
-                        ->latest('published_at')
-                        ->limit(20)
-                        ->with(['author', 'category'])
-                        ->get();
+        $resources = \App\Models\Resource::published()
+            ->public()
+            ->latest('published_at')
+            ->limit(20)
+            ->with(['author', 'category'])
+            ->get();
 
-                return response()->view('feed.rss', compact('resources'))
-                                ->header('Content-Type', 'application/rss+xml');
-            });
+        return response()->view('feed.rss', compact('resources'))
+            ->header('Content-Type', 'application/rss+xml');
+    });
 })->name('feed');
 
 Route::get('/robots.txt', function () {
     $content = "User-agent: *\n";
     $content .= "Allow: /\n";
-    $content .= "Sitemap: " . route('sitemap') . "\n";
+    $content .= 'Sitemap: '.route('sitemap')."\n";
 
     return response($content, 200)
-                    ->header('Content-Type', 'text/plain');
+        ->header('Content-Type', 'text/plain');
 })->name('robots');
 
 // ===== ADMIN ROUTES =====
@@ -526,7 +533,7 @@ Route::middleware(['auth', 'throttle:admin'])->prefix('admin')->name('admin.')->
                 'activity' => [
                     'views_today' => \App\Models\ResourceView::whereDate('created_at', today())->count(),
                     'downloads_today' => \App\Models\ResourceDownload::whereDate('created_at', today())->count(),
-                ]
+                ],
             ];
         });
 
@@ -567,5 +574,4 @@ Route::middleware(['web'])->prefix('analytics')->name('analytics.')->group(funct
     Route::get('/participant/{participantId}/profile', [TrainingExplorerController::class, 'participantProfile']);
 });
 
-//include 'api.php';
-
+// include 'api.php';

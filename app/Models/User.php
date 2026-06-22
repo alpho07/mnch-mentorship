@@ -9,19 +9,19 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
-use Spatie\Permission\Traits\HasRoles;
-use Illuminate\Notifications\Notification;
 use Illuminate\Notifications\Messages\MailMessage;
-use Laravel\Sanctum\HasApiTokens;   
+use Illuminate\Notifications\Notifiable;
+use Illuminate\Notifications\Notification;
+use Laravel\Sanctum\HasApiTokens;
+use Spatie\Permission\Traits\HasRoles;
 
-class User extends Authenticatable {
-
+class User extends Authenticatable
+{
+    use HasApiTokens,Notifiable;
     use HasFactory,
-        Notifiable,
         HasRoles,
+        Notifiable,
         SoftDeletes;
-    use Notifiable,HasApiTokens;
 
     // HasResourceInteractions; // Add the resource interactions trait
 
@@ -38,84 +38,107 @@ class User extends Authenticatable {
         'id_number',
         'phone',
         'status',
+        'can_create_mentorships',
+        'supervisor_id',
         'password',
         'email_verified_at',
         'county_id', // Add if missing
     ];
+
     protected $hidden = [
         'password',
         'remember_token',
     ];
 
-    protected function casts(): array {
+    protected function casts(): array
+    {
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'can_create_mentorships' => 'boolean',
+            'supervisor_id' => 'integer',
         ];
     }
 
-    public function sendPasswordResetNotification($token): void {
-        $url = url('/admin/set-password/' . $token . '?email=' . urlencode($this->email));
+    public function supervisor(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(User::class, 'supervisor_id');
+    }
 
-        $this->notify(new class($url) extends \Illuminate\Notifications\Notification {
+    public function supervisees(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(User::class, 'supervisor_id');
+    }
 
-            public function __construct(protected string $url) {
-                
-            }
+    public function sendPasswordResetNotification($token): void
+    {
+        $url = url('/admin/set-password/'.$token.'?email='.urlencode($this->email));
 
-            public function via($notifiable): array {
+        $this->notify(new class($url) extends \Illuminate\Notifications\Notification
+        {
+            public function __construct(protected string $url) {}
+
+            public function via($notifiable): array
+            {
                 return ['mail'];
             }
 
-            public function toMail($notifiable): \Illuminate\Notifications\Messages\MailMessage {
+            public function toMail($notifiable): \Illuminate\Notifications\Messages\MailMessage
+            {
                 return (new \Illuminate\Notifications\Messages\MailMessage)
-                                ->subject('Reset Your MNCH Password')
-                                ->greeting('Hello!')
-                                ->line('We received a request to reset your password.')
-                                ->action('Reset Password', $this->url)
-                                ->line('This link expires in 60 minutes.')
-                                ->line('If you did not request this, ignore this email.');
+                    ->subject('Reset Your MNCH Password')
+                    ->greeting('Hello!')
+                    ->line('We received a request to reset your password.')
+                    ->action('Reset Password', $this->url)
+                    ->line('This link expires in 60 minutes.')
+                    ->line('If you did not request this, ignore this email.');
             }
         });
     }
 
-    public function sendPasswordResetNotification1($token) {
-        $url = url('/admin/password-reset/' . $token . '?email=' . urlencode($this->email));
+    public function sendPasswordResetNotification1($token)
+    {
+        $url = url('/admin/password-reset/'.$token.'?email='.urlencode($this->email));
 
-        $this->notify(new class($url) extends Notification {
-
+        $this->notify(new class($url) extends Notification
+        {
             protected string $url;
 
-            public function __construct($url) {
+            public function __construct($url)
+            {
                 $this->url = $url;
             }
 
-            public function via($notifiable) {
+            public function via($notifiable)
+            {
                 return ['mail'];
             }
 
-            public function toMail($notifiable) {
+            public function toMail($notifiable)
+            {
                 return (new MailMessage)
-                                ->subject('Reset Your Password')
-                                ->line('Click the button below to reset your password.')
-                                ->action('Reset Password', $this->url)
-                                ->line('If you did not request a password reset, no further action is required.');
+                    ->subject('Reset Your Password')
+                    ->line('Click the button below to reset your password.')
+                    ->action('Reset Password', $this->url)
+                    ->line('If you did not request a password reset, no further action is required.');
             }
         });
     }
 
-    public function placementLogs() {
+    public function placementLogs()
+    {
         return $this->hasMany(\App\Models\MenteePlacementLog::class, 'user_id');
     }
 
     // Computed Attributes
 
-
-    public function getFullName1Attribute(): string {
+    public function getFullName1Attribute(): string
+    {
         return $this->full_name;
     }
 
-    public function getFullNameAttribute(): string {
+    public function getFullNameAttribute(): string
+    {
         $firstName = trim($this->first_name ?? '');
         $lastName = trim($this->last_name ?? '');
         $name = trim($this->name ?? '');
@@ -128,6 +151,7 @@ class User extends Authenticatable {
         // Priority 2: If only first_name exists, combine with last_name (even if null)
         if ($firstName !== '') {
             $fullName = trim("{$firstName} {$lastName}");
+
             return $fullName !== '' ? $fullName : $firstName;
         }
 
@@ -146,82 +170,106 @@ class User extends Authenticatable {
     }
 
     // Relationships
-    public function facility(): BelongsTo {
+    public function facility(): BelongsTo
+    {
         return $this->belongsTo(Facility::class);
     }
 
-    public function department(): BelongsTo {
+    public function department(): BelongsTo
+    {
         return $this->belongsTo(Department::class);
     }
 
-    public function cadre(): BelongsTo {
+    public function cadre(): BelongsTo
+    {
         return $this->belongsTo(Cadre::class);
     }
 
-    public function organizedTrainings(): HasMany {
+    public function organizedTrainings(): HasMany
+    {
         return $this->hasMany(Training::class, 'organizer_id');
     }
 
-    public function trainingParticipations(): HasMany {
+    public function trainingParticipations(): HasMany
+    {
         return $this->hasMany(TrainingParticipant::class);
     }
 
-    public function classParticipations(): HasMany {
+    public function classParticipations(): HasMany
+    {
         return $this->hasMany(ClassParticipant::class);
     }
 
     // Many-to-many relationships for user access scoping
-    public function counties(): BelongsToMany {
+    public function counties(): BelongsToMany
+    {
         return $this->belongsToMany(County::class, 'county_user');
     }
 
-    public function subcounties(): BelongsToMany {
+    public function subcounties(): BelongsToMany
+    {
         return $this->belongsToMany(Subcounty::class, 'subcounty_user');
     }
 
-    public function facilities(): BelongsToMany {
+    public function facilities(): BelongsToMany
+    {
         return $this->belongsToMany(Facility::class, 'facility_user');
     }
 
     // Resource relationships
-    public function authoredResources(): HasMany {
+    public function authoredResources(): HasMany
+    {
         return $this->hasMany(Resource::class, 'author_id');
     }
 
-    public function resourceComments(): HasMany {
+    public function resourceComments(): HasMany
+    {
         return $this->hasMany(ResourceComment::class);
     }
 
-    public function resourceInteractions(): HasMany {
+    public function resourceInteractions(): HasMany
+    {
         return $this->hasMany(ResourceInteraction::class);
     }
 
-    public function accessGroups(): BelongsToMany {
+    public function accessGroups(): BelongsToMany
+    {
         return $this->belongsToMany(AccessGroup::class, 'access_group_users');
     }
 
-    public function resourceViews(): HasMany {
+    public function resourceViews(): HasMany
+    {
         return $this->hasMany(ResourceView::class);
     }
 
-    public function resourceDownloads(): HasMany {
+    public function resourceDownloads(): HasMany
+    {
         return $this->hasMany(ResourceDownload::class);
     }
 
     // Authorization Helper Methods
-    public function isAboveSite(): bool {
+    public function isAboveSite(): bool
+    {
         return $this->hasRole(['super_admin', 'admin', 'division', 'national', 'division_lead', 'national_mentor_lead']);
     }
 
-    public function scopedCountyIds() {
+    public function canCreateMentorships(): bool
+    {
+        return (bool) $this->can_create_mentorships;
+    }
+
+    public function scopedCountyIds()
+    {
         return $this->isAboveSite() ? County::pluck('id') : $this->counties()->pluck('id');
     }
 
-    public function scopedSubcountyIds() {
+    public function scopedSubcountyIds()
+    {
         return $this->isAboveSite() ? Subcounty::pluck('id') : $this->subcounties()->pluck('id');
     }
 
-    public function scopedFacilityIds() {
+    public function scopedFacilityIds()
+    {
         // Enhanced for resource access
         if ($this->isAboveSite()) {
             return Facility::pluck('id')->toArray();
@@ -236,52 +284,59 @@ class User extends Authenticatable {
 
         // Facilities from direct assignment
         $facilityIds = array_merge(
-                $facilityIds,
-                $this->facilities()->pluck('facilities.id')->toArray()
+            $facilityIds,
+            $this->facilities()->pluck('facilities.id')->toArray()
         );
 
         // Facilities from county assignment
         if ($this->hasRole(['county_admin', 'County Mentor Lead']) && $this->county_id) {
             $facilityIds = array_merge(
-                    $facilityIds,
-                    Facility::where('county_id', $this->county_id)->pluck('id')->toArray()
+                $facilityIds,
+                Facility::where('county_id', $this->county_id)->pluck('id')->toArray()
             );
         }
 
         return array_unique($facilityIds);
     }
 
-    public function canAccessFacility(int $facilityId): bool {
-        return true; //$this->isAboveSite() || $this->scopedFacilityIds()->contains($facilityId);
+    public function canAccessFacility(int $facilityId): bool
+    {
+        return true; // $this->isAboveSite() || $this->scopedFacilityIds()->contains($facilityId);
     }
 
     // Resource-specific methods (simplified with trait)
-    public function hasLikedResource(Resource $resource): bool {
+    public function hasLikedResource(Resource $resource): bool
+    {
         return $this->hasInteractedWith($resource, 'like');
     }
 
-    public function hasDislikedResource(Resource $resource): bool {
+    public function hasDislikedResource(Resource $resource): bool
+    {
         return $this->hasInteractedWith($resource, 'dislike');
     }
 
-    public function hasBookmarkedResource(Resource $resource): bool {
+    public function hasBookmarkedResource(Resource $resource): bool
+    {
         return $this->hasInteractedWith($resource, 'bookmark');
     }
 
-    public function hasDownloaded(Resource $resource): bool {
+    public function hasDownloaded(Resource $resource): bool
+    {
         return $this->resourceDownloads()
-                        ->where('resource_id', $resource->id)
-                        ->exists();
+            ->where('resource_id', $resource->id)
+            ->exists();
     }
 
-    public function toggleResourceInteraction(Resource $resource, string $type): bool {
+    public function toggleResourceInteraction(Resource $resource, string $type): bool
+    {
         $existing = $this->resourceInteractions()
-                ->where('resource_id', $resource->id)
-                ->where('type', $type)
-                ->first();
+            ->where('resource_id', $resource->id)
+            ->where('type', $type)
+            ->first();
 
         if ($existing) {
             $existing->delete();
+
             return false;
         }
 
@@ -294,83 +349,97 @@ class User extends Authenticatable {
         return true;
     }
 
-    public function canAccessResource(Resource $resource): bool {
+    public function canAccessResource(Resource $resource): bool
+    {
         return $resource->canUserAccess($this);
     }
 
     // Query Scopes
-    public function scopeByRole($query, string $role) {
+    public function scopeByRole($query, string $role)
+    {
         return $query->where('role', $role);
     }
 
-    public function scopeByStatus($query, string $status) {
+    public function scopeByStatus($query, string $status)
+    {
         return $query->where('status', $status);
     }
 
-    public function scopeByFacility($query, int $facilityId) {
+    public function scopeByFacility($query, int $facilityId)
+    {
         return $query->where('facility_id', $facilityId);
     }
 
     // Mentee tracking relationships and methods
-    public function statusLogs(): HasMany {
+    public function statusLogs(): HasMany
+    {
         return $this->hasMany(MenteeStatusLog::class)->orderBy('effective_date', 'desc');
     }
 
-    public function assessmentResults(): \Illuminate\Database\Eloquent\Relations\HasManyThrough {
+    public function assessmentResults(): \Illuminate\Database\Eloquent\Relations\HasManyThrough
+    {
         return $this->hasManyThrough(
-                        MenteeAssessmentResult::class,
-                        TrainingParticipant::class,
-                        'user_id',
-                        'participant_id',
-                        'id',
-                        'id'
-                );
+            MenteeAssessmentResult::class,
+            TrainingParticipant::class,
+            'user_id',
+            'participant_id',
+            'id',
+            'id'
+        );
     }
 
     // Computed Attributes for Mentee Profile
-    public function getCurrentStatusAttribute(): string {
+    public function getCurrentStatusAttribute(): string
+    {
         $latestLog = $this->statusLogs()->first();
+
         return $latestLog?->new_status ?? MenteeStatusLog::STATUS_ACTIVE;
     }
 
-    public function getCurrentStatusLogAttribute(): ?MenteeStatusLog {
+    public function getCurrentStatusLogAttribute(): ?MenteeStatusLog
+    {
         return $this->statusLogs()->first();
     }
 
-    public function getOverallTrainingScoreAttribute(): ?float {
+    public function getOverallTrainingScoreAttribute(): ?float
+    {
         return $this->trainingParticipations()
-                        ->whereHas('objectiveResults')
-                        ->with('objectiveResults')
-                        ->get()
-                        ->map(function ($participation) {
-                            return $participation->objectiveResults->avg('score');
-                        })
-                        ->filter()
-                        ->avg();
+            ->whereHas('objectiveResults')
+            ->with('objectiveResults')
+            ->get()
+            ->map(function ($participation) {
+                return $participation->objectiveResults->avg('score');
+            })
+            ->filter()
+            ->avg();
     }
 
-    public function getTrainingCompletionRateAttribute(): float {
+    public function getTrainingCompletionRateAttribute(): float
+    {
         $totalTrainings = $this->trainingParticipations()->count();
-        if ($totalTrainings === 0)
+        if ($totalTrainings === 0) {
             return 0;
+        }
 
         $completedTrainings = $this->trainingParticipations()
-                ->where('completion_status', 'completed')
-                ->count();
+            ->where('completion_status', 'completed')
+            ->count();
 
         return round(($completedTrainings / $totalTrainings) * 100, 1);
     }
 
-    public function getTrainingHistorySummaryAttribute(): array {
+    public function getTrainingHistorySummaryAttribute(): array
+    {
         $participations = $this->trainingParticipations()
-                ->with(['training', 'objectiveResults'])
-                ->get();
+            ->with(['training', 'objectiveResults'])
+            ->get();
 
         return [
             'total_trainings' => $participations->count(),
             'completed' => $participations->where('completion_status', 'completed')->count(),
             'passed' => $participations->filter(function ($p) {
                 $avgScore = $p->objectiveResults->avg('score');
+
                 return $avgScore && $avgScore >= 70;
             })->count(),
             'average_score' => $this->overall_training_score,
@@ -378,43 +447,49 @@ class User extends Authenticatable {
         ];
     }
 
-    public function getIsActiveAttribute(): bool {
+    public function getIsActiveAttribute(): bool
+    {
         return in_array($this->current_status, [
             MenteeStatusLog::STATUS_ACTIVE,
-            MenteeStatusLog::STATUS_STUDY_LEAVE
+            MenteeStatusLog::STATUS_STUDY_LEAVE,
         ]);
     }
 
-    public function getPerformanceTrendAttribute(): string {
+    public function getPerformanceTrendAttribute(): string
+    {
         $recentScores = $this->trainingParticipations()
-                ->with('objectiveResults')
-                ->latest('completion_date')
-                ->limit(3)
-                ->get()
-                ->map(fn($p) => $p->objectiveResults->avg('score'))
-                ->filter()
-                ->values();
+            ->with('objectiveResults')
+            ->latest('completion_date')
+            ->limit(3)
+            ->get()
+            ->map(fn ($p) => $p->objectiveResults->avg('score'))
+            ->filter()
+            ->values();
 
-        if ($recentScores->count() < 2)
+        if ($recentScores->count() < 2) {
             return 'Insufficient Data';
+        }
 
         $firstScore = $recentScores->last();
         $latestScore = $recentScores->first();
         $improvement = $latestScore - $firstScore;
 
-        if ($improvement > 5)
+        if ($improvement > 5) {
             return 'Improving';
-        if ($improvement < -5)
+        }
+        if ($improvement < -5) {
             return 'Declining';
+        }
+
         return 'Stable';
     }
 
     // Methods for mentee management
     public function updateStatus(
-            string $newStatus,
-            string $reason = null,
-            string $notes = null,
-            $effectiveDate = null
+        string $newStatus,
+        ?string $reason = null,
+        ?string $notes = null,
+        $effectiveDate = null
     ): MenteeStatusLog {
         $currentStatus = $this->current_status;
 
@@ -435,28 +510,33 @@ class User extends Authenticatable {
         return $statusLog;
     }
 
-    public function getMentorshipTrainings() {
+    public function getMentorshipTrainings()
+    {
         return $this->trainingParticipations()
-                        ->whereHas('training', function ($query) {
-                            $query->where('type', 'facility_mentorship');
-                        })
-                        ->with(['training', 'objectiveResults.assessmentCategory']);
+            ->whereHas('training', function ($query) {
+                $query->where('type', 'facility_mentorship');
+            })
+            ->with(['training', 'objectiveResults.assessmentCategory']);
     }
 
-    public function getAttritionRisk(): string {
+    public function getAttritionRisk(): string
+    {
         $riskFactors = 0;
 
-        if ($this->performance_trend === 'Declining')
+        if ($this->performance_trend === 'Declining') {
             $riskFactors++;
+        }
 
-        if ($this->training_completion_rate < 70)
+        if ($this->training_completion_rate < 70) {
             $riskFactors++;
+        }
 
-        if ($this->overall_training_score && $this->overall_training_score < 60)
+        if ($this->overall_training_score && $this->overall_training_score < 60) {
             $riskFactors++;
+        }
 
         $lastTraining = $this->trainingParticipations()->latest('registration_date')->first();
-        if (!$lastTraining || $lastTraining->registration_date < now()->subMonths(6)) {
+        if (! $lastTraining || $lastTraining->registration_date < now()->subMonths(6)) {
             $riskFactors++;
         }
 
@@ -468,45 +548,50 @@ class User extends Authenticatable {
     }
 
     // Scopes for mentee queries
-    public function scopeActiveMentees($query) {
+    public function scopeActiveMentees($query)
+    {
         return $query->whereHas('statusLogs', function ($q) {
-                    $q->whereIn('new_status', [
-                        MenteeStatusLog::STATUS_ACTIVE,
-                        MenteeStatusLog::STATUS_STUDY_LEAVE
-                    ])->latest('effective_date')->limit(1);
-                })->orWhereDoesntHave('statusLogs');
+            $q->whereIn('new_status', [
+                MenteeStatusLog::STATUS_ACTIVE,
+                MenteeStatusLog::STATUS_STUDY_LEAVE,
+            ])->latest('effective_date')->limit(1);
+        })->orWhereDoesntHave('statusLogs');
     }
 
-    public function scopeByCurrentStatus($query, string $status) {
+    public function scopeByCurrentStatus($query, string $status)
+    {
         return $query->whereHas('statusLogs', function ($q) use ($status) {
-                    $q->where('new_status', $status)
-                            ->latest('effective_date')
-                            ->limit(1);
-                });
+            $q->where('new_status', $status)
+                ->latest('effective_date')
+                ->limit(1);
+        });
     }
 
-    public function scopeHighPerformers($query) {
+    public function scopeHighPerformers($query)
+    {
         return $query->whereHas('trainingParticipations.objectiveResults', function ($q) {
-                    $q->havingRaw('AVG(score) >= 85');
-                });
+            $q->havingRaw('AVG(score) >= 85');
+        });
     }
 
-    public function scopeAtRisk($query) {
+    public function scopeAtRisk($query)
+    {
         return $query->whereHas('trainingParticipations', function ($q) {
-                    $q->where('completion_status', '!=', 'completed')
-                            ->orWhereHas('objectiveResults', function ($qq) {
-                                $qq->havingRaw('AVG(score) < 60');
-                            });
+            $q->where('completion_status', '!=', 'completed')
+                ->orWhereHas('objectiveResults', function ($qq) {
+                    $qq->havingRaw('AVG(score) < 60');
                 });
+        });
     }
 
-    public function getMentorshipPerformance(): array {
+    public function getMentorshipPerformance(): array
+    {
         $participations = $this->trainingParticipations()
-                ->whereHas('training', function ($query) {
-                    $query->where('type', 'facility_mentorship');
-                })
-                ->with(['training', 'assessmentResults'])
-                ->get();
+            ->whereHas('training', function ($query) {
+                $query->where('type', 'facility_mentorship');
+            })
+            ->with(['training', 'assessmentResults'])
+            ->get();
 
         $totalTrainings = $participations->count();
         $completedTrainings = 0;
@@ -542,68 +627,74 @@ class User extends Authenticatable {
         ];
     }
 
-    public function trainingParticipants(): HasMany {
+    public function trainingParticipants(): HasMany
+    {
         return $this->hasMany(TrainingParticipant::class);
     }
 
     // Status Logs for Training Participants
-    public function trainingStatusLogs(): HasManyThrough {
+    public function trainingStatusLogs(): HasManyThrough
+    {
         return $this->hasManyThrough(
-                        ParticipantStatusLog::class,
-                        TrainingParticipant::class,
-                        'user_id',
-                        'training_participant_id',
-                        'id',
-                        'id'
-                )->orderBy('month_number')->orderBy('created_at', 'desc');
+            ParticipantStatusLog::class,
+            TrainingParticipant::class,
+            'user_id',
+            'training_participant_id',
+            'id',
+            'id'
+        )->orderBy('month_number')->orderBy('created_at', 'desc');
     }
 
-// Status Logs for Mentorship Participants  
-    public function mentorshipStatusLogs(): HasManyThrough {
+    // Status Logs for Mentorship Participants
+    public function mentorshipStatusLogs(): HasManyThrough
+    {
         return $this->hasManyThrough(
-                                ParticipantStatusLog::class,
-                                TrainingParticipant::class,
-                                'user_id',
-                                'mentorship_participant_id',
-                                'id',
-                                'id'
-                        )->whereNotNull('mentorship_participant_id')
-                        ->orderBy('month_number')->orderBy('created_at', 'desc');
+            ParticipantStatusLog::class,
+            TrainingParticipant::class,
+            'user_id',
+            'mentorship_participant_id',
+            'id',
+            'id'
+        )->whereNotNull('mentorship_participant_id')
+            ->orderBy('month_number')->orderBy('created_at', 'desc');
     }
 
-// All Assessment Results for this user
-    public function allAssessmentResults(): HasManyThrough {
+    // All Assessment Results for this user
+    public function allAssessmentResults(): HasManyThrough
+    {
         return $this->hasManyThrough(
-                        MenteeAssessmentResult::class,
-                        TrainingParticipant::class,
-                        'user_id',
-                        'participant_id',
-                        'id',
-                        'id'
-                )->with('assessmentCategory');
+            MenteeAssessmentResult::class,
+            TrainingParticipant::class,
+            'user_id',
+            'participant_id',
+            'id',
+            'id'
+        )->with('assessmentCategory');
     }
 
-// Mentorship-specific Assessment Results
-    public function getMentorshipAssessmentResults(): HasManyThrough {
+    // Mentorship-specific Assessment Results
+    public function getMentorshipAssessmentResults(): HasManyThrough
+    {
         return $this->hasManyThrough(
-                        MenteeAssessmentResult::class,
-                        TrainingParticipant::class,
-                        'user_id',
-                        'participant_id',
-                        'id',
-                        'id'
-                )->whereHas('participant.training', function ($query) {
-                    $query->where('type', 'facility_mentorship');
-                })->with('assessmentCategory');
+            MenteeAssessmentResult::class,
+            TrainingParticipant::class,
+            'user_id',
+            'participant_id',
+            'id',
+            'id'
+        )->whereHas('participant.training', function ($query) {
+            $query->where('type', 'facility_mentorship');
+        })->with('assessmentCategory');
     }
 
-// All Status Logs (Training + Mentorship) - fixed accessor
-    public function getAllStatusLogsAttribute() {
+    // All Status Logs (Training + Mentorship) - fixed accessor
+    public function getAllStatusLogsAttribute()
+    {
         $trainingLogs = $this->trainingStatusLogs()->get();
         $mentorshipLogs = $this->mentorshipStatusLogs()->get();
 
         return $trainingLogs->concat($mentorshipLogs)
-                        ->sortByDesc('created_at')
-                        ->values();
+            ->sortByDesc('created_at')
+            ->values();
     }
 }

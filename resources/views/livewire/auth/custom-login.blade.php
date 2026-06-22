@@ -311,6 +311,28 @@
         .auth-box .fi-input-wrp{border-radius:10px!important;border-color:#d1d5db!important;transition:all .2s!important}
         .auth-box .fi-input-wrp:focus-within{border-color:#1A54C8!important;box-shadow:0 0 0 3px rgba(26,84,200,.12)!important}
 
+        /* Smaller left icons so they don't cover the text area */
+        .auth-box .fi-input-wrp-icon,
+        .auth-box .fi-input-wrp-prefix {
+            width: 28px !important;
+            min-width: 28px !important;
+            height: 28px !important;
+            margin-left: 6px !important;
+            margin-right: 4px !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+        .auth-box .fi-input-wrp-icon svg,
+        .auth-box .fi-input-wrp-prefix svg {
+            width: 14px !important;
+            height: 14px !important;
+        }
+        .auth-box .fi-input-wrp:has(.fi-input-wrp-icon) input,
+        .auth-box .fi-input-wrp:has(.fi-input-wrp-prefix) input {
+            padding-left: 6px !important;
+        }
+
         /* ── Responsive ────────────────────────────────────────────────── */
         @media(max-width:1100px){.hero-features{grid-template-columns:1fr}.hero-content{padding:2rem 2.5rem 2.5rem}}
         @media(max-width:900px){
