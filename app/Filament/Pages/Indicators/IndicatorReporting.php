@@ -40,19 +40,19 @@ class IndicatorReporting extends Page implements HasForms
             return false;
         }
 
-        if (auth()->user()->hasRole('mentee')) {
+        $user = auth()->user();
+
+        if ($user->hasRole('mentee')) {
             return false;
         }
 
-        $facilityId = auth()->user()->facility_id;
-
-        if (! $facilityId) {
-            return auth()->user()->hasRole('super_admin');
+        // Super admin and admin always see this page
+        if ($user->hasRole(['super_admin', 'admin'])) {
+            return true;
         }
 
-        return FacilityIndicatorAssignment::where('facility_id', $facilityId)
-            ->where('is_locked', true)
-            ->exists();
+        // Other roles need a facility assignment to report against
+        return $user->facility_id !== null;
     }
 
     public static function canAccess(): bool

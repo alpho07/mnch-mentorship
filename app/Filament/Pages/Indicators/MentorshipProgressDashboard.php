@@ -58,7 +58,8 @@ class MentorshipProgressDashboard extends Page implements HasForms
         }
 
         return auth()->user()->hasRole([
-            'super_admin', 'admin', 'national_mentor', 'county_mentor',
+            'super_admin', 'admin', 'division', 'national',
+            'county_mentor_lead', 'subcounty_mentor_lead', 'national_mentor_lead',
         ]) || auth()->user()->facility_id !== null;
     }
 
