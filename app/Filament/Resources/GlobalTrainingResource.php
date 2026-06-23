@@ -47,11 +47,21 @@ class GlobalTrainingResource extends Resource {
     protected static ?string $recordTitleAttribute = 'title';
 
     public static function shouldRegisterNavigation(): bool {
-        return auth()->check() && auth()->user()->hasRole(['super_admin', 'division','admin','national_mentor']);
+        return auth()->check() && auth()->user()->hasRole([
+            'super_admin', 'admin', 'division', 'national',
+            'facility_mentor', 'facility_mentor_lead',
+            'spoke_mentor', 'spoke_mentor_lead',
+            'county_mentor_lead', 'subcounty_mentor_lead', 'national_mentor_lead',
+        ]);
     }
 
     public static function canAccess(): bool {
-        return auth()->check() && auth()->user()->hasRole(['super_admin', 'division','admin','national_mentor']);
+        return auth()->check() && auth()->user()->hasRole([
+            'super_admin', 'admin', 'division', 'national',
+            'facility_mentor', 'facility_mentor_lead',
+            'spoke_mentor', 'spoke_mentor_lead',
+            'county_mentor_lead', 'subcounty_mentor_lead', 'national_mentor_lead',
+        ]);
     }
 
     public static function canCreate(): bool {

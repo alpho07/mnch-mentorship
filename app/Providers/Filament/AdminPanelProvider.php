@@ -125,8 +125,8 @@ class AdminPanelProvider extends PanelProvider
     }
 
     /**
-     * Visible to super_admin always, and to mentees only when explicitly
-     * granted the can_create_mentorships flag (set on the User record).
+     * Visible to all mentor roles and super_admin.
+     * Mentees only see it when explicitly granted can_create_mentorships.
      */
     private static function canSeeMentorshipsNav(): bool
     {
@@ -134,12 +134,20 @@ class AdminPanelProvider extends PanelProvider
         if (! $user) {
             return false;
         }
-        if ($user->hasRole('super_admin')) {
+
+        if ($user->hasRole([
+            'super_admin', 'admin', 'division', 'national',
+            'facility_mentor', 'facility_mentor_lead',
+            'spoke_mentor', 'spoke_mentor_lead',
+            'county_mentor_lead', 'subcounty_mentor_lead', 'national_mentor_lead',
+        ])) {
             return true;
         }
+
         if ($user->hasRole('mentee')) {
             return $user->canCreateMentorships();
         }
+
         return false;
     }
 }
