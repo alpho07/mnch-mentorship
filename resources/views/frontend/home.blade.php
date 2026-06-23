@@ -56,6 +56,21 @@
                 from { opacity:0; transform:translateY(28px); }
                 to   { opacity:1; transform:translateY(0); }
             }
+            @keyframes manualGlow {
+                0%,100% { box-shadow:0 0 8px 2px rgba(250,204,21,0.35),0 0 0 0 rgba(250,204,21,0); }
+                50%     { box-shadow:0 0 22px 6px rgba(250,204,21,0.7),0 0 40px 10px rgba(251,146,60,0.3); }
+            }
+            .btn-manual-glow {
+                animation: manualGlow 2.2s ease-in-out infinite;
+                background: rgba(250,204,21,0.18) !important;
+                border-color: rgba(250,204,21,0.55) !important;
+                color: #fef08a !important;
+            }
+            .btn-manual-glow:hover {
+                animation: none;
+                background: rgba(250,204,21,0.30) !important;
+                box-shadow: 0 0 28px 8px rgba(250,204,21,0.55);
+            }
             .hero-animate-1 { animation: fadeSlideUp .65s ease both .1s; }
             .hero-animate-2 { animation: fadeSlideUp .65s ease both .25s; }
             .hero-animate-3 { animation: fadeSlideUp .65s ease both .4s; }
@@ -87,6 +102,10 @@
                         <i class="fas fa-sign-in-alt text-xs"></i> Sign In
                     </a>
                     @endguest
+                    <a href="{{ route('manual') }}" class="btn-manual-glow inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all hover:scale-105"
+                       style="backdrop-filter:blur(8px);border:1px solid;">
+                        <i class="fas fa-book text-xs"></i> User Manual
+                    </a>
                     <a href="{{ route('resources.index') }}" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all hover:scale-105"
                        style="background:rgba(255,255,255,0.12);color:rgba(255,255,255,0.85);border:1px solid rgba(255,255,255,0.2);backdrop-filter:blur(8px);">
                         <i class="fas fa-book-open text-xs"></i> Browse Resources

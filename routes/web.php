@@ -34,10 +34,12 @@ Route::get('/test-mail', function () {
 });
 
 Route::middleware(['auth'])->prefix('admin/reports')->name('reports.')->group(function () {
-    Route::get('/class/{class}/html', [\App\Http\Controllers\ClassReportController::class, 'html'])->name('reports.class.html');
-    Route::get('/class/{class}/pdf', [\App\Http\Controllers\ClassReportController::class, 'pdf'])->name('reports.class.pdf');
-    Route::get('/class/{class}/certificate/{participant}', [\App\Http\Controllers\ClassReportController::class, 'certificate'])->name('reports.class.certificate');
-    Route::get('/class/{class}/certificate/{participant}/preview', [\App\Http\Controllers\ClassReportController::class, 'certificateHtml'])->name('reports.class.certificate.preview');
+    Route::get('/class/{class}/html', [\App\Http\Controllers\ClassReportController::class, 'html'])->name('class.html');
+    Route::get('/class/{class}/pdf', [\App\Http\Controllers\ClassReportController::class, 'pdf'])->name('class.pdf');
+    Route::get('/class/{class}/certificate/{participant}', [\App\Http\Controllers\ClassReportController::class, 'certificate'])->name('class.certificate');
+    Route::get('/class/{class}/certificate/{participant}/preview', [\App\Http\Controllers\ClassReportController::class, 'certificateHtml'])->name('class.certificate.preview');
+    Route::get('/class/{class}/mentor-certificate', [\App\Http\Controllers\ClassReportController::class, 'mentorCertificate'])->name('class.mentor-certificate');
+    Route::get('/class/{class}/mentor-certificate/preview', [\App\Http\Controllers\ClassReportController::class, 'mentorCertificateHtml'])->name('class.mentor-certificate.preview');
 });
 
 Route::get('/certificates/{class}/{participant}/verify', [\App\Http\Controllers\ClassReportController::class, 'verifyCertificate'])->name('certificates.verify');
@@ -190,6 +192,10 @@ Route::prefix('analytics/dashboard')->name('analytics.dashboard.')->group(functi
     Route::get('/facility/{facility}/mentorship-breakdown',
         [AnalyticsDashboardController::class, 'facilityMentorshipBreakdown'])
         ->name('facility.mentorship-breakdown');
+
+    Route::get('/emonc', [\App\Http\Controllers\EmoncAnalyticsDashboardController::class, 'index'])
+        ->middleware('auth')
+        ->name('emonc');
 });
 // Healthcare Training Dashboard Routes
 Route::prefix('training-dashboard')->name('dashboard.')->group(function () {
@@ -375,6 +381,7 @@ Route::get('/{training}/participants/template', function ($trainingId) {
 })->name('participants.template');
 
 Route::get('/', [ResourceController::class, 'home'])->name('home');
+Route::get('/user-manual', fn () => view('frontend.user-manual'))->name('manual');
 
 // ===== RESOURCE CENTER ROUTES =====
 Route::prefix('resources')->name('resources.')->group(function () {
