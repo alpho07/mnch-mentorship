@@ -15,6 +15,13 @@ class Program extends Model
     protected $fillable = [
         'name',
         'description',
+        'is_active',
+        'visible_to_roles',
+    ];
+
+    protected $casts = [
+        'is_active'        => 'boolean',
+        'visible_to_roles' => 'array',
     ];
 
     // Relationships
@@ -53,6 +60,34 @@ class Program extends Model
     {
         return $query->whereHas('trainings', function ($q) {
             $q->where('end_date', '>=', now());
+        });
+    }
+
+    /**
+     * Filter to programs visible to the given user.
+     * - super_admin sees all programs regardless of is_active.
+     * - Active programs are visible to everyone.
+     * - Inactive programs are only visible to roles listed in visible_to_roles.
+     */
+    public function scopeAvailableTo($query, ?User $user = null)
+    {
+        $user = $user ?? auth()->user();
+
+        if (! $user) {
+            return $query->where('is_active', true);
+        }
+
+        if ($user->hasRole('super_admin')) {
+            return $query;
+        }
+
+        $roles = $user->getRoleNames()->toArray();
+
+        return $query->where(function ($q) use ($roles) {
+            $q->where('is_active', true);
+            foreach ($roles as $role) {
+                $q->orWhereJsonContains('visible_to_roles', $role);
+            }
         });
     }
 

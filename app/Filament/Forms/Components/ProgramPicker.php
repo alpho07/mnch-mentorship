@@ -13,7 +13,7 @@ class ProgramPicker extends Field
 
     public function getPrograms(): Collection
     {
-        $programs = Program::orderBy('name')->get();
+        $programs = Program::availableTo(auth()->user())->orderBy('name')->get();
 
         // Move Maternal Health (EmONC) to the 3rd position so the card order is:
         // Infant/Child, Newborn, EmONC, then any remaining programmes.
