@@ -68,19 +68,19 @@ class AdminPanelProvider extends PanelProvider
                     ->icon('heroicon-o-heart')
                     ->url('/admin/mentor-dashboard?program=newborn')
                     ->sort(1)
-                    ->visible(false),
+                    ->visible(fn (): bool => auth()->check() && auth()->user()->hasRole('super_admin')),
                 NavigationItem::make('Infant and Child Care')
                     ->group('Mentorships')
                     ->icon('heroicon-o-user-group')
                     ->url('/admin/mentor-dashboard?program=infant')
                     ->sort(2)
-                    ->visible(false),
+                    ->visible(fn (): bool => auth()->check() && auth()->user()->hasRole('super_admin')),
                 NavigationItem::make('Maternal Health (EmONC)')
                     ->group('Mentorships')
                     ->icon('heroicon-o-heart')
                     ->url('/admin/mentor-dashboard?program=emonc')
                     ->sort(3)
-                    ->visible(false),
+                    ->visible(fn (): bool => auth()->check() && auth()->user()->hasRole('super_admin')),
             ])
             ->userMenuItems([
                 MenuItem::make()
