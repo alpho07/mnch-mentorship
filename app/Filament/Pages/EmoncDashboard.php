@@ -31,7 +31,7 @@ class EmoncDashboard extends Page
 
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->check() && auth()->user()->hasRole(array_merge(self::MENTOR_ROLES, self::SENIOR_ROLES));
+        return false;
     }
 
     public static function canAccess(): bool
@@ -51,8 +51,8 @@ class EmoncDashboard extends Page
     {
         $data = app(EmoncDashboardService::class)->build(auth()->user());
         $this->kpis = $data['kpis'];
-        $this->completionMatrix = $data['completion_matrix'];
-        $this->chartData = $data['chart_data'];
-        $this->pendingActions = $data['pending_actions'];
+        $this->completionMatrix = $data['completionMatrix'];
+        $this->chartData = $data['chartData'];
+        $this->pendingActions = $data['pendingActions'];
     }
 }

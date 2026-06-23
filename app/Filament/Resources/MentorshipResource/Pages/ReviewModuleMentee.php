@@ -73,6 +73,14 @@ class ReviewModuleMentee extends Page implements HasForms
         ]);
     }
 
+    protected function getViewData(): array
+    {
+        return [
+            'canMentorApprove'         => $this->canMentorApprove(),
+            'isReadyForMentorApproval' => $this->isReadyForMentorApproval(),
+        ];
+    }
+
     public function getTitle(): string
     {
         return "Review — {$this->participant->user?->full_name}";
@@ -118,6 +126,74 @@ class ReviewModuleMentee extends Page implements HasForms
                     ->placeholder('Feedback for the mentee...'),
             ])
             ->statePath('data');
+    }
+
+    public function mentorApprove(): void
+    {
+        if (! $this->canMentorApprove()) {
+            Notification::make()->danger()->title('Not authorized to approve')->send();
+
+            return;
+        }
+
+        if ($this->participant->mentor_approved_at) {
+            Notification::make()->warning()->title('Already approved')->send();
+
+            return;
+        }
+
+        if (! $this->isReadyForMentorApproval()) {
+            Notification::make()->danger()
+                ->title('Not Ready for Approval')
+                ->body('All module progress must be completed and all videos must have passed review.')
+                ->send();
+
+            return;
+        }
+
+        $this->participant->markMentorApproved(auth()->id());
+        app(EmoncNotificationService::class)->mentorApproved($this->participant->fresh());
+
+        $this->participant = $this->participant->fresh(['user.facility.subcounty.county', 'user.cadre', 'user.department']);
+
+        Notification::make()->success()->title('Mentor Approval Saved')
+            ->body("{$this->participant->user?->full_name} has been mentor-approved for {$this->class->name}.")
+            ->send();
+    }
+
+    public function revertApproval(): void
+    {
+        if (! $this->canMentorApprove()) {
+            Notification::make()->danger()->title('Not authorized')->send();
+
+            return;
+        }
+
+        if (! $this->participant->mentor_approved_at) {
+            Notification::make()->warning()->title('Not yet approved')->send();
+
+            return;
+        }
+
+        if ($this->participant->head_drmh_approved_at) {
+            Notification::make()->danger()
+                ->title('Cannot Revert')
+                ->body('Head DRMH has already certified this mentee. Reverting is not allowed.')
+                ->send();
+
+            return;
+        }
+
+        $this->participant->update([
+            'mentor_approved_at' => null,
+            'mentor_approved_by' => null,
+        ]);
+
+        $this->participant = $this->participant->fresh(['user.facility.subcounty.county', 'user.cadre', 'user.department']);
+
+        Notification::make()->warning()->title('Approval Reverted')
+            ->body("Mentor approval for {$this->participant->user?->full_name} has been reverted.")
+            ->send();
     }
 
     public function saveReview(): void
@@ -203,6 +279,47 @@ class ReviewModuleMentee extends Page implements HasForms
             'attempt' => null,
             'quiz' => $quiz,
         ];
+    }
+
+    public function canMentorApprove(): bool
+    {
+        $user = auth()->user();
+        if (! $user) {
+            return false;
+        }
+        if ($user->hasRole(['super_admin', 'admin'])) {
+            return true;
+        }
+
+        return $this->training->mentor_id === $user->id
+            || $this->training->isCoMentor($user->id);
+    }
+
+    public function isReadyForMentorApproval(): bool
+    {
+        $moduleIds = $this->class->classModules()->pluck('id');
+        if ($moduleIds->isEmpty()) {
+            return false;
+        }
+
+        $progressRecords = MenteeModuleProgress::where('class_participant_id', $this->participant->id)
+            ->whereIn('class_module_id', $moduleIds)
+            ->get();
+
+        if ($progressRecords->count() !== $moduleIds->count()) {
+            return false;
+        }
+
+        foreach ($progressRecords as $progress) {
+            if (! in_array($progress->status, ['completed', 'exempted'])) {
+                return false;
+            }
+            if (! $progress->isVideoPassed()) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private function loadActivities(): void

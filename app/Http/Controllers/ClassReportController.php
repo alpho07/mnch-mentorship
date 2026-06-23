@@ -5,9 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\ClassParticipant;
 use App\Models\MenteeModuleProgress;
 use App\Models\MentorshipClass;
+use App\Services\CpdPointsService;
 use App\Services\EmoncReportingService;
 use Illuminate\Support\Facades\Auth;
-use Spatie\Browsershot\Browsershot;
 
 class ClassReportController extends Controller
 {
@@ -15,16 +15,34 @@ class ClassReportController extends Controller
     private function authorizeClass(MentorshipClass $class): void
     {
         $user = Auth::user();
-        $isAdmin = $user->hasRole(['super_admin', 'admin', 'division', 'national_mentor']);
 
-        if (! $isAdmin) {
+        // Senior admins always pass
+        if ($user->hasRole(['super_admin', 'admin', 'division', 'national_mentor'])) {
+            return;
+        }
+
+        // Head DRMH can view any certificate (they are the final certifying authority)
+        if ($user->hasRole('head_drmh')) {
+            return;
+        }
+
+        // Assigned mentor or co-mentor
+        if ($class->training->mentor_id === $user->id || $class->training->isCoMentor($user->id)) {
+            return;
+        }
+
+        // The mentee themselves can view their own certificate
+        if ($user->hasRole('mentee')) {
             abort_unless(
-                $class->training->mentor_id === $user->id ||
-                $class->training->isCoMentor($user->id),
+                $class->participants()->where('user_id', $user->id)->exists(),
                 403,
                 'You do not have access to this class report.'
             );
+
+            return;
         }
+
+        abort(403, 'You do not have access to this class report.');
     }
 
     // ── Shared data builder ───────────────────────────────────────────────────
@@ -111,9 +129,10 @@ class ClassReportController extends Controller
 
         $this->ensureCanViewCertificate($class, $participant);
 
-        $modules = $class->classModules()->with('programModule')->orderBy('order_sequence')->get();
+        $modules  = $class->classModules()->with('programModule')->orderBy('order_sequence')->get();
+        $cpd      = app(CpdPointsService::class)->forMentee($participant->user);
 
-        return view('certificates.completion', compact('class', 'participant', 'modules'));
+        return view('certificates.completion', compact('class', 'participant', 'modules', 'cpd'));
     }
 
     // ── HTML Report (web view) ────────────────────────────────────────────────
@@ -125,25 +144,23 @@ class ClassReportController extends Controller
         return view('reports.class-report', $data);
     }
 
-    // ── PDF Report (Browsershot → Chrome print) ───────────────────────────────
+    // ── PDF Report ───────────────────────────────────────────────────────────
     public function pdf(MentorshipClass $class)
     {
         $this->authorizeClass($class);
         $data = $this->buildReportData($class);
-        $html = view('reports.class-report', array_merge($data, ['isPdf' => true]))->render();
 
         $filename = 'MNCH-Report-'.str($class->name)->slug().'-'.now()->format('Y-m-d').'.pdf';
 
-        $pdf = $this->makeBrowsershot($html)
-            ->landscape()
-            ->format('A4')
-            ->margins(8, 8, 8, 8)
-            ->pdf();
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('reports.class-report', array_merge($data, ['isPdf' => true]))
+            ->setPaper('a4', 'landscape')
+            ->setOption([
+                'isHtml5ParserEnabled' => true,
+                'isRemoteEnabled'      => false,
+                'defaultFont'          => 'DejaVu Sans',
+            ]);
 
-        return response($pdf, 200, [
-            'Content-Type' => 'application/pdf',
-            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
-        ]);
+        return $pdf->download($filename);
     }
 
     public function certificate(MentorshipClass $class, ClassParticipant $participant)
@@ -151,25 +168,63 @@ class ClassReportController extends Controller
         $this->authorizeClass($class);
         abort_unless($participant->mentorship_class_id === $class->id, 404);
         $class->load(['training.program', 'training.facility', 'training.mentor']);
-        $participant->load('user');
+        $participant->load(['user', 'mentorApprovedBy', 'headDrmhApprovedBy']);
         $this->ensureCanViewCertificate($class, $participant);
 
-        $modules = $class->classModules()->with('programModule')->orderBy('order_sequence')->get();
-        $html = view('certificates.completion', compact('class', 'participant', 'modules'))->render();
+        $modules  = $class->classModules()->with('programModule')->orderBy('order_sequence')->get();
+        $cpd      = app(CpdPointsService::class)->forMentee($participant->user);
 
-        $name = str($participant->user->name ?? 'mentee')->slug();
+        $name     = str($participant->user->name ?? 'mentee')->slug();
         $filename = "MNCH-Certificate-{$name}-".now()->format('Y-m-d').'.pdf';
 
-        $pdf = $this->makeBrowsershot($html)
-            ->landscape()
-            ->format('A4')
-            ->margins(0, 0, 0, 0)
-            ->pdf();
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('certificates.completion', compact('class', 'participant', 'modules', 'cpd'))
+            ->setPaper('a4', 'landscape')
+            ->setOption([
+                'isHtml5ParserEnabled' => true,
+                'isRemoteEnabled'      => false,
+                'defaultFont'          => 'DejaVu Sans',
+                'fontHeightRatio'      => 1.1,
+            ]);
 
-        return response($pdf, 200, [
-            'Content-Type' => 'application/pdf',
-            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
-        ]);
+        return $pdf->download($filename);
+    }
+
+    public function mentorCertificateHtml(MentorshipClass $class)
+    {
+        $this->authorizeClass($class);
+        $class->load(['training.program', 'training.facility', 'training.mentor']);
+        abort_unless($class->status === 'completed', 403, 'Class is not yet completed.');
+
+        $modules  = $class->classModules()->with('programModule')->orderBy('order_sequence')->get();
+        $mentor   = $class->training->mentor;
+        $cpd      = $mentor ? app(CpdPointsService::class)->forMentor($mentor) : ['total' => 0, 'level' => ['name' => 'Foundation', 'short' => 'F', 'color' => '#6B7280']];
+
+        return view('certificates.mentor-completion', compact('class', 'modules', 'mentor', 'cpd'));
+    }
+
+    public function mentorCertificate(MentorshipClass $class)
+    {
+        $this->authorizeClass($class);
+        $class->load(['training.program', 'training.facility', 'training.mentor']);
+        abort_unless($class->status === 'completed', 403, 'Class is not yet completed.');
+
+        $modules  = $class->classModules()->with('programModule')->orderBy('order_sequence')->get();
+        $mentor   = $class->training->mentor;
+        $cpd      = $mentor ? app(CpdPointsService::class)->forMentor($mentor) : ['total' => 0, 'level' => ['name' => 'Foundation', 'short' => 'F', 'color' => '#6B7280']];
+
+        $name     = str($mentor?->name ?? 'mentor')->slug();
+        $filename = "MNCH-Mentor-Certificate-{$name}-".now()->format('Y-m-d').'.pdf';
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('certificates.mentor-completion', compact('class', 'modules', 'mentor', 'cpd'))
+            ->setPaper('a4', 'landscape')
+            ->setOption([
+                'isHtml5ParserEnabled' => true,
+                'isRemoteEnabled'      => false,
+                'defaultFont'          => 'DejaVu Sans',
+                'fontHeightRatio'      => 1.1,
+            ]);
+
+        return $pdf->download($filename);
     }
 
     private function ensureCanViewCertificate(MentorshipClass $class, ClassParticipant $participant): void
@@ -211,18 +266,5 @@ class ClassReportController extends Controller
         return response($svg, 200, ['Content-Type' => 'image/svg+xml']);
     }
 
-    private function makeBrowsershot(string $html): \Spatie\Browsershot\Browsershot
-    {
-        $shot = \Spatie\Browsershot\Browsershot::html($html)
-            ->setChromePath(config('browsershot.chrome_path', '/usr/bin/chromium-browser'))
-            ->addChromiumArguments([
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage',
-            ])
-            ->showBackground()
-            ->waitUntilNetworkIdle();
 
-        return $shot;
-    }
 }

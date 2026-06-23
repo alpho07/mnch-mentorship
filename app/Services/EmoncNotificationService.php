@@ -2,10 +2,12 @@
 
 namespace App\Services;
 
+use App\Filament\Resources\MentorshipTrainingResource;
 use App\Mail\EmoncNotificationMail;
 use App\Models\ClassModule;
 use App\Models\ClassParticipant;
 use App\Models\MenteeModuleProgress;
+use App\Models\QuizAttempt;
 use App\Models\User;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Mail;
@@ -29,6 +31,47 @@ class EmoncNotificationService
             route('mentee.class.progress', $classModule->mentorship_class_id),
             'View My Progress'
         );
+    }
+
+    public function quizSubmitted(MenteeModuleProgress $progress, QuizAttempt $attempt): void
+    {
+        $classModule = $progress->classModule;
+        $training = $classModule?->mentorshipClass?->training;
+
+        if (! $training) {
+            return;
+        }
+
+        $mentor = $training->mentor;
+        $moduleName = $classModule->programModule?->name ?? 'a module';
+        $menteeName = $progress->classParticipant?->user?->name ?? 'A mentee';
+        $type = $attempt->attempt_type === 'pre_test' ? 'Pre-Test' : 'Post-Test';
+        $score = $attempt->score . '%';
+
+        $recipients = collect([$mentor])->filter();
+        $coMentors = $training->coMentors()
+            ->where('status', 'accepted')
+            ->with('user')
+            ->get()
+            ->pluck('user')
+            ->filter();
+
+        $recipients = $recipients->merge($coMentors);
+
+        foreach ($recipients as $recipient) {
+            $this->notify(
+                $recipient,
+                "{$type} Submitted — {$score}",
+                "{$type} Submitted by {$menteeName}",
+                "{$menteeName} has submitted the {$type} for {$moduleName} and scored {$score}.",
+                MentorshipTrainingResource::getUrl('module-mentees', [
+                    'training' => $training->id,
+                    'class'    => $classModule->mentorship_class_id,
+                    'module'   => $classModule->id,
+                ]),
+                'View Mentee Progress'
+            );
+        }
     }
 
     public function videoSubmitted(MenteeModuleProgress $progress): void
@@ -134,7 +177,7 @@ class EmoncNotificationService
             'Certificate Issued',
             'You Are Certified',
             "Congratulations! You have been certified for {$class->name}. You can now download your certificate.",
-            route('reports.reports.class.certificate', [$class->id, $participant->id]),
+            route('reports.class.certificate', [$class->id, $participant->id]),
             'Download Certificate'
         );
     }

@@ -27,7 +27,7 @@ class MenteeDashboard extends Page
 
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->check() && auth()->user()->hasRole(self::ALLOWED_ROLES);
+        return false;
     }
 
     public static function canAccess(): bool

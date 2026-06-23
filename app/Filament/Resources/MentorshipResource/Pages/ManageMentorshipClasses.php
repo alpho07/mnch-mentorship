@@ -204,6 +204,8 @@ class ManageMentorshipClasses extends Page implements HasTable
 
     private function getClassesTable(Table $table): Table
     {
+        $isEmonc = $this->isEmonc();
+
         return $table
             ->query(
                 MentorshipClass::query()
@@ -226,16 +228,28 @@ class ManageMentorshipClasses extends Page implements HasTable
                 //                            ]),
                 Tables\Columns\TextColumn::make('start_date')
                     ->date('M j, Y')
-                    ->sortable(),
+                    ->sortable()
+                    ->hidden($isEmonc),
                 Tables\Columns\TextColumn::make('end_date')
                     ->date('M j, Y')
-                    ->sortable(),
+                    ->sortable()
+                    ->hidden($isEmonc),
                 Tables\Columns\TextColumn::make('module_count')
                     ->label('Modules')
                     ->badge()
                     ->color('info'),
                 Tables\Columns\TextColumn::make('session_count')
-                    ->label('Sessions')
+                    ->label($isEmonc ? 'Activities' : 'Sessions')
+                    ->getStateUsing(function (MentorshipClass $record) use ($isEmonc) {
+                        if ($isEmonc) {
+                            return $record->classModules()
+                                ->with('programModule.activities')
+                                ->get()
+                                ->sum(fn ($cm) => $cm->programModule?->activities?->count() ?? 0);
+                        }
+
+                        return $record->session_count;
+                    })
                     ->badge()
                     ->color('primary'),
                 Tables\Columns\TextColumn::make('participants_count')

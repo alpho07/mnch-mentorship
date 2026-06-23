@@ -125,10 +125,12 @@ class ManageClassModules extends Page implements HasTable
                         Forms\Components\Grid::make(2)->schema([
                             Forms\Components\DatePicker::make('module_start_date')
                                 ->label('Start Date')
-                                ->native(false),
+                                ->native(false)
+                                ->minDate(today()),
                             Forms\Components\DatePicker::make('module_end_date')
                                 ->label('End Date')
                                 ->native(false)
+                                ->minDate(today())
                                 ->afterOrEqual('module_start_date'),
                         ]),
                         Forms\Components\Toggle::make('auto_create_sessions')
@@ -158,6 +160,37 @@ class ManageClassModules extends Page implements HasTable
                         ]);
                     }
 
+                    // Auto-enroll existing participants into activities for newly added modules
+                    if ($created > 0 && ! empty($createdModuleIds)) {
+                        $newModules = ClassModule::with('programModule.activities')
+                            ->whereIn('id', $createdModuleIds)
+                            ->get();
+
+                        $participants = ClassParticipant::where('mentorship_class_id', $this->class->id)
+                            ->whereIn('status', ['enrolled', 'active'])
+                            ->pluck('id');
+
+                        $rows = [];
+                        foreach ($newModules as $classModule) {
+                            $activities = $classModule->programModule?->activities ?? collect();
+                            foreach ($activities as $activity) {
+                                foreach ($participants as $participantId) {
+                                    $rows[] = [
+                                        'class_module_id'      => $classModule->id,
+                                        'class_participant_id' => $participantId,
+                                        'activity_id'          => $activity->id,
+                                        'status'               => 'pending',
+                                        'created_at'           => now(),
+                                        'updated_at'           => now(),
+                                    ];
+                                }
+                            }
+                        }
+                        if (! empty($rows)) {
+                            ClassModuleActivityParticipant::insertOrIgnore($rows);
+                        }
+                    }
+
                     $createdSessions = 0;
 
                     if (($data['auto_create_sessions'] ?? true) && $created > 0) {
@@ -185,7 +218,7 @@ class ManageClassModules extends Page implements HasTable
                 ->label('Class Report')
                 ->icon('heroicon-o-document-chart-bar')
                 ->color('info')
-                ->url(fn () => route('reports.reports.class.html', $this->class->id))
+                ->url(fn () => route('reports.class.html', $this->class->id))
                 ->openUrlInNewTab(),
         ];
     }
@@ -373,11 +406,38 @@ class ManageClassModules extends Page implements HasTable
                     ->visible(fn (ClassModule $record) => $record->status === 'not_started')
                     ->requiresConfirmation()
                     ->modalHeading(function (ClassModule $record) {
+                        $missingDates = $this->isEmonc() && (empty($record->start_date) || empty($record->end_date));
+                        if ($missingDates) {
+                            return '⚠️ Module Dates Required';
+                        }
+
                         $hasMentees = ClassParticipant::where('mentorship_class_id', $this->class->id)->exists();
 
-                        return $hasMentees ? 'Start "'.($record->programModule->name ?? 'Module').'"?' : '⚠️ No Mentees Enrolled';
+                        return $hasMentees ? 'Start "'.($record->programModule?->name ?? 'Module').'"?' : '⚠️ No Mentees Enrolled';
                     })
                     ->modalDescription(function (ClassModule $record) {
+                        // ── EmONC: require dates before starting ─────────────────────────
+                        $missingDates = $this->isEmonc() && (empty($record->start_date) || empty($record->end_date));
+                        if ($missingDates) {
+                            $missing = collect([
+                                empty($record->start_date) ? 'Start Date' : null,
+                                empty($record->end_date) ? 'End Date' : null,
+                            ])->filter()->implode(' and ');
+
+                            return new \Illuminate\Support\HtmlString('
+                <div style="display:flex;flex-direction:column;gap:12px;">
+                    <div style="background:#fef9c3;border:1px solid #fde047;border-radius:10px;padding:14px 16px;font-size:0.875rem;color:#713f12;line-height:1.6;">
+                        <strong>Cannot start this module — '.$missing.' is not set.</strong><br>
+                        EmONC modules require a start and end date so mentees can see their scheduled session.
+                    </div>
+                    <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px 16px;font-size:0.875rem;color:#1e40af;line-height:1.7;">
+                        <strong>How to fix:</strong><br>
+                        Click <strong>Cancel</strong> below, then use the <strong>✏️ pencil (Edit) icon</strong> on this module row to set the <strong>'.$missing.'</strong>, then come back to start the module.
+                    </div>
+                </div>
+            ');
+                        }
+
                         $menteeCount = ClassParticipant::where('mentorship_class_id', $this->class->id)->count();
 
                         if ($menteeCount === 0) {
@@ -399,13 +459,26 @@ class ManageClassModules extends Page implements HasTable
 
                         return "This will open the attendance link for {$menteeCount} mentee(s). The class will be activated if still in draft.";
                     })
-                    ->modalSubmitActionLabel(function () {
+                    ->modalSubmitActionLabel(function (ClassModule $record) {
+                        $missingDates = $this->isEmonc() && (empty($record->start_date) || empty($record->end_date));
+                        if ($missingDates) {
+                            return 'OK, I\'ll set the dates';
+                        }
+
                         $hasMentees = ClassParticipant::where('mentorship_class_id', $this->class->id)->exists();
 
                         return $hasMentees ? 'Yes, Start Module' : 'Add Mentees →';
                     })
                     ->modalCancelActionLabel('Cancel')
                     ->action(function (ClassModule $record) {
+                        // ── EmONC gate: dates must be set — auto-open edit modal ────────
+                        if ($this->isEmonc() && (empty($record->start_date) || empty($record->end_date))) {
+                            $key = $record->getKey();
+                            $this->js("setTimeout(() => \$wire.mountTableAction('edit', {$key}), 300)");
+
+                            return;
+                        }
+
                         $menteeCount = ClassParticipant::where('mentorship_class_id', $this->class->id)->count();
 
                         // ── No mentees → redirect to mentee page ────────────────────────
@@ -494,6 +567,23 @@ class ManageClassModules extends Page implements HasTable
                     ->color('gray')
                     ->iconButton()
                     ->tooltip('Mentees & Attendance')
+                    ->badge(function (ClassModule $record) {
+                        $pending = MenteeModuleProgress::where('class_module_id', $record->id)
+                            ->whereNotNull('hands_on_video_url')
+                            ->where('video_review_status', 'pending')
+                            ->count();
+
+                        return $pending ?: null;
+                    })
+                    ->badgeColor('danger')
+                    ->extraAttributes(function (ClassModule $record) {
+                        $pending = MenteeModuleProgress::where('class_module_id', $record->id)
+                            ->whereNotNull('hands_on_video_url')
+                            ->where('video_review_status', 'pending')
+                            ->count();
+
+                        return $pending ? ['class' => 'fi-pending-review'] : [];
+                    })
                     ->url(fn (ClassModule $record) => MentorshipTrainingResource::getUrl('module-mentees', [
                         'training' => $this->training->id,
                         'class' => $this->class->id,
@@ -687,19 +777,15 @@ class ManageClassModules extends Page implements HasTable
                     ->iconButton()
                     ->tooltip('Edit Module Settings')
                     ->form([
-                        Forms\Components\Select::make('min_attendance_percentage')
-                            ->label('Minimum Attendance Required (%)')
-                            ->options([50 => '50%', 60 => '60%', 75 => '75%', 80 => '80%', 90 => '90%', 100 => '100%'])
-                            ->default(75),
-                        Forms\Components\Toggle::make('requires_assessment')
-                            ->label('Requires Assessment'),
                         Forms\Components\Grid::make(2)->schema([
                             Forms\Components\DatePicker::make('start_date')
                                 ->label('Start Date')
-                                ->native(false),
+                                ->native(false)
+                                ->minDate(today()),
                             Forms\Components\DatePicker::make('end_date')
                                 ->label('End Date')
                                 ->native(false)
+                                ->minDate(today())
                                 ->afterOrEqual('start_date'),
                         ]),
                         Forms\Components\TextInput::make('order_sequence')

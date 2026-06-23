@@ -39,11 +39,7 @@ class MentorDashboard extends Page
 
     public static function shouldRegisterNavigation(): bool
     {
-        if (! auth()->check()) {
-            return false;
-        }
-
-        return auth()->user()->hasRole(array_merge(self::MENTOR_ROLES, self::SENIOR_ROLES));
+        return false;
     }
 
     public static function canAccess(): bool
@@ -89,6 +85,18 @@ class MentorDashboard extends Page
     public array $insights = [];   // derived flags for decision-making
 
     public array $pendingVideoReviews = [];   // pending hands-on video reviews
+
+    public array $allMentorships = [];   // full unfiltered list (for client-side sort/filter)
+
+    public string $mdSort = 'created_at';
+
+    public string $mdDir = 'desc';
+
+    public string $mdStatus = '';
+
+    public string $mdProgram = '';
+
+    public string $mdSearch = '';
 
     public function mount(): void
     {
@@ -247,9 +255,6 @@ class MentorDashboard extends Page
             ];
         }
 
-        // Sort by latest first
-        usort($mentorships, fn ($a, $b) => strcmp((string) ($b['created_at'] ?? ''), (string) ($a['created_at'] ?? '')));
-
         // Filter by program query param for Mentorships group links
         $programFilter = request('program');
         if ($programFilter && is_string($programFilter)) {
@@ -260,22 +265,18 @@ class MentorDashboard extends Page
 
                     return match ($filter) {
                         'newborn' => $programName === 'newborn care',
-                        'infant' => $programName === 'infant and child care',
-                        default => str_contains($programName, $filter),
+                        'infant'  => $programName === 'infant and child care',
+                        'emonc'   => str_contains($programName, 'emonc') || str_contains($programName, 'maternal'),
+                        default   => str_contains($programName, $filter),
                     };
                 })
                 ->values()
                 ->toArray();
         }
 
-        // Paginate
-        $perPage = $this->mentorshipsPerPage;
-        $currentPage = request()->integer('page', 1);
-        $total = count($mentorships);
-        $items = array_slice($mentorships, ($currentPage - 1) * $perPage, $perPage);
-        $this->mentorshipItems = $items;
-        $this->mentorshipsTotal = $total;
-        $this->mentorshipsPage = $currentPage;
+        $this->allMentorships = $mentorships;
+        $this->mentorshipsPage = 1;
+        $this->applyMentorshipFilters();
 
         // ── Mentees needing attention (no full roster) ────────────────────────
         $progressByParticipant = $progress->groupBy('class_participant_id');
@@ -337,11 +338,94 @@ class MentorDashboard extends Page
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+    // Sort / filter actions
+    // ─────────────────────────────────────────────────────────────────────────
+
+    public function setSort(string $field): void
+    {
+        if ($this->mdSort === $field) {
+            $this->mdDir = $this->mdDir === 'asc' ? 'desc' : 'asc';
+        } else {
+            $this->mdSort = $field;
+            $this->mdDir = 'asc';
+        }
+        $this->mentorshipsPage = 1;
+        $this->applyMentorshipFilters();
+    }
+
+    public function updatedMdSearch(): void
+    {
+        $this->mentorshipsPage = 1;
+        $this->applyMentorshipFilters();
+    }
+
+    public function updatedMdStatus(): void
+    {
+        $this->mentorshipsPage = 1;
+        $this->applyMentorshipFilters();
+    }
+
+    public function updatedMdProgram(): void
+    {
+        $this->mentorshipsPage = 1;
+        $this->applyMentorshipFilters();
+    }
+
+    public function setPage(int $page): void
+    {
+        $this->mentorshipsPage = max(1, $page);
+        $this->applyMentorshipFilters();
+    }
+
+    private function applyMentorshipFilters(): void
+    {
+        $items = collect($this->allMentorships);
+
+        if ($this->mdSearch !== '') {
+            $needle = strtolower($this->mdSearch);
+            $items = $items->filter(fn ($m) => str_contains(strtolower($m['title']), $needle)
+                || str_contains(strtolower($m['facility']), $needle)
+            );
+        }
+
+        if ($this->mdStatus !== '') {
+            $items = $items->filter(fn ($m) => $m['status'] === $this->mdStatus);
+        }
+
+        if ($this->mdProgram !== '') {
+            $items = $items->filter(fn ($m) => strtolower($m['program_name'] ?? '') === strtolower($this->mdProgram));
+        }
+
+        $sortKey = in_array($this->mdSort, ['title', 'facility', 'module_pct', 'mentees', 'created_at'])
+            ? $this->mdSort : 'created_at';
+
+        $sorted = $this->mdDir === 'asc'
+            ? $items->sortBy(fn ($m) => $m[$sortKey] ?? '')
+            : $items->sortByDesc(fn ($m) => $m[$sortKey] ?? '');
+
+        $all = $sorted->values();
+        $total = $all->count();
+        $page = max(1, $this->mentorshipsPage);
+        $perPage = $this->mentorshipsPerPage;
+
+        $this->mentorshipItems = $all->slice(($page - 1) * $perPage, $perPage)->values()->toArray();
+        $this->mentorshipsTotal = $total;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     // View data
     // ─────────────────────────────────────────────────────────────────────────
 
     protected function getViewData(): array
     {
+        $programOptions = collect($this->allMentorships)
+            ->pluck('program_name')
+            ->filter()
+            ->unique()
+            ->sort()
+            ->values()
+            ->toArray();
+
         return [
             'mentorships' => new LengthAwarePaginator(
                 $this->mentorshipItems,
@@ -350,6 +434,7 @@ class MentorDashboard extends Page
                 $this->mentorshipsPage,
                 ['path' => request()->url(), 'query' => request()->query()]
             ),
+            'programOptions' => $programOptions,
         ];
     }
 

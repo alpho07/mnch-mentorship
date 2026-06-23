@@ -75,6 +75,12 @@ class AdminPanelProvider extends PanelProvider
                     ->url('/admin/mentor-dashboard?program=infant')
                     ->sort(2)
                     ->visible(fn (): bool => auth()->check() && ! auth()->user()->hasRole('mentee')),
+                NavigationItem::make('Maternal Health (EmONC)')
+                    ->group('Mentorships')
+                    ->icon('heroicon-o-heart')
+                    ->url('/admin/mentor-dashboard?program=emonc')
+                    ->sort(3)
+                    ->visible(fn (): bool => auth()->check() && ! auth()->user()->hasRole('mentee')),
             ])
             ->userMenuItems([
                 MenuItem::make()

@@ -292,7 +292,7 @@ class ManageClassMentees extends Page implements HasTable
                     ->icon('heroicon-o-document-arrow-down')
                     ->color('info')
                     ->visible(fn (ClassParticipant $record) => $record->isCertified())
-                    ->url(fn (ClassParticipant $record) => route('reports.reports.class.certificate', [
+                    ->url(fn (ClassParticipant $record) => route('reports.class.certificate', [
                         'class' => $this->class->id,
                         'participant' => $record->id,
                     ]))
@@ -1148,7 +1148,7 @@ class ManageClassMentees extends Page implements HasTable
                 ->label('Class Report')
                 ->icon('heroicon-o-document-chart-bar')
                 ->color('info')
-                ->url(fn () => route('reports.reports.class.html', $this->class->id))
+                ->url(fn () => route('reports.class.html', $this->class->id))
                 ->openUrlInNewTab(),
             //                    ])
             //                    ->label('Actions')

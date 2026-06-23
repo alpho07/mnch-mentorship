@@ -65,6 +65,7 @@ class CustomLogin extends SimplePage
                 TextInput::make('email')
                     ->label('Email address')
                     ->email()
+                    ->prefixIcon('heroicon-m-envelope')
                     ->required()
                     ->autofocus()
                     ->autocomplete('username')
@@ -72,6 +73,8 @@ class CustomLogin extends SimplePage
                 TextInput::make('password')
                     ->label('Password')
                     ->password()
+                    ->revealable()
+                    ->prefixIcon('heroicon-m-lock-closed')
                     ->required()
                     ->autocomplete('current-password')
                     ->extraInputAttributes(['class' => 'custom-input']),

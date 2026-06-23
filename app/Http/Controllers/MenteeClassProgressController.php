@@ -277,20 +277,27 @@ class MenteeClassProgressController extends Controller
         }
 
         $quiz = $quizzes->first();
-        $latestCompleted = $service->getLatestAttempts(Auth::user(), $quiz);
-        $key = $attemptIdColumn === 'pre_test_attempt_id' ? 'pre_test' : 'post_test';
-        $latest = $latestCompleted[$key];
 
-        if ($latest) {
-            $progress->update([$attemptIdColumn => $latest->id]);
+        // Scope strictly to the attempt stored on this progress record.
+        // Never query globally by user+quiz — the same ProgramModule/quiz is reused across
+        // different classes, so a global lookup bleeds results from other enrollments.
+        $attemptId = $progress->$attemptIdColumn;
+        if ($attemptId) {
+            $attempt = QuizAttempt::with(['responses.option'])->find($attemptId);
 
-            return [
-                'exists' => true,
-                'passed' => $latest->isPassed(),
-                'completed' => true,
-                'attempt' => $latest,
-                'quiz' => $quiz,
-            ];
+            // Validate it belongs to this module's quiz (heals any previously contaminated records)
+            if ($attempt && $attempt->completed_at && $attempt->program_module_quiz_id === $quiz->id) {
+                return [
+                    'exists' => true,
+                    'passed' => $attempt->isPassed(),
+                    'completed' => true,
+                    'attempt' => $attempt,
+                    'quiz' => $quiz,
+                ];
+            }
+
+            // Attempt is contaminated (from another class) or incomplete — clear it
+            $progress->update([$attemptIdColumn => null]);
         }
 
         return [
@@ -367,6 +374,13 @@ class MenteeClassProgressController extends Controller
             $progress->update(['pre_test_attempt_id' => $attempt->id]);
         } elseif ($attempt->attempt_type === 'post_test') {
             $progress->update(['post_test_attempt_id' => $attempt->id]);
+        }
+
+        // Notify mentor for EmONC classes
+        $class->load('training.program');
+        $programName = strtolower($class->training?->program?->name ?? '');
+        if (str_contains($programName, 'maternal') && str_contains($programName, 'emonc')) {
+            app(\App\Services\EmoncNotificationService::class)->quizSubmitted($progress->fresh(), $attempt);
         }
 
         return redirect()->route('mentee.class.module', [$class->id, $classModule->id])

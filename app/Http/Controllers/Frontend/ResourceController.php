@@ -106,6 +106,31 @@ class ResourceController extends Controller
                 ->limit(4)
                 ->get();
 
+            // EmONC mentorships with null dates — derive status from classes
+            $emoncNoDates = Training::where('type', 'facility_mentorship')
+                ->where('status', '!=', 'cancelled')
+                ->whereNull('start_date')
+                ->whereNull('end_date')
+                ->whereHas('program', fn ($q) => $q->whereRaw("LOWER(name) LIKE '%emonc%'")
+                    ->orWhereRaw("LOWER(name) LIKE '%maternal%'"))
+                ->with(['county', 'facility', 'mentorshipClasses'])
+                ->get();
+
+            foreach ($emoncNoDates as $t) {
+                $classStatuses = $t->mentorshipClasses->pluck('status');
+                $hasActive     = $classStatuses->contains('active');
+                $hasCompleted  = $classStatuses->contains('completed');
+                $allCompleted  = $classStatuses->count() > 0 && $classStatuses->every(fn ($s) => $s === 'completed');
+
+                if ($hasActive) {
+                    $ongoingMentorships->push($t);
+                } elseif ($allCompleted) {
+                    $closedMentorships->push($t);
+                } elseif (!$hasActive && !$hasCompleted) {
+                    $upcomingMentorships->push($t);
+                }
+            }
+
             $trainingInsights = $this->buildTrainingInsights();
 
             return compact('featuredResources', 'recentResources', 'popularResources', 'categories', 'resourceTypes', 'upcomingTrainings', 'ongoingMentorships', 'upcomingMentorships', 'closedMentorships', 'trainingInsights');
