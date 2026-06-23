@@ -55,6 +55,11 @@ class MentorshipTrainingResource extends Resource
             return false;
         }
 
+        // Mentees are blocked by default; only allowed if explicitly granted
+        if ($user->hasRole('mentee')) {
+            return $user->canCreateMentorships();
+        }
+
         if ($user->canCreateMentorships()) {
             return true;
         }

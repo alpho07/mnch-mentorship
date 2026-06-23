@@ -18,6 +18,16 @@ class ScopeResource extends Resource
     protected static ?int $navigationSort = 1;
     protected static ?string $recordTitleAttribute = 'label';
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->check() && auth()->user()->hasRole(['super_admin', 'admin']);
+    }
+
+    public static function canAccess(): bool
+    {
+        return auth()->check() && auth()->user()->hasRole(['super_admin', 'admin']);
+    }
+
     public static function form(Form $form): Form
     {
         return $form->schema([

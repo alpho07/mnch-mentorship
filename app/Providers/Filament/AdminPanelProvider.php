@@ -68,19 +68,19 @@ class AdminPanelProvider extends PanelProvider
                     ->icon('heroicon-o-heart')
                     ->url('/admin/mentor-dashboard?program=newborn')
                     ->sort(1)
-                    ->visible(fn (): bool => auth()->check() && auth()->user()->hasRole('super_admin')),
+                    ->visible(fn (): bool => auth()->check() && static::canSeeMentorshipsNav()),
                 NavigationItem::make('Infant and Child Care')
                     ->group('Mentorships')
                     ->icon('heroicon-o-user-group')
                     ->url('/admin/mentor-dashboard?program=infant')
                     ->sort(2)
-                    ->visible(fn (): bool => auth()->check() && auth()->user()->hasRole('super_admin')),
+                    ->visible(fn (): bool => auth()->check() && static::canSeeMentorshipsNav()),
                 NavigationItem::make('Maternal Health (EmONC)')
                     ->group('Mentorships')
                     ->icon('heroicon-o-heart')
                     ->url('/admin/mentor-dashboard?program=emonc')
                     ->sort(3)
-                    ->visible(fn (): bool => auth()->check() && auth()->user()->hasRole('super_admin')),
+                    ->visible(fn (): bool => auth()->check() && static::canSeeMentorshipsNav()),
             ])
             ->userMenuItems([
                 MenuItem::make()
@@ -122,5 +122,24 @@ class AdminPanelProvider extends PanelProvider
             ->authMiddleware([
                 Authenticate::class,
             ]);
+    }
+
+    /**
+     * Visible to super_admin always, and to mentees only when explicitly
+     * granted the can_create_mentorships flag (set on the User record).
+     */
+    private static function canSeeMentorshipsNav(): bool
+    {
+        $user = auth()->user();
+        if (! $user) {
+            return false;
+        }
+        if ($user->hasRole('super_admin')) {
+            return true;
+        }
+        if ($user->hasRole('mentee')) {
+            return $user->canCreateMentorships();
+        }
+        return false;
     }
 }
