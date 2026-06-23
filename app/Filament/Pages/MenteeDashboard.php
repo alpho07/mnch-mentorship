@@ -15,7 +15,7 @@ class MenteeDashboard extends Page
 
     protected static ?string $slug = 'mentee-dashboard';
 
-    protected static ?string $navigationGroup = 'Mentorships';
+    protected static ?string $navigationGroup = 'Dashboards';
 
     protected static ?string $navigationIcon = 'heroicon-o-user-circle';
 
@@ -27,7 +27,7 @@ class MenteeDashboard extends Page
 
     public static function shouldRegisterNavigation(): bool
     {
-        return false;
+        return auth()->check() && auth()->user()->hasRole(self::ALLOWED_ROLES);
     }
 
     public static function canAccess(): bool

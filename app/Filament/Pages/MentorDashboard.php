@@ -39,7 +39,8 @@ class MentorDashboard extends Page
 
     public static function shouldRegisterNavigation(): bool
     {
-        return false;
+        return auth()->check()
+            && auth()->user()->hasRole(array_merge(self::MENTOR_ROLES, self::SENIOR_ROLES));
     }
 
     public static function canAccess(): bool
