@@ -157,7 +157,7 @@ class EmoncNotificationService
                 'Certification Pending',
                 'Mentee Awaiting Certification',
                 "{$user->name} has been mentor-approved for {$class->name} and is awaiting Head DRMH certification.",
-                route('filament.admin.resources.mentorship-training-resource.mentees', ['record' => $class->training_id]),
+                route('filament.admin.resources.mentorship.mentees', ['record' => $class->training_id]),
                 'Review Mentee'
             );
         }
