@@ -18,8 +18,7 @@ class MethodologyResource extends Resource {
     protected static ?int $navigationSort = 4;
 
     public static function shouldRegisterNavigation(): bool {
-        return auth()->check() && auth()->user()->hasRole(['super_admin', 'admin', 'division']);
-    }
+        return auth()->check() && auth()->user()->can('view_any_methodology');}
 
     public static function form(Form $form): Form {
         return $form->schema([

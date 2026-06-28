@@ -36,7 +36,7 @@ class EmoncDashboard extends Page
 
     public static function canAccess(): bool
     {
-        return auth()->check() && auth()->user()->hasRole(array_merge(self::MENTOR_ROLES, self::SENIOR_ROLES));
+        return auth()->check() && auth()->user()->can('page_EmoncDashboard');
     }
 
     public array $kpis = [];

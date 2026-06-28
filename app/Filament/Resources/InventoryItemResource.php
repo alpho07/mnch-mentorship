@@ -24,8 +24,7 @@ class InventoryItemResource extends Resource {
     protected static ?int $navigationSort = 2;
 
     public static function shouldRegisterNavigation(): bool {
-        return auth()->check() && auth()->user()->hasRole(['super_admin', 'admin', 'division', 'inventory']);
-    }
+        return auth()->check() && auth()->user()->can('view_any_inventory::item');}
 
     public static function form(Form $form): Form {
         return $form

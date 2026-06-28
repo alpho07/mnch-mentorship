@@ -17,8 +17,7 @@ class GradeResource extends Resource {
     protected static ?string $navigationGroup = 'Settings';
 
     public static function shouldRegisterNavigation(): bool {
-        return auth()->check() && auth()->user()->hasRole(['super_admin', 'admin', 'division']);
-    }
+        return auth()->check() && auth()->user()->can('view_any_grade');}
 
     public static function form(Form $form): Form {
         return $form->schema([

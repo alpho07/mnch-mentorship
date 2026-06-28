@@ -20,13 +20,11 @@ class ScopeResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->check() && auth()->user()->hasRole(['super_admin', 'admin']);
-    }
+        return auth()->check() && auth()->user()->can('view_any_scope');}
 
     public static function canAccess(): bool
     {
-        return auth()->check() && auth()->user()->hasRole(['super_admin', 'admin']);
-    }
+        return auth()->check() && auth()->user()->can('view_any_scope');}
 
     public static function form(Form $form): Form
     {

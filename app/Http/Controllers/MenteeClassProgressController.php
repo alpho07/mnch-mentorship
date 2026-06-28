@@ -10,6 +10,7 @@ use App\Models\MenteeModuleProgress;
 use App\Models\MentorshipClass;
 use App\Models\ProgramModuleQuiz;
 use App\Models\QuizAttempt;
+use App\Models\RubricAssessment;
 use App\Services\EmoncNotificationService;
 use App\Services\QuizAttemptService;
 use Illuminate\Http\Request;
@@ -247,6 +248,16 @@ class MenteeClassProgressController extends Controller
             ->pluck('activity_id')
             ->toArray();
 
+        // Rubric assessment: latest result for this mentee on this module
+        $rubricAssessment = RubricAssessment::whereHas(
+            'rubric',
+            fn ($q) => $q->where('program_module_id', $classModule->program_module_id)
+        )
+            ->where('mentee_id', Auth::id())
+            ->with(['rubric', 'mentor'])
+            ->latest('assessed_at')
+            ->first();
+
         return view('mentee.module-detail', compact(
             'class',
             'classModule',
@@ -267,6 +278,7 @@ class MenteeClassProgressController extends Controller
             'hasActivities',
             'hasAnyContent',
             'mentee',
+            'rubricAssessment',
         ));
     }
 

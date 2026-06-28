@@ -29,8 +29,7 @@ class ProgramModuleResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->check() && auth()->user()->hasRole(['super_admin', 'admin', 'division']);
-    }
+        return auth()->check() && auth()->user()->can('view_any_program::module');}
 
     public static function form(Form $form): Form
     {

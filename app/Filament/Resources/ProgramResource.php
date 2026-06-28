@@ -29,8 +29,7 @@ class ProgramResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->check() && auth()->user()->hasRole(['super_admin', 'admin', 'division']);
-    }
+        return auth()->check() && auth()->user()->can('view_any_program');}
 
     /** Role options shown in the visibility picker. */
     public static function roleOptions(): array

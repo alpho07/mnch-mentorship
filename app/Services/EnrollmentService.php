@@ -2,10 +2,11 @@
 
 namespace App\Services;
 
-use App\Models\User;
-use App\Models\MentorshipClass;
+use App\Models\ClassModuleActivityParticipant;
 use App\Models\ClassParticipant;
 use App\Models\MenteeModuleProgress;
+use App\Models\MentorshipClass;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -78,18 +79,34 @@ class EnrollmentService
     ): void {
         $completedModuleIds = $this->getUserCompletedModules($participant->user_id);
 
-        $class->load('classModules');
+        $class->load('classModules.programModule.activities');
 
         foreach ($class->classModules as $classModule) {
             $isExempted = in_array($classModule->program_module_id, $completedModuleIds);
 
             MenteeModuleProgress::create([
-                'class_participant_id'       => $participant->id,
-                'class_module_id'            => $classModule->id,
-                'status'                     => $isExempted ? 'exempted' : 'not_started',
+                'class_participant_id'        => $participant->id,
+                'class_module_id'             => $classModule->id,
+                'status'                      => $isExempted ? 'exempted' : 'not_started',
                 'completed_in_previous_class' => $isExempted,
-                'exempted_at'                => $isExempted ? now() : null,
+                'exempted_at'                 => $isExempted ? now() : null,
             ]);
+
+            // Auto-enroll in all activities for this module (status=pending; mentor marks completion)
+            $activities = $classModule->programModule?->activities ?? collect();
+            if ($activities->isNotEmpty()) {
+                $rows = $activities->map(fn ($activity) => [
+                    'class_module_id'      => $classModule->id,
+                    'class_participant_id' => $participant->id,
+                    'activity_id'          => $activity->id,
+                    'status'               => 'pending',
+                    'created_at'           => now(),
+                    'updated_at'           => now(),
+                ])->toArray();
+
+                // insertOrIgnore so re-enrolling an existing mentee doesn't duplicate records
+                ClassModuleActivityParticipant::insertOrIgnore($rows);
+            }
         }
     }
 

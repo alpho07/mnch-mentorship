@@ -27,12 +27,12 @@ class MenteeDashboard extends Page
 
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->check() && auth()->user()->hasRole(self::ALLOWED_ROLES);
+        return auth()->check() && auth()->user()->can('page_MenteeDashboard');
     }
 
     public static function canAccess(): bool
     {
-        return auth()->check() && auth()->user()->hasRole(self::ALLOWED_ROLES);
+        return auth()->check() && auth()->user()->can('page_MenteeDashboard');
     }
 
     public static function getNavigationBadge(): ?string

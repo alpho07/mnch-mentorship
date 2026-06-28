@@ -21,7 +21,7 @@ class HeadDrmhReviewMentee extends Page
 
     public static function canAccess(): bool
     {
-        return auth()->check() && auth()->user()->hasRole(self::ALLOWED_ROLES);
+        return auth()->check() && auth()->user()->can('page_HeadDrmhReviewMentee');
     }
 
     // ─── State ───────────────────────────────────────────────────────────────
@@ -51,7 +51,7 @@ class HeadDrmhReviewMentee extends Page
             'headDrmhApprovedBy',
         ])->findOrFail($participantId);
 
-        abort_if(! auth()->user()->hasRole(self::ALLOWED_ROLES), 403);
+        abort_if(! auth()->user()->can('page_HeadDrmhReviewMentee'), 403);
 
         $this->isCertified = $this->participant->isHeadDrmhApproved();
         $this->canCertify  = $this->participant->isMentorApproved() && ! $this->isCertified;
@@ -167,7 +167,7 @@ class HeadDrmhReviewMentee extends Page
     // ─── Actions ─────────────────────────────────────────────────────────────
     public function certify(): void
     {
-        if (! auth()->user()->hasRole(self::ALLOWED_ROLES)) {
+        if (! auth()->user()->can('page_HeadDrmhReviewMentee')) {
             Notification::make()->danger()->title('Not authorized')->send();
 
             return;

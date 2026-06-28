@@ -17,7 +17,7 @@ class ClassReportController extends Controller
         $user = Auth::user();
 
         // Senior admins always pass
-        if ($user->hasRole(['super_admin', 'admin', 'division', 'national_mentor'])) {
+        if ($user->hasRole(['super_admin', 'admin', 'division', 'national_mentor_lead'])) {
             return;
         }
 

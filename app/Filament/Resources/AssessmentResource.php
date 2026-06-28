@@ -27,12 +27,12 @@ class AssessmentResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->check() && ! auth()->user()->hasRole('mentee');
+        return auth()->check() && auth()->user()->can('view_any_assessment');
     }
 
     public static function canAccess(): bool
     {
-        return auth()->check(); // ->hasRole(['super_admin', 'admin', 'assessor']);
+        return auth()->check() && auth()->user()->can('view_any_assessment');
     }
 
     public static function canCreate(): bool

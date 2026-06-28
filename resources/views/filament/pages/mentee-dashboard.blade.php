@@ -932,10 +932,10 @@ $cards = [
 
         {{-- Activity Feed --}}
         @if(!empty($activityFeed))
-                <div class="md-sidebar-card">
+                <div class="md-sidebar-card" x-data="{ expanded: false }">
                     <div class="md-sidebar-header">🕐 Recent Activity</div>
                     <div class="md-sidebar-body" style="padding-bottom:8px;">
-                @foreach(array_slice($activityFeed, 0, 8) as $item)
+                @foreach(array_slice($activityFeed, 0, 5) as $item)
                         <div class="md-feed-item">
                             <div class="md-feed-icon"
                                  style="background:{{ match($item['color']) {
@@ -951,6 +951,32 @@ $cards = [
                             </div>
                         </div>
                 @endforeach
+                @if(count($activityFeed) > 5)
+                    <div x-show="expanded" x-collapse>
+                    @foreach(array_slice($activityFeed, 5) as $item)
+                            <div class="md-feed-item">
+                                <div class="md-feed-icon"
+                                     style="background:{{ match($item['color']) {
+                                 'green'  => '#dcfce7',
+                                 'blue'   => '#dbeafe',
+                                 'purple' => '#ede9fe',
+                                 'indigo' => '#e0e7ff',
+                                 default  => '#f1f5f9',
+                             } }}">{{ $item['icon'] }}</div>
+                                <div style="flex:1">
+                                    <div class="md-feed-text">{!! $item['text'] !!}</div>
+                                    <div class="md-feed-time">{{ $item['time'] }}</div>
+                                </div>
+                            </div>
+                    @endforeach
+                    </div>
+                    <button
+                        @click="expanded = !expanded"
+                        style="display:block;width:100%;margin-top:8px;padding:7px 0;background:none;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;color:#3b82f6;cursor:pointer;transition:background .15s;"
+                        onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background='none'"
+                        x-text="expanded ? 'Show Less' : 'View More ({{ count($activityFeed) - 5 }} more)'">
+                    </button>
+                @endif
                     </div>
                 </div>
         @endif

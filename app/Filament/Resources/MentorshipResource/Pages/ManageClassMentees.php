@@ -1196,7 +1196,7 @@ class ManageClassMentees extends Page implements HasTable
             return false;
         }
 
-        return $user->hasRole(['super_admin', 'admin', 'head_drmh']);
+        return $user->can('page_HeadDrmhDashboard');
     }
 
     private function isReadyForMentorApproval(ClassParticipant $participant): bool

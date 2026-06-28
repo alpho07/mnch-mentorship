@@ -39,17 +39,12 @@ class MentorDashboard extends Page
 
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->check()
-            && auth()->user()->hasRole(array_merge(self::MENTOR_ROLES, self::SENIOR_ROLES));
+        return auth()->check() && auth()->user()->can('page_MentorDashboard');
     }
 
     public static function canAccess(): bool
     {
-        if (! auth()->check()) {
-            return false;
-        }
-
-        return auth()->user()->hasRole(array_merge(self::MENTOR_ROLES, self::SENIOR_ROLES));
+        return auth()->check() && auth()->user()->can('page_MentorDashboard');
     }
 
     public static function getNavigationBadge(): ?string
@@ -118,6 +113,12 @@ class MentorDashboard extends Page
             $this->mentorshipItems = [];
             $this->mentorshipsTotal = 0;
             $this->mentorshipsPage = 1;
+            $this->insights = [
+                'mentees_needing_attention' => 0,
+                'low_attendance_classes'    => 0,
+                'stalled_modules'           => 0,
+                'recs_coverage'             => 100,
+            ];
 
             return;
         }

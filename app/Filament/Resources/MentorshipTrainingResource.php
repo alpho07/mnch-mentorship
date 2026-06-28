@@ -55,19 +55,13 @@ class MentorshipTrainingResource extends Resource
             return false;
         }
 
-        // Mentees are blocked by default; only allowed if explicitly granted
+        // Mentees excluded unless explicitly granted mentorship creation rights
         if ($user->hasRole('mentee')) {
             return $user->canCreateMentorships();
         }
 
-        if ($user->canCreateMentorships()) {
-            return true;
-        }
-
-        return $user->hasRole([
-            'super_admin', 'admin', 'division', 'facility_mentor', 'national_mentor',
-            'facility_mentor_lead', 'county_mentor_lead', 'subcounty_mentor_lead',
-        ]);
+        // Permission covers all authorised mentor/admin roles; flag covers edge cases
+        return $user->can('view_any_mentorship::training') || $user->canCreateMentorships();
     }
 
     public static function canCreate(): bool
@@ -113,7 +107,7 @@ class MentorshipTrainingResource extends Resource
 
     private static function applyRoleScope(Builder $query, User $user): void
     {
-        if ($user->hasRole(['super_admin', 'admin', 'division'])) {
+        if ($user->hasRole(['super_admin', 'admin', 'division', 'national_mentor', 'national_mentor_lead'])) {
             return;
         }
 
@@ -462,7 +456,7 @@ class MentorshipTrainingResource extends Resource
                         ->color('danger')
                         ->model(Training::class)
                         ->visible(fn (Training $r) => $r->deleted_at === null &&
-                            auth()->user()->hasRole('super_admin') &&
+                            auth()->user()->can('force_delete_any_mentorship::training') &&
                             ! $r->canBeDeleted()
                         )
                         ->modalHeading('⚠️ Super Admin Override Delete')
@@ -515,7 +509,7 @@ class MentorshipTrainingResource extends Resource
                         ->color('success')
                         ->model(Training::class)
                         ->visible(fn (Training $r) => $r->deleted_at !== null &&
-                            auth()->user()->hasRole('super_admin')
+                            auth()->user()->can('restore_any_mentorship::training')
                         )
                         ->requiresConfirmation()
                         ->modalHeading(fn (Training $r) => "Restore {$r->identifier}?")

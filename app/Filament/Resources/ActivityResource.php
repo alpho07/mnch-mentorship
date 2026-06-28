@@ -24,8 +24,7 @@ class ActivityResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->check() && auth()->user()->hasRole(['super_admin', 'admin', 'division']);
-    }
+        return auth()->check() && auth()->user()->can('view_any_activity');}
 
     public static function form(Form $form): Form
     {

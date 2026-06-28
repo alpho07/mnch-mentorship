@@ -7,6 +7,7 @@ use App\Models\Training;
 use App\Models\User;
 use App\Models\County;
 use App\Models\Facility;
+use Illuminate\Database\Eloquent\Builder;
 use App\Models\Department;
 use App\Models\Cadre;
 use Filament\Forms;
@@ -36,8 +37,7 @@ class TrainingExportResource extends Resource {
     protected static ?string $slug = 'training-exports';
 
     public static function shouldRegisterNavigation(): bool {
-        return auth()->check() && auth()->user()->hasRole(['super_admin', 'facility_mentor']);
-    }
+        return auth()->check() && auth()->user()->can('view_any_training::export');}
 
     public static function form(Form $form): Form {
         return $form->schema([
@@ -84,7 +84,8 @@ class TrainingExportResource extends Resource {
                                         CheckboxList::make('selected_trainings')
                                         ->label('Available Trainings/Mentorships')
                                         ->options(function (Get $get) {
-                                            $query = Training::with(['facility', 'county', 'partner', 'participants', 'assessmentCategories']);
+                                            $query = static::scopedTrainingQuery(auth()->user())
+                                                ->with(['facility', 'county', 'partner', 'participants', 'assessmentCategories']);
 
                                             if ($get('training_type_filter') !== 'all') {
                                                 $query->where('type', $get('training_type_filter'));
@@ -154,18 +155,24 @@ class TrainingExportResource extends Resource {
                                         CheckboxList::make('selected_participants')
                                         ->label('Available Participants/mentees')
                                         ->options(function () {
-                                            return User::whereHas('trainingParticipations')
-                                                            ->with(['facility', 'department', 'cadre', 'trainingParticipations'])
-                                                            ->get()
-                                                            ->mapWithKeys(function ($user) {
-                                                                $name = $user->full_name;
-                                                                $facility = $user->facility?->name ?? 'No facility';
-                                                                $trainings = $user->trainingParticipations()->count();
+                                            $scopedTrainingIds = static::scopedTrainingQuery(auth()->user())->pluck('id');
 
-                                                                return [
-                                                                    $user->id => "{$name} • {$facility} • {$trainings} activities"
-                                                                ];
-                                                            });
+                                            return User::whereHas('trainingParticipations', fn ($q) =>
+                                                    $q->whereIn('training_id', $scopedTrainingIds)
+                                                )
+                                                ->with(['facility', 'department', 'cadre'])
+                                                ->get()
+                                                ->mapWithKeys(function ($user) use ($scopedTrainingIds) {
+                                                    $name     = $user->full_name;
+                                                    $facility = $user->facility?->name ?? 'No facility';
+                                                    $trainings = $user->trainingParticipations()
+                                                        ->whereIn('training_id', $scopedTrainingIds)
+                                                        ->count();
+
+                                                    return [
+                                                        $user->id => "{$name} • {$facility} • {$trainings} activities"
+                                                    ];
+                                                });
                                         })
                                         ->searchable()
                                         ->bulkToggleable()
@@ -392,8 +399,67 @@ class TrainingExportResource extends Resource {
     }
 
     public static function getNavigationBadge(): ?string {
-        $count = Training::whereHas('participants')->count();
+        $count = static::scopedTrainingQuery(auth()->user())->whereHas('participants')->count();
         return $count > 0 ? (string) $count : null;
+    }
+
+    // ── Role-scoped base query ────────────────────────────────────────────────
+    // MOH (global) trainings are always visible to everyone.
+    // Facility mentorships are scoped the same way as MentorshipTrainingResource.
+
+    private static function scopedTrainingQuery(User $user): Builder
+    {
+        $query = Training::query();
+
+        if ($user->hasRole(['super_admin', 'admin', 'division', 'national_mentor', 'national_mentor_lead'])) {
+            return $query;
+        }
+
+        if ($user->hasRole('county_mentor_lead')) {
+            $countyIds = $user->counties()->pluck('counties.id')->toArray();
+            if ($user->county_id) {
+                $countyIds[] = $user->county_id;
+            }
+            $facilityIds = Facility::whereHas('subcounty',
+                fn ($q) => $q->whereIn('county_id', array_unique($countyIds))
+            )->pluck('id');
+
+            return $query->where(fn ($q) => $q
+                ->where('type', 'global_training')
+                ->orWhereIn('facility_id', $facilityIds)
+            );
+        }
+
+        if ($user->hasRole('subcounty_mentor_lead')) {
+            $subcountyIds = $user->subcounties()->pluck('subcounties.id');
+            $facilityIds  = Facility::whereIn('subcounty_id', $subcountyIds)->pluck('id');
+
+            return $query->where(fn ($q) => $q
+                ->where('type', 'global_training')
+                ->orWhereIn('facility_id', $facilityIds)
+            );
+        }
+
+        if ($user->hasRole('facility_mentor_lead')) {
+            $facilityIds = $user->facilities()->pluck('facilities.id')->toArray();
+            if ($user->facility_id) {
+                $facilityIds[] = $user->facility_id;
+            }
+
+            return $query->where(fn ($q) => $q
+                ->where('type', 'global_training')
+                ->orWhereIn('facility_id', array_unique($facilityIds))
+            );
+        }
+
+        // Default (facility_mentor, spoke_mentor, etc.) — own mentorships only
+        return $query->where(fn ($q) => $q
+            ->where('type', 'global_training')
+            ->orWhere(fn ($q2) => $q2
+                ->where('type', 'facility_mentorship')
+                ->forMentorOrCoMentor($user->id)
+            )
+        );
     }
 
     public static function getNavigationBadgeColor(): string|array|null {

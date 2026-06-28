@@ -35,14 +35,21 @@ class IndicatorsReference extends Page implements HasForms
             return false;
         }
 
-        if (auth()->user()->hasRole('mentee')) {
+        $user = auth()->user();
+
+        if (! $user->can('page_IndicatorsReference')) {
             return false;
         }
 
-        $facilityId = auth()->user()->facility_id;
+        // Admin-level can view regardless of facility assignment
+        if ($user->can('view_any_indicator')) {
+            return true;
+        }
+
+        $facilityId = $user->facility_id;
 
         if (! $facilityId) {
-            return auth()->user()->hasRole('super_admin');
+            return false;
         }
 
         return FacilityIndicatorAssignment::where('facility_id', $facilityId)

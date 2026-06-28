@@ -53,14 +53,18 @@ class MentorshipProgressDashboard extends Page implements HasForms
             return false;
         }
 
-        if (auth()->user()->hasRole('mentee')) {
+        $user = auth()->user();
+
+        if (! $user->can('page_MentorshipProgressDashboard')) {
             return false;
         }
 
-        return auth()->user()->hasRole([
-            'super_admin', 'admin', 'division', 'national',
-            'county_mentor_lead', 'subcounty_mentor_lead', 'national_mentor_lead',
-        ]) || auth()->user()->facility_id !== null;
+        // Admin-level bypass facility requirement
+        if ($user->can('view_any_indicator')) {
+            return true;
+        }
+
+        return $user->facility_id !== null;
     }
 
     public function mount(): void

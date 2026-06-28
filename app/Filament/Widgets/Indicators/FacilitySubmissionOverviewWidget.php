@@ -18,14 +18,14 @@ class FacilitySubmissionOverviewWidget extends BaseWidget {
     protected int|string|array $columnSpan = 'full';
 
     public static function canView(): bool {
-        return auth()->check() && auth()->user()->hasRole(['super_admin', 'admin', 'county_mentor', 'national_mentor']);
+        return auth()->check() && auth()->user()->can('widget_FacilitySubmissionOverviewWidget');
     }
 
     public function table(Table $table): Table {
         $user = auth()->user();
         $countyId = null;
 
-        if ($user->hasRole('county_mentor')) {
+        if ($user->hasRole('county_mentor_lead')) {
             $countyId = $user->facility?->subcounty?->county_id ?? $user->counties()->first()?->id;
         }
 
@@ -90,7 +90,7 @@ class FacilitySubmissionOverviewWidget extends BaseWidget {
                             Tables\Filters\SelectFilter::make('county')
                             ->label('County')
                             ->relationship('subcounty.county', 'name')
-                            ->visible(fn() => auth()->user()->hasRole(['super_admin', 'admin', 'national_mentor'])),
+                            ->visible(fn() => auth()->user()->can('view_any_county')),
                             Tables\Filters\SelectFilter::make('submission_status')
                             ->label('Reporting Status')
                             ->options([

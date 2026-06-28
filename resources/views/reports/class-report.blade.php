@@ -508,7 +508,7 @@
         {{-- Action bar (web only) --}}
     @if(!isset($isPdf) || !$isPdf)
             <div class="action-bar">
-                <a href="{{ route('reports.reports.class.pdf', $class->id) }}">
+                <a href="{{ route('reports.class.pdf', $class->id) }}">
                     ⬇ Download PDF
                 </a>
                 <a href="javascript:window.print()" class="btn-primary">
@@ -771,14 +771,14 @@
                                 <td class="center">
                                     @if($row['class_complete'])
                                         <div style="display:flex;flex-direction:column;gap:4px;align-items:center;">
-                                            <a href="{{ route('reports.reports.class.certificate.preview', [$class->id, $row['participant']->id]) }}"
+                                            <a href="{{ route('reports.class.certificate.preview', [$class->id, $row['participant']->id]) }}"
                                        target="_blank"
                                        style="font-size:10px;color:#4f46e5;text-decoration:none;font-weight:600;
                                        background:#eff6ff;border:1px solid #bfdbfe;border-radius:5px;
                                        padding:2px 8px;display:inline-block;">
                                         👁 View
                                             </a>
-                                            <a href="{{ route('reports.reports.class.certificate', [$class->id, $row['participant']->id]) }}"
+                                            <a href="{{ route('reports.class.certificate', [$class->id, $row['participant']->id]) }}"
                                        style="font-size:10px;color:#16a34a;text-decoration:none;font-weight:600;
                                        background:#f0fdf4;border:1px solid #bbf7d0;border-radius:5px;
                                        padding:2px 8px;display:inline-block;">

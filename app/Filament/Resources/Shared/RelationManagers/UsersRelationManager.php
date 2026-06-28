@@ -227,10 +227,11 @@ class UsersRelationManager extends RelationManager
                     ->badge()
                     ->separator(',')
                     ->color(fn (string $state): string => match ($state) {
-                        'Super Admin' => 'danger',
-                        'Division Lead' => 'warning',
-                        'National Mentor Lead' => 'info',
-                        'Facility Manager' => 'success',
+                        'super_admin' => 'danger',
+                        'admin' => 'danger',
+                        'division_lead', 'division' => 'warning',
+                        'national_mentor_lead', 'national' => 'info',
+                        'county_mentor_lead', 'subcounty_mentor_lead' => 'success',
                         default => 'gray',
                     })
                     ->limit(20),

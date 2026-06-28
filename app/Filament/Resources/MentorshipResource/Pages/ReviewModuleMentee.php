@@ -3,11 +3,14 @@
 namespace App\Filament\Resources\MentorshipResource\Pages;
 
 use App\Filament\Resources\MentorshipTrainingResource;
+use App\Filament\Resources\RubricAssessmentResource;
 use App\Models\ClassModule;
 use App\Models\ClassModuleActivityParticipant;
 use App\Models\ClassParticipant;
 use App\Models\MenteeModuleProgress;
 use App\Models\MentorshipClass;
+use App\Models\ModuleRubric;
+use App\Models\RubricAssessment;
 use App\Models\Training;
 use App\Services\EmoncNotificationService;
 use App\Services\QuizAttemptService;
@@ -47,6 +50,10 @@ class ReviewModuleMentee extends Page implements HasForms
 
     public bool $isEmonc = false;
 
+    public ?ModuleRubric $moduleRubric = null;
+
+    public ?RubricAssessment $latestRubricAssessment = null;
+
     // Form data property required by InteractsWithForms / statePath('data')
     public ?array $data = [];
 
@@ -66,6 +73,7 @@ class ReviewModuleMentee extends Page implements HasForms
 
         $this->loadQuizStatuses();
         $this->loadActivities();
+        $this->loadRubricData();
 
         $this->form->fill([
             'video_review_status' => $this->progress?->video_review_status ?? 'pending',
@@ -75,9 +83,16 @@ class ReviewModuleMentee extends Page implements HasForms
 
     protected function getViewData(): array
     {
+        $programModuleId = $this->module->program_module_id;
+
         return [
             'canMentorApprove'         => $this->canMentorApprove(),
             'isReadyForMentorApproval' => $this->isReadyForMentorApproval(),
+            'moduleRubric'             => $this->moduleRubric,
+            'latestRubricAssessment'   => $this->latestRubricAssessment,
+            'conductAssessmentUrl'     => $this->moduleRubric
+                ? RubricAssessmentResource::getUrl('create') . '?rubric_id=' . $this->moduleRubric->id . '&mentee_id=' . $this->participant->user_id
+                : RubricAssessmentResource::getUrl('create'),
         ];
     }
 
@@ -320,6 +335,23 @@ class ReviewModuleMentee extends Page implements HasForms
         }
 
         return true;
+    }
+
+    private function loadRubricData(): void
+    {
+        $programModuleId = $this->module->program_module_id;
+
+        $this->moduleRubric = ModuleRubric::where('program_module_id', $programModuleId)
+            ->where('is_active', true)
+            ->first();
+
+        if ($this->moduleRubric && $this->participant->user_id) {
+            $this->latestRubricAssessment = RubricAssessment::where('module_rubric_id', $this->moduleRubric->id)
+                ->where('mentee_id', $this->participant->user_id)
+                ->with(['mentor'])
+                ->latest('assessed_at')
+                ->first();
+        }
     }
 
     private function loadActivities(): void

@@ -42,16 +42,16 @@ class IndicatorReporting extends Page implements HasForms
 
         $user = auth()->user();
 
-        if ($user->hasRole('mentee')) {
+        if (! $user->can('page_IndicatorReporting')) {
             return false;
         }
 
-        // Super admin and admin always see this page
-        if ($user->hasRole(['super_admin', 'admin'])) {
+        // Admin-level permissions bypass the facility_id requirement
+        if ($user->can('view_any_indicator')) {
             return true;
         }
 
-        // Other roles need a facility assignment to report against
+        // Facility-level roles need a facility assignment to report against
         return $user->facility_id !== null;
     }
 

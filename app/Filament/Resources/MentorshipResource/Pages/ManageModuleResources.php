@@ -56,7 +56,7 @@ class ManageModuleResources extends Page
 
     private function isAdmin(): bool
     {
-        return auth()->user()?->hasAnyRole(['super_admin', 'admin']) ?? false;
+        return auth()->user()?->can('update_program::module') ?? false;
     }
 
     public function getResourceSections(): array

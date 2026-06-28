@@ -520,6 +520,70 @@
                     </div>
                     @endif
 
+                    {{-- ── Practical Assessment Result ──────────────────────── --}}
+                    @if($isEmonc)
+                    <div class="section-card">
+                        <div class="card-stripe" style="background:#7c3aed"></div>
+                        <div class="p-5 sm:p-6">
+                            <div class="flex items-center gap-3 mb-4">
+                                <div style="width:34px;height:34px;border-radius:10px;background:#ede9fe;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                                    <svg style="width:16px;height:16px;color:#7c3aed" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+                                </div>
+                                <h2 class="text-base font-bold text-slate-900 dark:text-white">Practical Assessment</h2>
+                            </div>
+
+                            @if($rubricAssessment ?? null)
+                                @php
+                                    $ra = $rubricAssessment;
+                                    $raPct = $ra->scorePercentage();
+                                    $raColor = $ra->passed ? '#16a34a' : ($raPct >= 60 ? '#d97706' : '#dc2626');
+                                    $raBg = $ra->passed ? '#f0fdf4' : '#fff7f7';
+                                    $raBdr = $ra->passed ? '#6ee7b7' : '#fca5a5';
+                                @endphp
+                                <div style="border-radius:14px;border:1.5px solid {{ $raBdr }};background:{{ $raBg }};overflow:hidden;">
+                                    {{-- Score bar --}}
+                                    <div style="padding:18px 20px;display:flex;align-items:center;gap:16px;">
+                                        <div>
+                                            <div style="font-size:30px;font-weight:800;color:{{ $raColor }};">
+                                                {{ $ra->score }}<span style="font-size:16px;font-weight:400;color:#9ca3af;">/{{ $ra->rubric->total_marks }}</span>
+                                            </div>
+                                            <div style="font-size:11px;color:#6b7280;">{{ $ra->rubric->title }}</div>
+                                        </div>
+                                        <div style="flex:1;height:8px;background:#e5e7eb;border-radius:999px;overflow:hidden;">
+                                            <div style="height:100%;border-radius:999px;background:{{ $raColor }};width:{{ $raPct }}%;"></div>
+                                        </div>
+                                        <div style="text-align:right;">
+                                            <div style="font-size:18px;font-weight:700;color:{{ $raColor }};">{{ $raPct }}%</div>
+                                            <span style="display:inline-block;padding:3px 12px;border-radius:20px;font-size:12px;font-weight:700;background:{{ $ra->passed ? '#16a34a' : '#dc2626' }};color:#fff;">
+                                                {{ $ra->passed ? 'PASS' : 'FAIL' }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    {{-- Meta --}}
+                                    <div style="padding:10px 20px 16px;border-top:1px solid {{ $raBdr }};display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between;">
+                                        <div style="font-size:12px;color:#6b7280;">
+                                            Assessed by <strong style="color:#374151;">{{ $ra->mentor->full_name }}</strong>
+                                            &nbsp;·&nbsp; {{ $ra->assessed_at->format('d M Y, H:i') }}
+                                        </div>
+                                        <a href="{{ url('/admin/rubric-assessments/' . $ra->id) }}"
+                                           style="font-size:12px;font-weight:600;color:#7c3aed;text-decoration:none;">
+                                            View full assessment →
+                                        </a>
+                                    </div>
+                                </div>
+                            @else
+                                <div style="text-align:center;padding:32px 20px;background:#f5f3ff;border:2px dashed #ddd6fe;border-radius:14px;">
+                                    <div style="width:52px;height:52px;border-radius:50%;background:#ede9fe;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
+                                        <svg style="width:24px;height:24px;color:#8b5cf6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                                    </div>
+                                    <p class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Practical Assessment Pending</p>
+                                    <p class="text-xs text-slate-500">Your mentor will conduct and record your practical assessment for this module.</p>
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                    @endif
+
                     {{-- ── Instructional videos ─────────────────────────────── --}}
                     @if($videos->isNotEmpty())
                     <div class="section-card">

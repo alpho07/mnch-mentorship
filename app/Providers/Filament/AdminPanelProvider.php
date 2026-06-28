@@ -16,6 +16,7 @@ use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
 use Filament\View\PanelsRenderHook;
+use App\Filament\Pages\MyProfile;
 use Filament\Widgets;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -48,6 +49,10 @@ class AdminPanelProvider extends PanelProvider
                     '<link rel="stylesheet" href="'.asset('css/filament-admin-theme.css').'?v='.filemtime(public_path('css/filament-admin-theme.css')).'">'
                 ),
             )
+            ->renderHook(
+                PanelsRenderHook::USER_MENU_PROFILE_BEFORE,
+                fn () => view('filament.components.user-menu-header'),
+            )
             ->navigationGroups([
                 'Dashboards',
                 'Mentorships',
@@ -68,20 +73,21 @@ class AdminPanelProvider extends PanelProvider
                     ->icon('heroicon-o-heart')
                     ->url('/admin/mentor-dashboard?program=newborn')
                     ->sort(1)
-                    ->visible(fn (): bool => auth()->check() && static::canSeeMentorshipsNav()),
+                    ->visible(false),
                 NavigationItem::make('Infant and Child Care')
                     ->group('Mentorships')
                     ->icon('heroicon-o-user-group')
                     ->url('/admin/mentor-dashboard?program=infant')
                     ->sort(2)
-                    ->visible(fn (): bool => auth()->check() && static::canSeeMentorshipsNav()),
+                    ->visible(false),
                 NavigationItem::make('Maternal Health (EmONC)')
                     ->group('Mentorships')
                     ->icon('heroicon-o-heart')
                     ->url('/admin/mentor-dashboard?program=emonc')
                     ->sort(3)
-                    ->visible(fn (): bool => auth()->check() && static::canSeeMentorshipsNav()),
+                    ->visible(false),
             ])
+            ->profile(MyProfile::class)
             ->userMenuItems([
                 MenuItem::make()
                     ->label('Home')
@@ -91,6 +97,10 @@ class AdminPanelProvider extends PanelProvider
                     ->label('Analytics Dashboard')
                     ->icon('heroicon-o-chart-bar')
                     ->url('/analytics/dashboard?mode=assessment'),
+                'profile' => MenuItem::make()
+                    ->label('My Profile')
+                    ->icon('heroicon-o-user-circle')
+                    ->url('/admin/my-profile'),
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
@@ -115,19 +125,24 @@ class AdminPanelProvider extends PanelProvider
             ->plugins([
                 FilamentShieldPlugin::make(),
             ])
-            ->homeUrl(fn () => auth()->check() && auth()->user()->hasRole('mentee')
-                ? '/admin/mentee-dashboard'
-                : '/admin'
-            )
+            ->homeUrl(function () {
+                if (! auth()->check()) {
+                    return '/admin';
+                }
+                $user = auth()->user();
+                if ($user->hasRole('mentee')) {
+                    return '/admin/mentee-dashboard';
+                }
+                if ($user->hasRole('head_drmh')) {
+                    return '/admin/head-drmh-dashboard';
+                }
+                return '/admin';
+            })
             ->authMiddleware([
                 Authenticate::class,
             ]);
     }
 
-    /**
-     * Visible to all mentor roles and super_admin.
-     * Mentees only see it when explicitly granted can_create_mentorships.
-     */
     private static function canSeeMentorshipsNav(): bool
     {
         $user = auth()->user();
@@ -135,19 +150,12 @@ class AdminPanelProvider extends PanelProvider
             return false;
         }
 
-        if ($user->hasRole([
-            'super_admin', 'admin', 'division', 'national',
-            'facility_mentor', 'facility_mentor_lead',
-            'spoke_mentor', 'spoke_mentor_lead',
-            'county_mentor_lead', 'subcounty_mentor_lead', 'national_mentor_lead',
-        ])) {
-            return true;
-        }
-
+        // Mentees only see mentorship nav when explicitly granted
         if ($user->hasRole('mentee')) {
             return $user->canCreateMentorships();
         }
 
-        return false;
+        // Anyone with mentorship training access sees the nav
+        return $user->can('view_any_mentorship::training');
     }
 }

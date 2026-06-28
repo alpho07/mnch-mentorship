@@ -22,12 +22,10 @@ class AssessmentDepartmentResource extends Resource {
     protected static ?string $recordTitleAttribute = 'name';
 
     public static function shouldRegisterNavigation(): bool {
-        return auth()->check() && auth()->user()->hasRole(['super_admin', 'admin', 'division']);
-    }
+        return auth()->check() && auth()->user()->can('view_any_assessment::department');}
 
     public static function canAccess(): bool {
-        return auth()->check() && auth()->user()->hasRole(['super_admin', 'admin', 'division']);
-    }
+        return auth()->check() && auth()->user()->can('view_any_assessment::department');}
 
     // ─────────────────────────────────────────────────────────────────────────
     // FORM

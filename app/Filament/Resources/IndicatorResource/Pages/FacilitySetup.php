@@ -38,12 +38,12 @@ class FacilitySetup extends Page implements HasForms
 
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->check() && ! auth()->user()->hasRole('mentee');
+        return auth()->check() && auth()->user()->can('view_any_indicator');
     }
 
     public static function canAccess(): bool
     {
-        return auth()->check();
+        return auth()->check() && auth()->user()->can('view_any_indicator');
     }
 
     // ──────────────────────────────────────────────────────────────────────────
