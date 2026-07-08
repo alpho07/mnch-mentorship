@@ -116,7 +116,7 @@ class MentorAnalyticsDashboardService
             ];
         }
 
-        usort($rows, fn ($a, $b) => strcmp($a['mentor_name'], $b['mentor_name']));
+        usort($rows, fn ($a, $b) => $b['cpd_total'] <=> $a['cpd_total']);
 
         return $rows;
     }
