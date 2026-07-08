@@ -130,7 +130,7 @@
         x-transition:leave-start="opacity-100"
         x-transition:leave-end="opacity-0"
         @click.self="close()"
-        class="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4"
+        class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 p-4"
     >
         <div
             @click.stop
@@ -143,7 +143,7 @@
             class="relative w-full max-w-xl rounded-2xl bg-white shadow-2xl dark:bg-gray-900"
         >
             {{-- Modal top bar: step counter + progress bar + close --}}
-            <div class="flex items-center gap-3 border-b border-gray-200 px-6 py-4 dark:border-gray-700">
+            <div class="flex items-center gap-3 border-b border-gray-200 px-8 py-5 dark:border-gray-700">
                 <span class="shrink-0 text-sm font-semibold text-gray-500 dark:text-gray-400">
                     Step <span x-text="step + 1" class="text-primary-600 dark:text-primary-400"></span> of 7
                 </span>
@@ -164,7 +164,7 @@
             </div>
 
             {{-- Step cards --}}
-            <div class="relative min-h-[300px] px-8 py-7">
+            <div class="relative min-h-[320px] px-10 py-8">
 
                 {{-- Step 1: Create a Mentorship --}}
                 <div x-show="step === 0"
@@ -295,13 +295,13 @@
             </div>
 
             {{-- Navigation footer --}}
-            <div class="flex items-center justify-between border-t border-gray-200 px-6 py-4 dark:border-gray-700">
+            <div class="flex items-center justify-between border-t border-gray-200 px-8 py-5 dark:border-gray-700">
                 <div>
                     <button
                         type="button"
                         x-show="step > 0"
                         @click="prev()"
-                        class="flex items-center gap-1.5 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
+                        class="flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-6 py-2.5 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
                     >
                         ← Back
                     </button>
@@ -311,14 +311,14 @@
                         type="button"
                         x-show="step < 6"
                         @click="next()"
-                        class="flex items-center gap-1.5 rounded-lg bg-primary-600 px-5 py-2 text-sm font-semibold text-white hover:bg-primary-700 dark:hover:bg-primary-700 focus:outline-none"
+                        class="flex items-center gap-2 rounded-xl bg-primary-600 px-7 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-primary-700 focus:outline-none"
                     >
                         Next Step →
                     </button>
                     <a
                         x-show="step === 6"
                         href="/admin/mentorship/create"
-                        class="flex items-center gap-1.5 rounded-lg bg-green-600 px-5 py-2 text-sm font-semibold text-white hover:bg-green-700 dark:hover:bg-green-700"
+                        class="flex items-center gap-2 rounded-xl bg-green-600 px-7 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-green-700"
                     >
                         ✚ Create My First Mentorship
                     </a>
