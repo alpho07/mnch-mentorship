@@ -159,17 +159,142 @@
                 </button>
             </div>
 
-            {{-- Step cards content area (filled in Task 4) --}}
-            <div class="min-h-[300px] px-8 py-7">
-                <p class="text-center text-base text-gray-500 dark:text-gray-400">
-                    Step <span x-text="step + 1"></span> content coming soon…
-                </p>
+            {{-- Step cards --}}
+            <div class="relative min-h-[300px] px-8 py-7">
+
+                {{-- Step 1: Create a Mentorship --}}
+                <div x-show="step === 0"
+                     x-transition:enter="transition ease-out duration-300"
+                     x-transition:enter-start="opacity-0 scale-95"
+                     x-transition:enter-end="opacity-100 scale-100"
+                     x-transition:leave="transition ease-in duration-200"
+                     x-transition:leave-start="opacity-100 scale-100"
+                     x-transition:leave-end="opacity-0 scale-95"
+                     class="flex flex-col items-center text-center">
+                    <x-filament::icon icon="heroicon-o-academic-cap" class="mb-4 h-16 w-16 text-primary-500" />
+                    <h2 class="mb-5 text-2xl font-bold text-gray-900 dark:text-white">Create a Mentorship</h2>
+                    <ul class="w-full space-y-3 text-left text-base text-gray-700 dark:text-gray-300">
+                        <li class="flex gap-2"><span class="mt-0.5 shrink-0 font-bold text-primary-500">✔</span>Select the county and facility where mentoring will happen</li>
+                        <li class="flex gap-2"><span class="mt-0.5 shrink-0 font-bold text-primary-500">✔</span>Choose the program (e.g. Newborn Care, Infant &amp; Child)</li>
+                        <li class="flex gap-2"><span class="mt-0.5 shrink-0 font-bold text-primary-500">✔</span>Set the start date, end date, and maximum number of mentees</li>
+                    </ul>
+                </div>
+
+                {{-- Step 2: Set Up a Class --}}
+                <div x-show="step === 1"
+                     x-transition:enter="transition ease-out duration-300"
+                     x-transition:enter-start="opacity-0 scale-95"
+                     x-transition:enter-end="opacity-100 scale-100"
+                     x-transition:leave="transition ease-in duration-200"
+                     x-transition:leave-start="opacity-100 scale-100"
+                     x-transition:leave-end="opacity-0 scale-95"
+                     class="flex flex-col items-center text-center">
+                    <x-filament::icon icon="heroicon-o-user-group" class="mb-4 h-16 w-16 text-primary-500" />
+                    <h2 class="mb-5 text-2xl font-bold text-gray-900 dark:text-white">Set Up a Class</h2>
+                    <ul class="w-full space-y-3 text-left text-base text-gray-700 dark:text-gray-300">
+                        <li class="flex gap-2"><span class="mt-0.5 shrink-0 font-bold text-primary-500">✔</span>Give the class a name, like "Cohort 1" or "July Group"</li>
+                        <li class="flex gap-2"><span class="mt-0.5 shrink-0 font-bold text-primary-500">✔</span>Set the class start and end dates within the mentorship period</li>
+                        <li class="flex gap-2"><span class="mt-0.5 shrink-0 font-bold text-primary-500">✔</span>One mentorship can run many classes — one after another or at the same time</li>
+                    </ul>
+                </div>
+
+                {{-- Step 3: Add Modules --}}
+                <div x-show="step === 2"
+                     x-transition:enter="transition ease-out duration-300"
+                     x-transition:enter-start="opacity-0 scale-95"
+                     x-transition:enter-end="opacity-100 scale-100"
+                     x-transition:leave="transition ease-in duration-200"
+                     x-transition:leave-start="opacity-100 scale-100"
+                     x-transition:leave-end="opacity-0 scale-95"
+                     class="flex flex-col items-center text-center">
+                    <x-filament::icon icon="heroicon-o-book-open" class="mb-4 h-16 w-16 text-primary-500" />
+                    <h2 class="mb-5 text-2xl font-bold text-gray-900 dark:text-white">Add Modules</h2>
+                    <ul class="w-full space-y-3 text-left text-base text-gray-700 dark:text-gray-300">
+                        <li class="flex gap-2"><span class="mt-0.5 shrink-0 font-bold text-primary-500">✔</span>Modules are the topics you will teach in this class</li>
+                        <li class="flex gap-2"><span class="mt-0.5 shrink-0 font-bold text-primary-500">✔</span>Pick them from the program's ready-made curriculum list</li>
+                        <li class="flex gap-2"><span class="mt-0.5 shrink-0 font-bold text-primary-500">✔</span>You can also add sessions to each module to break it into smaller lessons</li>
+                    </ul>
+                </div>
+
+                {{-- Step 4: Enroll Mentees --}}
+                <div x-show="step === 3"
+                     x-transition:enter="transition ease-out duration-300"
+                     x-transition:enter-start="opacity-0 scale-95"
+                     x-transition:enter-end="opacity-100 scale-100"
+                     x-transition:leave="transition ease-in duration-200"
+                     x-transition:leave-start="opacity-100 scale-100"
+                     x-transition:leave-end="opacity-0 scale-95"
+                     class="flex flex-col items-center text-center">
+                    <x-filament::icon icon="heroicon-o-users" class="mb-4 h-16 w-16 text-primary-500" />
+                    <h2 class="mb-5 text-2xl font-bold text-gray-900 dark:text-white">Enroll Mentees</h2>
+                    <ul class="w-full space-y-3 text-left text-base text-gray-700 dark:text-gray-300">
+                        <li class="flex gap-2"><span class="mt-0.5 shrink-0 font-bold text-primary-500">✔</span>Search for existing staff members and add them to the class</li>
+                        <li class="flex gap-2"><span class="mt-0.5 shrink-0 font-bold text-primary-500">✔</span>Or add a brand-new person by filling in their name, phone, and department</li>
+                        <li class="flex gap-2"><span class="mt-0.5 shrink-0 font-bold text-primary-500">✔</span>You can also import a list of mentees all at once from a CSV file</li>
+                    </ul>
+                </div>
+
+                {{-- Step 5: Start a Module --}}
+                <div x-show="step === 4"
+                     x-transition:enter="transition ease-out duration-300"
+                     x-transition:enter-start="opacity-0 scale-95"
+                     x-transition:enter-end="opacity-100 scale-100"
+                     x-transition:leave="transition ease-in duration-200"
+                     x-transition:leave-start="opacity-100 scale-100"
+                     x-transition:leave-end="opacity-0 scale-95"
+                     class="flex flex-col items-center text-center">
+                    <x-filament::icon icon="heroicon-o-play-circle" class="mb-4 h-16 w-16 text-primary-500" />
+                    <h2 class="mb-5 text-2xl font-bold text-gray-900 dark:text-white">Start a Module</h2>
+                    <ul class="w-full space-y-3 text-left text-base text-gray-700 dark:text-gray-300">
+                        <li class="flex gap-2"><span class="mt-0.5 shrink-0 font-bold text-primary-500">✔</span>When ready, click <strong>Start</strong> on a module to open attendance tracking</li>
+                        <li class="flex gap-2"><span class="mt-0.5 shrink-0 font-bold text-primary-500">✔</span>Mentees receive a link they tap to confirm they attended the session</li>
+                        <li class="flex gap-2"><span class="mt-0.5 shrink-0 font-bold text-primary-500">✔</span>You can see who has confirmed in real time from the module page</li>
+                    </ul>
+                </div>
+
+                {{-- Step 6: Mentees Confirm Attendance --}}
+                <div x-show="step === 5"
+                     x-transition:enter="transition ease-out duration-300"
+                     x-transition:enter-start="opacity-0 scale-95"
+                     x-transition:enter-end="opacity-100 scale-100"
+                     x-transition:leave="transition ease-in duration-200"
+                     x-transition:leave-start="opacity-100 scale-100"
+                     x-transition:leave-end="opacity-0 scale-95"
+                     class="flex flex-col items-center text-center">
+                    <x-filament::icon icon="heroicon-o-check-badge" class="mb-4 h-16 w-16 text-primary-500" />
+                    <h2 class="mb-5 text-2xl font-bold text-gray-900 dark:text-white">Mentees Confirm Attendance</h2>
+                    <ul class="w-full space-y-3 text-left text-base text-gray-700 dark:text-gray-300">
+                        <li class="flex gap-2"><span class="mt-0.5 shrink-0 font-bold text-primary-500">✔</span>Each mentee taps their personal attendance link on their phone</li>
+                        <li class="flex gap-2"><span class="mt-0.5 shrink-0 font-bold text-primary-500">✔</span>Their attendance is recorded and their progress updates automatically</li>
+                        <li class="flex gap-2"><span class="mt-0.5 shrink-0 font-bold text-primary-500">✔</span>If a mentee cannot tap the link, you can mark them as attended manually</li>
+                    </ul>
+                </div>
+
+                {{-- Step 7: Complete & Close --}}
+                <div x-show="step === 6"
+                     x-transition:enter="transition ease-out duration-300"
+                     x-transition:enter-start="opacity-0 scale-95"
+                     x-transition:enter-end="opacity-100 scale-100"
+                     x-transition:leave="transition ease-in duration-200"
+                     x-transition:leave-start="opacity-100 scale-100"
+                     x-transition:leave-end="opacity-0 scale-95"
+                     class="flex flex-col items-center text-center">
+                    <x-filament::icon icon="heroicon-o-trophy" class="mb-4 h-16 w-16 text-primary-500" />
+                    <h2 class="mb-5 text-2xl font-bold text-gray-900 dark:text-white">Complete &amp; Close</h2>
+                    <ul class="w-full space-y-3 text-left text-base text-gray-700 dark:text-gray-300">
+                        <li class="flex gap-2"><span class="mt-0.5 shrink-0 font-bold text-primary-500">✔</span>Mark each module as <strong>Complete</strong> once all its sessions are done</li>
+                        <li class="flex gap-2"><span class="mt-0.5 shrink-0 font-bold text-primary-500">✔</span>Then end the class — all scores and attendance records are saved</li>
+                        <li class="flex gap-2"><span class="mt-0.5 shrink-0 font-bold text-primary-500">✔</span>Run a full class report to share results with your supervisor</li>
+                    </ul>
+                </div>
+
             </div>
 
             {{-- Navigation footer --}}
             <div class="flex items-center justify-between border-t border-gray-200 px-6 py-4 dark:border-gray-700">
                 <div>
                     <button
+                        type="button"
                         x-show="step > 0"
                         @click="prev()"
                         class="flex items-center gap-1.5 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
@@ -179,16 +304,17 @@
                 </div>
                 <div>
                     <button
+                        type="button"
                         x-show="step < 6"
                         @click="next()"
-                        class="flex items-center gap-1.5 rounded-lg bg-primary-600 px-5 py-2 text-sm font-semibold text-white hover:bg-primary-700 focus:outline-none"
+                        class="flex items-center gap-1.5 rounded-lg bg-primary-600 px-5 py-2 text-sm font-semibold text-white hover:bg-primary-700 dark:hover:bg-primary-700 focus:outline-none"
                     >
                         Next Step →
                     </button>
                     <a
                         x-show="step === 6"
                         href="/admin/mentorship/create"
-                        class="flex items-center gap-1.5 rounded-lg bg-green-600 px-5 py-2 text-sm font-semibold text-white hover:bg-green-700"
+                        class="flex items-center gap-1.5 rounded-lg bg-green-600 px-5 py-2 text-sm font-semibold text-white hover:bg-green-700 dark:hover:bg-green-700"
                     >
                         ✚ Create My First Mentorship
                     </a>
