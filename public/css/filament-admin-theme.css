@@ -685,3 +685,97 @@ textarea.fi-input:focus,
 .md-kpi-strip::-webkit-scrollbar { height: 4px; }
 .md-kpi-strip::-webkit-scrollbar-track { background: transparent; }
 .md-kpi-strip::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 9999px; }
+
+/* ── Guide walkthrough modal ───────────────────────────────── */
+.guide-modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    background-color: rgba(0, 0, 0, 0.65);
+}
+.guide-modal-panel {
+    position: relative;
+    width: 100%;
+    max-width: 38rem;
+    border-radius: 1.25rem;
+    background: #fff;
+    box-shadow: 0 25px 60px -12px rgba(0,0,0,0.45);
+    overflow: hidden;
+}
+.dark .guide-modal-panel {
+    background: #111827;
+}
+.guide-modal-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 1.25rem 2rem;
+}
+.dark .guide-modal-header { border-color: #374151; }
+
+.guide-modal-body {
+    padding: 2.5rem 3rem;
+    min-height: 340px;
+}
+.guide-modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-top: 1px solid #e5e7eb;
+    padding: 1.25rem 2rem;
+}
+.dark .guide-modal-footer { border-color: #374151; }
+
+.guide-btn-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    border: 1px solid #d1d5db;
+    background: #fff;
+    padding: 0.625rem 1.5rem;
+    border-radius: 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #374151;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.guide-btn-back:hover { background: #f9fafb; }
+.dark .guide-btn-back { border-color: #4b5563; background: #1f2937; color: #d1d5db; }
+.dark .guide-btn-back:hover { background: #374151; }
+
+.guide-btn-next {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: #0097A7;
+    padding: 0.625rem 1.75rem;
+    border-radius: 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #fff;
+    cursor: pointer;
+    border: none;
+    transition: background 0.15s;
+}
+.guide-btn-next:hover { background: #00838F; }
+
+.guide-btn-create {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: #16a34a;
+    padding: 0.625rem 1.75rem;
+    border-radius: 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #fff;
+    text-decoration: none;
+    transition: background 0.15s;
+}
+.guide-btn-create:hover { background: #15803d; }
