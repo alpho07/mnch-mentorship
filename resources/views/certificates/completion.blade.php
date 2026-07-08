@@ -37,6 +37,11 @@
     <div style="position:absolute;bottom:0.5mm;right:1.8mm;font-size:14pt;color:#c9a227;font-family:'DejaVu Serif',serif;line-height:1;">&#10022;</div>
 
     {{-- ── Signature block — pinned to bottom of right panel ─────────────── --}}
+    @php
+        $programName = strtolower($class->training?->program?->name ?? '');
+        $isEmonc = str_contains($programName, 'maternal') && str_contains($programName, 'emonc');
+        $headLabel = $isEmonc ? 'Head DRMH, Ministry of Health' : 'Head MNCH, Ministry of Health';
+    @endphp
     <div style="position:absolute;bottom:11mm;left:91mm;right:10mm;">
         <table style="width:100%;border-collapse:collapse;">
             <tr>
@@ -58,7 +63,7 @@
                     <div style="font-size:9pt;font-weight:bold;color:#111827;">
                         {{ $participant->headDrmhApprovedBy?->full_name ?? 'Director, MNCH Division' }}
                     </div>
-                    <div style="font-size:7.5pt;color:#6b7280;">Head DRMH, Ministry of Health</div>
+                    <div style="font-size:7.5pt;color:#6b7280;">{{ $headLabel }}</div>
                     @if($participant->head_drmh_approved_at)
                     <div style="font-size:7pt;color:#9ca3af;">{{ \Carbon\Carbon::parse($participant->head_drmh_approved_at)->format('d M Y') }}</div>
                     @endif
