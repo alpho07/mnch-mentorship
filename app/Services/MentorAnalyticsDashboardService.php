@@ -63,15 +63,12 @@ class MentorAnalyticsDashboardService
             ->whereIn('status', ['enrolled', 'active', 'completed'])
             ->get();
 
-        // Pre-index all-class counts per training for the matrix
-        $classesByTraining = $allClasses->groupBy('training_id');
-
         $mentorIds = $trainings->pluck('mentor_id')->filter()->unique()->values()->toArray();
         $mentors   = $trainings->pluck('mentor')->filter()->unique('id')->keyBy('id');
         $cpdData   = app(CpdPointsService::class)->batchForMentors($mentorIds);
 
         // Matrix: one row per live class
-        $matrix = $this->buildMatrix($liveClasses, $trainings, $mentors, $participants, $cpdData, $classesByTraining);
+        $matrix = $this->buildMatrix($liveClasses, $trainings, $mentors, $participants, $cpdData);
 
         $kpis      = $this->buildKpis($mentors, $allClasses, $liveClasses, $participants, $cpdData);
         $chartData = $this->buildChartData($matrix, $allClasses, $mentors, $trainings, $cpdData);
@@ -82,7 +79,7 @@ class MentorAnalyticsDashboardService
 
     // ── Matrix: one row per live class ───────────────────────────────────────
 
-    private function buildMatrix($liveClasses, $trainings, $mentors, $participants, array $cpdData, $classesByTraining = null): array
+    private function buildMatrix($liveClasses, $trainings, $mentors, $participants, array $cpdData): array
     {
         $rows = [];
         foreach ($liveClasses as $class) {
@@ -99,14 +96,9 @@ class MentorAnalyticsDashboardService
                 ->values()
                 ->toArray();
 
-            // Classes completed/total for this training
-            $trainingClasses      = $classesByTraining?->get($class->training_id) ?? collect();
-            $classesTotal         = $trainingClasses->count();
-            $classesCompleted     = $trainingClasses->where('status', 'completed')->count();
-
             // Modules completed/total for this class
-            $modulesTotal         = $class->classModules->count();
-            $modulesCompleted     = $class->classModules->where('status', 'completed')->count();
+            $modulesTotal     = $class->classModules->count();
+            $modulesCompleted = $class->classModules->where('status', 'completed')->count();
 
             $rows[] = [
                 'class_id'          => $class->id,
@@ -125,8 +117,6 @@ class MentorAnalyticsDashboardService
                 'cpd_level'         => $cpd['level']['name'],
                 'cpd_level_short'   => $cpd['level']['short'],
                 'cpd_level_color'   => $cpd['level']['color'],
-                'classes_completed' => $classesCompleted,
-                'classes_total'     => $classesTotal,
                 'modules_completed' => $modulesCompleted,
                 'modules_total'     => $modulesTotal,
             ];
@@ -289,4 +279,5 @@ class MentorAnalyticsDashboardService
         return array_slice($insights, 0, 5);
     }
 }
+
 

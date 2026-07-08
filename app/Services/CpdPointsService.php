@@ -102,11 +102,6 @@ class CpdPointsService
 
     public function forMentor(User $user): array
     {
-        // 3 pts per completed class led
-        $completedClassCount = MentorshipClass::whereHas(
-            'training', fn ($q) => $q->where('mentor_id', $user->id)
-        )->where('status', 'completed')->count();
-
         // 1 pt per completed module (ClassModule.status = 'completed') in their classes
         $completedModuleCount = DB::table('class_modules as cm')
             ->join('mentorship_classes as mc', 'mc.id', '=', 'cm.mentorship_class_id')
@@ -115,17 +110,13 @@ class CpdPointsService
             ->where('cm.status', 'completed')
             ->count();
 
-        $classPoints  = $completedClassCount * self::CERT_POINTS;
-        $modulePoints = $completedModuleCount * self::MODULE_POINTS;
-        $total        = $classPoints + $modulePoints;
+        $total = $completedModuleCount * self::MODULE_POINTS;
 
         return [
-            'total'               => $total,
-            'level'               => $this->level($total),
-            'class_points'        => $classPoints,
-            'module_points'       => $modulePoints,
-            'completed_classes'   => $completedClassCount,
-            'completed_modules'   => $completedModuleCount,
+            'total'             => $total,
+            'level'             => $this->level($total),
+            'module_points'     => $total,
+            'completed_modules' => $completedModuleCount,
         ];
     }
 
@@ -138,17 +129,7 @@ class CpdPointsService
             return [];
         }
 
-        // Completed classes per mentor
-        $classes = DB::table('mentorship_classes as mc')
-            ->join('trainings as t', 't.id', '=', 'mc.training_id')
-            ->whereIn('t.mentor_id', $mentorIds)
-            ->where('mc.status', 'completed')
-            ->selectRaw('t.mentor_id, COUNT(*) as cnt')
-            ->groupBy('t.mentor_id')
-            ->pluck('cnt', 'mentor_id')
-            ->toArray();
-
-        // Completed class modules per mentor
+        // 1 pt per completed class module
         $modules = DB::table('class_modules as cm')
             ->join('mentorship_classes as mc', 'mc.id', '=', 'cm.mentorship_class_id')
             ->join('trainings as t', 't.id', '=', 'mc.training_id')
@@ -161,14 +142,12 @@ class CpdPointsService
 
         $result = [];
         foreach ($mentorIds as $uid) {
-            $classCount = $classes[$uid] ?? 0;
-            $modCount   = $modules[$uid] ?? 0;
-            $total      = ($classCount * self::CERT_POINTS) + ($modCount * self::MODULE_POINTS);
+            $modCount = $modules[$uid] ?? 0;
+            $total    = $modCount * self::MODULE_POINTS;
 
             $result[$uid] = [
                 'total'             => $total,
                 'level'             => $this->level($total),
-                'completed_classes' => $classCount,
                 'completed_modules' => $modCount,
             ];
         }
