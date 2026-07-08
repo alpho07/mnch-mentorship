@@ -309,6 +309,8 @@
                         <th data-col="3" class="sortable-col">Facility <i class="fas fa-sort" style="font-size:.65rem;opacity:.4;"></i></th>
                         <th>Class</th>
                         <th data-col="5" class="sortable-col">Modules <i class="fas fa-sort" style="font-size:.65rem;opacity:.4;"></i></th>
+                        <th>Classes Done</th>
+                        <th>Modules Done</th>
                         <th data-col="6" class="sortable-col">Mentees <i class="fas fa-sort" style="font-size:.65rem;opacity:.4;"></i></th>
                         <th data-col="7" class="sortable-col">Certified <i class="fas fa-sort" style="font-size:.65rem;opacity:.4;"></i></th>
                         <th data-col="8" class="sortable-col">CPD <i class="fas fa-sort" style="font-size:.65rem;opacity:.4;"></i></th>
@@ -333,6 +335,12 @@
                             @if(!empty($row['modules']))
                             <div style="font-size:.68rem;color:var(--gray-400);line-height:1.3;margin-top:2px;">{{ implode(', ', array_slice($row['modules'], 0, 3)) }}{{ count($row['modules']) > 3 ? ' …' : '' }}</div>
                             @endif
+                        </td>
+                        <td style="text-align:center;white-space:nowrap;">
+                            <span style="font-weight:700;font-size:.85rem;color:{{ $row['classes_completed'] === $row['classes_total'] && $row['classes_total'] > 0 ? '#10B981' : 'var(--gray-700)' }};">{{ $row['classes_completed'] }}</span><span style="font-size:.78rem;color:var(--gray-400);">/{{ $row['classes_total'] }}</span>
+                        </td>
+                        <td style="text-align:center;white-space:nowrap;">
+                            <span style="font-weight:700;font-size:.85rem;color:{{ $row['modules_completed'] === $row['modules_total'] && $row['modules_total'] > 0 ? '#10B981' : 'var(--gray-700)' }};">{{ $row['modules_completed'] }}</span><span style="font-size:.78rem;color:var(--gray-400);">/{{ $row['modules_total'] }}</span>
                         </td>
                         <td style="text-align:center;font-weight:600;color:var(--gray-700);">{{ $row['mentees'] }}</td>
                         <td style="text-align:center;">
