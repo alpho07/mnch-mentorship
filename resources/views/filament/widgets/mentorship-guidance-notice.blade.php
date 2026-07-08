@@ -116,4 +116,85 @@
         </div>
     </x-filament::section>
 
+    {{-- ── Guide modal ────────────────────────────────────────── --}}
+    <div
+        x-show="open"
+        x-cloak
+        x-transition:enter="transition ease-out duration-200"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-150"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+        @click.self="close()"
+        class="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4"
+    >
+        <div
+            @click.stop
+            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0 scale-95 translate-y-4"
+            x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+            x-transition:leave="transition ease-in duration-200"
+            x-transition:leave-start="opacity-100 scale-100 translate-y-0"
+            x-transition:leave-end="opacity-0 scale-95 translate-y-4"
+            class="relative w-full max-w-xl rounded-2xl bg-white shadow-2xl dark:bg-gray-900"
+        >
+            {{-- Modal top bar: step counter + progress bar + close --}}
+            <div class="flex items-center gap-3 border-b border-gray-200 px-6 py-4 dark:border-gray-700">
+                <span class="shrink-0 text-sm font-semibold text-gray-500 dark:text-gray-400">
+                    Step <span x-text="step + 1" class="text-primary-600 dark:text-primary-400"></span> of 7
+                </span>
+                <div class="flex-1 h-2.5 rounded-full bg-gray-200 dark:bg-gray-700">
+                    <div
+                        class="h-2.5 rounded-full bg-primary-500 transition-all duration-500 ease-out"
+                        :style="`width: ${Math.round(((step + 1) / 7) * 100)}%`"
+                    ></div>
+                </div>
+                <button
+                    @click="close()"
+                    class="shrink-0 rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-300"
+                    aria-label="Close guide"
+                >
+                    <x-filament::icon icon="heroicon-o-x-mark" class="h-5 w-5" />
+                </button>
+            </div>
+
+            {{-- Step cards content area (filled in Task 4) --}}
+            <div class="min-h-[300px] px-8 py-7">
+                <p class="text-center text-base text-gray-500 dark:text-gray-400">
+                    Step <span x-text="step + 1"></span> content coming soon…
+                </p>
+            </div>
+
+            {{-- Navigation footer --}}
+            <div class="flex items-center justify-between border-t border-gray-200 px-6 py-4 dark:border-gray-700">
+                <div>
+                    <button
+                        x-show="step > 0"
+                        @click="prev()"
+                        class="flex items-center gap-1.5 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
+                    >
+                        ← Back
+                    </button>
+                </div>
+                <div>
+                    <button
+                        x-show="step < 6"
+                        @click="next()"
+                        class="flex items-center gap-1.5 rounded-lg bg-primary-600 px-5 py-2 text-sm font-semibold text-white hover:bg-primary-700 focus:outline-none"
+                    >
+                        Next Step →
+                    </button>
+                    <a
+                        x-show="step === 6"
+                        href="/admin/mentorship/create"
+                        class="flex items-center gap-1.5 rounded-lg bg-green-600 px-5 py-2 text-sm font-semibold text-white hover:bg-green-700"
+                    >
+                        ✚ Create My First Mentorship
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </div>
