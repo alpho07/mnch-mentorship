@@ -8,6 +8,7 @@ use App\Models\Cadre;
 use App\Models\ClassParticipant;
 use App\Models\Department;
 use App\Models\Facility;
+use App\Models\Program;
 use App\Models\MentorshipClass;
 use App\Models\Training;
 use App\Models\User;
@@ -236,7 +237,8 @@ class ManageClassMentees extends Page implements HasTable
                     ->label('Mentor Approve')
                     ->icon('heroicon-o-check-badge')
                     ->color('success')
-                    ->visible(fn (ClassParticipant $record) => $this->canMentorApprove() &&
+                    ->visible(fn (ClassParticipant $record) => $this->isEmonc() &&
+                        $this->canMentorApprove() &&
                         ! $record->mentor_approved_at &&
                         $record->status === 'completed'
                     )
@@ -379,7 +381,7 @@ class ManageClassMentees extends Page implements HasTable
                     ->requiresConfirmation()
                     ->modalHeading('Mentor Approve Selected Mentees')
                     ->modalDescription('This will approve all selected mentees who are eligible for certification.')
-                    ->visible(fn () => $this->canMentorApprove())
+                    ->visible(fn () => $this->isEmonc() && $this->canMentorApprove())
                     ->action(function ($records) {
                         $notificationService = app(EmoncNotificationService::class);
                         $approved = 0;
@@ -1170,6 +1172,15 @@ class ManageClassMentees extends Page implements HasTable
         }
 
         $this->class->refresh();
+    }
+
+    private function isEmonc(): bool
+    {
+        $program = Program::find($this->training->program_id);
+
+        return $program
+            && str_contains(strtolower($program->name), 'maternal')
+            && str_contains(strtolower($program->name), 'emonc');
     }
 
     private function canMentorApprove(): bool
