@@ -66,11 +66,10 @@ class MentorAnalyticsDashboardService
         $mentorIds = $trainings->pluck('mentor_id')->filter()->unique()->values()->toArray();
         $mentors   = $trainings->pluck('mentor')->filter()->unique('id')->keyBy('id');
 
-        // CPD: 1 pt per completed module in a completed class — computed from already-loaded data
+        // CPD: 1 pt per completed module (any class status) — computed from already-loaded data
         $trainingMentor = $trainings->pluck('mentor_id', 'id'); // training_id => mentor_id
         $cpdCounts = [];
         foreach ($allClasses as $cls) {
-            if ($cls->status !== 'completed') continue;
             $mentorId = $trainingMentor->get($cls->training_id);
             if (! $mentorId) continue;
             $cpdCounts[$mentorId] = ($cpdCounts[$mentorId] ?? 0)
@@ -295,6 +294,7 @@ class MentorAnalyticsDashboardService
         return array_slice($insights, 0, 5);
     }
 }
+
 
 
 
