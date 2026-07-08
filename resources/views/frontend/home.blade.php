@@ -82,62 +82,6 @@
 
         <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-            {{-- Three program cards --}}
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-
-                {{-- Newborn Care --}}
-                <div class="hero-card-1 group relative rounded-2xl p-6 hover:-translate-y-1 hover:shadow-2xl transition-all duration-300 overflow-hidden"
-                     style="background:rgba(255,255,255,0.10);border:1px solid rgba(255,255,255,0.18);backdrop-filter:blur(12px);">
-                    <div class="absolute top-0 left-0 right-0 h-0.5 rounded-t-2xl" style="background:linear-gradient(90deg,#0891B2,#06B6D4);"></div>
-                    <div class="w-11 h-11 rounded-2xl flex items-center justify-center mb-4" style="background:linear-gradient(135deg,#0891B2,#06B6D4);">
-                        <i class="fas fa-baby text-white text-sm"></i>
-                    </div>
-                    <h3 class="text-base font-extrabold text-white mb-2">Newborn Care</h3>
-                    <p class="text-sm leading-relaxed" style="color:rgba(255,255,255,0.68);">
-                        Facility-based mentorship focused on essential newborn care — thermal protection, infection prevention,
-                        feeding support, and danger-sign recognition, delivered by trained mentors at the point of care.
-                    </p>
-                    <div class="mt-5 inline-flex items-center gap-1.5 text-xs font-semibold text-cyan-300">
-                        <span class="h-1.5 w-1.5 rounded-full bg-cyan-400"></span> Facility Mentorship · 12 Modules
-                    </div>
-                </div>
-
-                {{-- Infant & Child Care --}}
-                <div class="hero-card-2 group relative rounded-2xl p-6 hover:-translate-y-1 hover:shadow-2xl transition-all duration-300 overflow-hidden"
-                     style="background:rgba(255,255,255,0.10);border:1px solid rgba(255,255,255,0.18);backdrop-filter:blur(12px);">
-                    <div class="absolute top-0 left-0 right-0 h-0.5 rounded-t-2xl" style="background:linear-gradient(90deg,#15803D,#22C55E);"></div>
-                    <div class="w-11 h-11 rounded-2xl flex items-center justify-center mb-4" style="background:linear-gradient(135deg,#15803D,#22C55E);">
-                        <i class="fas fa-child text-white text-sm"></i>
-                    </div>
-                    <h3 class="text-base font-extrabold text-white mb-2">Infant &amp; Child Care</h3>
-                    <p class="text-sm leading-relaxed" style="color:rgba(255,255,255,0.68);">
-                        Structured mentorship covering integrated management of childhood illness, nutrition, immunisation,
-                        and growth monitoring — building capacity for early identification and management of child health conditions.
-                    </p>
-                    <div class="mt-5 inline-flex items-center gap-1.5 text-xs font-semibold text-green-300">
-                        <span class="h-1.5 w-1.5 rounded-full bg-green-400"></span> Facility Mentorship · 10 Modules
-                    </div>
-                </div>
-
-                {{-- Maternal Health EmONC --}}
-                <div class="hero-card-3 group relative rounded-2xl p-6 hover:-translate-y-1 hover:shadow-2xl transition-all duration-300 overflow-hidden"
-                     style="background:rgba(255,255,255,0.10);border:1px solid rgba(255,255,255,0.18);backdrop-filter:blur(12px);">
-                    <div class="absolute top-0 left-0 right-0 h-0.5 rounded-t-2xl" style="background:linear-gradient(90deg,#BE123C,#F43F5E);"></div>
-                    <div class="w-11 h-11 rounded-2xl flex items-center justify-center mb-4" style="background:linear-gradient(135deg,#BE123C,#F43F5E);">
-                        <i class="fas fa-heartbeat text-white text-sm"></i>
-                    </div>
-                    <h3 class="text-base font-extrabold text-white mb-2">Maternal Health <span style="color:#FDA4AF;">(EmONC)</span></h3>
-                    <p class="text-sm leading-relaxed" style="color:rgba(255,255,255,0.68);">
-                        Emergency Obstetric and Newborn Care mentorship targeting reduction of maternal and perinatal mortality.
-                        Covers 13 modules — haemorrhage, eclampsia, assisted delivery, neonatal resuscitation — with structured
-                        activities, video review, and dual-approval certification.
-                    </p>
-                    <div class="mt-5 inline-flex items-center gap-1.5 text-xs font-semibold text-rose-300">
-                        <span class="h-1.5 w-1.5 rounded-full bg-rose-400"></span> Facility Mentorship · 13 Modules
-                    </div>
-                </div>
-
-            </div>
         </div>
     </section>
 
