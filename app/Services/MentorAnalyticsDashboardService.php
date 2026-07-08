@@ -273,3 +273,4 @@ class MentorAnalyticsDashboardService
         return array_slice($insights, 0, 5);
     }
 }
+
