@@ -13,10 +13,10 @@ class MentorAnalyticsDashboardService
 {
     private const SENIOR_ROLES = ['super_admin', 'admin', 'division', 'national'];
 
-    public function build(User $viewer, array $filters = []): array
+    public function build(?User $viewer, array $filters = []): array
     {
         // Scope trainings visible to this viewer
-        if ($viewer->hasRole(self::SENIOR_ROLES)) {
+        if ($viewer === null || $viewer->hasRole(self::SENIOR_ROLES)) {
             $trainingIds = Training::where('type', 'facility_mentorship')->pluck('id');
         } else {
             $asLead = Training::where('mentor_id', $viewer->id)
