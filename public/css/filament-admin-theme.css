@@ -591,3 +591,13 @@ textarea.fi-input:focus,
 .dark .fi-fo-field-wrp-label label,
 .dark .fi-fo-field-wrp > label { color: #80DEEA !important; }
 .dark .fi-btn.fi-btn-color-gray { border-color: rgba(0,151,167,0.25) !important; color: #80DEEA !important; }
+
+/* Vertically-scrolling checkbox list (module selector slide-over) */
+.module-list-scroll {
+    display: flex !important;
+    flex-direction: column !important;
+    max-height: 55vh !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding-right: 4px;
+}

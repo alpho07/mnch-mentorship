@@ -246,6 +246,12 @@ textarea.fi-input {
     }
 }
 
+/* Horizontal-scrolling checkbox list (module selector slide-over) */
+.module-list-hscroll > div {
+    flex: 0 0 auto;
+    min-width: 14rem;
+}
+
 /* Loading State */
 .fi-modal-loading {
     @apply animate-pulse;

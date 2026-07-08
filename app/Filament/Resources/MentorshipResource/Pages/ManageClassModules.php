@@ -86,6 +86,7 @@ class ManageClassModules extends Page implements HasTable {
                         ->searchable()
                         ->bulkToggleable()
                         ->required()
+                        ->extraAttributes(['class' => 'module-list-scroll'])
                         ->helperText('Modules already added to this class are excluded. Modules used in other classes remain available.'),
                         Forms\Components\Toggle::make('auto_create_sessions')
                         ->label('Auto-populate sessions from program template')
