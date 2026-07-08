@@ -1,3 +1,11 @@
+<style>
+@keyframes guide-pulse {
+    0%,100% { box-shadow: 0 0 0 0 rgba(0,151,167,0.55); }
+    50%      { box-shadow: 0 0 0 10px rgba(0,151,167,0); }
+}
+.guide-pulse-btn { animation: guide-pulse 2s ease-in-out infinite; }
+</style>
+
 <div
     x-data="{
         showPrompt: false,
@@ -62,16 +70,25 @@
     {{-- ── Existing guidance notice (content unchanged) ───────── --}}
     <x-filament::section>
         <div class="space-y-4">
-            <div class="flex items-start gap-3">
-                <x-filament::icon icon="heroicon-o-light-bulb" class="mt-1 h-6 w-6 text-primary-600" />
-                <div class="space-y-1">
-                    <h3 class="text-base font-semibold text-gray-950 dark:text-white">
-                        Prepare before starting mentorship
-                    </h3>
-                    <p class="text-sm leading-6 text-gray-600 dark:text-gray-300">
-                        First identify the gaps at the facility, then review the mentorship manuals so you know what to mentor on and how each session should be delivered. After that, confirm the mentee list and check every mentee has a name, email, phone, cadre, and department before you start the class.
-                    </p>
+            <div class="flex items-start justify-between gap-4">
+                <div class="flex items-start gap-3">
+                    <x-filament::icon icon="heroicon-o-light-bulb" class="mt-1 h-6 w-6 text-primary-600" />
+                    <div class="space-y-1">
+                        <h3 class="text-base font-semibold text-gray-950 dark:text-white">
+                            Prepare before starting mentorship
+                        </h3>
+                        <p class="text-sm leading-6 text-gray-600 dark:text-gray-300">
+                            First identify the gaps at the facility, then review the mentorship manuals so you know what to mentor on and how each session should be delivered. After that, confirm the mentee list and check every mentee has a name, email, phone, cadre, and department before you start the class.
+                        </p>
+                    </div>
                 </div>
+                <button
+                    @click="openGuide()"
+                    class="guide-pulse-btn shrink-0 flex items-center gap-2 rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-primary-700 focus:outline-none"
+                >
+                    <x-filament::icon icon="heroicon-o-play-circle" class="h-5 w-5 text-white" />
+                    How does this work?
+                </button>
             </div>
 
             <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
