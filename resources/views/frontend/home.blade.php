@@ -82,41 +82,6 @@
 
         <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-            {{-- Headline --}}
-            <div class="max-w-3xl mb-14">
-                <div class="hero-animate-1 inline-flex items-center gap-2 mb-5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest text-cyan-200 border border-white/20" style="background:rgba(255,255,255,0.10);">
-                    <i class="fas fa-heartbeat text-rose-300"></i> MNCH Kenya — National Mentorship Platform
-                </div>
-                <h1 class="hero-animate-2 text-3xl md:text-5xl font-extrabold text-white leading-tight tracking-tight">
-                    Strengthening Maternal, Newborn<br class="hidden md:block"> &amp; Child Health in Kenya
-                </h1>
-                <p class="hero-animate-3 mt-5 text-base md:text-lg leading-relaxed" style="color:rgba(255,255,255,0.75);">
-                    A national facility-based mentorship and training platform supporting healthcare workers across Kenya.
-                    The system tracks structured mentorship programs, participant progress, and certification —
-                    enabling data-driven improvements in care quality at every level.
-                </p>
-                <div class="hero-animate-4 mt-7 flex items-center gap-3 flex-wrap">
-                    @guest
-                    <a href="{{ url('/admin/login') }}" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white border border-white/30 hover:border-white/60 hover:scale-105 transition-all"
-                       style="background:rgba(255,255,255,0.15);backdrop-filter:blur(8px);">
-                        <i class="fas fa-sign-in-alt text-xs"></i> Sign In
-                    </a>
-                    @endguest
-                    <a href="{{ route('manual') }}" class="btn-manual-glow inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all hover:scale-105"
-                       style="backdrop-filter:blur(8px);border:1px solid;">
-                        <i class="fas fa-book text-xs"></i> User Manual
-                    </a>
-                    <a href="{{ route('resources.index') }}" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all hover:scale-105"
-                       style="background:rgba(255,255,255,0.12);color:rgba(255,255,255,0.85);border:1px solid rgba(255,255,255,0.2);backdrop-filter:blur(8px);">
-                        <i class="fas fa-book-open text-xs"></i> Browse Resources
-                    </a>
-                    <a href="{{ url('analytics/dashboard') }}" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all hover:scale-105"
-                       style="background:rgba(255,255,255,0.12);color:rgba(255,255,255,0.85);border:1px solid rgba(255,255,255,0.2);backdrop-filter:blur(8px);">
-                        <i class="fas fa-chart-bar text-xs"></i> Analytics
-                    </a>
-                </div>
-            </div>
-
             {{-- Three program cards --}}
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
 
