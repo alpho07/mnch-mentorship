@@ -2,7 +2,7 @@
 @php
     $dashTitle = match($mode) {
         'mentorship' => 'Infant, Child & Newborn Care Dashboard',
-        'emonc'      => 'Maternal Health (EmONC) Dashboard',
+
         'mentor'     => 'Mentor Analytics Dashboard',
         'assessment' => 'Assessment Analytics Dashboard',
         'training'   => 'Training Analytics Dashboard',
@@ -263,8 +263,6 @@ body { background: var(--gray-50); font-family: 'Segoe UI', system-ui, sans-seri
             <p>
                 @if($mode === 'training')
                     Comprehensive insights across Kenya healthcare training programs
-                @elseif($mode === 'emonc')
-                    Maternal EmONC clinical mentorship — modules, activities, video reviews &amp; certification pipeline
                 @elseif($mode === 'mentorship')
                     Infant, child &amp; newborn care facility-based mentorship — progress, modules &amp; mentee outcomes
                 @elseif($mode === 'mentor')
@@ -294,10 +292,7 @@ body { background: var(--gray-50); font-family: 'Segoe UI', system-ui, sans-seri
                     title="Infant, Child &amp; Newborn Care Dashboard — facility-based mentorship progress, modules &amp; mentee outcomes">
                     <i class="fas fa-user-friends me-1"></i> Mentorships
                 </button>
-                <button type="button" class="mode-btn {{ $mode === 'emonc' ? 'active' : '' }}" data-mode="emonc"
-                    title="Maternal Health (EmONC) Dashboard — EmONC mentorship modules, activities, video reviews &amp; certification pipeline">
-                    <i class="fas fa-heartbeat me-1"></i> EmONC
-                </button>
+
                 <button type="button" class="mode-btn {{ $mode === 'mentor' ? 'active' : '' }}" data-mode="mentor"
                     title="Mentor Analytics — mentor CPD points, active classes, mentee reach and leaderboards">
                     <i class="fas fa-user-tie me-1"></i> Mentors
@@ -321,8 +316,6 @@ body { background: var(--gray-50); font-family: 'Segoe UI', system-ui, sans-seri
 
 @if($mode === 'assessment')
     @include('analytics.dashboard.assessment-mode')
-@elseif($mode === 'emonc')
-    @include('analytics.dashboard.emonc-mode')
 @elseif($mode === 'mentor')
     @include('analytics.dashboard.mentor-mode')
 @else
