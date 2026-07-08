@@ -19,6 +19,7 @@ class ProgramModule extends Model {
         'name',
         'description',
         'order_sequence',
+        'total_time_minutes',
         'duration_weeks',
         'objectives',
         'content',
@@ -26,6 +27,7 @@ class ProgramModule extends Model {
     ];
     protected $casts = [
         'order_sequence' => 'integer',
+        'total_time_minutes' => 'integer',
         'duration_weeks' => 'integer',
         'objectives' => 'array',
         'content' => 'array',
