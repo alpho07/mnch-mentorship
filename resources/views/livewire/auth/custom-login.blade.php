@@ -146,191 +146,207 @@
         </div>
     </div>
 
-    @push('scripts')
-    <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        injectPasswordToggle('login-password');
-        document.addEventListener('livewire:navigated', function () {
-            setTimeout(function () { injectPasswordToggle('login-password'); }, 100);
-        });
-    });
-
-    function injectPasswordToggle(inputId) {
-        setTimeout(function () {
-            const input = document.getElementById(inputId);
-            if (!input) return;
-            const wrapper = input.closest('.fi-input-wrp') || input.parentElement;
-            wrapper.querySelectorAll('.pw-toggle-btn').forEach(b => b.remove());
-            wrapper.style.display    = 'flex';
-            wrapper.style.alignItems = 'center';
-            wrapper.style.position   = 'relative';
-            const eyeOpen = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
-            const eyeOff  = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'pw-toggle-btn';
-            btn.setAttribute('aria-label', 'Toggle password visibility');
-            btn.innerHTML = eyeOpen;
-            btn.isRevealed = false;
-            Object.assign(btn.style, {
-                display:'inline-flex', alignItems:'center', justifyContent:'center',
-                width:'36px', minWidth:'36px', height:'36px',
-                background:'none', border:'none', cursor:'pointer',
-                color:'#94a3b8', borderRadius:'6px',
-                transition:'color 0.15s, background 0.15s',
-                flexShrink:'0', marginRight:'2px',
-            });
-            btn.addEventListener('mouseenter', function () {
-                this.style.color = '#1245A8'; this.style.background = 'rgba(18,69,168,0.07)';
-            });
-            btn.addEventListener('mouseleave', function () {
-                this.style.color = '#94a3b8'; this.style.background = 'none';
-            });
-            btn.addEventListener('click', function () {
-                this.isRevealed = !this.isRevealed;
-                input.type     = this.isRevealed ? 'text' : 'password';
-                this.innerHTML = this.isRevealed ? eyeOff : eyeOpen;
-            });
-            wrapper.appendChild(btn);
-        }, 150);
-    }
-    </script>
-    @endpush
+    {{-- Filament's ->revealable() handles password toggle natively via Alpine --}}
 
     <style>
-        /* ── Resets ────────────────────────────────────────────────────── */
+        /* ── Resets ─────────────────────────────────────────────────────── */
         html,body{height:100%!important;margin:0!important;padding:0!important;overflow:hidden!important}
         .fi-simple-page,.fi-simple-main,.fi-simple-layout,.fi-simple{max-width:none!important;width:100%!important;padding:0!important;margin:0!important;background:transparent!important;min-height:100vh!important}
         *,*::before,*::after{box-sizing:border-box}
 
-        /* ── Shell ─────────────────────────────────────────────────────── */
+        /* ── Entrance animations ─────────────────────────────────────────── */
+        @keyframes fade-up   {from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes fade-down {from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes fade-in   {from{opacity:0}to{opacity:1}}
+        @keyframes spin      {to{transform:rotate(360deg)}}
+        @keyframes float-orb {0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(15px,-20px) scale(1.05)}66%{transform:translate(-10px,15px) scale(0.95)}}
+        @keyframes pulse-dot {0%,100%{opacity:1}50%{opacity:.35}}
+        @keyframes count-up  {from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+        /* Hero entrance */
+        .hero-badge    {animation:fade-down 0.55s cubic-bezier(.16,1,.3,1) both}
+        .hero-title    {animation:fade-up   0.65s cubic-bezier(.16,1,.3,1) 0.10s both}
+        .hero-desc     {animation:fade-up   0.65s cubic-bezier(.16,1,.3,1) 0.20s both}
+        .hero-stats    {animation:fade-up   0.65s cubic-bezier(.16,1,.3,1) 0.30s both}
+        .stat-val      {animation:count-up  0.5s  cubic-bezier(.16,1,.3,1) 0.35s both}
+        .feature-card:nth-child(1){animation:fade-up 0.55s cubic-bezier(.16,1,.3,1) 0.40s both}
+        .feature-card:nth-child(2){animation:fade-up 0.55s cubic-bezier(.16,1,.3,1) 0.48s both}
+        .feature-card:nth-child(3){animation:fade-up 0.55s cubic-bezier(.16,1,.3,1) 0.56s both}
+        .feature-card:nth-child(4){animation:fade-up 0.55s cubic-bezier(.16,1,.3,1) 0.64s both}
+        .hero-workflow {animation:fade-up   0.55s cubic-bezier(.16,1,.3,1) 0.68s both}
+        .hero-trust    {animation:fade-in   0.55s ease                     0.74s both}
+        /* Form entrance */
+        .auth-box      {animation:fade-up   0.70s cubic-bezier(.16,1,.3,1) 0.12s both}
+
+        /* ── Shell ───────────────────────────────────────────────────────── */
         .auth-shell{display:flex;height:100vh;width:100vw;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
 
-        /* ── Hero (left) ───────────────────────────────────────────────── */
-        .auth-hero{flex:0 0 58%;position:relative;overflow:hidden;overflow-y:auto;display:flex;align-items:flex-start}
+        /* ── Hero (left) ─────────────────────────────────────────────────── */
+        .auth-hero{flex:0 0 58%;position:relative;overflow:hidden;overflow-y:auto;display:flex;align-items:flex-start;scrollbar-width:none}
+        .auth-hero::-webkit-scrollbar{display:none}
         .hero-bg{position:fixed;left:0;top:0;width:58%;height:100vh;background:url('https://images.unsplash.com/photo-1584515933487-779824d29309?w=1200&q=80') center/cover no-repeat}
-        .hero-gradient{position:fixed;left:0;top:0;width:58%;height:100vh;background:linear-gradient(135deg,rgba(10,34,104,.95) 0%,rgba(18,69,168,.90) 40%,rgba(37,99,235,.84) 100%)}
+        .hero-gradient{position:fixed;left:0;top:0;width:58%;height:100vh;background:linear-gradient(135deg,rgba(8,28,90,.96) 0%,rgba(18,69,168,.91) 45%,rgba(37,99,235,.86) 100%)}
 
-        .hero-orb{position:fixed;border-radius:50%;pointer-events:none;background:radial-gradient(circle,rgba(147,197,253,.12) 0%,transparent 70%)}
-        .hero-orb-1{width:400px;height:400px;top:-80px;left:-60px;animation:float-orb 8s ease-in-out infinite}
-        .hero-orb-2{width:300px;height:300px;bottom:60px;left:30%;animation:float-orb 10s ease-in-out infinite reverse}
-        .hero-orb-3{width:200px;height:200px;top:40%;left:50%;animation:float-orb 7s ease-in-out infinite 2s}
-        @keyframes float-orb{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(15px,-20px) scale(1.05)}66%{transform:translate(-10px,15px) scale(0.95)}}
+        .hero-orb{position:fixed;border-radius:50%;pointer-events:none;background:radial-gradient(circle,rgba(147,197,253,.13) 0%,transparent 70%)}
+        .hero-orb-1{width:420px;height:420px;top:-90px;left:-70px;animation:float-orb 8s ease-in-out infinite}
+        .hero-orb-2{width:320px;height:320px;bottom:50px;left:28%;animation:float-orb 11s ease-in-out infinite reverse}
+        .hero-orb-3{width:220px;height:220px;top:38%;left:52%;animation:float-orb 7s ease-in-out infinite 2s}
 
-        .hero-content{position:relative;z-index:2;padding:2.5rem 3rem 3rem;max-width:600px;color:#fff}
+        .hero-content{position:relative;z-index:2;padding:2.5rem 2.75rem 2.75rem;max-width:620px;color:#fff}
 
-        .hero-badge{display:inline-flex;align-items:center;gap:6px;font-size:.7rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;background:rgba(255,255,255,.1);backdrop-filter:blur(6px);padding:.3rem .8rem;border-radius:999px;margin-bottom:1.25rem;border:1px solid rgba(255,255,255,.12)}
-        .hero-dot{width:6px;height:6px;border-radius:50%;background:#60a5fa;box-shadow:0 0 6px #60a5fa;animation:pulse-dot 2s ease-in-out infinite}
-        @keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:.4}}
+        .hero-badge{display:inline-flex;align-items:center;gap:6px;font-size:.7rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;background:rgba(255,255,255,.1);backdrop-filter:blur(8px);padding:.35rem .85rem;border-radius:999px;margin-bottom:1.35rem;border:1px solid rgba(255,255,255,.14)}
+        .hero-dot{width:7px;height:7px;border-radius:50%;background:#60a5fa;box-shadow:0 0 7px #60a5fa;animation:pulse-dot 2s ease-in-out infinite;flex-shrink:0}
 
-        .hero-title{font-size:2.1rem;font-weight:800;line-height:1.15;letter-spacing:-.035em;margin:0 0 .75rem}
-        .hero-title em{font-style:normal;color:#93c5fd}
-        .hero-desc{font-size:.88rem;line-height:1.6;opacity:.78;margin-bottom:1.5rem;font-weight:400}
+        .hero-title{font-size:2.15rem;font-weight:800;line-height:1.13;letter-spacing:-.04em;margin:0 0 .8rem}
+        .hero-title em{font-style:normal;background:linear-gradient(120deg,#93c5fd,#60a5fa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+        .hero-desc{font-size:.875rem;line-height:1.65;opacity:.75;margin-bottom:1.5rem;font-weight:400;max-width:480px}
 
-        .hero-stats{display:flex;gap:0;border-top:1px solid rgba(255,255,255,.12);border-bottom:1px solid rgba(255,255,255,.12);padding:.9rem 0;margin-bottom:1.5rem}
-        .hero-stats > div{flex:1;text-align:center;border-right:1px solid rgba(255,255,255,.1)}
+        .hero-stats{display:flex;border-top:1px solid rgba(255,255,255,.11);border-bottom:1px solid rgba(255,255,255,.11);padding:.85rem 0;margin-bottom:1.5rem}
+        .hero-stats > div{flex:1;text-align:center;border-right:1px solid rgba(255,255,255,.09);padding:0 .5rem}
         .hero-stats > div:last-child{border-right:none}
-        .stat-val{font-size:1.35rem;font-weight:800;letter-spacing:-.02em}
-        .stat-lbl{font-size:.65rem;text-transform:uppercase;letter-spacing:.05em;opacity:.55;margin-top:.1rem;font-weight:500}
+        .stat-val{font-size:1.4rem;font-weight:800;letter-spacing:-.025em;line-height:1}
+        .stat-lbl{font-size:.6rem;text-transform:uppercase;letter-spacing:.06em;opacity:.5;margin-top:.3rem;font-weight:600}
 
-        .hero-features{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:1.5rem}
-        .feature-card{display:flex;align-items:flex-start;gap:.6rem;padding:.7rem .75rem;border-radius:10px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.08);transition:all .25s}
-        .feature-card:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.15);transform:translateY(-1px)}
-        .feature-icon{width:32px;height:32px;border-radius:8px;flex-shrink:0;background:rgba(147,197,253,.15);display:flex;align-items:center;justify-content:center}
-        .feature-icon svg{width:16px;height:16px;stroke:#93c5fd;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-        .feature-text{display:flex;flex-direction:column;gap:.15rem;min-width:0}
-        .feature-text strong{font-size:.76rem;font-weight:700;color:#fff;line-height:1.2}
-        .feature-text span{font-size:.68rem;line-height:1.4;opacity:.6;font-weight:400}
+        .hero-features{display:grid;grid-template-columns:1fr 1fr;gap:.55rem;margin-bottom:1.4rem}
+        .feature-card{display:flex;align-items:flex-start;gap:.6rem;padding:.65rem .7rem;border-radius:11px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.09);transition:background .25s,border-color .25s,transform .25s}
+        .feature-card:hover{background:rgba(255,255,255,.13);border-color:rgba(255,255,255,.18);transform:translateY(-2px)}
+        .feature-icon{width:30px;height:30px;border-radius:8px;flex-shrink:0;background:rgba(147,197,253,.18);display:flex;align-items:center;justify-content:center;margin-top:1px}
+        .feature-icon svg{width:15px;height:15px;stroke:#93c5fd;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+        .feature-text{display:flex;flex-direction:column;gap:.12rem;min-width:0}
+        .feature-text strong{font-size:.74rem;font-weight:700;color:#fff;line-height:1.25}
+        .feature-text span{font-size:.67rem;line-height:1.45;opacity:.58;font-weight:400}
 
-        .hero-workflow{background:rgba(0,0,0,.15);backdrop-filter:blur(8px);border-radius:10px;padding:.75rem 1rem;margin-bottom:1.25rem;border:1px solid rgba(255,255,255,.06)}
-        .workflow-label{font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;opacity:.5;margin-bottom:.5rem}
-        .workflow-steps{display:flex;align-items:center}
-        .wf-step{display:flex;align-items:center;gap:.35rem;flex:1}
-        .wf-num{width:20px;height:20px;border-radius:50%;flex-shrink:0;background:rgba(147,197,253,.2);border:1.5px solid rgba(147,197,253,.4);display:flex;align-items:center;justify-content:center;font-size:.6rem;font-weight:800;color:#93c5fd}
-        .wf-step span{font-size:.66rem;font-weight:600;opacity:.75;line-height:1.2}
-        .wf-arrow{flex-shrink:0;margin:0 .15rem;opacity:.3}
-        .wf-arrow svg{width:12px;height:12px;stroke:#fff;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+        .hero-workflow{background:rgba(0,0,0,.18);backdrop-filter:blur(10px);border-radius:11px;padding:.7rem 1rem;margin-bottom:1.2rem;border:1px solid rgba(255,255,255,.07)}
+        .workflow-label{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;opacity:.45;margin-bottom:.5rem}
+        .workflow-steps{display:flex;align-items:center;gap:0}
+        .wf-step{display:flex;align-items:center;gap:.3rem;flex:1;min-width:0}
+        .wf-num{width:20px;height:20px;border-radius:50%;flex-shrink:0;background:rgba(147,197,253,.18);border:1.5px solid rgba(147,197,253,.35);display:flex;align-items:center;justify-content:center;font-size:.58rem;font-weight:800;color:#93c5fd}
+        .wf-step span{font-size:.63rem;font-weight:600;opacity:.72;line-height:1.25;white-space:nowrap}
+        .wf-arrow{flex-shrink:0;margin:0 .1rem;opacity:.25}
+        .wf-arrow svg{width:11px;height:11px;stroke:#fff;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
 
-        .hero-trust{display:flex;align-items:center;flex-wrap:wrap;gap:.35rem;font-size:.65rem;opacity:.45;font-weight:500;padding-top:.75rem;border-top:1px solid rgba(255,255,255,.08)}
-        .trust-label{font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-right:.15rem}
-        .trust-sep{opacity:.4}
+        .hero-trust{display:flex;align-items:center;flex-wrap:wrap;gap:.4rem;font-size:.62rem;opacity:.4;font-weight:500;padding-top:.8rem;border-top:1px solid rgba(255,255,255,.08)}
+        .trust-label{font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin-right:.1rem}
+        .trust-sep{opacity:.35}
 
-        /* ── Right panel ───────────────────────────────────────────────── */
-        .auth-right{
-            flex:1;display:flex;align-items:center;justify-content:center;
-            background:#f8faff;
-            background-image:radial-gradient(circle,rgba(26,84,200,.05) 1px,transparent 1px);
-            background-size:22px 22px;
-            overflow-y:auto;padding:2rem 1.5rem;
-        }
+        /* ── Right panel ─────────────────────────────────────────────────── */
+        .auth-right{flex:1;display:flex;align-items:center;justify-content:center;background:#f8faff;background-image:radial-gradient(circle,rgba(26,84,200,.05) 1px,transparent 1px);background-size:22px 22px;overflow-y:auto;padding:2rem 1.5rem}
         .auth-box{width:100%;max-width:420px}
 
-        /* ── MoH Logo ──────────────────────────────────────────────────── */
-        .moh-logo-wrap{
-            display:flex;
-            align-items:center;
-            justify-content:flex-start;
-            padding-bottom:1.4rem;
-            margin-bottom:1.5rem;
-            border-bottom:2px solid #DBEAFE;
-        }
-        .moh-logo-img{
-            height:72px;
-            width:auto;
-            max-width:100%;
-            object-fit:contain;
-            object-position:left center;
-            display:block;
-        }
+        /* ── MoH Logo ────────────────────────────────────────────────────── */
+        .moh-logo-wrap{display:flex;align-items:center;justify-content:flex-start;padding-bottom:1.4rem;margin-bottom:1.5rem;border-bottom:2px solid #DBEAFE}
+        .moh-logo-img{height:72px;width:auto;max-width:100%;object-fit:contain;object-position:left center;display:block}
 
-        /* ── Auth headings ─────────────────────────────────────────────── */
+        /* ── Auth headings ───────────────────────────────────────────────── */
         .auth-h1{font-size:1.5rem;font-weight:800;color:#111827;letter-spacing:-.03em;margin:0 0 .35rem;line-height:1.2}
         .auth-sub{font-size:.87rem;color:#6b7280;margin:0 0 1.5rem;line-height:1.5}
 
-        /* ── Submit button ─────────────────────────────────────────────── */
-        .auth-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:.5rem;padding:.8rem 1.5rem;margin-top:1.25rem;background:linear-gradient(135deg,#1245A8,#1A54C8);color:#fff;border:none;border-radius:12px;cursor:pointer;font-family:inherit;font-size:.9rem;font-weight:700;transition:all .2s;box-shadow:0 4px 14px rgba(18,69,168,.3)}
-        .auth-btn:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(18,69,168,.4)}
-        .auth-btn:active{transform:translateY(0)}
+        /* ── Submit button ───────────────────────────────────────────────── */
+        .auth-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:.5rem;padding:.85rem 1.5rem;margin-top:1.25rem;background:linear-gradient(135deg,#1245A8,#1A54C8);color:#fff;border:none;border-radius:12px;cursor:pointer;font-family:inherit;font-size:.9rem;font-weight:700;letter-spacing:-.01em;transition:all .2s;box-shadow:0 4px 16px rgba(18,69,168,.32)}
+        .auth-btn:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(18,69,168,.42)}
+        .auth-btn:active{transform:translateY(0);box-shadow:0 2px 8px rgba(18,69,168,.25)}
         .auth-btn:disabled{opacity:.6;cursor:wait;transform:none!important}
         .auth-btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
         .btn-idle{display:flex;align-items:center;gap:.4rem}
         .btn-loading{display:none;align-items:center;gap:.4rem}
 
-        /* ── Footer links ──────────────────────────────────────────────── */
+        /* ── Footer links ────────────────────────────────────────────────── */
         .login-footer{display:flex;justify-content:flex-end;margin-top:.5rem;margin-bottom:.1rem}
         .login-footer-center{justify-content:center;margin-top:1.25rem}
         .forgot-link{font-size:.76rem;font-weight:600;color:#1245A8;text-decoration:none;transition:color .15s}
         .forgot-link:hover{color:#0D3A8E}
 
-        /* ── Spinner ───────────────────────────────────────────────────── */
+        /* ── Spinner ─────────────────────────────────────────────────────── */
         .spin{animation:spin .8s linear infinite}
-        @keyframes spin{to{transform:rotate(360deg)}}
 
-        /* ── Filament overrides ────────────────────────────────────────── */
-        .auth-box .fi-fo-field-wrp{margin-bottom:.25rem}
-        .auth-box .fi-input-wrp{border-radius:10px!important;border-color:#d1d5db!important;transition:all .2s!important}
-        .auth-box .fi-input-wrp:focus-within{border-color:#1A54C8!important;box-shadow:0 0 0 3px rgba(26,84,200,.12)!important}
+        /* ── Filament input overrides ────────────────────────────────────── */
+        .auth-box .fi-fo-field-wrp{margin-bottom:.35rem}
+        .auth-box .fi-fo-field-wrp-label label{font-size:.82rem!important;font-weight:600!important;color:#374151!important;margin-bottom:.35rem!important}
+        .auth-box .fi-input-wrp{
+            border-radius:11px!important;
+            border-color:#d1d5db!important;
+            background:#fff!important;
+            transition:border-color .18s,box-shadow .18s!important;
+        }
+        .auth-box .fi-input-wrp:focus-within{
+            border-color:#1A54C8!important;
+            box-shadow:0 0 0 3.5px rgba(26,84,200,.13)!important;
+        }
 
-        /* ── Responsive ────────────────────────────────────────────────── */
-        @media(max-width:1100px){.hero-features{grid-template-columns:1fr}.hero-content{padding:2rem 2.5rem 2.5rem}}
+        /* Compact inline prefix — remove separator, tighten spacing */
+        .auth-box .fi-input-wrp-prefix{
+            border-inline-end:none!important;
+            border-right:none!important;
+            padding-inline-start:.75rem!important;
+            padding-inline-end:.25rem!important;
+            gap:.25rem!important;
+        }
+        /* Icon size */
+        .auth-box .fi-input-wrp-icon{
+            width:1rem!important;
+            height:1rem!important;
+            color:#9ca3af!important;
+            flex-shrink:0!important;
+        }
+        /* Reduce input left padding since icon is inline */
+        .auth-box .fi-fo-text-input .fi-input{
+            padding-inline-start:.35rem!important;
+        }
+
+        /* Suffix (password reveal button) */
+        .auth-box .fi-input-wrp-suffix{
+            border-inline-start:none!important;
+            border-left:none!important;
+            padding-inline-start:.25rem!important;
+            padding-inline-end:.5rem!important;
+        }
+        .auth-box .fi-input-wrp-suffix .fi-ac-action button,
+        .auth-box .fi-input-wrp-suffix button{
+            padding:.35rem!important;
+            border-radius:6px!important;
+            color:#9ca3af!important;
+            transition:color .15s,background .15s!important;
+        }
+        .auth-box .fi-input-wrp-suffix .fi-ac-action button:hover,
+        .auth-box .fi-input-wrp-suffix button:hover{
+            color:#1A54C8!important;
+            background:rgba(26,84,200,.08)!important;
+        }
+        .auth-box .fi-input-wrp-suffix svg{
+            width:1rem!important;
+            height:1rem!important;
+        }
+
+        /* Fix browser autofill background bleeding */
+        .auth-box .fi-input:-webkit-autofill,
+        .auth-box .fi-input:-webkit-autofill:hover,
+        .auth-box .fi-input:-webkit-autofill:focus,
+        .auth-box input:-webkit-autofill,
+        .auth-box input:-webkit-autofill:hover,
+        .auth-box input:-webkit-autofill:focus{
+            -webkit-box-shadow:0 0 0 1000px #ffffff inset!important;
+            -webkit-text-fill-color:#111827!important;
+            transition:background-color 9999s ease-in-out 0s;
+        }
+
+        /* Checkbox styling */
+        .auth-box .fi-fo-checkbox label{font-size:.82rem!important;color:#374151!important}
+
+        /* ── Responsive ──────────────────────────────────────────────────── */
+        @media(max-width:1100px){
+            .hero-features{grid-template-columns:1fr}
+            .hero-content{padding:2rem 2.25rem 2.5rem}
+        }
         @media(max-width:900px){
-            .auth-shell{flex-direction:column;height:auto;min-height:100vh}
+            /* Hide blue hero completely on tablet/mobile */
+            .auth-hero{display:none!important}
             html,body{overflow:auto!important}
-            .auth-hero{flex:none;min-height:auto;overflow-y:visible}
-            .hero-bg,.hero-gradient{position:absolute;width:100%;height:100%}
-            .hero-orb{display:none}
-            .hero-content{padding:2rem}
-            .hero-title{font-size:1.6rem}
-            .hero-features{grid-template-columns:1fr 1fr}
-            .hero-workflow,.hero-trust{display:none}
-            .auth-right{padding:1.5rem 1rem}
+            .auth-right{flex:1;padding:2rem 1.5rem}
         }
         @media(max-width:600px){
-            .hero-content{padding:1.5rem}
-            .hero-title{font-size:1.3rem}
-            .stat-val{font-size:1.15rem}
-            .hero-features{grid-template-columns:1fr}
+            .auth-right{padding:1.5rem 1rem}
             .moh-logo-img{height:56px}
+            .auth-h1{font-size:1.3rem}
         }
     </style>
 </div>

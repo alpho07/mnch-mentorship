@@ -31,6 +31,152 @@
     </section>
 
     {{-- ═══════════════════════════════════════════
+         HERO / INTRO
+    ═══════════════════════════════════════════ --}}
+    <section class="relative overflow-hidden py-20" style="background: linear-gradient(135deg, #0C1445 0%, #0F4C81 40%, #0D7377 75%, #14A085 100%);">
+        {{-- Animated background blobs --}}
+        <div class="absolute inset-0 pointer-events-none overflow-hidden">
+            <div class="hero-blob" style="width:520px;height:520px;top:-140px;right:-100px;background:radial-gradient(circle,rgba(20,160,133,0.35) 0%,transparent 70%);animation:blobDrift 12s ease-in-out infinite;"></div>
+            <div class="hero-blob" style="width:380px;height:380px;bottom:-80px;left:-60px;background:radial-gradient(circle,rgba(15,76,129,0.4) 0%,transparent 68%);animation:blobDrift 16s ease-in-out infinite reverse;"></div>
+            <div class="hero-blob" style="width:260px;height:260px;top:40%;left:38%;background:radial-gradient(circle,rgba(255,255,255,0.06) 0%,transparent 70%);animation:blobDrift 9s ease-in-out infinite 3s;"></div>
+            {{-- Subtle grid --}}
+            <svg class="absolute inset-0 w-full h-full opacity-[0.04]" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+                <defs><pattern id="hgrid" width="44" height="44" patternUnits="userSpaceOnUse"><path d="M 44 0 L 0 0 0 44" fill="none" stroke="white" stroke-width="1"/></pattern></defs>
+                <rect width="100%" height="100%" fill="url(#hgrid)"/>
+            </svg>
+        </div>
+
+        <style>
+            @keyframes blobDrift {
+                0%,100% { transform: translate(0,0) scale(1); }
+                33%      { transform: translate(18px,-22px) scale(1.05); }
+                66%      { transform: translate(-14px,16px) scale(0.97); }
+            }
+            @keyframes fadeSlideUp {
+                from { opacity:0; transform:translateY(28px); }
+                to   { opacity:1; transform:translateY(0); }
+            }
+            @keyframes manualGlow {
+                0%,100% { box-shadow:0 0 8px 2px rgba(250,204,21,0.35),0 0 0 0 rgba(250,204,21,0); }
+                50%     { box-shadow:0 0 22px 6px rgba(250,204,21,0.7),0 0 40px 10px rgba(251,146,60,0.3); }
+            }
+            .btn-manual-glow {
+                animation: manualGlow 2.2s ease-in-out infinite;
+                background: rgba(250,204,21,0.18) !important;
+                border-color: rgba(250,204,21,0.55) !important;
+                color: #fef08a !important;
+            }
+            .btn-manual-glow:hover {
+                animation: none;
+                background: rgba(250,204,21,0.30) !important;
+                box-shadow: 0 0 28px 8px rgba(250,204,21,0.55);
+            }
+            .hero-animate-1 { animation: fadeSlideUp .65s ease both .1s; }
+            .hero-animate-2 { animation: fadeSlideUp .65s ease both .25s; }
+            .hero-animate-3 { animation: fadeSlideUp .65s ease both .4s; }
+            .hero-animate-4 { animation: fadeSlideUp .65s ease both .55s; }
+            .hero-card-1    { animation: fadeSlideUp .6s ease both .5s; }
+            .hero-card-2    { animation: fadeSlideUp .6s ease both .65s; }
+            .hero-card-3    { animation: fadeSlideUp .6s ease both .8s; }
+        </style>
+
+        <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+            {{-- Headline --}}
+            <div class="max-w-3xl mb-14">
+                <div class="hero-animate-1 inline-flex items-center gap-2 mb-5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest text-cyan-200 border border-white/20" style="background:rgba(255,255,255,0.10);">
+                    <i class="fas fa-heartbeat text-rose-300"></i> MNCH Kenya — National Mentorship Platform
+                </div>
+                <h1 class="hero-animate-2 text-3xl md:text-5xl font-extrabold text-white leading-tight tracking-tight">
+                    Strengthening Maternal, Newborn<br class="hidden md:block"> &amp; Child Health in Kenya
+                </h1>
+                <p class="hero-animate-3 mt-5 text-base md:text-lg leading-relaxed" style="color:rgba(255,255,255,0.75);">
+                    A national facility-based mentorship and training platform supporting healthcare workers across Kenya.
+                    The system tracks structured mentorship programs, participant progress, and certification —
+                    enabling data-driven improvements in care quality at every level.
+                </p>
+                <div class="hero-animate-4 mt-7 flex items-center gap-3 flex-wrap">
+                    @guest
+                    <a href="{{ url('/admin/login') }}" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white border border-white/30 hover:border-white/60 hover:scale-105 transition-all"
+                       style="background:rgba(255,255,255,0.15);backdrop-filter:blur(8px);">
+                        <i class="fas fa-sign-in-alt text-xs"></i> Sign In
+                    </a>
+                    @endguest
+                    <a href="{{ route('manual') }}" class="btn-manual-glow inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all hover:scale-105"
+                       style="backdrop-filter:blur(8px);border:1px solid;">
+                        <i class="fas fa-book text-xs"></i> User Manual
+                    </a>
+                    <a href="{{ route('resources.index') }}" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all hover:scale-105"
+                       style="background:rgba(255,255,255,0.12);color:rgba(255,255,255,0.85);border:1px solid rgba(255,255,255,0.2);backdrop-filter:blur(8px);">
+                        <i class="fas fa-book-open text-xs"></i> Browse Resources
+                    </a>
+                    <a href="{{ url('analytics/dashboard') }}" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all hover:scale-105"
+                       style="background:rgba(255,255,255,0.12);color:rgba(255,255,255,0.85);border:1px solid rgba(255,255,255,0.2);backdrop-filter:blur(8px);">
+                        <i class="fas fa-chart-bar text-xs"></i> Analytics
+                    </a>
+                </div>
+            </div>
+
+            {{-- Three program cards --}}
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+                {{-- Newborn Care --}}
+                <div class="hero-card-1 group relative rounded-2xl p-6 hover:-translate-y-1 hover:shadow-2xl transition-all duration-300 overflow-hidden"
+                     style="background:rgba(255,255,255,0.10);border:1px solid rgba(255,255,255,0.18);backdrop-filter:blur(12px);">
+                    <div class="absolute top-0 left-0 right-0 h-0.5 rounded-t-2xl" style="background:linear-gradient(90deg,#0891B2,#06B6D4);"></div>
+                    <div class="w-11 h-11 rounded-2xl flex items-center justify-center mb-4" style="background:linear-gradient(135deg,#0891B2,#06B6D4);">
+                        <i class="fas fa-baby text-white text-sm"></i>
+                    </div>
+                    <h3 class="text-base font-extrabold text-white mb-2">Newborn Care</h3>
+                    <p class="text-sm leading-relaxed" style="color:rgba(255,255,255,0.68);">
+                        Facility-based mentorship focused on essential newborn care — thermal protection, infection prevention,
+                        feeding support, and danger-sign recognition, delivered by trained mentors at the point of care.
+                    </p>
+                    <div class="mt-5 inline-flex items-center gap-1.5 text-xs font-semibold text-cyan-300">
+                        <span class="h-1.5 w-1.5 rounded-full bg-cyan-400"></span> Facility Mentorship · 12 Modules
+                    </div>
+                </div>
+
+                {{-- Infant & Child Care --}}
+                <div class="hero-card-2 group relative rounded-2xl p-6 hover:-translate-y-1 hover:shadow-2xl transition-all duration-300 overflow-hidden"
+                     style="background:rgba(255,255,255,0.10);border:1px solid rgba(255,255,255,0.18);backdrop-filter:blur(12px);">
+                    <div class="absolute top-0 left-0 right-0 h-0.5 rounded-t-2xl" style="background:linear-gradient(90deg,#15803D,#22C55E);"></div>
+                    <div class="w-11 h-11 rounded-2xl flex items-center justify-center mb-4" style="background:linear-gradient(135deg,#15803D,#22C55E);">
+                        <i class="fas fa-child text-white text-sm"></i>
+                    </div>
+                    <h3 class="text-base font-extrabold text-white mb-2">Infant &amp; Child Care</h3>
+                    <p class="text-sm leading-relaxed" style="color:rgba(255,255,255,0.68);">
+                        Structured mentorship covering integrated management of childhood illness, nutrition, immunisation,
+                        and growth monitoring — building capacity for early identification and management of child health conditions.
+                    </p>
+                    <div class="mt-5 inline-flex items-center gap-1.5 text-xs font-semibold text-green-300">
+                        <span class="h-1.5 w-1.5 rounded-full bg-green-400"></span> Facility Mentorship · 10 Modules
+                    </div>
+                </div>
+
+                {{-- Maternal Health EmONC --}}
+                <div class="hero-card-3 group relative rounded-2xl p-6 hover:-translate-y-1 hover:shadow-2xl transition-all duration-300 overflow-hidden"
+                     style="background:rgba(255,255,255,0.10);border:1px solid rgba(255,255,255,0.18);backdrop-filter:blur(12px);">
+                    <div class="absolute top-0 left-0 right-0 h-0.5 rounded-t-2xl" style="background:linear-gradient(90deg,#BE123C,#F43F5E);"></div>
+                    <div class="w-11 h-11 rounded-2xl flex items-center justify-center mb-4" style="background:linear-gradient(135deg,#BE123C,#F43F5E);">
+                        <i class="fas fa-heartbeat text-white text-sm"></i>
+                    </div>
+                    <h3 class="text-base font-extrabold text-white mb-2">Maternal Health <span style="color:#FDA4AF;">(EmONC)</span></h3>
+                    <p class="text-sm leading-relaxed" style="color:rgba(255,255,255,0.68);">
+                        Emergency Obstetric and Newborn Care mentorship targeting reduction of maternal and perinatal mortality.
+                        Covers 13 modules — haemorrhage, eclampsia, assisted delivery, neonatal resuscitation — with structured
+                        activities, video review, and dual-approval certification.
+                    </p>
+                    <div class="mt-5 inline-flex items-center gap-1.5 text-xs font-semibold text-rose-300">
+                        <span class="h-1.5 w-1.5 rounded-full bg-rose-400"></span> Facility Mentorship · 13 Modules
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    {{-- ═══════════════════════════════════════════
          TRAINING + MENTORSHIP INSIGHTS
     ═══════════════════════════════════════════ --}}
     @if($trainingInsights['has_data'] ?? false)
@@ -302,6 +448,9 @@
     </section>
     @endif
 
+    {{-- ═══════════════════════════════════════════
+         RECENTLY CLOSED MENTORSHIPS
+    ═══════════════════════════════════════════ --}}
     {{-- ═══════════════════════════════════════════
          RECENTLY CLOSED MENTORSHIPS
     ═══════════════════════════════════════════ --}}

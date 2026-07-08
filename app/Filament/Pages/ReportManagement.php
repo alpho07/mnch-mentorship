@@ -27,7 +27,7 @@ class ReportManagement extends Page implements HasForms {
     public ?array $generateReportsData = [];
 
     public static function shouldRegisterNavigation(): bool {
-        return auth()->check() && auth()->user()->hasRole(['super_admin', 'admin', 'division', 'reporting']);
+        return auth()->check() && auth()->user()->can('page_ReportManagement');
     }
 
     public function mount(): void {

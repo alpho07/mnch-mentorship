@@ -23,8 +23,7 @@ class MonthlyReportResource extends Resource {
     protected static ?string $navigationLabel = 'Performance Tracker';
 
     public static function shouldRegisterNavigation(): bool {
-        return auth()->check() && auth()->user()->hasRole(['super_admin', 'admin', 'division', 'reporting']);
-    }
+        return auth()->check() && auth()->user()->can('view_any_monthly::report');}
 
     public static function form(Form $form): Form {
         return $form
@@ -82,7 +81,7 @@ class MonthlyReportResource extends Resource {
                                 ->default('draft')
                                 ->required()
                                 /* ->disabled(fn ($record): bool => 
-                                  !auth()->user()->hasRole(['Super Admin', 'Division Lead']) &&
+                                  !auth()->user()->can('delete_any_monthly::report') &&
                                   $record && $record->status === 'approved') */,
                                 Forms\Components\Textarea::make('comments')
                                 ->rows(3)
@@ -359,7 +358,7 @@ class MonthlyReportResource extends Resource {
                             /* ->visible(function (?MonthlyReport $record): bool {
                               return $record &&
                               $record->canApprove() &&
-                              auth()->user()->hasRole(['Super Admin', 'Division Lead']);
+                              auth()->user()->can('delete_any_monthly::report');
                               }) */
                             ->requiresConfirmation(),
                         ])

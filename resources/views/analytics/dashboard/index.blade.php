@@ -1,5 +1,15 @@
 @extends('layouts.dashboard')
-@section('title', ucfirst($mode).' Analytics Dashboard — MNCH')
+@php
+    $dashTitle = match($mode) {
+        'mentorship' => 'Infant, Child & Newborn Care Dashboard',
+        'emonc'      => 'Maternal Health (EmONC) Dashboard',
+        'mentor'     => 'Mentor Analytics Dashboard',
+        'assessment' => 'Assessment Analytics Dashboard',
+        'training'   => 'Training Analytics Dashboard',
+        default      => ucfirst($mode).' Analytics Dashboard',
+    };
+@endphp
+@section('title', $dashTitle.' — MNCH')
 
 @section('content')
 
@@ -249,10 +259,18 @@ body { background: var(--gray-50); font-family: 'Segoe UI', system-ui, sans-seri
     <div class="dash-hero-inner">
         <div class="dash-hero-left">
             <div class="hero-badge"><i class="fas fa-heartbeat"></i> MNCH Analytics</div>
-            <h1>{{ ucfirst($mode) }} Analytics Dashboard</h1>
+            <h1>{{ $dashTitle }}</h1>
             <p>
                 @if($mode === 'training')
                     Comprehensive insights across Kenya healthcare training programs
+                @elseif($mode === 'emonc')
+                    Maternal EmONC clinical mentorship — modules, activities, video reviews &amp; certification pipeline
+                @elseif($mode === 'mentorship')
+                    Infant, child &amp; newborn care facility-based mentorship — progress, modules &amp; mentee outcomes
+                @elseif($mode === 'mentor')
+                    Mentor performance, CPD points, and active class activity
+                @elseif($mode === 'assessment')
+                    Facility readiness assessments across counties and subcounties
                 @else
                     Deep analytics across facility-based mentorship programs
                 @endif
@@ -271,15 +289,26 @@ body { background: var(--gray-50); font-family: 'Segoe UI', system-ui, sans-seri
             </button>
 
             <!-- Mode toggle -->
-            <div class="mode-toggle" data-intro="Switch between Assessment, Training and Mentorship analytics modes." data-step="2">
-                <button type="button" class="mode-btn {{ $mode === 'assessment' ? 'active' : '' }}" data-mode="assessment">
+            <div class="mode-toggle" data-intro="Switch between Mentorship, EmONC, Mentor, Assessment and Training analytics modes." data-step="2">
+                <button type="button" class="mode-btn {{ $mode === 'mentorship' ? 'active' : '' }}" data-mode="mentorship"
+                    title="Infant, Child &amp; Newborn Care Dashboard — facility-based mentorship progress, modules &amp; mentee outcomes">
+                    <i class="fas fa-user-friends me-1"></i> Mentorships
+                </button>
+                <button type="button" class="mode-btn {{ $mode === 'emonc' ? 'active' : '' }}" data-mode="emonc"
+                    title="Maternal Health (EmONC) Dashboard — EmONC mentorship modules, activities, video reviews &amp; certification pipeline">
+                    <i class="fas fa-heartbeat me-1"></i> EmONC
+                </button>
+                <button type="button" class="mode-btn {{ $mode === 'mentor' ? 'active' : '' }}" data-mode="mentor"
+                    title="Mentor Analytics — mentor CPD points, active classes, mentee reach and leaderboards">
+                    <i class="fas fa-user-tie me-1"></i> Mentors
+                </button>
+                <button type="button" class="mode-btn {{ $mode === 'assessment' ? 'active' : '' }}" data-mode="assessment"
+                    title="Assessment Analytics — facility readiness assessments across counties and subcounties">
                     <i class="fas fa-clipboard-check me-1"></i> Assessments
                 </button>
-                <button type="button" class="mode-btn {{ $mode === 'training' ? 'active' : '' }}" data-mode="training">
+                <button type="button" class="mode-btn {{ $mode === 'training' ? 'active' : '' }}" data-mode="training"
+                    title="Training Analytics — comprehensive insights across Kenya healthcare training programs">
                     <i class="fas fa-chalkboard-teacher me-1"></i> Trainings
-                </button>
-                <button type="button" class="mode-btn {{ $mode === 'mentorship' ? 'active' : '' }}" data-mode="mentorship">
-                    <i class="fas fa-user-friends me-1"></i> Mentorships
                 </button>
             </div>
 
@@ -292,6 +321,10 @@ body { background: var(--gray-50); font-family: 'Segoe UI', system-ui, sans-seri
 
 @if($mode === 'assessment')
     @include('analytics.dashboard.assessment-mode')
+@elseif($mode === 'emonc')
+    @include('analytics.dashboard.emonc-mode')
+@elseif($mode === 'mentor')
+    @include('analytics.dashboard.mentor-mode')
 @else
 <!-- ████████ KPI STRIP ████████ -->
 <div class="kpi-strip-wrap" data-intro="Key performance metrics for the selected mode and filters." data-step="4">
@@ -823,6 +856,7 @@ body { background: var(--gray-50); font-family: 'Segoe UI', system-ui, sans-seri
         // ── Map ──
         Map: {
             init() {
+                if (!document.getElementById('kenyaMap')) return;
                 if (Dashboard.state.map) Dashboard.state.map.remove();
                 Dashboard.state.map = L.map('kenyaMap', {
                     center: [-0.5, 37.5], zoom: 7, minZoom: 6, maxZoom: 12,

@@ -5,8 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\ClassParticipant;
 use App\Models\MenteeModuleProgress;
 use App\Models\MentorshipClass;
+use App\Services\CpdPointsService;
+use App\Services\EmoncReportingService;
 use Illuminate\Support\Facades\Auth;
-use Spatie\Browsershot\Browsershot;
 
 class ClassReportController extends Controller
 {
@@ -14,16 +15,34 @@ class ClassReportController extends Controller
     private function authorizeClass(MentorshipClass $class): void
     {
         $user = Auth::user();
-        $isAdmin = $user->hasRole(['super_admin', 'admin', 'division', 'national_mentor']);
 
-        if (! $isAdmin) {
+        // Senior admins always pass
+        if ($user->hasRole(['super_admin', 'admin', 'division', 'national_mentor_lead'])) {
+            return;
+        }
+
+        // Head DRMH can view any certificate (they are the final certifying authority)
+        if ($user->hasRole('head_drmh')) {
+            return;
+        }
+
+        // Assigned mentor or co-mentor
+        if ($class->training->mentor_id === $user->id || $class->training->isCoMentor($user->id)) {
+            return;
+        }
+
+        // The mentee themselves can view their own certificate
+        if ($user->hasRole('mentee')) {
             abort_unless(
-                $class->training->mentor_id === $user->id ||
-                $class->training->isCoMentor($user->id),
+                $class->participants()->where('user_id', $user->id)->exists(),
                 403,
                 'You do not have access to this class report.'
             );
+
+            return;
         }
+
+        abort(403, 'You do not have access to this class report.');
     }
 
     // ── Shared data builder ───────────────────────────────────────────────────
@@ -74,7 +93,30 @@ class ClassReportController extends Controller
             ->filter()
             ->values();
 
-        return compact('class', 'modules', 'mentees', 'totalEnrolled', 'totalCompleted', 'avgAttendance', 'coMentors');
+        $emoncData = $this->buildEmoncData($class);
+
+        return array_merge(
+            compact('class', 'modules', 'mentees', 'totalEnrolled', 'totalCompleted', 'avgAttendance', 'coMentors'),
+            $emoncData
+        );
+    }
+
+    private function buildEmoncData(MentorshipClass $class): array
+    {
+        $programName = strtolower($class->training->program?->name ?? '');
+        $isEmonc = str_contains($programName, 'maternal') && str_contains($programName, 'emonc');
+
+        if (! $isEmonc) {
+            return [
+                'isEmonc' => false,
+                'emoncReport' => null,
+            ];
+        }
+
+        return [
+            'isEmonc' => true,
+            'emoncReport' => app(EmoncReportingService::class)->buildClassReport($class),
+        ];
     }
 
     public function certificateHtml(MentorshipClass $class, ClassParticipant $participant)
@@ -85,11 +127,12 @@ class ClassReportController extends Controller
         $class->load(['training.program', 'training.facility', 'training.mentor']);
         $participant->load('user');
 
-        abort_unless($participant->status === 'completed', 403, 'Mentee has not completed the class.');
+        $this->ensureCanViewCertificate($class, $participant);
 
-        $modules = $class->classModules()->with('programModule')->orderBy('order_sequence')->get();
+        $modules  = $class->classModules()->with('programModule')->orderBy('order_sequence')->get();
+        $cpd      = app(CpdPointsService::class)->forMentee($participant->user);
 
-        return view('certificates.completion', compact('class', 'participant', 'modules'));
+        return view('certificates.completion', compact('class', 'participant', 'modules', 'cpd'));
     }
 
     // ── HTML Report (web view) ────────────────────────────────────────────────
@@ -101,25 +144,23 @@ class ClassReportController extends Controller
         return view('reports.class-report', $data);
     }
 
-    // ── PDF Report (Browsershot → Chrome print) ───────────────────────────────
+    // ── PDF Report ───────────────────────────────────────────────────────────
     public function pdf(MentorshipClass $class)
     {
         $this->authorizeClass($class);
         $data = $this->buildReportData($class);
-        $html = view('reports.class-report', array_merge($data, ['isPdf' => true]))->render();
 
         $filename = 'MNCH-Report-'.str($class->name)->slug().'-'.now()->format('Y-m-d').'.pdf';
 
-        $pdf = $this->makeBrowsershot($html)
-            ->landscape()
-            ->format('A4')
-            ->margins(8, 8, 8, 8)
-            ->pdf();
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('reports.class-report', array_merge($data, ['isPdf' => true]))
+            ->setPaper('a4', 'landscape')
+            ->setOption([
+                'isHtml5ParserEnabled' => true,
+                'isRemoteEnabled'      => false,
+                'defaultFont'          => 'DejaVu Sans',
+            ]);
 
-        return response($pdf, 200, [
-            'Content-Type' => 'application/pdf',
-            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
-        ]);
+        return $pdf->download($filename);
     }
 
     public function certificate(MentorshipClass $class, ClassParticipant $participant)
@@ -127,39 +168,103 @@ class ClassReportController extends Controller
         $this->authorizeClass($class);
         abort_unless($participant->mentorship_class_id === $class->id, 404);
         $class->load(['training.program', 'training.facility', 'training.mentor']);
-        $participant->load('user');
-        abort_unless($participant->status === 'completed', 403, 'Mentee has not completed the class.');
+        $participant->load(['user', 'mentorApprovedBy', 'headDrmhApprovedBy']);
+        $this->ensureCanViewCertificate($class, $participant);
 
-        $modules = $class->classModules()->with('programModule')->orderBy('order_sequence')->get();
-        $html = view('certificates.completion', compact('class', 'participant', 'modules'))->render();
+        $modules  = $class->classModules()->with('programModule')->orderBy('order_sequence')->get();
+        $cpd      = app(CpdPointsService::class)->forMentee($participant->user);
 
-        $name = str($participant->user->name ?? 'mentee')->slug();
+        $name     = str($participant->user->name ?? 'mentee')->slug();
         $filename = "MNCH-Certificate-{$name}-".now()->format('Y-m-d').'.pdf';
 
-        $pdf = $this->makeBrowsershot($html)
-            ->landscape()
-            ->format('A4')
-            ->margins(0, 0, 0, 0)
-            ->pdf();
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('certificates.completion', compact('class', 'participant', 'modules', 'cpd'))
+            ->setPaper('a4', 'landscape')
+            ->setOption([
+                'isHtml5ParserEnabled' => true,
+                'isRemoteEnabled'      => false,
+                'defaultFont'          => 'DejaVu Sans',
+                'fontHeightRatio'      => 1.1,
+            ]);
 
-        return response($pdf, 200, [
-            'Content-Type' => 'application/pdf',
-            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
-        ]);
+        return $pdf->download($filename);
     }
 
-    private function makeBrowsershot(string $html): \Spatie\Browsershot\Browsershot
+    public function mentorCertificateHtml(MentorshipClass $class)
     {
-        $shot = \Spatie\Browsershot\Browsershot::html($html)
-            ->setChromePath(config('browsershot.chrome_path', '/usr/bin/chromium-browser'))
-            ->addChromiumArguments([
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage',
-            ])
-            ->showBackground()
-            ->waitUntilNetworkIdle();
+        $this->authorizeClass($class);
+        $class->load(['training.program', 'training.facility', 'training.mentor']);
+        abort_unless($class->status === 'completed', 403, 'Class is not yet completed.');
 
-        return $shot;
+        $modules  = $class->classModules()->with('programModule')->orderBy('order_sequence')->get();
+        $mentor   = $class->training->mentor;
+        $cpd      = $mentor ? app(CpdPointsService::class)->forMentor($mentor) : ['total' => 0, 'level' => ['name' => 'Foundation', 'short' => 'F', 'color' => '#6B7280']];
+
+        return view('certificates.mentor-completion', compact('class', 'modules', 'mentor', 'cpd'));
     }
+
+    public function mentorCertificate(MentorshipClass $class)
+    {
+        $this->authorizeClass($class);
+        $class->load(['training.program', 'training.facility', 'training.mentor']);
+        abort_unless($class->status === 'completed', 403, 'Class is not yet completed.');
+
+        $modules  = $class->classModules()->with('programModule')->orderBy('order_sequence')->get();
+        $mentor   = $class->training->mentor;
+        $cpd      = $mentor ? app(CpdPointsService::class)->forMentor($mentor) : ['total' => 0, 'level' => ['name' => 'Foundation', 'short' => 'F', 'color' => '#6B7280']];
+
+        $name     = str($mentor?->name ?? 'mentor')->slug();
+        $filename = "MNCH-Mentor-Certificate-{$name}-".now()->format('Y-m-d').'.pdf';
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('certificates.mentor-completion', compact('class', 'modules', 'mentor', 'cpd'))
+            ->setPaper('a4', 'landscape')
+            ->setOption([
+                'isHtml5ParserEnabled' => true,
+                'isRemoteEnabled'      => false,
+                'defaultFont'          => 'DejaVu Sans',
+                'fontHeightRatio'      => 1.1,
+            ]);
+
+        return $pdf->download($filename);
+    }
+
+    private function ensureCanViewCertificate(MentorshipClass $class, ClassParticipant $participant): void
+    {
+        $programName = strtolower($class->training->program?->name ?? '');
+        $isEmonc = str_contains($programName, 'maternal') && str_contains($programName, 'emonc');
+
+        if ($isEmonc) {
+            abort_unless($participant->isCertified(), 403, 'This mentee has not completed the mentor and Head DRMH approval process.');
+
+            return;
+        }
+
+        abort_unless($participant->status === 'completed', 403, 'Mentee has not completed the class.');
+    }
+
+    public function verifyCertificate(MentorshipClass $class, ClassParticipant $participant)
+    {
+        abort_unless($participant->mentorship_class_id === $class->id, 404);
+
+        $isValid = $participant->isCertified();
+
+        $class->load(['training.program', 'training.facility', 'training.mentor']);
+        $participant->load(['user', 'mentorApprovedBy', 'headDrmhApprovedBy']);
+
+        return view('certificates.verify', compact('class', 'participant', 'isValid'));
+    }
+
+    public function badge(MentorshipClass $class, ClassParticipant $participant)
+    {
+        abort_unless($participant->mentorship_class_id === $class->id, 404);
+        abort_unless($participant->isCertified(), 403);
+
+        $participant->load('user');
+        $class->load('training.program');
+
+        $svg = view('certificates.badge', compact('class', 'participant'))->render();
+
+        return response($svg, 200, ['Content-Type' => 'image/svg+xml']);
+    }
+
+
 }

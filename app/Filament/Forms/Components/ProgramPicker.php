@@ -13,7 +13,20 @@ class ProgramPicker extends Field
 
     public function getPrograms(): Collection
     {
-        $programs = Program::orderBy('name')->get();
+        $programs = Program::availableTo(auth()->user())->orderBy('name')->get();
+
+        // Move Maternal Health (EmONC) to the 3rd position so the card order is:
+        // Infant/Child, Newborn, EmONC, then any remaining programmes.
+        $emoncIndex = $programs->search(
+            fn (Program $p) => str_contains(strtolower($p->name), 'maternal')
+                && str_contains(strtolower($p->name), 'emonc')
+        );
+
+        if ($emoncIndex !== false) {
+            $emonc = $programs->pull($emoncIndex);
+            $insertAt = min(2, $programs->count());
+            $programs->splice($insertAt, 0, [$emonc]);
+        }
 
         // Load active ProgramModules in one query, then group by program
         $modulesByProgram = ProgramModule::whereIn('program_id', $programs->pluck('id'))

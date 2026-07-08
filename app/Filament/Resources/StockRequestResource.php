@@ -23,8 +23,7 @@ class StockRequestResource extends Resource {
     protected static ?int $navigationSort = 4;
 
     public static function shouldRegisterNavigation(): bool {
-        return auth()->check() && auth()->user()->hasRole(['super_admin', 'admin', 'division', 'inventory']);
-    }
+        return auth()->check() && auth()->user()->can('view_any_stock::request');}
 
     // Add notification badge to show pending approvals
     public static function getNavigationBadge(): ?string {

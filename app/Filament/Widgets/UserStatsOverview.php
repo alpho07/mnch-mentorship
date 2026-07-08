@@ -58,9 +58,10 @@ class UserStatsOverview extends BaseWidget {
                     ->descriptionIcon('heroicon-m-briefcase')
                     ->color('warning'),
                     Stat::make('Admin Staff', number_format(
-                                    ($roleCounts['super_admin'] ?? $roleCounts['Super Admin'] ?? 0) +
-                                    ($roleCounts['admin'] ?? $roleCounts['Admin'] ?? 0) +
-                                    ($roleCounts['division'] ?? $roleCounts['Division Lead'] ?? 0)
+                                    ($roleCounts['super_admin'] ?? 0) +
+                                    ($roleCounts['admin'] ?? 0) +
+                                    ($roleCounts['division'] ?? 0) +
+                                    ($roleCounts['division_lead'] ?? 0)
                             ))
                     ->description('Admins, division leads, super admins')
                     ->descriptionIcon('heroicon-m-shield-check')

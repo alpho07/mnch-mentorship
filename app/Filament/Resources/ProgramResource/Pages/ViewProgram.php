@@ -22,7 +22,7 @@ class ViewProgram extends ViewRecord
     public function getRelationManagers(): array
     {
         return [
-            ProgramResource\RelationManagers\ModulesRelationManager::class,
+            ProgramResource\RelationManagers\ProgramModulesRelationManager::class,
         ];
     }
 }

@@ -23,11 +23,11 @@ class ValidationQueue extends Page implements HasTable {
     protected static string $view = 'filament.pages.indicators.validation-queue';
 
     public static function shouldRegisterNavigation(): bool {
-        return auth()->check() && auth()->user()->hasRole(['super_admin', 'admin', 'county_mentor', 'national_mentor']);
+        return auth()->check() && auth()->user()->can('page_ValidationQueue');
     }
 
     public static function canAccess(): bool {
-        return static::shouldRegisterNavigation();
+        return auth()->check() && auth()->user()->can('page_ValidationQueue');
     }
 
     // ──────────────────────────────────────────────────────────────────────────

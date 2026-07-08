@@ -7,6 +7,7 @@ use App\Mail\CoMentorInvitation;
 use App\Models\ClassModule;
 use App\Models\MentorshipClass;
 use App\Models\MentorshipCoMentor;
+use App\Models\Program;
 use App\Models\Training;
 use App\Models\User;
 use Filament\Actions;
@@ -102,15 +103,19 @@ class ManageMentorshipClasses extends Page implements HasTable
                     Forms\Components\Grid::make(2)->schema([
                         Forms\Components\DatePicker::make('start_date')
                             ->label('Start Date')
-                            ->required()
+                            ->required(fn () => ! $this->isEmonc())
+                            ->visible(fn () => ! $this->isEmonc())
                             ->native(false)
                             ->live()
                             ->minDate(fn () => $this->record->start_date)
                             ->maxDate(fn () => $this->record->end_date)
-                            ->helperText(fn () => 'Between '.$this->record->start_date->format('M j, Y').' and '.$this->record->end_date->format('M j, Y')),
+                            ->helperText(fn () => $this->record->start_date && $this->record->end_date
+                                ? 'Between '.$this->record->start_date->format('M j, Y').' and '.$this->record->end_date->format('M j, Y')
+                                : null),
                         Forms\Components\DatePicker::make('end_date')
                             ->label('End Date')
-                            ->required()
+                            ->required(fn () => ! $this->isEmonc())
+                            ->visible(fn () => ! $this->isEmonc())
                             ->native(false)
                             ->minDate(fn (Forms\Get $get) => $get('start_date') ?: $this->record->start_date)
                             ->maxDate(fn () => $this->record->end_date)
@@ -199,6 +204,8 @@ class ManageMentorshipClasses extends Page implements HasTable
 
     private function getClassesTable(Table $table): Table
     {
+        $isEmonc = $this->isEmonc();
+
         return $table
             ->query(
                 MentorshipClass::query()
@@ -221,16 +228,28 @@ class ManageMentorshipClasses extends Page implements HasTable
                 //                            ]),
                 Tables\Columns\TextColumn::make('start_date')
                     ->date('M j, Y')
-                    ->sortable(),
+                    ->sortable()
+                    ->hidden($isEmonc),
                 Tables\Columns\TextColumn::make('end_date')
                     ->date('M j, Y')
-                    ->sortable(),
+                    ->sortable()
+                    ->hidden($isEmonc),
                 Tables\Columns\TextColumn::make('module_count')
                     ->label('Modules')
                     ->badge()
                     ->color('info'),
                 Tables\Columns\TextColumn::make('session_count')
-                    ->label('Sessions')
+                    ->label($isEmonc ? 'Activities' : 'Sessions')
+                    ->getStateUsing(function (MentorshipClass $record) use ($isEmonc) {
+                        if ($isEmonc) {
+                            return $record->classModules()
+                                ->with('programModule.activities')
+                                ->get()
+                                ->sum(fn ($cm) => $cm->programModule?->activities?->count() ?? 0);
+                        }
+
+                        return $record->session_count;
+                    })
                     ->badge()
                     ->color('primary'),
                 Tables\Columns\TextColumn::make('participants_count')
@@ -283,13 +302,15 @@ class ManageMentorshipClasses extends Page implements HasTable
                                 ->required(),
                             Forms\Components\Grid::make(2)->schema([
                                 Forms\Components\DatePicker::make('start_date')
-                                    ->required()
+                                    ->required(fn () => ! $this->isEmonc())
+                                    ->visible(fn () => ! $this->isEmonc())
                                     ->native(false)
                                     ->live()
                                     ->minDate(fn () => $this->record->start_date)
                                     ->maxDate(fn () => $this->record->end_date),
                                 Forms\Components\DatePicker::make('end_date')
-                                    ->required()
+                                    ->required(fn () => ! $this->isEmonc())
+                                    ->visible(fn () => ! $this->isEmonc())
                                     ->native(false)
                                     ->minDate(fn (Forms\Get $get) => $get('start_date') ?: $this->record->start_date)
                                     ->maxDate(fn () => $this->record->end_date)
@@ -421,8 +442,8 @@ class ManageMentorshipClasses extends Page implements HasTable
             'training_id' => $this->record->id,
             'name' => $data['name'],
             'description' => $data['description'] ?? null,
-            'start_date' => $data['start_date'],
-            'end_date' => $data['end_date'],
+            'start_date' => $data['start_date'] ?? null,
+            'end_date' => $data['end_date'] ?? null,
             'status' => 'draft',
             'created_by' => auth()->id(),
         ]);
@@ -478,5 +499,17 @@ class ManageMentorshipClasses extends Page implements HasTable
             ))
             ->persistent()
             ->send();
+    }
+
+    /**
+     * Determine whether the current mentorship is the EmONC package.
+     */
+    private function isEmonc(): bool
+    {
+        $program = Program::find($this->record->program_id);
+
+        return $program
+            && str_contains(strtolower($program->name), 'maternal')
+            && str_contains(strtolower($program->name), 'emonc');
     }
 }

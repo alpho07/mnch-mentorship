@@ -180,7 +180,7 @@ class AssessmentTeamService {
     public function getEligibleUsers(Assessment $assessment): \Illuminate\Database\Eloquent\Collection {
         $existingIds = $assessment->teamMembers()->pluck('users.id')->toArray();
 
-        return User::role('Assessor')
+        return User::role('assessor')
                         ->whereNotIn('id', $existingIds)
                         ->where('status', 'active')
                         ->orderBy('name')

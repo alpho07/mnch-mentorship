@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\MentorshipResource\Pages;
 
 use App\Filament\Resources\MentorshipTrainingResource;
-use App\Filament\Resources\ResourceResource;
 use App\Models\ClassModule;
 use App\Models\MentorshipClass;
 use App\Models\ProgramModule;
@@ -12,16 +11,9 @@ use App\Models\Training;
 use Filament\Actions;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\Page;
-use Filament\Tables;
-use Filament\Tables\Concerns\InteractsWithTable;
-use Filament\Tables\Contracts\HasTable;
-use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
 
-class ManageModuleResources extends Page implements HasTable
+class ManageModuleResources extends Page
 {
-    use InteractsWithTable;
-
     protected static string $resource = MentorshipTrainingResource::class;
 
     protected static string $view = 'filament.pages.manage-module-resources';
@@ -40,7 +32,13 @@ class ManageModuleResources extends Page implements HasTable
     {
         $this->training = $training;
         $this->class = $class;
-        $this->module = $module->load('programModule');
+        $this->module = $module->load([
+            'programModule' => fn ($q) => $q->with([
+                'contents',
+                'quizzes.questions',
+                'resources' => fn ($q) => $q->with(['primaryFile', 'category', 'resourceType']),
+            ]),
+        ]);
         $this->programModule = $module->programModule;
     }
 
@@ -51,14 +49,64 @@ class ManageModuleResources extends Page implements HasTable
 
     public function getSubheading(): ?string
     {
-        $count = $this->programModule->resources()->count();
+        $sectionCount = count($this->getResourceSections());
 
-        return "{$count} resource(s) linked to this module";
+        return "{$sectionCount} section(s) in this module";
     }
 
     private function isAdmin(): bool
     {
-        return auth()->user()?->hasAnyRole(['super_admin', 'admin']) ?? false;
+        return auth()->user()?->can('update_program::module') ?? false;
+    }
+
+    public function getResourceSections(): array
+    {
+        $introductions = $this->programModule->contents->where('type', 'introduction');
+        $videos = $this->programModule->contents->where('type', 'video');
+        $caseScenarios = $this->programModule->contents->where('type', 'case_scenario');
+        $preTests = $this->programModule->quizzes->filter(fn ($q) => $q->isPreTest());
+        $postTests = $this->programModule->quizzes->filter(fn ($q) => $q->isPostTest());
+        $resources = $this->programModule->resources;
+
+        return [
+            'introduction' => [
+                'title' => 'Introduction',
+                'icon' => 'heroicon-o-book-open',
+                'count' => $introductions->count() + ($this->programModule->description ? 1 : 0),
+                'items' => $introductions,
+                'has_description' => filled($this->programModule->description),
+            ],
+            'pre_test' => [
+                'title' => 'Pre-Test',
+                'icon' => 'heroicon-o-clipboard-document-check',
+                'count' => $preTests->count(),
+                'items' => $preTests,
+            ],
+            'video' => [
+                'title' => 'Hands-on Videos',
+                'icon' => 'heroicon-o-video-camera',
+                'count' => $videos->count(),
+                'items' => $videos,
+            ],
+            'case_scenario' => [
+                'title' => 'Case Scenarios',
+                'icon' => 'heroicon-o-document-text',
+                'count' => $caseScenarios->count(),
+                'items' => $caseScenarios,
+            ],
+            'post_test' => [
+                'title' => 'Post-Test',
+                'icon' => 'heroicon-o-check-badge',
+                'count' => $postTests->count(),
+                'items' => $postTests,
+            ],
+            'resources' => [
+                'title' => 'Attached Resources',
+                'icon' => 'heroicon-o-folder-open',
+                'count' => $resources->count(),
+                'items' => $resources,
+            ],
+        ];
     }
 
     protected function getHeaderActions(): array
@@ -105,154 +153,5 @@ class ManageModuleResources extends Page implements HasTable
                     }
                 }),
         ];
-    }
-
-    public function table(Table $table): Table
-    {
-        return $table
-            ->query(
-                Resource::query()
-                    ->whereHas('programModules', fn (Builder $q) => $q->where('program_module_id', $this->programModule->id))
-                    ->withCount('files')
-                    ->with('primaryFile')
-            )
-            ->columns([
-                Tables\Columns\TextColumn::make('title')
-                    ->searchable()
-                    ->sortable()
-                    ->weight('medium')
-                    ->description(fn (Resource $record) => $record->excerpt
-                        ? \Illuminate\Support\Str::limit($record->excerpt, 80)
-                        : null),
-                Tables\Columns\TextColumn::make('category.name')
-                    ->label('Category')
-                    ->badge()
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('resourceType.name')
-                    ->label('Type')
-                    ->badge()
-                    ->color('success'),
-                Tables\Columns\TextColumn::make('resource_content_type')
-                    ->label('Content')
-                    ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'file_link' => 'success',
-                        'file' => 'info',
-                        'link' => 'warning',
-                        default => 'gray',
-                    })
-                    ->icon(fn (string $state): string => match ($state) {
-                        'file_link' => 'heroicon-o-document-text',
-                        'file' => 'heroicon-o-document',
-                        'link' => 'heroicon-o-link',
-                        default => 'heroicon-o-lock-closed',
-                    })
-                    ->getStateUsing(function (Resource $record): string {
-                        $hasFile = $record->primaryFile?->exists() ?? false;
-                        $hasLink = filled($record->external_url);
-
-                        return match (true) {
-                            $hasFile && $hasLink => 'file_link',
-                            $hasFile => 'file',
-                            $hasLink => 'link',
-                            default => 'access_only',
-                        };
-                    })
-                    ->formatStateUsing(fn (string $state): string => match ($state) {
-                        'file_link' => 'File + Link',
-                        'file' => 'File Only',
-                        'link' => 'Link Only',
-                        'access_only' => 'Access Only',
-                        default => $state,
-                    }),
-                Tables\Columns\TextColumn::make('status')
-                    ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'draft' => 'warning',
-                        'published' => 'success',
-                        'archived' => 'danger',
-                        default => 'gray',
-                    }),
-                Tables\Columns\TextColumn::make('published_at')
-                    ->label('Published')
-                    ->date('d M Y')
-                    ->sortable()
-                    ->placeholder('Not published'),
-            ])
-            ->actions([
-                Tables\Actions\Action::make('preview_file')
-                    ->label('Preview')
-                    ->icon('heroicon-o-eye')
-                    ->color('info')
-                    ->iconButton()
-                    ->tooltip('Preview file')
-                    ->modalContent(fn (Resource $record) => view(
-                        'filament.modals.resource-file-preview',
-                        ['file' => $record->primaryFile]
-                    ))
-                    ->modalHeading(fn (Resource $record) => $record->title)
-                    ->modalWidth('5xl')
-                    ->modalSubmitAction(false)
-                    ->modalCancelActionLabel('Close')
-                    ->visible(fn (Resource $record): bool => $record->primaryFile?->exists() ?? false),
-
-                Tables\Actions\Action::make('download_file')
-                    ->label('Download')
-                    ->icon('heroicon-o-arrow-down-tray')
-                    ->color('success')
-                    ->iconButton()
-                    ->tooltip('Download file')
-                    ->url(fn (Resource $record): ?string => $record->primaryFile?->exists()
-                        ? route('admin.resource-files.download', $record->primaryFile)
-                        : null)
-                    ->visible(fn (Resource $record): bool => $record->primaryFile?->exists() ?? false),
-
-                Tables\Actions\Action::make('visit_link')
-                    ->label('Visit Link')
-                    ->icon('heroicon-o-link')
-                    ->color('warning')
-                    ->iconButton()
-                    ->tooltip('Open external link')
-                    ->url(fn (Resource $record): ?string => $record->external_url)
-                    ->openUrlInNewTab()
-                    ->visible(fn (Resource $record): bool => filled($record->external_url)),
-
-                Tables\Actions\Action::make('view_resource')
-                    ->label('View Resource')
-                    ->icon('heroicon-o-lock-open')
-                    ->color('gray')
-                    ->iconButton()
-                    ->tooltip('View resource details')
-                    ->url(fn (Resource $record): string => ResourceResource::getUrl('view', ['record' => $record]))
-                    ->visible(fn (Resource $record): bool => ! ($record->primaryFile?->exists() ?? false) && blank($record->external_url)),
-
-                Tables\Actions\Action::make('edit_resource')
-                    ->label('Edit')
-                    ->icon('heroicon-o-pencil-square')
-                    ->color('gray')
-                    ->iconButton()
-                    ->tooltip('Edit Resource')
-                    ->url(fn (Resource $record) => ResourceResource::getUrl('edit', ['record' => $record]))
-                    ->visible(fn () => $this->isAdmin()),
-
-                Tables\Actions\Action::make('detach')
-                    ->label('Detach')
-                    ->icon('heroicon-o-x-circle')
-                    ->color('danger')
-                    ->iconButton()
-                    ->tooltip('Remove from this module')
-                    ->requiresConfirmation()
-                    ->modalHeading('Detach Resource')
-                    ->modalDescription('This removes the resource from this module only — the resource itself is not deleted.')
-                    ->visible(fn () => $this->isAdmin())
-                    ->action(function (Resource $record) {
-                        $this->programModule->resources()->detach($record->id);
-                        Notification::make()->success()->title('Resource detached')->send();
-                    }),
-            ])
-            ->emptyStateHeading('No Resources Attached')
-            ->emptyStateDescription('Use "Attach Resources" above to link existing resources to this module.')
-            ->emptyStateIcon('heroicon-o-document-text')
-            ->defaultSort('title');
     }
 }

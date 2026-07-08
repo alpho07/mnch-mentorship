@@ -308,10 +308,10 @@ class MentorshipProgressService {
         }
 
         // Role scoping
-        if ($user->hasRole(['county_mentor'])) {
+        if ($user->hasRole(['county_mentor_lead'])) {
             $countyIds = $user->counties()->pluck('counties.id');
             $query->whereHas('subcounty', fn($q) => $q->whereIn('county_id', $countyIds));
-        } elseif (!$user->hasRole(['super_admin', 'admin', 'national_mentor'])) {
+        } elseif (!$user->hasRole(['super_admin', 'admin', 'national_mentor_lead'])) {
             // Facility user — only their own
             $query->where('id', $user->facility_id);
         }

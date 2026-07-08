@@ -9,7 +9,9 @@ use App\Models\MenteeModuleProgress;
 use App\Models\MentorshipClass;
 use App\Models\MentorshipCoMentor;
 use App\Models\Training;
+use App\Services\EmoncReportingService;
 use Filament\Pages\Page;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class MentorDashboard extends Page
 {
@@ -37,20 +39,12 @@ class MentorDashboard extends Page
 
     public static function shouldRegisterNavigation(): bool
     {
-        if (! auth()->check()) {
-            return false;
-        }
-
-        return auth()->user()->hasRole(array_merge(self::MENTOR_ROLES, self::SENIOR_ROLES));
+        return auth()->check() && auth()->user()->can('page_MentorDashboard');
     }
 
     public static function canAccess(): bool
     {
-        if (! auth()->check()) {
-            return false;
-        }
-
-        return auth()->user()->hasRole(array_merge(self::MENTOR_ROLES, self::SENIOR_ROLES));
+        return auth()->check() && auth()->user()->can('page_MentorDashboard');
     }
 
     public static function getNavigationBadge(): ?string
@@ -74,13 +68,31 @@ class MentorDashboard extends Page
     // ─── Loaded state ────────────────────────────────────────────────────────
     public array $kpis = [];
 
-    public array $mentorships = [];   // per-mentorship breakdown
+    public array $mentorshipItems = [];   // current-page mentorship breakdown
 
-    public array $menteeRoster = [];   // all mentees + their stats
+    public int $mentorshipsTotal = 0;
+
+    public int $mentorshipsPage = 1;
+
+    public int $mentorshipsPerPage = 10;
 
     public array $activityFeed = [];   // recent recommendations + confirmations
 
     public array $insights = [];   // derived flags for decision-making
+
+    public array $pendingVideoReviews = [];   // pending hands-on video reviews
+
+    public array $allMentorships = [];   // full unfiltered list (for client-side sort/filter)
+
+    public string $mdSort = 'created_at';
+
+    public string $mdDir = 'desc';
+
+    public string $mdStatus = '';
+
+    public string $mdProgram = '';
+
+    public string $mdSearch = '';
 
     public function mount(): void
     {
@@ -98,6 +110,15 @@ class MentorDashboard extends Page
 
         if (empty($trainingIds)) {
             $this->kpis = $this->emptyKpis();
+            $this->mentorshipItems = [];
+            $this->mentorshipsTotal = 0;
+            $this->mentorshipsPage = 1;
+            $this->insights = [
+                'mentees_needing_attention' => 0,
+                'low_attendance_classes'    => 0,
+                'stalled_modules'           => 0,
+                'recs_coverage'             => 100,
+            ];
 
             return;
         }
@@ -165,6 +186,9 @@ class MentorDashboard extends Page
         $completedClasses = $classes->where('status', 'completed')->count();
         $recCount = $progress->whereNotNull('mentor_recommendation')->count();
 
+        $pending = app(EmoncReportingService::class)->pendingItemsForUser($userId, $trainingIds);
+        $this->pendingVideoReviews = app(EmoncReportingService::class)->pendingVideoReviewItemsForUser($userId, $trainingIds);
+
         $this->kpis = [
             'active_mentorships' => $trainings->count(),
             'active_classes' => $activeClasses,
@@ -179,10 +203,13 @@ class MentorDashboard extends Page
             'module_completion_rate' => $totalModules > 0
                 ? round(($completedModules / $totalModules) * 100, 1)
                 : 0,
+            'pending_video_reviews' => $pending['video_reviews'],
+            'pending_mentor_approvals' => $pending['mentor_approvals'],
+            'pending_drmh_approvals' => $pending['drmh_approvals'],
         ];
 
         // ── Per-Mentorship Breakdown ──────────────────────────────────────────
-        $this->mentorships = [];
+        $mentorships = [];
         foreach ($trainingIds as $tid) {
             $training = $trainings->get($tid);
             if (! $training) {
@@ -207,13 +234,15 @@ class MentorDashboard extends Page
             $completed = $myProgress->where('status', 'completed')->count();
             $total = $notStarted + $inProgress + $completed;
 
-            $this->mentorships[] = [
+            $mentorships[] = [
                 'id' => $tid,
                 'title' => $training->title ?? 'Unnamed Mentorship',
                 'facility' => $training->facility?->name ?? '—',
+                'program_name' => $training->program?->name ?? '—',
                 'status' => $training->status,
                 'start_date' => $training->start_date,
                 'end_date' => $training->end_date,
+                'created_at' => $training->created_at?->toDateTimeString(),
                 'classes_count' => $myClasses->count(),
                 'active_classes' => $myClasses->where('status', 'active')->count(),
                 'mentees' => $mMentees,
@@ -228,46 +257,50 @@ class MentorDashboard extends Page
             ];
         }
 
-        // ── Mentee Roster ─────────────────────────────────────────────────────
-        $this->menteeRoster = [];
-        $seenUsers = [];
+        // Filter by program query param for Mentorships group links
+        $programFilter = request('program');
+        if ($programFilter && is_string($programFilter)) {
+            $filter = strtolower($programFilter);
+            $mentorships = collect($mentorships)
+                ->filter(function ($m) use ($filter) {
+                    $programName = strtolower($m['program_name'] ?? '');
 
-        foreach ($participants as $p) {
-            $uid = $p->user_id;
-            if (isset($seenUsers[$uid])) {
-                continue;
-            }
-            $seenUsers[$uid] = true;
-
-            $myEnrollments = $participants->where('user_id', $uid);
-            $myParticipantIds = $myEnrollments->pluck('id');
-            $myProg = $progress->whereIn('class_participant_id', $myParticipantIds->toArray());
-            $myModTotal = $myProg->count();
-            $myModDone = $myProg->where('status', 'completed')->count();
-            $myRecs = $myProg->whereNotNull('mentor_recommendation')->count();
-
-            $pct = $myModTotal > 0 ? round(($myModDone / $myModTotal) * 100) : 0;
-
-            $this->menteeRoster[] = [
-                'user_id' => $uid,
-                'name' => $p->user?->name ?? 'Unknown',
-                'email' => $p->user?->email ?? '—',
-                'cadre' => $p->user?->cadre?->name ?? '—',
-                'facility' => $p->user?->primary_facility?->name ?? '—',
-                'enrollments' => $myEnrollments->count(),
-                'modules_total' => $myModTotal,
-                'modules_done' => $myModDone,
-                'completion_pct' => $pct,
-                'recommendations' => $myRecs,
-                'status_flag' => $pct >= 80 ? 'on_track'
-                    : ($pct >= 40 ? 'in_progress' : 'needs_attention'),
-            ];
+                    return match ($filter) {
+                        'newborn' => $programName === 'newborn care',
+                        'infant'  => $programName === 'infant and child care',
+                        'emonc'   => str_contains($programName, 'emonc') || str_contains($programName, 'maternal'),
+                        default   => str_contains($programName, $filter),
+                    };
+                })
+                ->values()
+                ->toArray();
         }
 
-        // Sort: needs attention first, then by completion desc
-        usort($this->menteeRoster, fn ($a, $b) => $a['status_flag'] === 'needs_attention' ? -1
-            : ($b['status_flag'] === 'needs_attention' ? 1 : $b['completion_pct'] - $a['completion_pct'])
-        );
+        $this->allMentorships = $mentorships;
+        $this->mentorshipsPage = 1;
+        $this->applyMentorshipFilters();
+
+        // ── Mentees needing attention (no full roster) ────────────────────────
+        $progressByParticipant = $progress->groupBy('class_participant_id');
+        $needsAttentionCount = 0;
+        $seenUserIds = [];
+        foreach ($participants as $p) {
+            if (isset($seenUserIds[$p->user_id])) {
+                continue;
+            }
+            $seenUserIds[$p->user_id] = true;
+            $myParticipantIds = $participants->where('user_id', $p->user_id)->pluck('id')->toArray();
+            $myProg = $progress->whereIn('class_participant_id', $myParticipantIds);
+            $myModTotal = $myProg->count();
+            if ($myModTotal === 0) {
+                continue;
+            }
+            $myModDone = $myProg->where('status', 'completed')->count();
+            $pct = round(($myModDone / $myModTotal) * 100);
+            if ($pct < 40) {
+                $needsAttentionCount++;
+            }
+        }
 
         // ── Activity Feed ─────────────────────────────────────────────────────
         $recentRecs = MenteeModuleProgress::whereIn('class_module_id', $classModuleIds)
@@ -287,7 +320,6 @@ class MentorDashboard extends Page
         ])->toArray();
 
         // ── Insights ──────────────────────────────────────────────────────────
-        $needsAttentionCount = collect($this->menteeRoster)->where('status_flag', 'needs_attention')->count();
         $this->insights = [
             'mentees_needing_attention' => $needsAttentionCount,
             'low_attendance_classes' => $classes->filter(function ($c) use ($attendances, $participants) {
@@ -304,6 +336,107 @@ class MentorDashboard extends Page
             'recs_coverage' => $totalEnrollments > 0
                 ? round(($recCount / max($totalEnrollments, 1)) * 100)
                 : 0,
+        ];
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Sort / filter actions
+    // ─────────────────────────────────────────────────────────────────────────
+
+    public function setSort(string $field): void
+    {
+        if ($this->mdSort === $field) {
+            $this->mdDir = $this->mdDir === 'asc' ? 'desc' : 'asc';
+        } else {
+            $this->mdSort = $field;
+            $this->mdDir = 'asc';
+        }
+        $this->mentorshipsPage = 1;
+        $this->applyMentorshipFilters();
+    }
+
+    public function updatedMdSearch(): void
+    {
+        $this->mentorshipsPage = 1;
+        $this->applyMentorshipFilters();
+    }
+
+    public function updatedMdStatus(): void
+    {
+        $this->mentorshipsPage = 1;
+        $this->applyMentorshipFilters();
+    }
+
+    public function updatedMdProgram(): void
+    {
+        $this->mentorshipsPage = 1;
+        $this->applyMentorshipFilters();
+    }
+
+    public function setPage(int $page): void
+    {
+        $this->mentorshipsPage = max(1, $page);
+        $this->applyMentorshipFilters();
+    }
+
+    private function applyMentorshipFilters(): void
+    {
+        $items = collect($this->allMentorships);
+
+        if ($this->mdSearch !== '') {
+            $needle = strtolower($this->mdSearch);
+            $items = $items->filter(fn ($m) => str_contains(strtolower($m['title']), $needle)
+                || str_contains(strtolower($m['facility']), $needle)
+            );
+        }
+
+        if ($this->mdStatus !== '') {
+            $items = $items->filter(fn ($m) => $m['status'] === $this->mdStatus);
+        }
+
+        if ($this->mdProgram !== '') {
+            $items = $items->filter(fn ($m) => strtolower($m['program_name'] ?? '') === strtolower($this->mdProgram));
+        }
+
+        $sortKey = in_array($this->mdSort, ['title', 'facility', 'module_pct', 'mentees', 'created_at'])
+            ? $this->mdSort : 'created_at';
+
+        $sorted = $this->mdDir === 'asc'
+            ? $items->sortBy(fn ($m) => $m[$sortKey] ?? '')
+            : $items->sortByDesc(fn ($m) => $m[$sortKey] ?? '');
+
+        $all = $sorted->values();
+        $total = $all->count();
+        $page = max(1, $this->mentorshipsPage);
+        $perPage = $this->mentorshipsPerPage;
+
+        $this->mentorshipItems = $all->slice(($page - 1) * $perPage, $perPage)->values()->toArray();
+        $this->mentorshipsTotal = $total;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // View data
+    // ─────────────────────────────────────────────────────────────────────────
+
+    protected function getViewData(): array
+    {
+        $programOptions = collect($this->allMentorships)
+            ->pluck('program_name')
+            ->filter()
+            ->unique()
+            ->sort()
+            ->values()
+            ->toArray();
+
+        return [
+            'mentorships' => new LengthAwarePaginator(
+                $this->mentorshipItems,
+                $this->mentorshipsTotal,
+                $this->mentorshipsPerPage,
+                $this->mentorshipsPage,
+                ['path' => request()->url(), 'query' => request()->query()]
+            ),
+            'programOptions' => $programOptions,
         ];
     }
 
@@ -347,6 +480,9 @@ class MentorDashboard extends Page
             'completed_modules' => 0, 'attendance_rate' => 0,
             'avg_completion' => 0, 'recommendations' => 0,
             'module_completion_rate' => 0,
+            'pending_video_reviews' => 0,
+            'pending_mentor_approvals' => 0,
+            'pending_drmh_approvals' => 0,
         ];
     }
 }

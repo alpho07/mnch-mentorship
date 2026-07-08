@@ -25,12 +25,10 @@ class CommodityResource extends Resource {
     protected static ?string $recordTitleAttribute = 'name';
 
     public static function shouldRegisterNavigation(): bool {
-        return auth()->check() && auth()->user()->hasRole(['super_admin', 'admin', 'division']);
-    }
+        return auth()->check() && auth()->user()->can('view_any_commodity');}
 
     public static function canAccess(): bool {
-        return auth()->check() && auth()->user()->hasRole(['super_admin', 'admin', 'division']);
-    }
+        return auth()->check() && auth()->user()->can('view_any_commodity');}
 
     // ─────────────────────────────────────────────────────────────────────────
     // FORM

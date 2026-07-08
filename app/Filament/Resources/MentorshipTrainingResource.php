@@ -6,6 +6,7 @@ use App\Filament\Forms\Components\ProgramPicker;
 use App\Filament\Resources\MentorshipResource\Pages;
 use App\Models\ClassParticipant;
 use App\Models\Facility;
+use App\Models\Program;
 use App\Models\Training;
 use App\Models\User;
 use Filament\Forms;
@@ -40,18 +41,27 @@ class MentorshipTrainingResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->check() && auth()->user()->hasRole([
-            'super_admin', 'admin', 'division', 'facility_mentor', 'national_mentor',
-            'facility_mentor_lead', 'county_mentor_lead', 'subcounty_mentor_lead',
-        ]);
+        return auth()->check() && static::userCanAccess(auth()->user());
     }
 
     public static function canAccess(): bool
     {
-        return auth()->check() && auth()->user()->hasRole([
-            'super_admin', 'admin', 'division', 'facility_mentor', 'national_mentor',
-            'facility_mentor_lead', 'county_mentor_lead', 'subcounty_mentor_lead',
-        ]);
+        return auth()->check() && static::userCanAccess(auth()->user());
+    }
+
+    private static function userCanAccess(?User $user): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        // Mentees excluded unless explicitly granted mentorship creation rights
+        if ($user->hasRole('mentee')) {
+            return $user->canCreateMentorships();
+        }
+
+        // Permission covers all authorised mentor/admin roles; flag covers edge cases
+        return $user->can('view_any_mentorship::training') || $user->canCreateMentorships();
     }
 
     public static function canCreate(): bool
@@ -97,7 +107,7 @@ class MentorshipTrainingResource extends Resource
 
     private static function applyRoleScope(Builder $query, User $user): void
     {
-        if ($user->hasRole(['super_admin', 'admin', 'division'])) {
+        if ($user->hasRole(['super_admin', 'admin', 'division', 'national_mentor', 'national_mentor_lead'])) {
             return;
         }
 
@@ -252,14 +262,16 @@ class MentorshipTrainingResource extends Resource
                     Grid::make(3)->schema([
                         DatePicker::make('start_date')
                             ->label('Start Date')
-                            ->required()
+                            ->required(fn (Get $get) => ! static::isEmonc($get('program_id')))
+                            ->visible(fn (Get $get) => ! static::isEmonc($get('program_id')))
                             ->native(false)
                             ->minDate(today())
                             ->displayFormat('M j, Y')
                             ->prefixIcon('heroicon-o-play'),
                         DatePicker::make('end_date')
                             ->label('End Date')
-                            ->required()
+                            ->required(fn (Get $get) => ! static::isEmonc($get('program_id')))
+                            ->visible(fn (Get $get) => ! static::isEmonc($get('program_id')))
                             ->native(false)
                             ->minDate(fn (Get $get) => $get('start_date') ?? now())
                             ->after('start_date')
@@ -444,7 +456,7 @@ class MentorshipTrainingResource extends Resource
                         ->color('danger')
                         ->model(Training::class)
                         ->visible(fn (Training $r) => $r->deleted_at === null &&
-                            auth()->user()->hasRole('super_admin') &&
+                            auth()->user()->can('force_delete_any_mentorship::training') &&
                             ! $r->canBeDeleted()
                         )
                         ->modalHeading('⚠️ Super Admin Override Delete')
@@ -497,7 +509,7 @@ class MentorshipTrainingResource extends Resource
                         ->color('success')
                         ->model(Training::class)
                         ->visible(fn (Training $r) => $r->deleted_at !== null &&
-                            auth()->user()->hasRole('super_admin')
+                            auth()->user()->can('restore_any_mentorship::training')
                         )
                         ->requiresConfirmation()
                         ->modalHeading(fn (Training $r) => "Restore {$r->identifier}?")
@@ -541,6 +553,7 @@ class MentorshipTrainingResource extends Resource
             'class-mentees' => Pages\ManageClassMentees::route('/{training}/classes/{class}/mentees'),
             'module-sessions' => Pages\ManageModuleSessions::route('/{training}/classes/{class}/modules/{module}/sessions'),
             'module-mentees' => Pages\ManageModuleMentees::route('/{training}/classes/{class}/modules/{module}/mentees'),
+            'module-mentee-review' => Pages\ReviewModuleMentee::route('/{training}/classes/{class}/modules/{module}/mentees/{participant}/review'),
             'module-summary' => Pages\ModuleSummary::route('/{training}/classes/{class}/modules/{module}/summary'),
             'module-resources' => Pages\ManageModuleResources::route('/{training}/classes/{class}/modules/{module}/resources'),
             // 'mentee-dashboard' => Pages\MenteeDashboard::route('/mentee-dashboard'),
@@ -592,5 +605,22 @@ class MentorshipTrainingResource extends Resource
             $get('middle_name'),
             $get('last_name'),
         ])));
+    }
+
+    /**
+     * Determine whether the selected program is the EmONC (Maternal Health) package.
+     * Used to hide schedule fields that do not apply to EmONC mentorships.
+     */
+    private static function isEmonc(?int $programId): bool
+    {
+        if (! $programId) {
+            return false;
+        }
+
+        $program = Program::find($programId);
+
+        return $program
+            && str_contains(strtolower($program->name), 'maternal')
+            && str_contains(strtolower($program->name), 'emonc');
     }
 }

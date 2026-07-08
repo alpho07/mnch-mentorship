@@ -29,8 +29,7 @@ class ResourceResource extends FilamentResource {
     protected static ?int $navigationSort = 1;
 
     public static function shouldRegisterNavigation(): bool {
-        return auth()->check() && auth()->user()->hasRole(['super_admin', 'admin', 'division', 'resource_manager']);
-    }
+        return auth()->check() && auth()->user()->can('view_any_resource');}
 
     public static function form(Form $form): Form {
         return $form->schema([

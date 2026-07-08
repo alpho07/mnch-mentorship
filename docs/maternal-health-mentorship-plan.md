@@ -1,7 +1,9 @@
 # Maternal Health Mentorship — Implementation Plan (In Progress)
 
-> Status: Requirements analysis and architecture design completed. Awaiting clarifications on 5 questions before coding begins.
+> **DEPRECATED COPY** — the authoritative implementation plan is `maternal-health-mentorship-plan.md` in the repository root.
+> Status: Phase 8 complete. See root file for current details.
 > Created: 2026-06-15
+> Updated: 2026-06-22
 > Context: Adding a Maternal Health (EmONC) mentorship program to the existing MNCH platform without disrupting Infant Care, Newborn Care, and Child Care programs.
 
 ---

@@ -298,4 +298,29 @@ html {
     @apply border-red-300 dark:border-red-700;
 }
 
+/* Pending-review badge — pulsing red dot on icon action buttons */
+.fi-pending-review {
+    position: relative;
+    overflow: visible !important;
+}
+/* Red dot via pseudo-element (works on both <a> URL actions and Livewire buttons) */
+.fi-pending-review::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 9px;
+    height: 9px;
+    background-color: #ef4444;
+    border-radius: 9999px;
+    border: 1.5px solid white;
+    animation: badge-ping 1.4s cubic-bezier(0, 0, 0.2, 1) infinite;
+    z-index: 10;
+}
+@keyframes badge-ping {
+    0%   { transform: scale(1);   opacity: 1; }
+    70%  { transform: scale(1.7); opacity: 0; }
+    100% { transform: scale(1.7); opacity: 0; }
+}
+
 

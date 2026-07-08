@@ -61,7 +61,7 @@ class ViewSubmission extends Page {
         }
 
         $user = auth()->user();
-        $this->isValidator = $user->hasRole(['super_admin', 'admin', 'county_mentor', 'national_mentor']);
+        $this->isValidator = $user->can('page_ValidationQueue');
 
         if (!$this->isValidator && $period->facility_id !== $user->facility_id) {
             abort(403);

@@ -18,7 +18,7 @@ class IndicatorNotificationService {
 
     /**
      * Send "new report submitted" emails to all users who can validate reports.
-     * Recipients: super_admin, admin, county_mentor, national_mentor.
+     * Recipients: super_admin, admin, county_mentor_lead, national_mentor_lead.
      * Scoped by county where possible — falls back to all validators.
      */
     public function notifySubmitted(IndicatorReportPeriod $period, User $submittedBy): void {
@@ -108,32 +108,32 @@ class IndicatorNotificationService {
      * Resolve validator recipients for a submitted report.
      *
      * Priority:
-     * 1. Users with county_mentor role whose geographic scope includes the facility's county.
-     * 2. Users with national_mentor role (always included).
+     * 1. Users with county_mentor_lead role whose geographic scope includes the facility's county.
+     * 2. Users with national_mentor_lead role (always included).
      * 3. super_admin + admin users (always included).
      */
     private function resolveValidators(IndicatorReportPeriod $period): \Illuminate\Support\Collection {
         $countyId = $period->facility?->subcounty?->county_id;
 
-        $validatorRoles = ['super_admin', 'admin', 'national_mentor'];
+        $validatorRoles = ['super_admin', 'admin', 'national_mentor_lead'];
 
-        // Base: super_admin, admin, national_mentor
+        // Base: super_admin, admin, national_mentor_lead
         $validators = User::role($validatorRoles)
                 ->whereNotNull('email')
                 ->get();
 
-        // County mentors scoped to this facility's county
+        // County mentor leads scoped to this facility's county
         if ($countyId) {
-            $countyMentors = User::role('county_mentor')
+            $countyMentors = User::role('county_mentor_lead')
                     ->whereNotNull('email')
                     ->whereHas('counties', fn($q) => $q->where('counties.id', $countyId))
                     ->get();
 
             $validators = $validators->merge($countyMentors);
         } else {
-            // No county info — notify all county mentors as fallback
+            // No county info — notify all county mentor leads as fallback
             $validators = $validators->merge(
-                    User::role('county_mentor')->whereNotNull('email')->get()
+                    User::role('county_mentor_lead')->whereNotNull('email')->get()
             );
         }
 

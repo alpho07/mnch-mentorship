@@ -40,7 +40,7 @@ class AttendanceReportPage extends Page implements HasTable
     public function getSubheading(): ?string
     {
         $user = auth()->user();
-        if ($user->hasRole(['super_admin', 'admin', 'division', 'national_mentor'])) {
+        if ($user->hasRole(['super_admin', 'admin', 'division', 'national_mentor_lead'])) {
             return 'All mentorships · Use filters to narrow down';
         }
 
@@ -61,7 +61,7 @@ class AttendanceReportPage extends Page implements HasTable
     public function table(Table $table): Table
     {
         $user = auth()->user();
-        $isAdmin = $user->hasRole(['super_admin', 'admin', 'division', 'national_mentor']);
+        $isAdmin = $user->hasRole(['super_admin', 'admin', 'division', 'national_mentor_lead']);
 
         return $table
             ->query(

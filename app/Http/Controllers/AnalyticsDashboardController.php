@@ -15,6 +15,8 @@ use App\Models\Department;
 use App\Models\Cadre;
 use App\Models\FacilityType;
 use App\Services\AssessmentAnalyticsService;
+use App\Services\EmoncDashboardService;
+use App\Services\MentorAnalyticsDashboardService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -25,8 +27,8 @@ class AnalyticsDashboardController extends Controller {
 
     public function index(Request $request) {
         $currentYear  = Carbon::now()->year;
-        $selectedYear = $request->get('year', '');
-        $mode         = $request->get('mode', 'training');
+        $selectedYear = (string) ($request->get('year') ?? '');
+        $mode         = $request->get('mode', 'mentorship');
 
         // ── Role-based geographic scoping ────────────────────────────────
         // Pre-fill county/subcounty/facility filters for non-above-site users
@@ -65,6 +67,70 @@ class AnalyticsDashboardController extends Controller {
                 ->orderBy('year', 'desc')
                 ->pluck('year')
                 ->filter();
+
+        if ($mode === 'mentor') {
+            $mentorFilters = [
+                'program_id'    => $request->get('program_id'),
+                'county_id'     => $request->get('county_id'),
+                'subcounty_id'  => $request->get('subcounty_id'),
+                'facility_id'   => $request->get('facility_id'),
+                'mentor_id'     => $request->get('mentor_id'),
+                'cadre_id'      => $request->get('cadre_id'),
+                'department_id' => $request->get('department_id'),
+            ];
+
+            $data           = app(MentorAnalyticsDashboardService::class)->build(auth()->user(), $mentorFilters);
+            $mentorKpis     = $data['kpis'];
+            $mentorMatrix   = $data['matrix'];
+            $mentorCharts   = $data['chartData'];
+            $mentorInsights = $data['insights'];
+
+            // Filter option lists
+            $mentorPrograms    = \App\Models\Program::orderBy('name')->get(['id', 'name']);
+            $mentorCounties    = \App\Models\County::orderBy('name')->get(['id', 'name']);
+            $mentorSubcounties = $request->filled('county_id')
+                ? \App\Models\Subcounty::where('county_id', $request->county_id)->orderBy('name')->get(['id', 'name'])
+                : collect();
+            $mentorFacilities  = $request->filled('subcounty_id')
+                ? \App\Models\Facility::where('subcounty_id', $request->subcounty_id)->orderBy('name')->get(['id', 'name'])
+                : collect();
+            $mentorCadres      = \App\Models\Cadre::orderBy('name')->get(['id', 'name']);
+            $mentorDepartments = \App\Models\Department::orderBy('name')->get(['id', 'name']);
+
+            // All lead mentors for mentor dropdown (unfiltered — needed to build the select)
+            $mentorUsers = \App\Models\Training::where('type', 'facility_mentorship')
+                ->whereNotNull('mentor_id')
+                ->with('mentor:id,name')
+                ->get()
+                ->pluck('mentor')
+                ->filter()
+                ->unique('id')
+                ->sortBy('name')
+                ->values();
+
+            return view('analytics.dashboard.index', compact(
+                'mode', 'selectedYear', 'availableYears',
+                'mentorKpis', 'mentorMatrix', 'mentorCharts', 'mentorInsights',
+                'mentorFilters', 'mentorPrograms', 'mentorCounties', 'mentorSubcounties',
+                'mentorFacilities', 'mentorCadres', 'mentorDepartments', 'mentorUsers'
+            ));
+        }
+
+        if ($mode === 'emonc') {
+            $emoncData           = app(EmoncDashboardService::class)->build(auth()->user());
+            $emoncKpis           = $emoncData['kpis'];
+            $emoncMatrix         = $emoncData['completionMatrix'];
+            $emoncChartData      = $emoncData['chartData'];
+            $emoncPendingActions = $emoncData['pendingActions'];
+            $emoncExtendedStats  = $emoncData['extendedStats'];
+            $emoncInsights       = $emoncData['insights'];
+
+            return view('analytics.dashboard.index', compact(
+                'mode', 'selectedYear', 'availableYears',
+                'emoncKpis', 'emoncMatrix', 'emoncChartData',
+                'emoncPendingActions', 'emoncExtendedStats', 'emoncInsights'
+            ));
+        }
 
         if ($mode === 'assessment') {
             $selectedSubcounty = $request->get('subcounty_id');

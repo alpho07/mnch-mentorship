@@ -27,8 +27,7 @@ class MenteeStatusResource extends Resource {
     protected static ?int $navigationSort = 2;
 
     public static function shouldRegisterNavigation(): bool {
-        return auth()->check() && auth()->user()->hasRole(['super_admin', 'admin', 'division']);
-    }
+        return auth()->check() && auth()->user()->can('view_any_mentee::status');}
 
     public static function getGloballySearchableAttributes(): array {
         return ['name'];
