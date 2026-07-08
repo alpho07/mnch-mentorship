@@ -31,61 +31,6 @@
     </section>
 
     {{-- ═══════════════════════════════════════════
-         HERO / INTRO
-    ═══════════════════════════════════════════ --}}
-    <section class="relative overflow-hidden py-20" style="background: linear-gradient(135deg, #0C1445 0%, #0F4C81 40%, #0D7377 75%, #14A085 100%);">
-        {{-- Animated background blobs --}}
-        <div class="absolute inset-0 pointer-events-none overflow-hidden">
-            <div class="hero-blob" style="width:520px;height:520px;top:-140px;right:-100px;background:radial-gradient(circle,rgba(20,160,133,0.35) 0%,transparent 70%);animation:blobDrift 12s ease-in-out infinite;"></div>
-            <div class="hero-blob" style="width:380px;height:380px;bottom:-80px;left:-60px;background:radial-gradient(circle,rgba(15,76,129,0.4) 0%,transparent 68%);animation:blobDrift 16s ease-in-out infinite reverse;"></div>
-            <div class="hero-blob" style="width:260px;height:260px;top:40%;left:38%;background:radial-gradient(circle,rgba(255,255,255,0.06) 0%,transparent 70%);animation:blobDrift 9s ease-in-out infinite 3s;"></div>
-            {{-- Subtle grid --}}
-            <svg class="absolute inset-0 w-full h-full opacity-[0.04]" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
-                <defs><pattern id="hgrid" width="44" height="44" patternUnits="userSpaceOnUse"><path d="M 44 0 L 0 0 0 44" fill="none" stroke="white" stroke-width="1"/></pattern></defs>
-                <rect width="100%" height="100%" fill="url(#hgrid)"/>
-            </svg>
-        </div>
-
-        <style>
-            @keyframes blobDrift {
-                0%,100% { transform: translate(0,0) scale(1); }
-                33%      { transform: translate(18px,-22px) scale(1.05); }
-                66%      { transform: translate(-14px,16px) scale(0.97); }
-            }
-            @keyframes fadeSlideUp {
-                from { opacity:0; transform:translateY(28px); }
-                to   { opacity:1; transform:translateY(0); }
-            }
-            @keyframes manualGlow {
-                0%,100% { box-shadow:0 0 8px 2px rgba(250,204,21,0.35),0 0 0 0 rgba(250,204,21,0); }
-                50%     { box-shadow:0 0 22px 6px rgba(250,204,21,0.7),0 0 40px 10px rgba(251,146,60,0.3); }
-            }
-            .btn-manual-glow {
-                animation: manualGlow 2.2s ease-in-out infinite;
-                background: rgba(250,204,21,0.18) !important;
-                border-color: rgba(250,204,21,0.55) !important;
-                color: #fef08a !important;
-            }
-            .btn-manual-glow:hover {
-                animation: none;
-                background: rgba(250,204,21,0.30) !important;
-                box-shadow: 0 0 28px 8px rgba(250,204,21,0.55);
-            }
-            .hero-animate-1 { animation: fadeSlideUp .65s ease both .1s; }
-            .hero-animate-2 { animation: fadeSlideUp .65s ease both .25s; }
-            .hero-animate-3 { animation: fadeSlideUp .65s ease both .4s; }
-            .hero-animate-4 { animation: fadeSlideUp .65s ease both .55s; }
-            .hero-card-1    { animation: fadeSlideUp .6s ease both .5s; }
-            .hero-card-2    { animation: fadeSlideUp .6s ease both .65s; }
-            .hero-card-3    { animation: fadeSlideUp .6s ease both .8s; }
-        </style>
-
-        <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-
-        </div>
-    </section>
-
-    {{-- ═══════════════════════════════════════════
          TRAINING + MENTORSHIP INSIGHTS
     ═══════════════════════════════════════════ --}}
     @if($trainingInsights['has_data'] ?? false)
