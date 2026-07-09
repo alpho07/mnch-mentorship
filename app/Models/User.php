@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Filament\Models\Contracts\FilamentUser;
+use Filament\Panel;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notifiable;
@@ -15,7 +17,7 @@ use Illuminate\Notifications\Notification;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 
-class User extends Authenticatable
+class User extends Authenticatable implements FilamentUser
 {
     use HasApiTokens,Notifiable;
     use HasFactory,
@@ -696,5 +698,10 @@ class User extends Authenticatable
         return $trainingLogs->concat($mentorshipLogs)
             ->sortByDesc('created_at')
             ->values();
+    }
+
+    public function canAccessPanel(Panel $panel): bool
+    {
+        return $this->status !== 'blocked';
     }
 }
