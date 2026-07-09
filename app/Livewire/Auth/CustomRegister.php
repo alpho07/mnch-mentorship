@@ -112,6 +112,14 @@ class CustomRegister extends SimplePage implements HasForms
                             ->options(fn () => Department::orderBy('name')->pluck('name', 'id'))
                             ->searchable()
                             ->required(),
+                        Select::make('role')
+                            ->label('Role')
+                            ->options([
+                                'mentee'          => 'Mentee',
+                                'facility_mentor' => 'Facility Mentor',
+                            ])
+                            ->default('mentee')
+                            ->required(),
                     ])
                     ->columns(1),
 
@@ -196,7 +204,7 @@ class CustomRegister extends SimplePage implements HasForms
                     'status'        => 'pending',
                 ]);
 
-                $user->assignRole('mentee');
+                $user->assignRole($data['role'] ?? 'mentee');
                 $user->counties()->sync([$data['county_id']]);
                 $user->facilities()->sync([$data['facility_id']]);
 
