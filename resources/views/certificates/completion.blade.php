@@ -1,385 +1,194 @@
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <title>Certificate of Completion</title>
-        <style>
-            @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap');
+<head>
+    <meta charset="UTF-8">
+    <title>Certificate of Completion</title>
+    <style>
+        @page {
+            size: A4 landscape;
+            margin: 0;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'DejaVu Sans', sans-serif;
+            background: #ffffff;
+        }
+        .wrap {
+            width: 297mm;
+            height: 210mm;
+            position: relative;
+            overflow: hidden;
+            background: #ffffff;
+        }
+    </style>
+</head>
+<body>
+<div class="wrap">
 
-            *, *::before, *::after {
-                box-sizing: border-box;
-                margin: 0;
-                padding: 0;
-            }
+    {{-- ── Decorative frame ───────────────────────────────────────────────── --}}
+    <div style="position:absolute;top:4mm;left:4mm;right:4mm;bottom:4mm;border:2.5px solid #c9a227;"></div>
+    <div style="position:absolute;top:7mm;left:7mm;right:7mm;bottom:7mm;border:0.75px solid rgba(201,162,39,0.32);"></div>
 
-            html, body {
-                width: 297mm;
-                height: 210mm;
-                background: #fff;
-                font-family: 'Inter', 'DejaVu Sans', sans-serif;
-                overflow: hidden;
-            }
+    {{-- ── Corner ornaments ───────────────────────────────────────────────── --}}
+    <div style="position:absolute;top:1mm;left:1.8mm;font-size:14pt;color:#c9a227;font-family:'DejaVu Serif',serif;line-height:1;">&#10022;</div>
+    <div style="position:absolute;top:1mm;right:1.8mm;font-size:14pt;color:#c9a227;font-family:'DejaVu Serif',serif;line-height:1;">&#10022;</div>
+    <div style="position:absolute;bottom:0.5mm;left:1.8mm;font-size:14pt;color:#c9a227;font-family:'DejaVu Serif',serif;line-height:1;">&#10022;</div>
+    <div style="position:absolute;bottom:0.5mm;right:1.8mm;font-size:14pt;color:#c9a227;font-family:'DejaVu Serif',serif;line-height:1;">&#10022;</div>
 
-            .cert-page {
-                width: 297mm;
-                height: 210mm;
-                position: relative;
-                background: #fff;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                padding: 10mm;
-            }
-
-            /* ── Outer border frame ── */
-            .cert-frame {
-                position: absolute;
-                inset: 6mm;
-                border: 3px solid #1d4ed8;
-                border-radius: 3mm;
-            }
-            .cert-frame-inner {
-                position: absolute;
-                inset: 9mm;
-                border: 1px solid #bfdbfe;
-                border-radius: 2mm;
-            }
-
-            /* ── Corner ornaments ── */
-            .corner {
-                position: absolute;
-                width: 16mm;
-                height: 16mm;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 24px;
-            }
-            .corner-tl {
-                top: 5mm;
-                left: 5mm;
-            }
-            .corner-tr {
-                top: 5mm;
-                right: 5mm;
-            }
-            .corner-bl {
-                bottom: 5mm;
-                left: 5mm;
-            }
-            .corner-br {
-                bottom: 5mm;
-                right: 5mm;
-            }
-
-            /* ── Top badge ── */
-            .cert-top {
-                position: relative;
-                z-index: 10;
-                text-align: center;
-                margin-bottom: 4mm;
-            }
-            .cert-org {
-                font-size: 9pt;
-                font-weight: 600;
-                color: #1d4ed8;
-                letter-spacing: 0.15em;
-                text-transform: uppercase;
-                margin-bottom: 1mm;
-            }
-            .cert-program {
-                font-size: 8pt;
-                color: #64748b;
-                letter-spacing: 0.08em;
-                text-transform: uppercase;
-            }
-
-            /* ── Divider ── */
-            .divider {
-                display: flex;
-                align-items: center;
-                gap: 4mm;
-                margin: 3mm 0;
-                position: relative;
-                z-index: 10;
-            }
-            .divider-line {
-                flex: 1;
-                height: 1px;
-                background: linear-gradient(90deg, transparent, #bfdbfe 30%, #1d4ed8 50%, #bfdbfe 70%, transparent);
-            }
-            .divider-gem {
-                font-size: 12pt;
-                color: #1d4ed8;
-            }
-
-            /* ── Main title ── */
-            .cert-of {
-                font-size: 10pt;
-                color: #64748b;
-                text-transform: uppercase;
-                letter-spacing: 0.2em;
-                text-align: center;
-                position: relative;
-                z-index: 10;
-                margin-bottom: 1mm;
-            }
-            .cert-title {
-                font-family: 'Playfair Display', 'DejaVu Serif', Georgia, serif;
-                font-size: 36pt;
-                font-weight: 700;
-                color: #0f172a;
-                text-align: center;
-                letter-spacing: -0.01em;
-                line-height: 1.1;
-                position: relative;
-                z-index: 10;
-                margin-bottom: 4mm;
-            }
-
-            /* ── Body text ── */
-            .cert-body {
-                text-align: center;
-                position: relative;
-                z-index: 10;
-                line-height: 1.8;
-            }
-            .cert-presented {
-                font-size: 9.5pt;
-                color: #64748b;
-                margin-bottom: 1mm;
-            }
-            .cert-name {
-                font-family: 'Playfair Display', 'DejaVu Serif', Georgia, serif;
-                font-size: 28pt;
-                font-style: italic;
-                color: #1d4ed8;
-                line-height: 1.2;
-                margin-bottom: 2mm;
-            }
-            .cert-for {
-                font-size: 9.5pt;
-                color: #64748b;
-                margin-bottom: 1mm;
-            }
-            .cert-class {
-                font-size: 13pt;
-                font-weight: 700;
-                color: #0f172a;
-                margin-bottom: 0.5mm;
-            }
-            .cert-program-name {
-                font-size: 10pt;
-                color: #475569;
-            }
-
-            /* ── Module list ── */
-            .cert-modules {
-                margin: 3mm 0;
-                position: relative;
-                z-index: 10;
-                text-align: center;
-            }
-            .cert-modules-label {
-                font-size: 8pt;
-                color: #94a3b8;
-                text-transform: uppercase;
-                letter-spacing: 0.1em;
-                margin-bottom: 1.5mm;
-            }
-            .cert-modules-list {
-                display: flex;
-                flex-wrap: wrap;
-                justify-content: center;
-                gap: 2mm;
-            }
-            .cert-module-chip {
-                background: #eff6ff;
-                border: 1px solid #bfdbfe;
-                border-radius: 2mm;
-                padding: 1mm 3mm;
-                font-size: 7.5pt;
-                color: #1d4ed8;
-                font-weight: 500;
-            }
-
-            /* ── Signatures ── */
-            .cert-signatures {
-                display: flex;
-                justify-content: space-around;
-                width: 100%;
-                margin-top: 5mm;
-                position: relative;
-                z-index: 10;
-                padding: 0 20mm;
-            }
-            .sig-block {
-                text-align: center;
-            }
-            .sig-line {
-                width: 45mm;
-                height: 1px;
-                background: #1d4ed8;
-                margin: 0 auto 1.5mm;
-            }
-            .sig-name {
-                font-size: 8.5pt;
-                font-weight: 600;
-                color: #0f172a;
-            }
-            .sig-title {
-                font-size: 7pt;
-                color: #64748b;
-                margin-top: 0.5mm;
-            }
-
-            /* ── Bottom metadata ── */
-            .cert-meta {
-                position: absolute;
-                bottom: 14mm;
-                left: 0;
-                right: 0;
-                display: flex;
-                justify-content: space-between;
-                padding: 0 18mm;
-                font-size: 7.5pt;
-                color: #94a3b8;
-                z-index: 10;
-            }
-
-            /* ── Watermark ── */
-            .cert-watermark {
-                position: absolute;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%) rotate(-30deg);
-                font-size: 80pt;
-                font-weight: 800;
-                color: rgba(29, 78, 216, 0.035);
-                letter-spacing: 0.05em;
-                white-space: nowrap;
-                pointer-events: none;
-                z-index: 1;
-                font-family: 'Inter', sans-serif;
-            }
-
-            /* ── Seal ── */
-            .cert-seal {
-                position: absolute;
-                bottom: 18mm;
-                right: 20mm;
-                width: 28mm;
-                height: 28mm;
-                background: linear-gradient(135deg, #1d4ed8, #4f46e5);
-                border-radius: 50%;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                color: #fff;
-                z-index: 10;
-                box-shadow: 0 2mm 6mm rgba(29,78,216,0.4);
-            }
-            .seal-icon {
-                font-size: 14pt;
-                margin-bottom: 0.5mm;
-            }
-            .seal-text {
-                font-size: 5pt;
-                font-weight: 700;
-                letter-spacing: 0.05em;
-                text-transform: uppercase;
-                text-align: center;
-                line-height: 1.4;
-            }
-        </style>
-    </head>
-    <body>
-    <div class="cert-page">
-
-        {{-- Watermark --}}
-        <div class="cert-watermark">MNCH</div>
-
-        {{-- Border frames --}}
-        <div class="cert-frame"></div>
-        <div class="cert-frame-inner"></div>
-
-        {{-- Corner ornaments --}}
-        <div class="corner corner-tl">✦</div>
-        <div class="corner corner-tr">✦</div>
-        <div class="corner corner-bl">✦</div>
-        <div class="corner corner-br">✦</div>
-
-        {{-- Org header --}}
-        <div class="cert-top">
-            <div class="cert-org">Ministry of Health · Kenya</div>
-            <div class="cert-program">Maternal, Newborn & Child Health Mentorship Platform</div>
-        </div>
-
-        {{-- Divider --}}
-        <div class="divider" style="width:60%">
-            <div class="divider-line"></div>
-            <div class="divider-gem">✦</div>
-            <div class="divider-line"></div>
-        </div>
-
-        {{-- Title --}}
-        <div class="cert-of">Certificate</div>
-        <div class="cert-title">of Completion</div>
-
-        {{-- Body --}}
-        <div class="cert-body">
-            <div class="cert-presented">This is to certify that</div>
-            <div class="cert-name">{{ $participant->user->name ?? ($participant->user->first_name . ' ' . $participant->user->last_name) }}</div>
-            <div class="cert-for">has successfully completed all requirements of</div>
-            <div class="cert-class">{{ $class->name }}</div>
-            <div class="cert-program-name">{{ $class->training->program->name ?? 'MNCH Mentorship Program' }}</div>
-        </div>
-
-        {{-- Modules --}}
-    @if($modules->count() > 0)
-            <div class="cert-modules">
-                <div class="cert-modules-label">Modules Completed</div>
-                <div class="cert-modules-list">
-                    @foreach($modules as $module)
-                        <span class="cert-module-chip">{{ $module->programModule->name ?? 'Module' }}</span>
-                    @endforeach
-                </div>
-            </div>
-        @endif
-
-        {{-- Signatures --}}
-        <div class="cert-signatures">
-            <div class="sig-block">
-                <div class="sig-line"></div>
-                <div class="sig-name">{{ $class->training->mentor->name ?? 'Lead Mentor' }}</div>
-                <div class="sig-title">Facility Mentor</div>
-            </div>
-            <div class="sig-block">
-                <div class="sig-line"></div>
-                <div class="sig-name">Director, MNCH Division</div>
-                <div class="sig-title">Ministry of Health, Kenya</div>
-            </div>
-        </div>
-
-        {{-- Seal --}}
-        <div class="cert-seal">
-            <div class="seal-icon">🏅</div>
-            <div class="seal-text">MNCH<br>Certified</div>
-        </div>
-
-        {{-- Bottom meta --}}
-        <div class="cert-meta">
-            <div>Facility: {{ $class->training->facility->name ?? '—' }}</div>
-            <div>
-                @if($class->start_date && $class->end_date)
-                    Period: {{ \Carbon\Carbon::parse($class->start_date)->format('d M Y') }} – {{ \Carbon\Carbon::parse($class->end_date)->format('d M Y') }}
-                @endif
-            </div>
-            <div>Certificate No: MNCH-{{ str_pad($class->id, 4, '0', STR_PAD_LEFT) }}-{{ str_pad($participant->id, 5, '0', STR_PAD_LEFT) }}</div>
-        </div>
-
+    {{-- ── Signature block — pinned to bottom of right panel ─────────────── --}}
+    @php
+        $programName = strtolower($class->training?->program?->name ?? '');
+        $isEmonc = str_contains($programName, 'maternal') && str_contains($programName, 'emonc');
+        $headLabel = $isEmonc ? 'Head DRMH, Ministry of Health' : 'Head MNCH, Ministry of Health';
+    @endphp
+    <div style="position:absolute;bottom:11mm;left:91mm;right:10mm;">
+        <table style="width:100%;border-collapse:collapse;">
+            <tr>
+                <td style="width:40%;vertical-align:bottom;border-top:1.5px solid #4b5563;padding-top:2.5mm;padding-right:8mm;">
+                    <div style="font-size:9pt;font-weight:bold;color:#111827;">
+                        {{ $participant->mentorApprovedBy?->full_name ?? ($class->training?->mentor?->full_name ?? 'Lead Mentor') }}
+                    </div>
+                    <div style="font-size:7.5pt;color:#6b7280;">Facility Mentor</div>
+                    @if($participant->mentor_approved_at)
+                    <div style="font-size:7pt;color:#9ca3af;">{{ \Carbon\Carbon::parse($participant->mentor_approved_at)->format('d M Y') }}</div>
+                    @endif
+                </td>
+                <td style="width:20%;text-align:center;vertical-align:bottom;padding:0 3mm;">
+                    <div style="width:20mm;height:20mm;border:2px solid #c9a227;border-radius:10mm;margin:0 auto 1.5mm;text-align:center;box-sizing:border-box;padding-top:5.5mm;">
+                        <div style="font-size:5pt;color:#c9a227;font-weight:bold;letter-spacing:0.5px;line-height:1.7;">OFFICIAL<br>SEAL</div>
+                    </div>
+                </td>
+                <td style="width:40%;vertical-align:bottom;border-top:1.5px solid #4b5563;padding-top:2.5mm;padding-left:8mm;">
+                    <div style="font-size:9pt;font-weight:bold;color:#111827;">
+                        {{ $participant->headDrmhApprovedBy?->full_name ?? 'Director, MNCH Division' }}
+                    </div>
+                    <div style="font-size:7.5pt;color:#6b7280;">{{ $headLabel }}</div>
+                    @if($participant->head_drmh_approved_at)
+                    <div style="font-size:7pt;color:#9ca3af;">{{ \Carbon\Carbon::parse($participant->head_drmh_approved_at)->format('d M Y') }}</div>
+                    @endif
+                </td>
+            </tr>
+        </table>
     </div>
+
+    {{-- ── Main two-column table layout ───────────────────────────────────── --}}
+    <table style="width:297mm;height:210mm;border-collapse:collapse;border-spacing:0;">
+        <tr>
+
+            {{-- ===== LEFT SIDEBAR (navy) ===== --}}
+            <td style="width:70mm;background-color:#0c1445;vertical-align:top;padding:18mm 9mm 0 9mm;text-align:center;">
+
+                {{-- Seal circle --}}
+                <div style="width:44mm;height:44mm;border:2.5px solid #c9a227;border-radius:22mm;margin:0 auto 7mm;position:relative;line-height:44mm;font-family:'DejaVu Serif',serif;font-size:20pt;color:#c9a227;text-align:center;overflow:hidden;">
+                    <div style="position:absolute;top:3.5mm;left:3.5mm;right:3.5mm;bottom:3.5mm;border:1px solid rgba(201,162,39,0.3);border-radius:19mm;"></div>
+                    &#10022;
+                </div>
+
+                {{-- Ministry info --}}
+                <div style="color:#c9a227;font-size:6.5pt;letter-spacing:1.5px;margin-bottom:2mm;font-weight:bold;">REPUBLIC OF KENYA</div>
+                <div style="color:#ffffff;font-size:9pt;font-weight:bold;margin-bottom:1.5mm;">Ministry of Health</div>
+                <div style="color:rgba(255,255,255,0.5);font-size:7pt;margin-bottom:9mm;">MNCH Division</div>
+
+                <div style="height:0.5px;background-color:rgba(201,162,39,0.3);margin:0 3mm 9mm;"></div>
+
+                {{-- Certificate number --}}
+                <div style="color:rgba(255,255,255,0.38);font-size:5.5pt;letter-spacing:1px;margin-bottom:2mm;">CERTIFICATE NO.</div>
+                <div style="color:#c9a227;font-size:7.5pt;font-weight:bold;margin-bottom:9mm;word-break:break-all;">
+                    MNCH-{{ str_pad($participant->id, 6, '0', STR_PAD_LEFT) }}-{{ date('Y') }}
+                </div>
+
+                <div style="height:0.5px;background-color:rgba(201,162,39,0.3);margin:0 3mm 9mm;"></div>
+
+                {{-- Date issued --}}
+                <div style="color:rgba(255,255,255,0.38);font-size:5.5pt;letter-spacing:1px;margin-bottom:2mm;">DATE ISSUED</div>
+                <div style="color:#ffffff;font-size:8.5pt;font-weight:bold;margin-bottom:9mm;">
+                    @if($participant->head_drmh_approved_at)
+                        {{ \Carbon\Carbon::parse($participant->head_drmh_approved_at)->format('d M Y') }}
+                    @else
+                        {{ now()->format('d M Y') }}
+                    @endif
+                </div>
+
+                <div style="height:0.5px;background-color:rgba(201,162,39,0.3);margin:0 3mm 9mm;"></div>
+
+                {{-- CPD Points --}}
+                @if(isset($cpd) && $cpd['total'] > 0)
+                <div style="color:rgba(255,255,255,0.38);font-size:5.5pt;letter-spacing:1px;margin-bottom:2mm;">CPD POINTS</div>
+                <div style="color:#c9a227;font-size:18pt;font-weight:bold;line-height:1;margin-bottom:1.5mm;">{{ $cpd['total'] }}</div>
+                <div style="color:rgba(255,255,255,0.7);font-size:6.5pt;margin-bottom:2mm;">{{ $cpd['level']['name'] ?? 'Foundation' }}</div>
+                <div style="font-size:5.5pt;color:rgba(255,255,255,0.38);line-height:1.5;">
+                    {{ $cpd['certificates'] ?? 0 }} cert{{ ($cpd['certificates'] ?? 0) === 1 ? '' : 's' }} &times; 3 pts<br>
+                    {{ $cpd['completed_modules'] ?? 0 }} module{{ ($cpd['completed_modules'] ?? 0) === 1 ? '' : 's' }} &times; 1 pt
+                </div>
+                @endif
+
+            </td>
+
+            {{-- Gold accent stripe --}}
+            <td style="width:4mm;background-color:#c9a227;padding:0;"></td>
+
+            {{-- ===== RIGHT CONTENT ===== --}}
+            <td style="vertical-align:top;padding:14mm 10mm 40mm 17mm;background-color:#ffffff;">
+
+                {{-- Organisation tag --}}
+                <div style="font-size:7pt;color:#c9a227;letter-spacing:2.5px;font-weight:bold;margin-bottom:3.5mm;">
+                    MNCH &bull; MATERNAL, NEWBORN &amp; CHILD HEALTH
+                </div>
+
+                {{-- Certificate title --}}
+                <div style="font-family:'DejaVu Serif',serif;font-size:24pt;font-weight:bold;color:#0c1445;line-height:1.0;margin-bottom:4mm;">
+                    Certificate of Completion
+                </div>
+
+                {{-- Subtitle --}}
+                <div style="font-size:7.5pt;color:#9ca3af;letter-spacing:2px;margin-bottom:4.5mm;">
+                    THIS IS TO CERTIFY THAT
+                </div>
+
+                {{-- Mentee name --}}
+                <div style="font-family:'DejaVu Serif',serif;font-size:21pt;font-weight:bold;color:#0c1445;border-bottom:2px solid #c9a227;padding-bottom:2.5mm;margin-bottom:3mm;line-height:1.15;">
+                    {{ $participant->user?->full_name ?? trim(($participant->user?->first_name ?? '') . ' ' . ($participant->user?->last_name ?? '')) }}
+                </div>
+
+                {{-- Cadre & facility --}}
+                @php
+                    $infoParts = array_filter([
+                        $participant->user?->cadre?->name ?? null,
+                        $participant->user?->facility?->name ?? null,
+                    ]);
+                @endphp
+                @if(count($infoParts))
+                <div style="font-size:8pt;color:#6b7280;margin-bottom:4mm;">{{ implode(' · ', $infoParts) }}</div>
+                @else
+                <div style="margin-bottom:4mm;"></div>
+                @endif
+
+                {{-- Completion copy --}}
+                <div style="font-size:9pt;color:#4b5563;margin-bottom:2mm;">has successfully completed all requirements of</div>
+
+                {{-- Program name --}}
+                <div style="font-size:13pt;font-weight:bold;color:#0c1445;margin-bottom:1.5mm;">
+                    {{ $class->training?->program?->name ?? 'MNCH Mentorship Program' }}
+                </div>
+
+                {{-- Class & training facility --}}
+                <div style="font-size:8.5pt;color:#374151;margin-bottom:5mm;">
+                    {{ $class->name }}@if($class->training?->facility?->name) &bull; {{ $class->training->facility->name }}@endif
+                </div>
+
+                {{-- Module list --}}
+                @if($modules->count() > 0)
+                <div style="font-size:7.5pt;color:#1e3a5f;line-height:1.8;">
+                    @foreach($modules as $i => $mod)@if($i > 0)<span style="color:#c9a227;"> &bull; </span>@endif{{ $mod->programModule?->name ?? ('Module ' . ($i + 1)) }}@endforeach
+                </div>
+                @endif
+
+            </td>
+
+        </tr>
+    </table>
+
+</div>
 </body>
 </html>

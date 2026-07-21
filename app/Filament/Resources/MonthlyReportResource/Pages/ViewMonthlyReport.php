@@ -32,7 +32,7 @@ class ViewMonthlyReport extends ViewRecord
                 })
                 ->visible(fn(): bool =>
                 $this->getRecord()->canApprove() &&
-                    auth()->user()->hasRole(['Super Admin', 'Division Lead']))
+                    auth()->user()->can('delete_any_monthly::report'))
                 ->requiresConfirmation(),
         ];
     }

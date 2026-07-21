@@ -2,16 +2,16 @@
 
 namespace Database\Seeders;
 
+use App\Models\Methodology;
+use App\Models\ModuleSession;
 use App\Models\Program;
 use App\Models\ProgramModule;
-use App\Models\ModuleSession;
 use App\Models\SessionMaterial;
-use App\Models\Methodology;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 
-class ProgramModulesSeeder extends Seeder 
+class ProgramModulesSeeder extends Seeder
 {
     public function run(): void
     {
@@ -23,6 +23,17 @@ class ProgramModulesSeeder extends Seeder
         $this->command->info('Program modules, sessions, and materials seeded successfully!');
     }
 
+    private function curriculum(): array
+    {
+        $path = database_path('seeders/data/mentorship_curriculum_2025_10_13.php');
+
+        if (!File::exists($path)) {
+            return [];
+        }
+
+        return require $path;
+    }
+
     private function seedNewbornModules(): void
     {
         $program = Program::firstOrCreate(
@@ -30,14 +41,12 @@ class ProgramModulesSeeder extends Seeder
             ['description' => 'Comprehensive newborn care training program']
         );
 
-        $jsonPath = database_path('seeders/data/newborn_modules.json');
-        
-        if (!File::exists($jsonPath)) {
-            $this->command->warn("Newborn modules JSON file not found at: {$jsonPath}");
+        $modules = $this->curriculum()['newborn'] ?? [];
+
+        if ($modules === []) {
+            $this->command->warn('Newborn curriculum file is missing or empty.');
             return;
         }
-
-        $modules = json_decode(File::get($jsonPath), true);
 
         foreach ($modules as $index => $moduleData) {
             $totalTime = collect($moduleData['sessions'])->sum('time_minutes');
@@ -53,7 +62,7 @@ class ProgramModulesSeeder extends Seeder
             $this->createSessions($module, $moduleData['sessions']);
         }
 
-        $this->command->info("✓ Seeded {$program->name} with " . count($modules) . " modules");
+        $this->command->info('Seeded ' . $program->name . ' with ' . count($modules) . ' modules');
     }
 
     private function seedInfantChildModules(): void
@@ -63,14 +72,12 @@ class ProgramModulesSeeder extends Seeder
             ['description' => 'Comprehensive infant and child care training program']
         );
 
-        $jsonPath = database_path('seeders/data/infant_child_modules.json');
-        
-        if (!File::exists($jsonPath)) {
-            $this->command->warn("Infant/Child modules JSON file not found at: {$jsonPath}");
+        $modules = $this->curriculum()['infant_child'] ?? [];
+
+        if ($modules === []) {
+            $this->command->warn('Infant/Child curriculum file is missing or empty.');
             return;
         }
-
-        $modules = json_decode(File::get($jsonPath), true);
 
         foreach ($modules as $index => $moduleData) {
             $totalTime = collect($moduleData['sessions'])->sum('time_minutes');
@@ -86,13 +93,12 @@ class ProgramModulesSeeder extends Seeder
             $this->createSessions($module, $moduleData['sessions']);
         }
 
-        $this->command->info("✓ Seeded {$program->name} with " . count($modules) . " modules");
+        $this->command->info('Seeded ' . $program->name . ' with ' . count($modules) . ' modules');
     }
 
     private function createSessions(ProgramModule $module, array $sessions): void
     {
         foreach ($sessions as $index => $sessionData) {
-            // Find or create methodology
             $methodology = null;
             if (!empty($sessionData['methodology'])) {
                 $methodology = Methodology::firstOrCreate(
@@ -110,7 +116,6 @@ class ProgramModulesSeeder extends Seeder
                 'is_active' => true,
             ]);
 
-            // Create materials
             if (!empty($sessionData['materials'])) {
                 $this->createMaterials($session, $sessionData['materials']);
             }

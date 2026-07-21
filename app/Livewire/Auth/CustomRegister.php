@@ -112,6 +112,14 @@ class CustomRegister extends SimplePage implements HasForms
                             ->options(fn () => Department::orderBy('name')->pluck('name', 'id'))
                             ->searchable()
                             ->required(),
+                        Select::make('role')
+                            ->label('Role')
+                            ->options([
+                                'mentee'          => 'Mentee',
+                                'facility_mentor' => 'Facility Mentor',
+                            ])
+                            ->default('mentee')
+                            ->required(),
                     ])
                     ->columns(1),
 
@@ -131,7 +139,10 @@ class CustomRegister extends SimplePage implements HasForms
                             ->options(fn (Get $get) => $get('county_id')
                                 ? Facility::whereHas('subcounty', fn ($q) => $q->where('county_id', $get('county_id')))
                                     ->orderBy('name')
-                                    ->pluck('name', 'id')
+                                    ->get(['id', 'name', 'mfl_code'])
+                                    ->mapWithKeys(fn ($f) => [
+                                        $f->id => $f->name . ($f->mfl_code ? ' [' . $f->mfl_code . ']' : ''),
+                                    ])
                                     ->toArray()
                                 : []
                             )
@@ -196,7 +207,7 @@ class CustomRegister extends SimplePage implements HasForms
                     'status'        => 'pending',
                 ]);
 
-                $user->assignRole('mentee');
+                $user->assignRole($data['role'] ?? 'mentee');
                 $user->counties()->sync([$data['county_id']]);
                 $user->facilities()->sync([$data['facility_id']]);
 
@@ -233,3 +244,5 @@ class CustomRegister extends SimplePage implements HasForms
     public function getTitle(): string { return ''; }
     public function hasLogo(): bool    { return false; }
 }
+
+

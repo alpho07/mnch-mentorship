@@ -9,7 +9,7 @@
     {{-- ═══════════════════════════════════════════
          QUICK LINKS STRIP
     ═══════════════════════════════════════════ --}}
-    <section class="bg-white border-b border-gray-100">
+    <section class="bg-white border-b border-gray-100" data-aos="fade-down" data-aos-delay="50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center gap-2 overflow-x-auto py-3 scrollbar-none" style="-webkit-overflow-scrolling: touch;">
                 @php $quickLinks = [
@@ -18,9 +18,11 @@
                     ['href' => url('analytics/dashboard'),                        'icon' => 'fas fa-map',         'label' => 'Training Map'],
                     ['href' => route('resources.index', ['sort' => 'latest']),    'icon' => 'fas fa-clock',       'label' => 'Recently Added'],
                     ['href' => route('resources.index', ['sort' => 'popular']),   'icon' => 'fas fa-fire',        'label' => 'Most Popular'],
+                    ['href' => rtrim(config('app.url'), '/') . '/' . rawurlencode('MNCH Mentorship.apk'), 'icon' => 'fas fa-download', 'label' => 'Download Mobile App'],
                 ]; @endphp
                 @foreach($quickLinks as $link)
                 <a href="{{ $link['href'] }}"
+                   @if($link['label'] === 'Download Mobile App') download @endif
                    class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-gray-600 hover:bg-primary-50 hover:text-primary-700 transition-all whitespace-nowrap flex-shrink-0 border border-transparent hover:border-primary-100">
                     <i class="{{ $link['icon'] }} text-xs text-primary-500"></i>
                     {{ $link['label'] }}
@@ -34,7 +36,7 @@
          TRAINING + MENTORSHIP INSIGHTS
     ═══════════════════════════════════════════ --}}
     @if($trainingInsights['has_data'] ?? false)
-    <section class="relative overflow-hidden py-14" style="background: linear-gradient(135deg, #062F2F 0%, #004D40 48%, #0F766E 100%);">
+    <section class="relative overflow-hidden py-14" data-aos="fade-up" data-aos-delay="100" style="background: linear-gradient(135deg, #062F2F 0%, #004D40 48%, #0F766E 100%);">
         <div class="absolute inset-0 opacity-[0.07]">
             <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
                 <pattern id="insight-grid" width="42" height="42" patternUnits="userSpaceOnUse">
@@ -62,20 +64,28 @@
                     </p>
                 </div>
                 <a href="{{ url('analytics/dashboard') }}"
-                   class="inline-flex w-fit items-center gap-2 rounded-xl border border-white/20 px-5 py-3 text-sm font-bold text-white transition-all hover:border-white/40"
-                   style="background: rgba(255,255,255,0.1);">
-                    Open analytics map <i class="fas fa-arrow-right text-xs"></i>
+                   class="analytics-cta-pulse inline-flex w-fit items-center gap-2 rounded-xl border border-white/30 px-5 py-3 text-sm font-bold text-white transition-all hover:border-white/60 hover:scale-105"
+                   style="background: rgba(255,255,255,0.15); box-shadow: 0 0 20px rgba(103, 232, 249, 0.25);">
+                    Open analytics map <i class="fas fa-arrow-right text-xs analytics-cta-arrow"></i>
                 </a>
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                @foreach(($trainingInsights['cards'] ?? []) as $card)
+                @foreach(($trainingInsights['cards'] ?? []) as $index => $card)
+                    @php
+                        $normalized   = str_replace(',', '', $card['value']);
+                        $numericValue = preg_replace('/[^0-9.]/', '', $normalized);
+                        $suffixValue  = str_replace($numericValue, '', $normalized);
+                    @endphp
                 <div class="group rounded-2xl border border-white/12 p-5 shadow-2xl transition-all hover:-translate-y-1 hover:border-white/25"
+                     data-aos="fade-up" data-aos-delay="{{ 150 + $index * 100 }}"
                      style="background: rgba(255,255,255,0.96);">
                     <div class="flex items-start justify-between gap-4">
                         <div>
                             <p class="text-xs font-extrabold uppercase tracking-widest text-gray-500">{{ $card['label'] }}</p>
-                            <div class="mt-2 text-3xl font-black tracking-tight text-gray-950">{{ $card['value'] }}</div>
+                            <div class="mt-2 text-3xl font-black tracking-tight text-gray-950 counter-animate"
+                                 data-counter="{{ $numericValue }}"
+                                 data-suffix="{{ $suffixValue }}">0{{ $suffixValue }}</div>
                         </div>
                         <div class="flex h-11 w-11 items-center justify-center rounded-2xl"
                              style="background: {{ $card['bg'] }}; color: {{ $card['accent'] }};">
@@ -88,8 +98,9 @@
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                @foreach(($trainingInsights['signals'] ?? []) as $signal)
+                @foreach(($trainingInsights['signals'] ?? []) as $index => $signal)
                 <div class="rounded-2xl border border-white/15 p-5 text-white"
+                     data-aos="fade-up" data-aos-delay="{{ 200 + $index * 100 }}"
                      style="background: rgba(255,255,255,0.09); backdrop-filter: blur(10px);">
                     <div class="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-cyan-100">
                         <span class="h-2 w-2 rounded-full bg-cyan-300"></span>
@@ -107,7 +118,7 @@
          UPCOMING TRAININGS  ← moved to top
     ═══════════════════════════════════════════ --}}
     @if(isset($upcomingTrainings) && $upcomingTrainings->count() > 0)
-    <section class="py-14 bg-white">
+    <section class="py-14 bg-white" data-aos="fade-up">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-end justify-between mb-8">
                 <div>
@@ -124,8 +135,9 @@
                 </a>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                @foreach($upcomingTrainings as $training)
-                <div class="group relative bg-white rounded-2xl border border-gray-200 p-5 hover:border-primary-300 hover:shadow-lg transition-all duration-200 overflow-hidden">
+                @foreach($upcomingTrainings as $index => $training)
+                <div class="group relative bg-white rounded-2xl border border-gray-200 p-5 hover:border-primary-300 hover:shadow-lg transition-all duration-200 overflow-hidden"
+                     data-aos="fade-up" data-aos-delay="{{ $index * 100 }}">
                     <div class="absolute top-0 left-0 right-0 h-0.5 rounded-t-2xl"
                          style="background: linear-gradient(90deg, #0097A7 0%, #26C6DA 100%);"></div>
                     @if($training->start_date)
@@ -167,7 +179,7 @@
          ONGOING MENTORSHIPS
     ═══════════════════════════════════════════ --}}
     @if(isset($ongoingMentorships) && $ongoingMentorships->count() > 0)
-    <section class="py-14" style="background: linear-gradient(135deg, #E0F7FA 0%, #F0FDFF 100%);">
+    <section class="py-14" data-aos="fade-up" style="background: linear-gradient(135deg, #E0F7FA 0%, #F0FDFF 100%);">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-end justify-between mb-8">
                 <div>
@@ -184,8 +196,9 @@
                 </a>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                @foreach($ongoingMentorships as $mentorship)
-                <div class="group bg-white rounded-2xl border border-primary-100 p-5 hover:border-primary-300 hover:shadow-lg transition-all duration-200 relative overflow-hidden">
+                @foreach($ongoingMentorships as $index => $mentorship)
+                <div class="group bg-white rounded-2xl border border-primary-100 p-5 hover:border-primary-300 hover:shadow-lg transition-all duration-200 relative overflow-hidden"
+                     data-aos="fade-up" data-aos-delay="{{ $index * 100 }}">
                     <div class="absolute top-0 left-0 right-0 h-1 rounded-t-2xl" style="background: linear-gradient(90deg, #00838F, #0097A7);"></div>
                     <div class="flex items-start justify-between mb-3 mt-1">
                         <div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
@@ -233,7 +246,7 @@
          UPCOMING MENTORSHIPS
     ═══════════════════════════════════════════ --}}
     @if(isset($upcomingMentorships) && $upcomingMentorships->count() > 0)
-    <section class="py-14" style="background: linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%);">
+    <section class="py-14" data-aos="fade-up" style="background: linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%);">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-end justify-between mb-8">
                 <div>
@@ -246,8 +259,9 @@
                 </div>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                @foreach($upcomingMentorships as $mentorship)
-                <div class="group bg-white rounded-2xl border border-green-100 p-5 hover:border-green-300 hover:shadow-lg transition-all duration-200 relative overflow-hidden">
+                @foreach($upcomingMentorships as $index => $mentorship)
+                <div class="group bg-white rounded-2xl border border-green-100 p-5 hover:border-green-300 hover:shadow-lg transition-all duration-200 relative overflow-hidden"
+                     data-aos="fade-up" data-aos-delay="{{ $index * 100 }}">
                     <div class="absolute top-0 left-0 right-0 h-1 rounded-t-2xl" style="background: linear-gradient(90deg, #15803d, #22c55e);"></div>
                     <div class="flex items-start justify-between mb-3 mt-1">
                         <div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
@@ -293,8 +307,11 @@
     {{-- ═══════════════════════════════════════════
          RECENTLY CLOSED MENTORSHIPS
     ═══════════════════════════════════════════ --}}
+    {{-- ═══════════════════════════════════════════
+         RECENTLY CLOSED MENTORSHIPS
+    ═══════════════════════════════════════════ --}}
     @if(isset($closedMentorships) && $closedMentorships->count() > 0)
-    <section class="py-10" style="background: linear-gradient(135deg, #F9FAFB 0%, #F3F4F6 100%);">
+    <section class="py-10" data-aos="fade-up" style="background: linear-gradient(135deg, #F9FAFB 0%, #F3F4F6 100%);">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-end justify-between mb-6">
                 <div>
@@ -307,8 +324,9 @@
                 </div>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                @foreach($closedMentorships as $mentorship)
-                <div class="bg-white rounded-2xl border border-gray-100 p-5 relative overflow-hidden">
+                @foreach($closedMentorships as $index => $mentorship)
+                <div class="bg-white rounded-2xl border border-gray-100 p-5 relative overflow-hidden"
+                     data-aos="fade-up" data-aos-delay="{{ $index * 100 }}">
                     <div class="absolute top-0 left-0 right-0 h-1 rounded-t-2xl bg-gray-300"></div>
                     <div class="flex items-start justify-between mb-3 mt-1">
                         <div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-gray-200 opacity-75">
@@ -353,7 +371,7 @@
          FEATURED RESOURCES
     ═══════════════════════════════════════════ --}}
     @if($featuredResources->count() > 0)
-    <section class="py-14 bg-gray-50">
+    <section class="py-14 bg-gray-50" data-aos="fade-up">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-end justify-between mb-8">
                 <div>
@@ -370,8 +388,10 @@
                 </a>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                @foreach($featuredResources as $resource)
-                    @include('components.resource-card', ['resource' => $resource, 'featured' => true])
+                @foreach($featuredResources as $index => $resource)
+                    <div data-aos="fade-up" data-aos-delay="{{ $index * 100 }}">
+                        @include('components.resource-card', ['resource' => $resource, 'featured' => true])
+                    </div>
                 @endforeach
             </div>
             <div class="text-center mt-8 md:hidden">
@@ -388,7 +408,7 @@
     {{-- ═══════════════════════════════════════════
          CATEGORIES GRID
     ═══════════════════════════════════════════ --}}
-    <section class="py-14 bg-white">
+    <section class="py-14 bg-white" data-aos="fade-up">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-end justify-between mb-8">
                 <div>
@@ -405,9 +425,10 @@
                 </a>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                @foreach($categories as $category)
+                @foreach($categories as $index => $category)
                 <a href="{{ route('resources.category', $category->slug) }}"
-                   class="group bg-white rounded-xl border border-gray-200 p-5 hover:border-primary-200 hover:shadow-md transition-all duration-200">
+                   class="group bg-white rounded-xl border border-gray-200 p-5 hover:border-primary-200 hover:shadow-md transition-all duration-200"
+                   data-aos="fade-up" data-aos-delay="{{ $index * 75 }}">
                     <div class="flex items-center gap-3 mb-3">
                         <div class="w-10 h-10 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform"
                              style="background: linear-gradient(135deg, #E0F7FA 0%, #B2EBF2 100%);">
@@ -458,8 +479,10 @@
                 </a>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-                @foreach($recentResources as $resource)
-                    @include('components.resource-card-compact', ['resource' => $resource])
+                @foreach($recentResources as $index => $resource)
+                    <div data-aos="fade-up" data-aos-delay="{{ $index * 75 }}">
+                        @include('components.resource-card-compact', ['resource' => $resource])
+                    </div>
                 @endforeach
             </div>
         </div>
@@ -487,8 +510,10 @@
                 </a>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                @foreach($popularResources as $resource)
-                    @include('components.resource-card', ['resource' => $resource])
+                @foreach($popularResources as $index => $resource)
+                    <div data-aos="fade-up" data-aos-delay="{{ $index * 100 }}">
+                        @include('components.resource-card', ['resource' => $resource])
+                    </div>
                 @endforeach
             </div>
         </div>
@@ -498,7 +523,7 @@
     {{-- ═══════════════════════════════════════════
          CTA BANNER
     ═══════════════════════════════════════════ --}}
-    <section class="py-16 relative overflow-hidden" style="background: linear-gradient(135deg, #004D40 0%, #0097A7 100%);">
+    <section class="py-16 relative overflow-hidden" data-aos="zoom-in" data-aos-duration="800" style="background: linear-gradient(135deg, #004D40 0%, #0097A7 100%);">
         <div class="absolute inset-0 opacity-[0.04]">
             <svg width="100%" height="100%"><pattern id="dots" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse"><circle cx="20" cy="20" r="1.5" fill="white"/></pattern><rect width="100%" height="100%" fill="url(#dots)"/></svg>
         </div>
@@ -551,19 +576,110 @@
 
 </div>
 
-@push('scripts')
-<script>
-    document.addEventListener('alpine:init', () => {
-        Alpine.data('homePage', () => ({ init() {} }));
-    });
-</script>
-@endpush
-
 @push('styles')
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.css">
 <style>
     .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
     .scrollbar-none::-webkit-scrollbar { display: none; }
     .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* Analytics CTA pulse highlight */
+    .analytics-cta-pulse {
+        animation: analyticsPulse 2.5s ease-in-out infinite;
+    }
+    .analytics-cta-pulse:hover {
+        animation-play-state: paused;
+    }
+    @keyframes analyticsPulse {
+        0%, 100% { box-shadow: 0 0 18px rgba(103, 232, 249, 0.25); transform: scale(1); }
+        50% { box-shadow: 0 0 32px rgba(103, 232, 249, 0.55); transform: scale(1.03); }
+    }
+    .analytics-cta-arrow {
+        animation: arrowBounce 1.4s ease-in-out infinite;
+    }
+    .analytics-cta-pulse:hover .analytics-cta-arrow {
+        animation-play-state: paused;
+    }
+    @keyframes arrowBounce {
+        0%, 100% { transform: translateX(0); }
+        50% { transform: translateX(4px); }
+    }
 </style>
+@endpush
+
+@push('scripts')
+<script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
+<script>
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('homePage', () => ({ init() {} }));
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+        if (typeof AOS !== 'undefined') {
+            AOS.init({
+                duration: 650,
+                easing: 'ease-out-cubic',
+                once: true,
+                offset: 50,
+                disable: window.matchMedia('(prefers-reduced-motion: reduce)').matches
+            });
+        }
+
+        initHomeCounters();
+    });
+
+    function initHomeCounters() {
+        const counters = document.querySelectorAll('.counter-animate');
+        if (!counters.length) return;
+
+        const formatNumber = (value, decimals = 0) => {
+            const num = parseFloat(value) || 0;
+            if (decimals > 0) {
+                return num.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+            }
+            return Math.round(num).toLocaleString();
+        };
+
+        const animate = (el) => {
+            if (el.dataset.counterAnimated === 'true') return;
+            el.dataset.counterAnimated = 'true';
+
+            const target = parseFloat(el.dataset.counter) || 0;
+            const suffix = el.dataset.suffix || '';
+            const decimals = parseInt(el.dataset.decimals || '0', 10);
+            const duration = parseInt(el.dataset.counterDuration || '1500', 10);
+            const start = performance.now();
+
+            const step = (now) => {
+                const elapsed = now - start;
+                const progress = Math.min(elapsed / duration, 1);
+                const eased = 1 - Math.pow(1 - progress, 3);
+                const current = target * eased;
+                el.textContent = formatNumber(current, decimals) + suffix;
+                if (progress < 1) {
+                    requestAnimationFrame(step);
+                } else {
+                    el.textContent = formatNumber(target, decimals) + suffix;
+                }
+            };
+
+            requestAnimationFrame(step);
+        };
+
+        if ('IntersectionObserver' in window) {
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        animate(entry.target);
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, { threshold: 0.5 });
+            counters.forEach(counter => observer.observe(counter));
+        } else {
+            counters.forEach(counter => animate(counter));
+        }
+    }
+</script>
 @endpush
 @endsection

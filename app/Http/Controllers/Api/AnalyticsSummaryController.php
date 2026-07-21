@@ -120,6 +120,7 @@ class AnalyticsSummaryController extends Controller
         $type = $mode === 'training' ? 'global_training' : 'facility_mentorship';
 
         $totalPrograms = Training::where('type', $type)
+            ->when($mode === 'mentorship', fn($q) => $q->where('is_pilot', false))
             ->when($year, fn($q) => $q->whereYear('start_date', $year))
             ->count();
 
@@ -134,13 +135,16 @@ class AnalyticsSummaryController extends Controller
                 if ($year) $q->whereYear('start_date', $year);
             })->count();
         } else {
-            $totalParticipants = ClassParticipant::whereHas('mentorshipClass.training', function ($q) use ($year) {
-                $q->where('type', 'facility_mentorship');
-                if ($year) $q->whereYear('start_date', $year);
-            })->distinct('user_id')->count('user_id');
+            $totalParticipants = ClassParticipant::whereIn('status', ['enrolled', 'active'])
+                ->whereHas('mentorshipClass.training', function ($q) use ($year) {
+                    $q->where('type', 'facility_mentorship')
+                      ->where('is_pilot', false);
+                    if ($year) $q->whereYear('start_date', $year);
+                })->distinct('user_id')->count('user_id');
 
             $totalFacilities = Facility::whereHas('trainings', function ($q) use ($year) {
-                $q->where('type', 'facility_mentorship');
+                $q->where('type', 'facility_mentorship')
+                  ->where('is_pilot', false);
                 if ($year) $q->whereYear('start_date', $year);
             })->count();
         }
@@ -169,10 +173,12 @@ class AnalyticsSummaryController extends Controller
                     if ($year) $q->whereYear('start_date', $year);
                 })->whereBetween('registration_date', [$start, $end])->count();
             } else {
-                $count = ClassParticipant::whereHas('mentorshipClass.training', function ($q) use ($year) {
-                    $q->where('type', 'facility_mentorship');
-                    if ($year) $q->whereYear('start_date', $year);
-                })->whereBetween('created_at', [$start, $end])->count();
+                $count = ClassParticipant::whereIn('status', ['enrolled', 'active'])
+                    ->whereHas('mentorshipClass.training', function ($q) use ($year) {
+                        $q->where('type', 'facility_mentorship')
+                          ->where('is_pilot', false);
+                        if ($year) $q->whereYear('start_date', $year);
+                    })->whereBetween('created_at', [$start, $end])->count();
             }
 
             $monthly[] = ['month' => $date->format('M'), 'count' => $count];
@@ -200,6 +206,8 @@ class AnalyticsSummaryController extends Controller
                 ->join('users', 'users.id', '=', 'class_participants.user_id')
                 ->join('departments', 'departments.id', '=', 'users.department_id')
                 ->where('trainings.type', 'facility_mentorship')
+                ->where('trainings.is_pilot', false)
+                ->whereIn('class_participants.status', ['enrolled', 'active'])
                 ->when($year, fn($q) => $q->whereYear('trainings.start_date', $year))
                 ->select('departments.name', DB::raw('COUNT(DISTINCT class_participants.user_id) as count'))
                 ->groupBy('departments.id', 'departments.name')
@@ -232,6 +240,8 @@ class AnalyticsSummaryController extends Controller
                 ->join('users', 'users.id', '=', 'class_participants.user_id')
                 ->join('assessment_cadres', 'assessment_cadres.id', '=', 'users.cadre_id')
                 ->where('trainings.type', 'facility_mentorship')
+                ->where('trainings.is_pilot', false)
+                ->whereIn('class_participants.status', ['enrolled', 'active'])
                 ->when($year, fn($q) => $q->whereYear('trainings.start_date', $year))
                 ->select('assessment_cadres.name', DB::raw('COUNT(DISTINCT class_participants.user_id) as count'))
                 ->groupBy('assessment_cadres.id', 'assessment_cadres.name')
@@ -253,7 +263,8 @@ class AnalyticsSummaryController extends Controller
                     });
                 } else {
                     $q->whereHas('trainings', function ($qq) use ($year) {
-                        $qq->where('type', 'facility_mentorship');
+                        $qq->where('type', 'facility_mentorship')
+                           ->where('is_pilot', false);
                         if ($year) $qq->whereYear('start_date', $year);
                     });
                 }
@@ -273,6 +284,7 @@ class AnalyticsSummaryController extends Controller
         $type = $mode === 'training' ? 'global_training' : 'facility_mentorship';
 
         $rows = Training::where('type', $type)
+            ->when($mode === 'mentorship', fn($q) => $q->where('is_pilot', false))
             ->when($year, fn($q) => $q->whereYear('start_date', $year))
             ->select('status', DB::raw('COUNT(*) as count'))
             ->groupBy('status')
@@ -312,6 +324,8 @@ class AnalyticsSummaryController extends Controller
                 ->join('subcounties', 'subcounties.id', '=', 'facilities.subcounty_id')
                 ->join('counties', 'counties.id', '=', 'subcounties.county_id')
                 ->where('trainings.type', 'facility_mentorship')
+                ->where('trainings.is_pilot', false)
+                ->whereIn('class_participants.status', ['enrolled', 'active'])
                 ->when($year, fn($q) => $q->whereYear('trainings.start_date', $year))
                 ->select('counties.name', DB::raw('COUNT(DISTINCT class_participants.user_id) as count'))
                 ->groupBy('counties.id', 'counties.name')

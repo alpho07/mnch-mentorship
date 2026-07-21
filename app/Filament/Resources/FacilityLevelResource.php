@@ -20,8 +20,7 @@ class FacilityLevelResource extends Resource {
     protected static ?int $navigationSort = 10;
 
     public static function shouldRegisterNavigation(): bool {
-        return auth()->check() && auth()->user()->hasRole(['super_admin', 'admin', 'division']);
-    }
+        return auth()->check() && auth()->user()->can('view_any_facility::level');}
 
     public static function form(Form $form): Form {
         return $form

@@ -47,7 +47,7 @@
                     @endif
 
                     @auth
-                        <a href="{{ route('filament.admin.pages.dashboard') }}" class="inline-block w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition duration-150 shadow-sm">
+                        <a href="{{ route('filament.admin.pages.mentee-dashboard') }}" class="inline-block w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition duration-150 shadow-sm">
                             Go to Dashboard
                         </a>
                     @else

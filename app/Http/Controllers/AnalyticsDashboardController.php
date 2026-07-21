@@ -15,6 +15,8 @@ use App\Models\Department;
 use App\Models\Cadre;
 use App\Models\FacilityType;
 use App\Services\AssessmentAnalyticsService;
+use App\Services\EmoncDashboardService;
+use App\Services\MentorAnalyticsDashboardService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -25,8 +27,8 @@ class AnalyticsDashboardController extends Controller {
 
     public function index(Request $request) {
         $currentYear  = Carbon::now()->year;
-        $selectedYear = $request->get('year', '');
-        $mode         = $request->get('mode', 'training');
+        $selectedYear = (string) ($request->get('year') ?? '');
+        $mode         = $request->get('mode', 'mentorship');
 
         // ── Role-based geographic scoping ────────────────────────────────
         // Pre-fill county/subcounty/facility filters for non-above-site users
@@ -65,6 +67,70 @@ class AnalyticsDashboardController extends Controller {
                 ->orderBy('year', 'desc')
                 ->pluck('year')
                 ->filter();
+
+        if ($mode === 'mentor') {
+            $mentorFilters = [
+                'program_id'    => $request->get('program_id'),
+                'county_id'     => $request->get('county_id'),
+                'subcounty_id'  => $request->get('subcounty_id'),
+                'facility_id'   => $request->get('facility_id'),
+                'mentor_id'     => $request->get('mentor_id'),
+                'cadre_id'      => $request->get('cadre_id'),
+                'department_id' => $request->get('department_id'),
+            ];
+
+            $data           = app(MentorAnalyticsDashboardService::class)->build(auth()->user(), $mentorFilters);
+            $mentorKpis     = $data['kpis'];
+            $mentorMatrix   = $data['matrix'];
+            $mentorCharts   = $data['chartData'];
+            $mentorInsights = $data['insights'];
+
+            // Filter option lists
+            $mentorPrograms    = \App\Models\Program::orderBy('name')->get(['id', 'name']);
+            $mentorCounties    = \App\Models\County::orderBy('name')->get(['id', 'name']);
+            $mentorSubcounties = $request->filled('county_id')
+                ? \App\Models\Subcounty::where('county_id', $request->county_id)->orderBy('name')->get(['id', 'name'])
+                : collect();
+            $mentorFacilities  = $request->filled('subcounty_id')
+                ? \App\Models\Facility::where('subcounty_id', $request->subcounty_id)->orderBy('name')->get(['id', 'name'])
+                : collect();
+            $mentorCadres      = \App\Models\Cadre::orderBy('name')->get(['id', 'name']);
+            $mentorDepartments = \App\Models\Department::orderBy('name')->get(['id', 'name']);
+
+            // All lead mentors for mentor dropdown (unfiltered — needed to build the select)
+            $mentorUsers = \App\Models\Training::where('type', 'facility_mentorship')->where('is_pilot', false)
+                ->whereNotNull('mentor_id')
+                ->with('mentor:id,name')
+                ->get()
+                ->pluck('mentor')
+                ->filter()
+                ->unique('id')
+                ->sortBy('name')
+                ->values();
+
+            return view('analytics.dashboard.index', compact(
+                'mode', 'selectedYear', 'availableYears',
+                'mentorKpis', 'mentorMatrix', 'mentorCharts', 'mentorInsights',
+                'mentorFilters', 'mentorPrograms', 'mentorCounties', 'mentorSubcounties',
+                'mentorFacilities', 'mentorCadres', 'mentorDepartments', 'mentorUsers'
+            ));
+        }
+
+        if ($mode === 'emonc') {
+            $emoncData           = app(EmoncDashboardService::class)->build(auth()->user());
+            $emoncKpis           = $emoncData['kpis'];
+            $emoncMatrix         = $emoncData['completionMatrix'];
+            $emoncChartData      = $emoncData['chartData'];
+            $emoncPendingActions = $emoncData['pendingActions'];
+            $emoncExtendedStats  = $emoncData['extendedStats'];
+            $emoncInsights       = $emoncData['insights'];
+
+            return view('analytics.dashboard.index', compact(
+                'mode', 'selectedYear', 'availableYears',
+                'emoncKpis', 'emoncMatrix', 'emoncChartData',
+                'emoncPendingActions', 'emoncExtendedStats', 'emoncInsights'
+            ));
+        }
 
         if ($mode === 'assessment') {
             $selectedSubcounty = $request->get('subcounty_id');
@@ -188,7 +254,7 @@ class AnalyticsDashboardController extends Controller {
             } else {
                 // For mentorship, count facilities that host mentorship programs
                 $facilitiesWithPrograms = Facility::whereHas('trainings', function ($query) use ($selectedYear, $trainingId) {
-                    $query->where('type', 'facility_mentorship');
+                    $query->where('type', 'facility_mentorship')->where('is_pilot', false);
                     if (!empty($selectedYear)) {
                         $query->whereYear('start_date', $selectedYear);
                     }
@@ -470,7 +536,7 @@ class AnalyticsDashboardController extends Controller {
 
         // Get facilities with mentorship programs
         $facilities = Facility::whereHas('trainings', function ($query) use ($selectedYear) {
-            $query->where('type', 'facility_mentorship');
+            $query->where('type', 'facility_mentorship')->where('is_pilot', false);
             if (!empty($selectedYear)) {
                 $query->whereYear('start_date', $selectedYear);
             }
@@ -481,7 +547,7 @@ class AnalyticsDashboardController extends Controller {
         ->with(['subcounty', 'facilityType'])
         ->withCount([
             'trainings as mentorship_count' => function ($query) use ($selectedYear) {
-                $query->where('type', 'facility_mentorship');
+                $query->where('type', 'facility_mentorship')->where('is_pilot', false);
                 if (!empty($selectedYear)) {
                     $query->whereYear('start_date', $selectedYear);
                 }
@@ -494,7 +560,8 @@ class AnalyticsDashboardController extends Controller {
                         ->join('mentorship_classes', 'trainings.id', '=', 'mentorship_classes.training_id')
                         ->join('class_participants', 'mentorship_classes.id', '=', 'class_participants.mentorship_class_id')
                         ->whereColumn('trainings.facility_id', 'facilities.id')
-                        ->where('trainings.type', 'facility_mentorship');
+                        ->where('trainings.type', 'facility_mentorship')->where('trainings.is_pilot', false)
+                        ->whereIn('class_participants.status', ['enrolled', 'active']);
                 if (!empty($selectedYear)) {
                     $query->whereYear('trainings.start_date', $selectedYear);
                 }
@@ -540,7 +607,7 @@ class AnalyticsDashboardController extends Controller {
         $facility = Facility::with(['facilityType', 'subcounty'])->findOrFail($facilityId);
 
         // Get mentorship programs for this facility
-        $mentorships = Training::where('type', 'facility_mentorship')
+        $mentorships = Training::where('type', 'facility_mentorship')->where('is_pilot', false)
                 ->where('facility_id', $facilityId)
                 ->when(!empty($selectedYear), function ($query) use ($selectedYear) {
                     $query->whereYear('start_date', $selectedYear);
@@ -552,6 +619,7 @@ class AnalyticsDashboardController extends Controller {
         $menteeCounts = ClassParticipant::query()
                 ->join('mentorship_classes', 'class_participants.mentorship_class_id', '=', 'mentorship_classes.id')
                 ->whereIn('mentorship_classes.training_id', $mentorships->pluck('id'))
+                ->whereIn('class_participants.status', ['enrolled', 'active'])
                 ->groupBy('mentorship_classes.training_id')
                 ->selectRaw('mentorship_classes.training_id, COUNT(DISTINCT class_participants.user_id) as mentees_count')
                 ->pluck('mentees_count', 'training_id');
@@ -831,7 +899,7 @@ class AnalyticsDashboardController extends Controller {
                 'facilities as facilities_with_programs' => function ($query) use ($year, $trainingId) {
                     // Facilities that have mentorship programs
                     $query->whereHas('trainings', function ($q) use ($year, $trainingId) {
-                        $q->where('type', 'facility_mentorship');
+                        $q->where('type', 'facility_mentorship')->where('is_pilot', false);
                         if (!empty($year)) {
                             $q->whereYear('start_date', $year);
                         }
@@ -855,6 +923,9 @@ class AnalyticsDashboardController extends Controller {
         $trainingType = $mode === 'training' ? 'global_training' : 'facility_mentorship';
 
         $query = Training::where('type', $trainingType);
+        if ($mode !== 'training') {
+            $query->where('is_pilot', false);
+        }
 
         if (!empty($year)) {
             $query->whereYear('start_date', $year);
@@ -886,6 +957,7 @@ class AnalyticsDashboardController extends Controller {
             $menteeCounts = ClassParticipant::query()
                 ->join('mentorship_classes', 'class_participants.mentorship_class_id', '=', 'mentorship_classes.id')
                 ->whereIn('mentorship_classes.training_id', $trainings->pluck('id'))
+                ->whereIn('class_participants.status', ['enrolled', 'active'])
                 ->groupBy('mentorship_classes.training_id')
                 ->selectRaw('mentorship_classes.training_id, COUNT(DISTINCT class_participants.user_id) as total_participants')
                 ->pluck('total_participants', 'training_id');
@@ -913,6 +985,9 @@ class AnalyticsDashboardController extends Controller {
         $trainingType = $mode === 'training' ? 'global_training' : 'facility_mentorship';
 
         $totalProgramsQuery = Training::where('type', $trainingType);
+        if ($mode !== 'training') {
+            $totalProgramsQuery->where('is_pilot', false);
+        }
         if (!empty($year)) {
             $totalProgramsQuery->whereYear('start_date', $year);
         }
@@ -933,15 +1008,16 @@ class AnalyticsDashboardController extends Controller {
             });
             $totalParticipants = $totalParticipantsQuery->distinct('user_id')->count();
         } else {
-            $totalParticipantsQuery = ClassParticipant::whereHas('mentorshipClass.training', function ($query) use ($year, $trainingId) {
-                $query->where('type', 'facility_mentorship');
-                if (!empty($year)) {
-                    $query->whereYear('start_date', $year);
-                }
-                if ($trainingId) {
-                    $query->where('id', $trainingId);
-                }
-            });
+            $totalParticipantsQuery = ClassParticipant::whereIn('status', ['enrolled', 'active'])
+                ->whereHas('mentorshipClass.training', function ($query) use ($year, $trainingId) {
+                    $query->where('type', 'facility_mentorship')->where('is_pilot', false);
+                    if (!empty($year)) {
+                        $query->whereYear('start_date', $year);
+                    }
+                    if ($trainingId) {
+                        $query->where('id', $trainingId);
+                    }
+                });
             $totalParticipants = $totalParticipantsQuery->distinct('user_id')->count('user_id');
         }
 
@@ -960,7 +1036,7 @@ class AnalyticsDashboardController extends Controller {
         } else {
             // For mentorship: facilities that host mentorship programs
             $totalFacilitiesQuery = Facility::whereHas('trainings', function ($query) use ($year, $trainingId) {
-                $query->where('type', 'facility_mentorship');
+                $query->where('type', 'facility_mentorship')->where('is_pilot', false);
                 if (!empty($year)) {
                     $query->whereYear('start_date', $year);
                 }
@@ -1016,7 +1092,7 @@ class AnalyticsDashboardController extends Controller {
                 ->join('trainings', 'trainings.id', '=', 'mentorship_classes.training_id')
                 ->join('users', 'users.id', '=', 'class_participants.user_id')
                 ->join('departments', 'departments.id', '=', 'users.department_id')
-                ->where('trainings.type', 'facility_mentorship')
+                ->where('trainings.type', 'facility_mentorship')->where('trainings.is_pilot', false)
                 ->when(!empty($year), fn($q) => $q->whereYear('trainings.start_date', $year))
                 ->when($trainingId, fn($q) => $q->where('trainings.id', $trainingId))
                 ->select('departments.name', DB::raw('COUNT(DISTINCT class_participants.user_id) as count'))
@@ -1030,7 +1106,7 @@ class AnalyticsDashboardController extends Controller {
                 ->join('trainings', 'trainings.id', '=', 'mentorship_classes.training_id')
                 ->join('users', 'users.id', '=', 'class_participants.user_id')
                 ->join('assessment_cadres', 'assessment_cadres.id', '=', 'users.cadre_id')
-                ->where('trainings.type', 'facility_mentorship')
+                ->where('trainings.type', 'facility_mentorship')->where('trainings.is_pilot', false)
                 ->when(!empty($year), fn($q) => $q->whereYear('trainings.start_date', $year))
                 ->when($trainingId, fn($q) => $q->where('trainings.id', $trainingId))
                 ->select('assessment_cadres.name', DB::raw('COUNT(DISTINCT class_participants.user_id) as count'))
@@ -1066,7 +1142,7 @@ class AnalyticsDashboardController extends Controller {
                 'facilities as total_facilities',
                 'facilities as facilities_with_training' => function ($query) use ($year, $trainingId) {
                     $query->whereHas('trainings', function ($q) use ($year, $trainingId) {
-                        $q->where('type', 'facility_mentorship');
+                        $q->where('type', 'facility_mentorship')->where('is_pilot', false);
                         if (!empty($year)) {
                             $q->whereYear('start_date', $year);
                         }
@@ -1119,8 +1195,11 @@ class AnalyticsDashboardController extends Controller {
         $trainingType = $mode === 'training' ? 'global_training' : 'facility_mentorship';
 
         // Base query for participants
-        $baseQuery = TrainingParticipant::whereHas('training', function ($query) use ($trainingType, $year, $trainingId) {
+        $baseQuery = TrainingParticipant::whereHas('training', function ($query) use ($trainingType, $year, $trainingId, $mode) {
             $query->where('type', $trainingType);
+            if ($mode !== 'training') {
+                $query->where('is_pilot', false);
+            }
             if (!empty($year)) {
                 $query->whereYear('start_date', $year);
             }
@@ -1193,7 +1272,7 @@ class AnalyticsDashboardController extends Controller {
                     'facilities as total_facilities',
                     'facilities as facilities_with_training' => function ($query) use ($year, $trainingId) {
                         $query->whereHas('trainings', function ($q) use ($year, $trainingId) {
-                            $q->where('type', 'facility_mentorship');
+                            $q->where('type', 'facility_mentorship')->where('is_pilot', false);
                             if (!empty($year)) {
                                 $q->whereYear('start_date', $year);
                             }
@@ -1262,7 +1341,7 @@ class AnalyticsDashboardController extends Controller {
                     $join->on('mentee_module_progress.class_participant_id', '=', 'class_participants.id')
                          ->on('mentee_module_progress.class_module_id', '=', 'class_modules.id');
                 })
-                ->where('trainings.type', 'facility_mentorship')
+                ->where('trainings.type', 'facility_mentorship')->where('trainings.is_pilot', false)
                 ->whereIn('class_participants.status', ['enrolled', 'active', 'completed'])
                 ->when(!empty($year), fn($q) => $q->whereYear('trainings.start_date', $year))
                 ->when($trainingId, fn($q) => $q->where('trainings.id', $trainingId))
@@ -1297,7 +1376,7 @@ class AnalyticsDashboardController extends Controller {
             $completionDistribution = $buckets;
 
             $classStatusBreakdown = MentorshipClass::whereHas('training', function ($q) use ($year, $trainingId) {
-                    $q->where('type', 'facility_mentorship');
+                    $q->where('type', 'facility_mentorship')->where('is_pilot', false);
                     if (!empty($year)) {
                         $q->whereYear('start_date', $year);
                     }
@@ -1326,6 +1405,9 @@ class AnalyticsDashboardController extends Controller {
 
         try {
             $totalProgramsQuery = Training::where('type', $trainingType);
+            if ($mode !== 'training') {
+                $totalProgramsQuery->where('is_pilot', false);
+            }
             if (!empty($year)) {
                 $totalProgramsQuery->whereYear('start_date', $year);
             }
@@ -1358,7 +1440,7 @@ class AnalyticsDashboardController extends Controller {
                 });
             } else {
                 $totalFacilitiesQuery = Facility::whereHas('trainings', function ($query) use ($year, $trainingId) {
-                    $query->where('type', 'facility_mentorship');
+                    $query->where('type', 'facility_mentorship')->where('is_pilot', false);
                     if (!empty($year)) {
                         $query->whereYear('start_date', $year);
                     }
@@ -1380,7 +1462,7 @@ class AnalyticsDashboardController extends Controller {
                     ->join('class_modules', 'class_modules.id', '=', 'mentee_module_progress.class_module_id')
                     ->join('mentorship_classes', 'mentorship_classes.id', '=', 'class_modules.mentorship_class_id')
                     ->join('trainings', 'trainings.id', '=', 'mentorship_classes.training_id')
-                    ->where('trainings.type', 'facility_mentorship')
+                    ->where('trainings.type', 'facility_mentorship')->where('trainings.is_pilot', false)
                     ->whereNotIn('mentee_module_progress.status', ['exempted'])
                     ->when(!empty($year), fn($q) => $q->whereYear('trainings.start_date', $year))
                     ->when($trainingId, fn($q) => $q->where('trainings.id', $trainingId))
@@ -1427,18 +1509,20 @@ class AnalyticsDashboardController extends Controller {
             });
         } else {
             // For mentorship: participants in mentorship programs hosted by facilities in this county
-            $query = ClassParticipant::whereHas('mentorshipClass.training', function ($query) use ($countyId, $year, $trainingId) {
-                $query->where('type', 'facility_mentorship')
-                    ->whereHas('facility.subcounty', function ($q) use ($countyId) {
-                        $q->where('county_id', $countyId);
-                    });
-                if (!empty($year)) {
-                    $query->whereYear('start_date', $year);
-                }
-                if ($trainingId) {
-                    $query->where('id', $trainingId);
-                }
-            });
+            $query = ClassParticipant::whereIn('status', ['enrolled', 'active'])
+                ->whereHas('mentorshipClass.training', function ($query) use ($countyId, $year, $trainingId) {
+                    $query->where('type', 'facility_mentorship')
+                          ->where('is_pilot', false)
+                          ->whereHas('facility.subcounty', function ($q) use ($countyId) {
+                              $q->where('county_id', $countyId);
+                          });
+                    if (!empty($year)) {
+                        $query->whereYear('start_date', $year);
+                    }
+                    if ($trainingId) {
+                        $query->where('id', $trainingId);
+                    }
+                });
         }
 
         return $query->distinct('user_id')->count('user_id');
@@ -1449,6 +1533,9 @@ class AnalyticsDashboardController extends Controller {
         $trainingType = $mode === 'training' ? 'global_training' : 'facility_mentorship';
 
         $query = Training::where('type', $trainingType);
+        if ($mode !== 'training') {
+            $query->where('is_pilot', false);
+        }
 
         if (!empty($year)) {
             $query->whereYear('start_date', $year);
@@ -1522,7 +1609,7 @@ class AnalyticsDashboardController extends Controller {
     }
 
     private function getMentorshipsForCounty($countyId, $year) {
-        $query = Training::where('type', 'facility_mentorship')
+        $query = Training::where('type', 'facility_mentorship')->where('is_pilot', false)
                 ->whereHas('facility.subcounty', function ($query) use ($countyId) {
                     $query->where('county_id', $countyId);
                 });
@@ -1536,6 +1623,7 @@ class AnalyticsDashboardController extends Controller {
         $menteeCounts = ClassParticipant::query()
                 ->join('mentorship_classes', 'class_participants.mentorship_class_id', '=', 'mentorship_classes.id')
                 ->whereIn('mentorship_classes.training_id', $mentorships->pluck('id'))
+                ->whereIn('class_participants.status', ['enrolled', 'active'])
                 ->groupBy('mentorship_classes.training_id')
                 ->selectRaw('mentorship_classes.training_id, COUNT(DISTINCT class_participants.user_id) as mentees_count')
                 ->pluck('mentees_count', 'training_id');
@@ -1629,7 +1717,7 @@ class AnalyticsDashboardController extends Controller {
                            $query->whereHas('subcounty', function ($q) use ($countyId) {
                                 $q->where('county_id', $countyId);
                             })->whereHas('trainings', function ($q) use ($year) {
-                                $q->where('type', 'facility_mentorship');
+                                $q->where('type', 'facility_mentorship')->where('is_pilot', false);
                                 if (!empty($year)) {
                                     $q->whereYear('start_date', $year);
                                 }
@@ -1677,12 +1765,13 @@ class AnalyticsDashboardController extends Controller {
                             })->count();
         } else {
             // For mentorship, all participants are typically in the same facility/county
-            $totalParticipants = ClassParticipant::whereHas('mentorshipClass.training', function ($query) use ($programId, $countyId) {
-                $query->where('id', $programId)
-                        ->whereHas('facility.subcounty', function ($q) use ($countyId) {
-                            $q->where('county_id', $countyId);
-                        });
-            })->distinct('user_id')->count('user_id');
+            $totalParticipants = ClassParticipant::whereIn('status', ['enrolled', 'active'])
+                ->whereHas('mentorshipClass.training', function ($query) use ($programId, $countyId) {
+                    $query->where('id', $programId)
+                            ->whereHas('facility.subcounty', function ($q) use ($countyId) {
+                                $q->where('county_id', $countyId);
+                            });
+                })->distinct('user_id')->count('user_id');
         }
 
         return compact('totalParticipants');
@@ -1738,6 +1827,9 @@ class AnalyticsDashboardController extends Controller {
         try {
             // 1. Status breakdown
             $statusQuery = Training::where('type', $trainingType);
+            if ($mode !== 'training') {
+                $statusQuery->where('is_pilot', false);
+            }
             if (!empty($year)) $statusQuery->whereYear('start_date', $year);
             $statusBreakdown = $statusQuery
                 ->selectRaw("COALESCE(status, 'unknown') as status, COUNT(*) as cnt")
@@ -1758,7 +1850,7 @@ class AnalyticsDashboardController extends Controller {
                         if (!empty($year)) $q->whereYear('start_date', $year);
                     })->whereBetween('registration_date', [$ms, $me])->count();
                 } else {
-                    $cnt = Training::where('type', 'facility_mentorship')
+                    $cnt = Training::where('type', 'facility_mentorship')->where('is_pilot', false)
                         ->whereBetween('start_date', [$ms, $me])
                         ->count();
                 }
@@ -1774,8 +1866,9 @@ class AnalyticsDashboardController extends Controller {
                 $prevCount = TrainingParticipant::whereHas('training', fn($q) =>
                     $q->where('type', $trainingType)->whereYear('start_date', $prevYear))->count();
             } else {
-                $curCount  = Training::where('type', $trainingType)->whereYear('start_date', $curYear)->count();
-                $prevCount = Training::where('type', $trainingType)->whereYear('start_date', $prevYear)->count();
+                $pilotFilter = fn ($q) => $q->where('is_pilot', false);
+                $curCount  = Training::where('type', $trainingType)->when(true, $pilotFilter)->whereYear('start_date', $curYear)->count();
+                $prevCount = Training::where('type', $trainingType)->when(true, $pilotFilter)->whereYear('start_date', $prevYear)->count();
             }
             $yoyChange = $prevCount > 0 ? round((($curCount - $prevCount) / $prevCount) * 100, 1) : 0;
             $yearComparison = ['current' => $curCount, 'previous' => $prevCount, 'change' => $yoyChange, 'year' => $curYear];
@@ -1804,7 +1897,8 @@ class AnalyticsDashboardController extends Controller {
                     ->join('trainings', 'trainings.facility_id', '=', 'facilities.id')
                     ->join('mentorship_classes', 'mentorship_classes.training_id', '=', 'trainings.id')
                     ->join('class_participants', 'class_participants.mentorship_class_id', '=', 'mentorship_classes.id')
-                    ->where('trainings.type', 'facility_mentorship')
+                    ->where('trainings.type', 'facility_mentorship')->where('trainings.is_pilot', false)
+                    ->whereIn('class_participants.status', ['enrolled', 'active'])
                     ->when(!empty($year), fn($q) => $q->whereYear('trainings.start_date', $year))
                     ->select('counties.name', DB::raw('COUNT(DISTINCT class_participants.user_id) as participant_count'))
                     ->groupBy('counties.id', 'counties.name')
@@ -1822,17 +1916,18 @@ class AnalyticsDashboardController extends Controller {
                     $q->where('type', $trainingType);
                     if (!empty($year)) $q->whereYear('start_date', $year);
                 })->distinct('user_id')->count()
-                : ClassParticipant::whereHas('mentorshipClass.training', function ($q) use ($year) {
-                    $q->where('type', 'facility_mentorship');
-                    if (!empty($year)) $q->whereYear('start_date', $year);
-                })->distinct('user_id')->count('user_id');
+                : ClassParticipant::whereIn('status', ['enrolled', 'active'])
+                    ->whereHas('mentorshipClass.training', function ($q) use ($year) {
+                        $q->where('type', 'facility_mentorship')->where('is_pilot', false);
+                        if (!empty($year)) $q->whereYear('start_date', $year);
+                    })->distinct('user_id')->count('user_id');
             $avgParticipants = round($totalParticipants / $totalPrograms, 1);
 
             // 6. Mentee status breakdown (mentorship mode)
             $menteeStatus = [];
             if ($mode === 'mentorship') {
                 $menteeStatus = ClassParticipant::whereHas('mentorshipClass.training', function ($q) use ($year) {
-                    $q->where('type', 'facility_mentorship');
+                    $q->where('type', 'facility_mentorship')->where('is_pilot', false);
                     if (!empty($year)) $q->whereYear('start_date', $year);
                 })
                 ->selectRaw("COALESCE(status, 'enrolled') as status, COUNT(DISTINCT user_id) as cnt")
@@ -1851,11 +1946,12 @@ class AnalyticsDashboardController extends Controller {
                     ->get(['id', 'title', 'status', 'start_date'])
                     ->map(fn($t) => ['title' => $t->title, 'count' => $t->p_count, 'status' => $t->status])
                     ->toArray()
-                : Training::where('type', 'facility_mentorship')
+                : Training::where('type', 'facility_mentorship')->where('is_pilot', false)
                     ->when(!empty($year), fn($q) => $q->whereYear('start_date', $year))
                     ->get(['id', 'title', 'status', 'start_date'])
                     ->map(function ($t) {
-                        $cnt = ClassParticipant::whereHas('mentorshipClass', fn($q) => $q->where('training_id', $t->id))
+                        $cnt = ClassParticipant::whereIn('status', ['enrolled', 'active'])
+                            ->whereHas('mentorshipClass', fn($q) => $q->where('training_id', $t->id))
                             ->distinct('user_id')->count();
                         return ['title' => $t->title, 'count' => $cnt, 'status' => $t->status];
                     })
@@ -1875,7 +1971,7 @@ class AnalyticsDashboardController extends Controller {
                     ->join('class_modules', 'class_modules.id', '=', 'mentee_module_progress.class_module_id')
                     ->join('mentorship_classes', 'mentorship_classes.id', '=', 'class_modules.mentorship_class_id')
                     ->join('trainings', 'trainings.id', '=', 'mentorship_classes.training_id')
-                    ->where('trainings.type', 'facility_mentorship')
+                    ->where('trainings.type', 'facility_mentorship')->where('trainings.is_pilot', false)
                     ->whereNotIn('mentee_module_progress.status', ['exempted'])
                     ->when(!empty($year), fn($q) => $q->whereYear('trainings.start_date', $year))
                     ->selectRaw('COUNT(*) as total_slots, SUM(CASE WHEN mentee_module_progress.status IN ("in_progress", "completed") THEN 1 ELSE 0 END) as present_slots')
@@ -1894,7 +1990,7 @@ class AnalyticsDashboardController extends Controller {
                         $join->on('mentee_module_progress.class_participant_id', '=', 'class_participants.id')
                              ->on('mentee_module_progress.class_module_id', '=', 'class_modules.id');
                     })
-                    ->where('trainings.type', 'facility_mentorship')
+                    ->where('trainings.type', 'facility_mentorship')->where('trainings.is_pilot', false)
                     ->whereIn('class_participants.status', ['enrolled', 'active', 'completed'])
                     ->when(!empty($year), fn($q) => $q->whereYear('trainings.start_date', $year))
                     ->groupBy('class_participants.id')
@@ -1929,7 +2025,7 @@ class AnalyticsDashboardController extends Controller {
 
                 // Class lifecycle status breakdown
                 $classStatusBreakdown = MentorshipClass::whereHas('training', function ($q) use ($year) {
-                        $q->where('type', 'facility_mentorship');
+                        $q->where('type', 'facility_mentorship')->where('is_pilot', false);
                         if (!empty($year)) {
                             $q->whereYear('start_date', $year);
                         }
@@ -2107,7 +2203,7 @@ class AnalyticsDashboardController extends Controller {
     {
         $selectedYear = $request->get('year', '');
 
-        $mentorships = Training::where('type', 'facility_mentorship')
+        $mentorships = Training::where('type', 'facility_mentorship')->where('is_pilot', false)
             ->where('facility_id', $facility->id)
             ->when(!empty($selectedYear), fn($q) => $q->whereYear('start_date', $selectedYear))
             ->with([

@@ -81,6 +81,7 @@ class ResourceController extends Controller
                 ->get();
 
             $ongoingMentorships = Training::where('type', 'facility_mentorship')
+                ->live()
                 ->where('status', '!=', 'cancelled')
                 ->where('start_date', '<=', $now)
                 ->where('end_date', '>=', $now)
@@ -90,6 +91,7 @@ class ResourceController extends Controller
                 ->get();
 
             $upcomingMentorships = Training::where('type', 'facility_mentorship')
+                ->live()
                 ->where('status', '!=', 'cancelled')
                 ->where('start_date', '>', $now)
                 ->with(['county', 'facility'])
@@ -98,6 +100,7 @@ class ResourceController extends Controller
                 ->get();
 
             $closedMentorships = Training::where('type', 'facility_mentorship')
+                ->live()
                 ->where('status', '!=', 'cancelled')
                 ->where('end_date', '<', $now)
                 ->where('end_date', '>=', $now->copy()->subDays(30))
@@ -105,6 +108,32 @@ class ResourceController extends Controller
                 ->orderBy('end_date', 'desc')
                 ->limit(4)
                 ->get();
+
+            // EmONC mentorships with null dates — derive status from classes
+            $emoncNoDates = Training::where('type', 'facility_mentorship')
+                ->live()
+                ->where('status', '!=', 'cancelled')
+                ->whereNull('start_date')
+                ->whereNull('end_date')
+                ->whereHas('program', fn ($q) => $q->whereRaw("LOWER(name) LIKE '%emonc%'")
+                    ->orWhereRaw("LOWER(name) LIKE '%maternal%'"))
+                ->with(['county', 'facility', 'mentorshipClasses'])
+                ->get();
+
+            foreach ($emoncNoDates as $t) {
+                $classStatuses = $t->mentorshipClasses->pluck('status');
+                $hasActive     = $classStatuses->contains('active');
+                $hasCompleted  = $classStatuses->contains('completed');
+                $allCompleted  = $classStatuses->count() > 0 && $classStatuses->every(fn ($s) => $s === 'completed');
+
+                if ($hasActive) {
+                    $ongoingMentorships->push($t);
+                } elseif ($allCompleted) {
+                    $closedMentorships->push($t);
+                } elseif (!$hasActive && !$hasCompleted) {
+                    $upcomingMentorships->push($t);
+                }
+            }
 
             $trainingInsights = $this->buildTrainingInsights();
 
@@ -130,6 +159,7 @@ class ResourceController extends Controller
 
         $upcomingMentorshipsCount = (clone $upcomingBase)
             ->where('type', 'facility_mentorship')
+            ->live()
             ->count();
 
         $nextThirtyDayPrograms = (clone $upcomingBase)
@@ -143,6 +173,7 @@ class ResourceController extends Controller
 
         $activeMentorships = Training::query()
             ->where('type', 'facility_mentorship')
+            ->live()
             ->whereNotIn('status', ['cancelled', 'completed'])
             ->where(function ($query) {
                 $query->whereIn('status', ['active', 'ongoing'])
@@ -152,16 +183,17 @@ class ResourceController extends Controller
 
         $activeClasses = MentorshipClass::query()
             ->where('status', 'active')
-            ->whereHas('training', fn($query) => $query->where('type', 'facility_mentorship'))
+            ->whereHas('training', fn($query) => $query->where('type', 'facility_mentorship')->live())
             ->count();
 
         $mentorshipMentees = ClassParticipant::query()
-            ->whereHas('mentorshipClass.training', fn($query) => $query->where('type', 'facility_mentorship'))
+            ->whereHas('mentorshipClass.training', fn($query) => $query->where('type', 'facility_mentorship')->live())
             ->distinct('class_participants.user_id')
             ->count('class_participants.user_id');
 
         $mentoredFacilities = Training::query()
             ->where('type', 'facility_mentorship')
+            ->live()
             ->whereNotNull('facility_id')
             ->distinct('facility_id')
             ->count('facility_id');

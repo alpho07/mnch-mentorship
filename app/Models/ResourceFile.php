@@ -32,10 +32,10 @@ class ResourceFile extends Model
     protected static function boot()
     {
         parent::boot();
-        
+
         static::creating(function ($model) {
             // Ensure original_name is set
-            if (empty($model->original_name) && !empty($model->file_name)) {
+            if (empty($model->original_name) && ! empty($model->file_name)) {
                 $model->original_name = $model->file_name;
             }
         });
@@ -65,7 +65,9 @@ class ResourceFile extends Model
 
     public function getFormattedFileSizeAttribute(): string
     {
-        if (!$this->file_size) return '';
+        if (! $this->file_size) {
+            return '';
+        }
 
         $units = ['B', 'KB', 'MB', 'GB'];
         $size = $this->file_size;
@@ -76,7 +78,7 @@ class ResourceFile extends Model
             $unit++;
         }
 
-        return round($size, 2) . ' ' . $units[$unit];
+        return round($size, 2).' '.$units[$unit];
     }
 
     public function getFileExtension(): ?string
@@ -99,7 +101,7 @@ class ResourceFile extends Model
 
     public function getFileIcon(): string
     {
-        return match(true) {
+        return match (true) {
             str_starts_with($this->file_type, 'image/') => 'heroicon-o-photo',
             str_starts_with($this->file_type, 'video/') => 'heroicon-o-video-camera',
             str_starts_with($this->file_type, 'audio/') => 'heroicon-o-musical-note',
@@ -113,6 +115,10 @@ class ResourceFile extends Model
 
     public function exists(): bool
     {
+        if (blank($this->file_path)) {
+            return false;
+        }
+
         return Storage::disk('resources')->exists($this->file_path);
     }
 

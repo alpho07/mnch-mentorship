@@ -1,17 +1,17 @@
 <?php
 
-use App\Http\Controllers\Api\AuthController;
-use App\Http\Controllers\Api\ProfileController;
-use App\Http\Controllers\Api\AssessmentSectionController;
 use App\Http\Controllers\Api\AssessmentController;
 use App\Http\Controllers\Api\AssessmentResponseController;
-use App\Http\Controllers\Api\ReportController;
-use App\Http\Controllers\Api\FacilityController;
-use App\Http\Controllers\Api\HumanResourceController;
-use App\Http\Controllers\Api\HealthProductsController;
+use App\Http\Controllers\Api\AssessmentSectionController;
+use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ChatController;
+use App\Http\Controllers\Api\FacilityController;
+use App\Http\Controllers\Api\HealthProductsController;
+use App\Http\Controllers\Api\HumanResourceController;
 use App\Http\Controllers\Api\MentorshipController;
-use App\Http\Middleware\MobileApiCors; 
+use App\Http\Controllers\Api\ProfileController;
+use App\Http\Controllers\Api\ReportController;
+use App\Http\Middleware\MobileApiCors;
 
 /*
   |--------------------------------------------------------------------------
@@ -39,12 +39,12 @@ Route::prefix('v1')->name('api.v1.')->middleware(MobileApiCors::class)->group(fu
         Route::post('reset-password', [AuthController::class, 'resetPassword'])->name('reset-password');
     });
 
-    Route::get('health', fn() => response()->json([
-                'status' => 'ok',
-                'service' => 'MNCH Assessment API',
-                'version' => '1.0.0',
-                'timestamp' => now()->toIso8601String(),
-            ]))->name('health');
+    Route::get('health', fn () => response()->json([
+        'status' => 'ok',
+        'service' => 'MNCH Assessment API',
+        'version' => '1.0.0',
+        'timestamp' => now()->toIso8601String(),
+    ]))->name('health');
 
     // =========================================================================
     // PROTECTED — Requires Sanctum token (Authorization: Bearer {token})
@@ -101,7 +101,7 @@ Route::prefix('v1')->name('api.v1.')->middleware(MobileApiCors::class)->group(fu
 
             // ── Section progress ──────────────────────────────────────────────
             Route::put('{assessment}/sections/{sectionCode}/progress',
-                    [AssessmentController::class, 'updateSectionProgress'])->name('section-progress');
+                [AssessmentController::class, 'updateSectionProgress'])->name('section-progress');
 
             // ── Responses ─────────────────────────────────────────────────────
             Route::prefix('{assessment}/responses')->name('responses.')->group(function () {
@@ -202,7 +202,11 @@ Route::prefix('v1')->name('api.v1.')->middleware(MobileApiCors::class)->group(fu
             Route::get('/', [\App\Http\Controllers\Api\MenteeApiController::class, 'index'])->name('index');
             Route::get('{class}', [\App\Http\Controllers\Api\MenteeApiController::class, 'show'])->name('show');
             Route::post('{class}/modules/{module}/attend', [\App\Http\Controllers\Api\MenteeApiController::class, 'attend'])->name('attend');
+            Route::get('{class}/modules/{module}', [\App\Http\Controllers\Api\MenteeApiController::class, 'moduleDetail'])->name('module-detail');
+            Route::post('{class}/modules/{module}/quiz/{quiz}/start', [\App\Http\Controllers\Api\MenteeApiController::class, 'startQuiz'])->name('quiz.start');
+            Route::post('{class}/modules/{module}/video', [\App\Http\Controllers\Api\MenteeApiController::class, 'uploadVideo'])->name('video.upload');
         });
+        Route::post('me/quiz-attempts/{attempt}/submit', [\App\Http\Controllers\Api\MenteeApiController::class, 'submitQuiz'])->name('me.quiz.submit');
 
         // ── Global trainings ──────────────────────────────────────────────────────
         Route::prefix('trainings')->name('trainings.')->group(function () {

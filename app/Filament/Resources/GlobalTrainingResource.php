@@ -47,11 +47,15 @@ class GlobalTrainingResource extends Resource {
     protected static ?string $recordTitleAttribute = 'title';
 
     public static function shouldRegisterNavigation(): bool {
-        return auth()->check() && auth()->user()->hasRole(['super_admin', 'division','admin','national_mentor']);
+        return auth()->check()
+            && auth()->user()->canAccessTrainingManagement()
+            && auth()->user()->can('view_any_global::training');
     }
 
     public static function canAccess(): bool {
-        return auth()->check() && auth()->user()->hasRole(['super_admin', 'division','admin','national_mentor']);
+        return auth()->check()
+            && auth()->user()->canAccessTrainingManagement()
+            && auth()->user()->can('view_any_global::training');
     }
 
     public static function canCreate(): bool {
@@ -640,7 +644,7 @@ class GlobalTrainingResource extends Resource {
                                 Tables\Actions\RestoreAction::make()
                                 ->visible(fn($record) => $record->trashed()),
                                 Tables\Actions\ForceDeleteAction::make()
-                                ->visible(fn($record) => $record->trashed() && auth()->user()->hasRole('super_admin'))
+                                ->visible(fn($record) => $record->trashed() && auth()->user()->can('force_delete_any_global::training'))
                                 ->requiresConfirmation()
                                 ->modalHeading('Permanently Delete Training')
                                 ->modalDescription('This will permanently delete the training and ALL associated data (participants, assessments, etc.). This cannot be undone.')
@@ -658,7 +662,7 @@ class GlobalTrainingResource extends Resource {
                                 ->requiresConfirmation(),
                                 Tables\Actions\RestoreBulkAction::make(),
                                 Tables\Actions\ForceDeleteBulkAction::make()
-                                ->visible(fn() => auth()->user()->hasRole('super_admin')),
+                                ->visible(fn() => auth()->user()->can('force_delete_any_global::training')),
                             ]),
                         ])
                         ->defaultSort('start_date', 'desc')

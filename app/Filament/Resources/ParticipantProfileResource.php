@@ -23,7 +23,15 @@ class ParticipantProfileResource extends Resource {
     protected static ?string $slug = 'participant-profiles';
 
     public static function shouldRegisterNavigation(): bool {
-        return auth()->check() && auth()->user()->hasRole(['super_admin', 'admin', 'division']);
+        return auth()->check()
+            && auth()->user()->canAccessTrainingManagement()
+            && auth()->user()->can('view_any_participant::profile');
+    }
+
+    public static function canAccess(): bool {
+        return auth()->check()
+            && auth()->user()->canAccessTrainingManagement()
+            && auth()->user()->can('view_any_participant::profile');
     }
 
     public static function table(Table $table): Table {

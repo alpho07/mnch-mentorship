@@ -13,7 +13,7 @@ class ValidationQueueStatsWidget extends BaseWidget {
     protected static ?string $pollingInterval = '60s';
 
     public static function canView(): bool {
-        return auth()->check() && auth()->user()->hasRole(['super_admin', 'admin', 'county_mentor', 'national_mentor']);
+        return auth()->check() && auth()->user()->can('widget_ValidationQueueStatsWidget');
     }
 
     protected function getStats(): array {
@@ -25,8 +25,8 @@ class ValidationQueueStatsWidget extends BaseWidget {
         $data = Cache::remember($cacheKey, 60, function () use ($user, $countyId) {
             $base = IndicatorReportPeriod::query();
 
-            // County mentors scoped to their county; admins/super_admin see all
-            if ($user->hasRole('county_mentor') && $countyId) {
+            // County mentor leads scoped to their county; admins/super_admin see all
+            if ($user->hasRole('county_mentor_lead') && $countyId) {
                 $base->whereHas('facility.subcounty', fn($q) => $q->where('county_id', $countyId));
             }
 

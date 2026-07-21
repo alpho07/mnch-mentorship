@@ -22,8 +22,7 @@ class SupplierResource extends Resource {
     protected static ?int $navigationSort = 1;
 
     public static function shouldRegisterNavigation(): bool {
-        return auth()->check() && auth()->user()->hasRole(['super_admin', 'admin', 'division', 'inventory']);
-    }
+        return auth()->check() && auth()->user()->can('view_any_supplier');}
 
     public static function form(Form $form): Form {
         return $form

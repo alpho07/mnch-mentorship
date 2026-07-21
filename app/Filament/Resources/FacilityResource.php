@@ -32,8 +32,7 @@ class FacilityResource extends Resource {
     protected static ?string $recordTitleAttribute = 'name';
 
     public static function shouldRegisterNavigation(): bool {
-        return auth()->check() && auth()->user()->hasRole(['super_admin', 'admin', 'division']);
-    }
+        return auth()->check() && auth()->user()->can('view_any_facility');}
 
     public static function form(Form $form): Form {
         return $form

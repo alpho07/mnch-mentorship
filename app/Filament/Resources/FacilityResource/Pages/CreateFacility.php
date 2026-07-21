@@ -34,7 +34,7 @@ class CreateFacility extends CreateRecord
                         ])),
                     \Filament\Notifications\Actions\Action::make('view_dashboard')
                         ->label('View Central Store Dashboard')
-                        ->url(route('filament.admin.pages.dashboard')),
+                        ->url('/admin'),
                 ])
                 ->send();
         }

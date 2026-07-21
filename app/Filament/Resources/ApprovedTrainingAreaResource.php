@@ -27,7 +27,15 @@ class ApprovedTrainingAreaResource extends Resource {
     protected static ?string $recordTitleAttribute = 'name';
 
     public static function shouldRegisterNavigation(): bool {
-        return auth()->check() && auth()->user()->hasRole(['super_admin', 'facility_mentor']);
+        return auth()->check()
+            && auth()->user()->canAccessTrainingManagement()
+            && auth()->user()->can('view_any_approved::training::area');
+    }
+
+    public static function canAccess(): bool {
+        return auth()->check()
+            && auth()->user()->canAccessTrainingManagement()
+            && auth()->user()->can('view_any_approved::training::area');
     }
 
     public static function form(Form $form): Form {

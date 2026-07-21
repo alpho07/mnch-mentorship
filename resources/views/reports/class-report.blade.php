@@ -396,6 +396,52 @@
                 color: var(--primary);
             }
 
+            /* ── EmONC section ── */
+            .emonc-section {
+                padding: 20px 28px;
+                border-bottom: 2px solid var(--gray-200);
+                background: #fff;
+            }
+            .emonc-grid {
+                display: grid;
+                grid-template-columns: repeat(4, 1fr);
+                gap: 12px;
+                margin-bottom: 18px;
+            }
+            .emonc-card {
+                background: var(--gray-50);
+                border: 1px solid var(--gray-200);
+                border-radius: 8px;
+                padding: 14px;
+                text-align: center;
+            }
+            .emonc-card-val {
+                font-size: 22px;
+                font-weight: 800;
+                line-height: 1;
+                margin-bottom: 4px;
+            }
+            .emonc-card-lbl {
+                font-size: 9px;
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.06em;
+                color: var(--gray-400);
+            }
+            .status-pill {
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+                padding: 2px 8px;
+                border-radius: 100px;
+                font-size: 10px;
+                font-weight: 600;
+            }
+            .pill-passed { background: var(--success-light); color: var(--success); }
+            .pill-failed { background: var(--danger-light); color: var(--danger); }
+            .pill-pending { background: var(--warning-light); color: var(--warning); }
+            .pill-none { background: var(--gray-100); color: var(--gray-400); }
+
             /* ── Footer ── */
             .report-footer {
                 padding: 16px 28px;
@@ -462,7 +508,7 @@
         {{-- Action bar (web only) --}}
     @if(!isset($isPdf) || !$isPdf)
             <div class="action-bar">
-                <a href="{{ route('reports.reports.class.pdf', $class->id) }}">
+                <a href="{{ route('reports.class.pdf', $class->id) }}">
                     ⬇ Download PDF
                 </a>
                 <a href="javascript:window.print()" class="btn-primary">
@@ -534,6 +580,7 @@
                 <div class="info-block-title">Facility & Period</div>
                 <div class="info-row"><span class="info-label">Facility</span><span class="info-value">{{ $class->training->facility->name ?? '—' }}</span></div>
                 <div class="info-row"><span class="info-label">Lead Mentor</span><span class="info-value">{{ $class->training->mentor->name ?? '—' }}</span></div>
+                <div class="info-row"><span class="info-label">Co-Mentor(s)</span><span class="info-value">{{ $coMentors->isNotEmpty() ? $coMentors->implode(', ') : '—' }}</span></div>
                 <div class="info-row"><span class="info-label">Start Date</span><span class="info-value">{{ $class->start_date ? \Carbon\Carbon::parse($class->start_date)->format('d M Y') : '—' }}</span></div>
                 <div class="info-row"><span class="info-label">End Date</span><span class="info-value">{{ $class->end_date ? \Carbon\Carbon::parse($class->end_date)->format('d M Y') : '—' }}</span></div>
             </div>
@@ -551,6 +598,109 @@
                 @endforeach
             </div>
         </div>
+
+        {{-- EmONC Progress & Certification --}}
+        @if($isEmonc && $emoncReport)
+            <div class="emonc-section">
+                <div class="section-title">EmONC Progress & Certification</div>
+                <div class="emonc-grid">
+                    <div class="emonc-card">
+                        <div class="emonc-card-val c-orange">{{ $emoncReport['pending_video_reviews'] }}</div>
+                        <div class="emonc-card-lbl">Pending Video Reviews</div>
+                    </div>
+                    <div class="emonc-card">
+                        <div class="emonc-card-val c-blue">{{ $emoncReport['pending_mentor_approvals'] }}</div>
+                        <div class="emonc-card-lbl">Pending Mentor Approvals</div>
+                    </div>
+                    <div class="emonc-card">
+                        <div class="emonc-card-val c-purple">{{ $emoncReport['pending_drmh_approvals'] }}</div>
+                        <div class="emonc-card-lbl">Pending Head DRMH</div>
+                    </div>
+                    <div class="emonc-card">
+                        <div class="emonc-card-val c-green">{{ $emoncReport['certified_count'] }}</div>
+                        <div class="emonc-card-lbl">Certified</div>
+                    </div>
+                </div>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Mentee</th>
+                            <th class="center">Modules Done</th>
+                            @foreach($emoncReport['modules'] as $module)
+                                <th class="center" title="{{ $module->programModule?->name ?? '' }}">
+                                    {{ $module->programModule?->parent ? ($module->programModule->parent->name . ' › ') : '' }}{{ Str::limit($module->programModule?->name, 18) }}
+                                </th>
+                            @endforeach
+                            <th class="center">Video</th>
+                            <th class="center">Mentor</th>
+                            <th class="center">Head DRMH</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($emoncReport['mentees'] as $row)
+                            <tr>
+                                <td>
+                                    <div class="mentee-name">{{ $row['user']->name ?? ($row['user']->first_name . ' ' . $row['user']->last_name) }}</div>
+                                    <div class="mentee-meta">{{ $row['user']->email ?? '' }}</div>
+                                </td>
+                                <td class="center">
+                                    <div class="pct-wrap">
+                                        <div class="pct-bar-bg">
+                                            <div class="pct-bar-fill" style="width:{{ $row['completion_pct'] }}%; background:{{ $row['completion_pct'] >= 80 ? '#16a34a' : ($row['completion_pct'] >= 40 ? '#d97706' : '#dc2626') }};"></div>
+                                        </div>
+                                        <span class="pct-val">{{ $row['completion_pct'] }}%</span>
+                                    </div>
+                                </td>
+                                @foreach($row['modules'] as $modRow)
+                                    <td class="center">
+                                        @if($modRow['progress_status'] === 'completed' || $modRow['progress_status'] === 'exempted')
+                                            <span class="status-pill pill-passed">✓ Done</span>
+                                        @elseif($modRow['progress_status'] === 'in_progress')
+                                            <span class="status-pill pill-pending">In Progress</span>
+                                        @else
+                                            <span class="status-pill pill-none">—</span>
+                                        @endif
+                                        <div style="font-size:9px;color:#94a3b8;margin-top:3px;">
+                                            @if($modRow['post_test_score'] !== null)
+                                                Post: {{ $modRow['post_test_score'] }}%
+                                            @elseif($modRow['pre_test_score'] !== null)
+                                                Pre: {{ $modRow['pre_test_score'] }}%
+                                            @endif
+                                        </div>
+                                    </td>
+                                @endforeach
+                                <td class="center">
+                                    @if($row['videos_passed'] === $row['modules_total'] && $row['modules_total'] > 0)
+                                        <span class="status-pill pill-passed">Passed</span>
+                                    @elseif($row['videos_pending'] > 0)
+                                        <span class="status-pill pill-pending">{{ $row['videos_pending'] }} pending</span>
+                                    @else
+                                        <span class="status-pill pill-none">—</span>
+                                    @endif
+                                </td>
+                                <td class="center">
+                                    @if($row['mentor_approved'])
+                                        <span class="status-pill pill-passed">Approved</span>
+                                    @else
+                                        <span class="status-pill pill-pending">Pending</span>
+                                    @endif
+                                </td>
+                                <td class="center">
+                                    @if($row['certified'])
+                                        <span class="status-pill pill-passed">Certified</span>
+                                    @elseif($row['head_drmh_approved'])
+                                        <span class="status-pill pill-passed">Signed</span>
+                                    @else
+                                        <span class="status-pill pill-pending">Pending</span>
+                                    @endif
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
 
         {{-- Attendance table --}}
         <div class="table-section">
@@ -621,14 +771,14 @@
                                 <td class="center">
                                     @if($row['class_complete'])
                                         <div style="display:flex;flex-direction:column;gap:4px;align-items:center;">
-                                            <a href="{{ route('reports.reports.class.certificate.preview', [$class->id, $row['participant']->id]) }}"
+                                            <a href="{{ route('reports.class.certificate.preview', [$class->id, $row['participant']->id]) }}"
                                        target="_blank"
                                        style="font-size:10px;color:#4f46e5;text-decoration:none;font-weight:600;
                                        background:#eff6ff;border:1px solid #bfdbfe;border-radius:5px;
                                        padding:2px 8px;display:inline-block;">
                                         👁 View
                                             </a>
-                                            <a href="{{ route('reports.reports.class.certificate', [$class->id, $row['participant']->id]) }}"
+                                            <a href="{{ route('reports.class.certificate', [$class->id, $row['participant']->id]) }}"
                                        style="font-size:10px;color:#16a34a;text-decoration:none;font-weight:600;
                                        background:#f0fdf4;border:1px solid #bbf7d0;border-radius:5px;
                                        padding:2px 8px;display:inline-block;">

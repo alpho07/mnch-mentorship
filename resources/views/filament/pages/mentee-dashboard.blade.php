@@ -642,6 +642,14 @@
             display: block;
         }
 
+        /* ── Accordion header hover ──────────────────────────────────────────── */
+        .md-accordion-trigger:hover {
+            background: #f8fafc;
+        }
+        .dark .md-accordion-trigger:hover {
+            background: #1e293b;
+        }
+
         /* ── Responsive ───────────────────────────────────────────────────────── */
         @media (max-width: 640px) {
             .md-profile-card {
@@ -744,6 +752,40 @@ $cards = [
         @endforeach
         </div>
 
+{{-- ══ PENDING ENROLLMENT ══════════════════════════════════════════════════ --}}
+        @php
+            $pendingEnrollment = session('enrollment_intent');
+        @endphp
+        @if(is_array($pendingEnrollment) && ! empty($pendingEnrollment['class_id']))
+            @php
+                $pendingClass = \App\Models\MentorshipClass::with('training')->find($pendingEnrollment['class_id']);
+            @endphp
+            @if($pendingClass)
+                <div class="md-card" style="background:linear-gradient(135deg,#f0fdf4 0%,#ecfdf5 100%);border:1px solid #bbf7d0;margin-bottom:24px;">
+                    <div style="display:flex;align-items:flex-start;gap:16px;">
+                        <div style="width:44px;height:44px;border-radius:12px;background:#22c55e;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px;">⏳</div>
+                        <div style="flex:1;min-width:0;">
+                            <div style="font-size:15px;font-weight:800;color:#14532d;">Pending Enrollment</div>
+                            <div style="font-size:13px;color:#166534;margin-top:2px;">
+                                You started joining <strong>{{ $pendingClass->name }}</strong> but didn't complete login.
+                                @if(! empty($pendingEnrollment['email']))
+                                    <span style="color:#15803d;">Email: {{ $pendingEnrollment['email'] }}</span>
+                                @endif
+                            </div>
+                            <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
+                                <a href="{{ route('filament.admin.auth.login') }}" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;background:#22c55e;color:#fff;font-size:12px;font-weight:700;text-decoration:none;transition:background .15s;">
+                                    Complete Enrollment →
+                                </a>
+                                <button type="button" wire:click="clearPendingEnrollment" style="padding:8px 16px;border-radius:8px;background:#fff;border:1px solid #bbf7d0;color:#166534;font-size:12px;font-weight:600;cursor:pointer;">
+                                    Dismiss
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            @endif
+        @endif
+
 {{-- ══ MAIN CONTENT + SIDEBAR ══════════════════════════════════════════════ --}}
             @if(empty($enrollments))
         <div class="md-empty">
@@ -755,39 +797,23 @@ $cards = [
 
         <div class="md-two-col">
 
-    {{-- ── LEFT: Classes ─────────────────────────────────────────────── --}}
+    {{-- ── LEFT: Classes (accordion) ────────────────────────────────── --}}
             <div>
-        {{-- Active / In-Progress classes first --}}
-        @php
-            $activeEnrollments    = collect($enrollments)->filter(fn($e) => in_array($e['class_status'], ['active']))->values();
-            $otherEnrollments     = collect($enrollments)->filter(fn($e) => !in_array($e['class_status'], ['active']))->values();
-        @endphp
-
-        @if($activeEnrollments->isNotEmpty())
                 <div class="md-section-header">
                     <div class="md-section-title">
-                        <span style="background:#dcfce7;color:#16a34a;width:26px;height:26px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:14px;">▶</span>
-                        Active Classes
+                        <span style="background:#eff6ff;color:#1d4ed8;width:26px;height:26px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:14px;">📚</span>
+                        My Classes
                     </div>
+                    <span style="font-size:12px;color:#94a3b8;">{{ count($enrollments) }} enrollment{{ count($enrollments) !== 1 ? 's' : '' }}</span>
                 </div>
 
-        @foreach($activeEnrollments as $enrollment)
-            @include('filament.components.mentee-class-card', ['enrollment' => $enrollment, 'highlight' => true])
-        @endforeach
-        @endif
-
-        @if($otherEnrollments->isNotEmpty())
-                <div class="md-section-header" style="margin-top:{{ $activeEnrollments->isNotEmpty() ? '24px' : '0' }}">
-                    <div class="md-section-title">
-                        <span style="background:#f1f5f9;color:#64748b;width:26px;height:26px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:14px;">📦</span>
-                        All Enrollments
-                    </div>
-                </div>
-
-        @foreach($otherEnrollments as $enrollment)
-            @include('filament.components.mentee-class-card', ['enrollment' => $enrollment, 'highlight' => false])
-        @endforeach
-        @endif
+                @foreach($enrollments as $i => $enrollment)
+                    @include('filament.components.mentee-class-card', [
+                        'enrollment'  => $enrollment,
+                        'highlight'   => $enrollment['class_status'] === 'active',
+                        'defaultOpen' => $i === 0,
+                    ])
+                @endforeach
             </div>
 
     {{-- ── RIGHT: Sidebar ─────────────────────────────────────────────── --}}
@@ -906,10 +932,10 @@ $cards = [
 
         {{-- Activity Feed --}}
         @if(!empty($activityFeed))
-                <div class="md-sidebar-card">
+                <div class="md-sidebar-card" x-data="{ expanded: false }">
                     <div class="md-sidebar-header">🕐 Recent Activity</div>
                     <div class="md-sidebar-body" style="padding-bottom:8px;">
-                @foreach(array_slice($activityFeed, 0, 8) as $item)
+                @foreach(array_slice($activityFeed, 0, 5) as $item)
                         <div class="md-feed-item">
                             <div class="md-feed-icon"
                                  style="background:{{ match($item['color']) {
@@ -925,6 +951,32 @@ $cards = [
                             </div>
                         </div>
                 @endforeach
+                @if(count($activityFeed) > 5)
+                    <div x-show="expanded" x-collapse>
+                    @foreach(array_slice($activityFeed, 5) as $item)
+                            <div class="md-feed-item">
+                                <div class="md-feed-icon"
+                                     style="background:{{ match($item['color']) {
+                                 'green'  => '#dcfce7',
+                                 'blue'   => '#dbeafe',
+                                 'purple' => '#ede9fe',
+                                 'indigo' => '#e0e7ff',
+                                 default  => '#f1f5f9',
+                             } }}">{{ $item['icon'] }}</div>
+                                <div style="flex:1">
+                                    <div class="md-feed-text">{!! $item['text'] !!}</div>
+                                    <div class="md-feed-time">{{ $item['time'] }}</div>
+                                </div>
+                            </div>
+                    @endforeach
+                    </div>
+                    <button
+                        @click="expanded = !expanded"
+                        style="display:block;width:100%;margin-top:8px;padding:7px 0;background:none;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;color:#3b82f6;cursor:pointer;transition:background .15s;"
+                        onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background='none'"
+                        x-text="expanded ? 'Show Less' : 'View More ({{ count($activityFeed) - 5 }} more)'">
+                    </button>
+                @endif
                     </div>
                 </div>
         @endif
@@ -938,13 +990,16 @@ $cards = [
 {{-- ── Inline partial: class card ──────────────────────────────────────────── --}}
 @push('scripts')
     <script>
-    function toggleModules(id) {
-        const el = document.getElementById('modules-' + id);
-        const btn = document.getElementById('toggle-' + id);
-        if (!el) return;
-        el.classList.toggle('open');
-                btn.textContent = el.classList.contains('open') ? '▲ Hide modules' : '▼ Show all modules';
-            }
+    function toggleClassCard(id) {
+        const body = document.getElementById('class-body-' + id);
+        const icon = document.getElementById('class-toggle-icon-' + id);
+        if (!body) return;
+        const isOpen = body.style.display !== 'none';
+        body.style.display = isOpen ? 'none' : 'block';
+        if (icon) {
+            icon.style.transform = isOpen ? 'rotate(180deg)' : '';
+        }
+    }
     </script>
 @endpush
 </x-filament-panels::page>
