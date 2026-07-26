@@ -266,6 +266,9 @@ export const _rawApi = {
         forgotPassword: (email) => post('/auth/forgot-password', {email}),
         resetPassword: (token, email, password, password_confirmation) =>
             post('/auth/reset-password', {token, email, password, password_confirmation}),
+        register: (payload) => post('/auth/register', payload),
+        verifyAccount: (userId, expires, signature, password, password_confirmation) =>
+            post(`/auth/verify-account/${userId}`, {expires, signature, password, password_confirmation}),
     },
     profile: {
         get: () => get('/profile'),
@@ -460,6 +463,13 @@ const api = {
         refresh: _rawApi.auth.refresh,
         forgotPassword: _rawApi.auth.forgotPassword,
         resetPassword: _rawApi.auth.resetPassword,
+        register: _rawApi.auth.register,
+        verifyAccount: async (userId, expires, signature, password, password_confirmation) => {
+            const data = await _rawApi.auth.verifyAccount(userId, expires, signature, password, password_confirmation);
+            if (data?.token) TokenStore.set(data.token);
+            if (data?.user) await offlineStore.saveUser(data.user);
+            return data;
+        },
     },
 
     // ── Profile ──────────────────────────────────────────────────────────────
