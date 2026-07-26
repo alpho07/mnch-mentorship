@@ -77,3 +77,4 @@ class AuthRegisterApiTest extends TestCase
     }
 }
 
+

@@ -475,3 +475,4 @@ class TrainingResource extends Resource
     }
 }
 
+

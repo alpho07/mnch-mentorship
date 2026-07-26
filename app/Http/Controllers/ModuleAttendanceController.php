@@ -247,3 +247,4 @@ class ModuleAttendanceController extends Controller {
     }
 }
 
+

@@ -480,3 +480,4 @@ class TrainingExportResource extends Resource {
     }
 }
 
+

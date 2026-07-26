@@ -722,3 +722,4 @@ class GlobalTrainingResource extends Resource {
     }
 }
 
+

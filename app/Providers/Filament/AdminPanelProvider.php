@@ -175,3 +175,4 @@ class AdminPanelProvider extends PanelProvider
     }
 }
 
+

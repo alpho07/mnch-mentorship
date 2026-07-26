@@ -74,3 +74,4 @@ class ScopeSeeder extends Seeder
 
 
 
+
