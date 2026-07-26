@@ -3,8 +3,8 @@ import { T } from "../constants.js";
 import { Field, inputStyle } from "./screen-mentorship-form.jsx";
 import api from "../services/api.service.js";
 
-export function ForgotPasswordScreen({ onBack }) {
-    const [email, setEmail]   = useState("");
+export function ForgotPasswordScreen({ onBack, initialEmail }) {
+    const [email, setEmail]   = useState(initialEmail || "");
     const [error, setError]   = useState("");
     const [saving, setSaving] = useState(false);
     const [sent, setSent]     = useState(false);

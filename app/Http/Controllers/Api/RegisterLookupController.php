@@ -7,7 +7,9 @@ use App\Models\County;
 use App\Models\Department;
 use App\Models\Facility;
 use App\Models\MainCadre;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 /**
  * Public, unauthenticated reference-data lookups for the mobile Register
@@ -53,5 +55,33 @@ class RegisterLookupController extends Controller
             ]);
 
         return response()->json(['data' => $facilities]);
+    }
+
+    /**
+     * Live "does this email already have an account" check while typing on
+     * the Register screen. Only returns existence — no other user data —
+     * to avoid leaking anything beyond what registration's own uniqueness
+     * validation already reveals on submit.
+     */
+    public function checkEmail(Request $request): JsonResponse
+    {
+        $request->validate(['email' => 'required|email']);
+
+        return response()->json([
+            'exists' => User::where('email', $request->email)->exists(),
+        ]);
+    }
+
+    /**
+     * Live "is this phone already tied to an account" check while typing on
+     * the Register screen. Same existence-only response as checkEmail().
+     */
+    public function checkPhone(Request $request): JsonResponse
+    {
+        $request->validate(['phone' => 'required|string']);
+
+        return response()->json([
+            'exists' => User::where('phone', $request->phone)->exists(),
+        ]);
     }
 }

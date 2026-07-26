@@ -391,6 +391,8 @@ export const _rawApi = {
         cadres: () => get('/register-lookups/cadres'),
         departments: () => get('/register-lookups/departments'),
         facilitiesByCounty: (countyId) => get('/register-lookups/counties/' + countyId + '/facilities'),
+        checkEmail: (email) => get('/register-lookups/check-email?email=' + encodeURIComponent(email)),
+        checkPhone: (phone) => get('/register-lookups/check-phone?phone=' + encodeURIComponent(phone)),
     },
     mentorshipCreate: {
         create: (payload) => post('/mentorships', payload),

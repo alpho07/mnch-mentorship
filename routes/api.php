@@ -48,6 +48,8 @@ Route::prefix('v1')->name('api.v1.')->middleware(MobileApiCors::class)->group(fu
         Route::get('cadres', [RegisterLookupController::class, 'cadres'])->name('cadres');
         Route::get('departments', [RegisterLookupController::class, 'departments'])->name('departments');
         Route::get('counties/{county}/facilities', [RegisterLookupController::class, 'facilitiesByCounty'])->name('counties.facilities');
+        Route::get('check-email', [RegisterLookupController::class, 'checkEmail'])->name('check-email');
+        Route::get('check-phone', [RegisterLookupController::class, 'checkPhone'])->name('check-phone');
     });
 
     Route::get('health', fn () => response()->json([

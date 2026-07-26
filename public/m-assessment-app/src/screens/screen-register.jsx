@@ -19,7 +19,9 @@ const FIELD_STEP = {
     county_id: 4, facility_id: 4,
 };
 
-export function RegisterScreen({ onRegistered, onBack }) {
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export function RegisterScreen({ onRegistered, onBack, onGoToForgotPassword }) {
     const [step, setStep] = useState(1);
 
     const [firstName, setFirstName]   = useState("");
@@ -38,6 +40,10 @@ export function RegisterScreen({ onRegistered, onBack }) {
     const [counties, setCounties]     = useState([]);
     const [facilities, setFacilities] = useState([]);
     const [facilitiesLoading, setFacilitiesLoading] = useState(false);
+
+    // "idle" | "checking" | "exists" | "available"
+    const [emailStatus, setEmailStatus] = useState("idle");
+    const [phoneStatus, setPhoneStatus] = useState("idle");
 
     const [error, setError]             = useState("");
     const [fieldErrors, setFieldErrors] = useState({});
@@ -65,8 +71,36 @@ export function RegisterScreen({ onRegistered, onBack }) {
             .finally(() => setFacilitiesLoading(false));
     }, [countyId]);
 
+    // Debounced "does this email already exist" check while typing.
+    useEffect(() => {
+        const trimmed = email.trim();
+        if (!EMAIL_RE.test(trimmed)) { setEmailStatus("idle"); return; }
+        setEmailStatus("checking");
+        const timer = setTimeout(() => {
+            api.registerLookups.checkEmail(trimmed)
+                .then(d => setEmailStatus(d?.exists ? "exists" : "available"))
+                .catch(() => setEmailStatus("idle"));
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [email]);
+
+    // Debounced "is this phone already taken" check — only meaningful once
+    // the email has been confirmed free (a duplicate email already has its
+    // own, more actionable prompt below).
+    useEffect(() => {
+        const trimmed = phone.trim();
+        if (trimmed.length < 7 || emailStatus === "exists") { setPhoneStatus("idle"); return; }
+        setPhoneStatus("checking");
+        const timer = setTimeout(() => {
+            api.registerLookups.checkPhone(trimmed)
+                .then(d => setPhoneStatus(d?.exists ? "exists" : "available"))
+                .catch(() => setPhoneStatus("idle"));
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [phone, emailStatus]);
+
     const step1Valid = firstName.trim() && lastName.trim();
-    const step2Valid = email.trim() && phone.trim();
+    const step2Valid = email.trim() && phone.trim() && emailStatus !== "exists";
     const step3Valid = cadreId && departmentId && role;
     const step4Valid = countyId && facilityId;
     const stepValid = [true, step1Valid, step2Valid, step3Valid, step4Valid][step];
@@ -200,12 +234,47 @@ export function RegisterScreen({ onRegistered, onBack }) {
 
                 {step === 2 && (
                     <div>
-                        <Field label="Email Address" required error={fieldErrors.email}>
+                        <Field
+                            label="Email Address" required error={fieldErrors.email}
+                            hint={emailStatus === "checking" ? "Checking…" : emailStatus === "available" ? "✓ Available" : undefined}
+                        >
                             <input type="email" value={email} onChange={e => { setEmail(e.target.value); clearFieldError("email"); }} style={inputStyle} />
                         </Field>
-                        <Field label="Phone Number" required error={fieldErrors.phone}>
+                        {emailStatus === "exists" && (
+                            <div style={{ background: "#FFFBEB", border: "1px solid #FCD34D", borderRadius: T.radiusSm,
+                                padding: "12px 14px", marginTop: -8, marginBottom: 16 }}>
+                                <div style={{ fontSize: 12, color: "#92400E", fontWeight: 600, marginBottom: 10, lineHeight: 1.5 }}>
+                                    An account with this email already exists. Would you like to reset your password instead?
+                                </div>
+                                <div style={{ display: "flex", gap: 8 }}>
+                                    <button type="button" onClick={() => onGoToForgotPassword?.(email.trim())} style={{
+                                        flex: 1, padding: "9px 0", borderRadius: T.radiusXs, border: "none",
+                                        background: "#D97706", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer",
+                                    }}>
+                                        Yes, reset password
+                                    </button>
+                                    <button type="button" onClick={() => setEmail("")} style={{
+                                        flex: 1, padding: "9px 0", borderRadius: T.radiusXs, border: "1px solid #FCD34D",
+                                        background: "transparent", color: "#92400E", fontSize: 12, fontWeight: 700, cursor: "pointer",
+                                    }}>
+                                        No, use a different email
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        <Field
+                            label="Phone Number" required error={fieldErrors.phone}
+                            hint={phoneStatus === "checking" ? "Checking…" : phoneStatus === "available" ? "✓ Available" : undefined}
+                        >
                             <input type="tel" value={phone} onChange={e => { setPhone(e.target.value); clearFieldError("phone"); }} style={inputStyle} />
                         </Field>
+                        {phoneStatus === "exists" && (
+                            <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: T.radiusSm,
+                                padding: "12px 14px", marginTop: -8, fontSize: 12, color: "#991B1B", fontWeight: 600, lineHeight: 1.5 }}>
+                                This phone number is already registered to another account. Please contact your system administrator to update the account.
+                            </div>
+                        )}
                     </div>
                 )}
 

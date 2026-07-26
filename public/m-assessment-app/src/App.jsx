@@ -61,6 +61,7 @@ export default function App() {
     const [loading, setLoading] = useState(true);
     const [deepLinkTarget, setDeepLinkTarget] = useState(null);
     const [authScreen, setAuthScreen] = useState("login"); // "login" | "register" | "forgot-password"
+    const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
 
     useEffect(() => {
         const listenerPromise = CapacitorApp.addListener("appUrlOpen", ({ url }) => {
@@ -151,10 +152,16 @@ export default function App() {
             );
         }
         if (authScreen === "register") {
-            return <RegisterScreen onRegistered={() => setAuthScreen("login")} onBack={() => setAuthScreen("login")} />;
+            return (
+                <RegisterScreen
+                    onRegistered={() => setAuthScreen("login")}
+                    onBack={() => setAuthScreen("login")}
+                    onGoToForgotPassword={(email) => { setForgotPasswordEmail(email || ""); setAuthScreen("forgot-password"); }}
+                />
+            );
         }
         if (authScreen === "forgot-password") {
-            return <ForgotPasswordScreen onBack={() => setAuthScreen("login")} />;
+            return <ForgotPasswordScreen initialEmail={forgotPasswordEmail} onBack={() => setAuthScreen("login")} />;
         }
         return (
             <LoginScreen
