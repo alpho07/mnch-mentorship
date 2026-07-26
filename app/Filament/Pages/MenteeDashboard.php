@@ -470,3 +470,4 @@ class MenteeDashboard extends Page
         session()->forget('enrollment_intent');
     }
 }
+

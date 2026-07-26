@@ -62,3 +62,4 @@ class AuthVerifyAccountApiTest extends TestCase
         ]))->assertStatus(422)->assertJsonValidationErrors(['password']);
     }
 }
+

@@ -404,3 +404,4 @@ class AssessmentResource extends Resource
         return 'warning';
     }
 }
+

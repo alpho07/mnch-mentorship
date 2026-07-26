@@ -430,3 +430,4 @@ class AssessmentExecutiveDashboardController extends Controller
         return $insights;
     }
 }
+

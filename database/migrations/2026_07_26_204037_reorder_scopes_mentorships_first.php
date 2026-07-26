@@ -23,3 +23,4 @@ return new class extends Migration
         DB::table('scopes')->where('slug', 'trainings')->update(['sort_order' => 3]);
     }
 };
+

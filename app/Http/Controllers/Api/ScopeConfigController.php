@@ -60,3 +60,4 @@ class ScopeConfigController extends Controller
         }
     }
 }
+

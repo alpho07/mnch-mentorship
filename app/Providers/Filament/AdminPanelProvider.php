@@ -174,3 +174,4 @@ class AdminPanelProvider extends PanelProvider
         return $user->can('view_any_mentorship::training');
     }
 }
+

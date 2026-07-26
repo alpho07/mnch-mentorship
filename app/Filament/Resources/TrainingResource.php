@@ -474,3 +474,4 @@ class TrainingResource extends Resource
             ->count() ?: null;
     }
 }
+

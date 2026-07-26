@@ -637,3 +637,4 @@ class MentorshipTrainingResource extends Resource
             && str_contains(strtolower($program->name), 'emonc');
     }
 }
+

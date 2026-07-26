@@ -216,3 +216,4 @@ class ApprovedTrainingAreaResource extends Resource {
         return 'success';
     }
 }
+

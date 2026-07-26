@@ -473,3 +473,4 @@ class MenteeClassProgressController extends Controller
         }
     }
 }
+

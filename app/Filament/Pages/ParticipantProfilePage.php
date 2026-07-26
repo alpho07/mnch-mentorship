@@ -379,3 +379,4 @@ class ParticipantProfilePage extends Page implements Tables\Contracts\HasTable, 
         ];
     }
 }
+

@@ -76,3 +76,4 @@ class AuthRegisterApiTest extends TestCase
              ->assertJsonValidationErrors(['role']);
     }
 }
+
