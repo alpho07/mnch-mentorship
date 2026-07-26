@@ -62,6 +62,23 @@ Route::middleware('guest')->group(function () {
         ->name('account.verify.update');
 });
 
+// Mobile-only handoff page shown after a successful account-verify or
+// password-reset when the request came from an Android browser — fires an
+// intent:// URI to open the app for login. Not gated by `guest` middleware:
+// the account-verify flow logs the user in immediately before redirecting
+// here, so a guest-only route would 403 that case.
+Route::get('/app-handoff', function (\Illuminate\Http\Request $request) {
+    $type = $request->query('type') === 'reset' ? 'reset' : 'verify';
+
+    return view('auth.app-handoff', [
+        'heading' => $type === 'reset' ? 'Password Updated!' : 'Account Verified!',
+        'message' => $type === 'reset'
+            ? "Your password has been updated. Opening the MNCH Mentorship app to sign in…"
+            : "Welcome to MNCH Kenya! Opening the app to get you signed in…",
+        'loginUrl' => route('filament.admin.auth.login'),
+    ]);
+})->name('app-handoff');
+
 // Livewire upload bypass — extends FileUploadController, skips signature check
 Route::post('/livewire/upload-file', [\App\Http\Controllers\LivewireUploadController::class, 'handle'])
     ->name('livewire.upload-file');

@@ -62,6 +62,13 @@ class AccountVerificationController extends Controller {
         // Auto-login the user
         Auth::login($user);
 
+        // Android browser: hand off to the app instead of the web admin panel.
+        // Desktop/other keeps the existing redirect untouched.
+        $isAndroidBrowser = str_contains(strtolower($request->userAgent() ?? ''), 'android');
+        if ($isAndroidBrowser) {
+            return redirect()->route('app-handoff', ['type' => 'verify']);
+        }
+
         return redirect(config('filament.path', '/admin'))
                         ->with('success', 'Welcome to the MNCH Mentorship Platform! Your account has been verified.');
     }
