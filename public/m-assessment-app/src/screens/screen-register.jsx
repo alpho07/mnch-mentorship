@@ -8,7 +8,20 @@ const ROLE_OPTIONS = [
     { id: "facility_mentor", name: "Facility Mentor" },
 ];
 
+const STEP_LABELS = ["Personal", "Contact", "Professional", "Geographic"];
+
+// Maps each backend validation field name to the wizard step that collects it,
+// so a 422 response can jump the user straight to the right step.
+const FIELD_STEP = {
+    first_name: 1, middle_name: 1, last_name: 1,
+    email: 2, phone: 2,
+    cadre_id: 3, department_id: 3, role: 3,
+    county_id: 4, facility_id: 4,
+};
+
 export function RegisterScreen({ onRegistered, onBack }) {
+    const [step, setStep] = useState(1);
+
     const [firstName, setFirstName]   = useState("");
     const [middleName, setMiddleName] = useState("");
     const [lastName, setLastName]     = useState("");
@@ -26,9 +39,10 @@ export function RegisterScreen({ onRegistered, onBack }) {
     const [facilities, setFacilities] = useState([]);
     const [facilitiesLoading, setFacilitiesLoading] = useState(false);
 
-    const [error, setError]     = useState("");
-    const [saving, setSaving]   = useState(false);
-    const [done, setDone]       = useState(false);
+    const [error, setError]             = useState("");
+    const [fieldErrors, setFieldErrors] = useState({});
+    const [saving, setSaving]           = useState(false);
+    const [done, setDone]               = useState(false);
 
     useEffect(() => {
         api.registerLookups.cadres().then(d => setCadres(Array.isArray(d?.data) ? d.data : Array.isArray(d) ? d : [])).catch(() => {});
@@ -51,12 +65,26 @@ export function RegisterScreen({ onRegistered, onBack }) {
             .finally(() => setFacilitiesLoading(false));
     }, [countyId]);
 
-    const valid = firstName.trim() && lastName.trim() && email.trim() && phone.trim()
-        && cadreId && departmentId && role && countyId && facilityId;
+    const step1Valid = firstName.trim() && lastName.trim();
+    const step2Valid = email.trim() && phone.trim();
+    const step3Valid = cadreId && departmentId && role;
+    const step4Valid = countyId && facilityId;
+    const stepValid = [true, step1Valid, step2Valid, step3Valid, step4Valid][step];
+
+    // Clear a field's error the moment the user edits it.
+    const clearFieldError = (name) => {
+        if (fieldErrors[name]) {
+            setFieldErrors(prev => {
+                const next = { ...prev };
+                delete next[name];
+                return next;
+            });
+        }
+    };
 
     const handleSubmit = async () => {
         setError("");
-        if (!valid) { setError("Please fill in all required fields."); return; }
+        setFieldErrors({});
         setSaving(true);
         try {
             await api.auth.register({
@@ -73,7 +101,19 @@ export function RegisterScreen({ onRegistered, onBack }) {
             });
             setDone(true);
         } catch (e) {
-            setError(e.message || "Registration failed. Please check your details and try again.");
+            if (e.status === 422 && e.errors && Object.keys(e.errors).length > 0) {
+                const flat = {};
+                for (const [field, messages] of Object.entries(e.errors)) {
+                    flat[field] = Array.isArray(messages) ? messages[0] : String(messages);
+                }
+                setFieldErrors(flat);
+                const firstField = Object.keys(flat)[0];
+                const targetStep = FIELD_STEP[firstField] ?? 1;
+                setStep(targetStep);
+                setError("Please fix the highlighted field" + (Object.keys(flat).length > 1 ? "s" : "") + " below.");
+            } else {
+                setError(e.message || "Registration failed. Please check your details and try again.");
+            }
         } finally {
             setSaving(false);
         }
@@ -98,16 +138,42 @@ export function RegisterScreen({ onRegistered, onBack }) {
         );
     }
 
+    const handleHeaderBack = () => {
+        if (step > 1) { setStep(s => s - 1); return; }
+        onBack();
+    };
+
+    const handleContinue = () => {
+        if (step < 4) setStep(s => s + 1);
+        else handleSubmit();
+    };
+
     return (
         <div style={{ display: "flex", flexDirection: "column", height: "100%", background: T.bg,
             fontFamily: "-apple-system, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif" }}>
-            <div style={{ background: T.gradientHero, padding: "40px 20px 20px", borderRadius: "0 0 28px 28px", margin: "0 6px" }}>
-                <button onClick={onBack} style={{ background: "rgba(255,255,255,0.15)", border: "none", cursor: "pointer",
-                    padding: "6px 10px", borderRadius: 10, marginBottom: 12, color: "white", fontSize: 12, fontWeight: 600 }}>
-                    ← Back
-                </button>
-                <div style={{ color: "white", fontSize: 22, fontWeight: 800 }}>Create Account</div>
-                <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 13, marginTop: 4 }}>Join the MNCH Mentorship Platform</div>
+            <div style={{ background: T.gradientHero, padding: "40px 20px 0", borderRadius: "0 0 28px 28px", margin: "0 6px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+                    <button onClick={handleHeaderBack} style={{ background: "rgba(255,255,255,0.15)", border: "none", cursor: "pointer",
+                        padding: "6px 10px", borderRadius: 10, color: "white", fontSize: 12, fontWeight: 600 }}>
+                        ← Back
+                    </button>
+                    <div style={{ color: "white", fontSize: 20, fontWeight: 800 }}>Create Account</div>
+                </div>
+                <div style={{ display: "flex", gap: 4, paddingBottom: 14 }}>
+                    {STEP_LABELS.map((label, i) => (
+                        <div key={label} style={{ flex: 1, textAlign: "center" }}>
+                            <div style={{
+                                height: 3, borderRadius: 2, marginBottom: 4,
+                                background: step > i + 1 ? "rgba(255,255,255,0.9)"
+                                    : step === i + 1 ? "rgba(255,255,255,0.6)"
+                                    : "rgba(255,255,255,0.15)",
+                            }} />
+                            <span style={{ fontSize: 10, fontWeight: step === i + 1 ? 700 : 400, color: step === i + 1 ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.4)" }}>
+                                {label}
+                            </span>
+                        </div>
+                    ))}
+                </div>
             </div>
 
             <div style={{ flex: 1, overflowY: "auto", padding: "20px 20px 0" }}>
@@ -118,43 +184,80 @@ export function RegisterScreen({ onRegistered, onBack }) {
                     </div>
                 )}
 
-                <Field label="First Name" required><input value={firstName} onChange={e => setFirstName(e.target.value)} style={inputStyle} /></Field>
-                <Field label="Middle Name"><input value={middleName} onChange={e => setMiddleName(e.target.value)} style={inputStyle} /></Field>
-                <Field label="Last Name" required><input value={lastName} onChange={e => setLastName(e.target.value)} style={inputStyle} /></Field>
-                <Field label="Email Address" required><input type="email" value={email} onChange={e => setEmail(e.target.value)} style={inputStyle} /></Field>
-                <Field label="Phone Number" required><input type="tel" value={phone} onChange={e => setPhone(e.target.value)} style={inputStyle} /></Field>
+                {step === 1 && (
+                    <div>
+                        <Field label="First Name" required error={fieldErrors.first_name}>
+                            <input value={firstName} onChange={e => { setFirstName(e.target.value); clearFieldError("first_name"); }} style={inputStyle} />
+                        </Field>
+                        <Field label="Middle Name" error={fieldErrors.middle_name}>
+                            <input value={middleName} onChange={e => { setMiddleName(e.target.value); clearFieldError("middle_name"); }} style={inputStyle} />
+                        </Field>
+                        <Field label="Last Name" required error={fieldErrors.last_name}>
+                            <input value={lastName} onChange={e => { setLastName(e.target.value); clearFieldError("last_name"); }} style={inputStyle} />
+                        </Field>
+                    </div>
+                )}
 
-                <Field label="Cadre" required>
-                    <SearchableDropdown options={cadres} value={cadreId} onChange={setCadreId} placeholder="Select cadre..." searchPlaceholder="Search cadre..." />
-                </Field>
-                <Field label="Department" required>
-                    <SearchableDropdown options={departments} value={departmentId} onChange={setDeptId} placeholder="Select department..." searchPlaceholder="Search department..." />
-                </Field>
-                <Field label="Role" required>
-                    <SearchableDropdown options={ROLE_OPTIONS} value={role} onChange={setRole} placeholder="Select role..." />
-                </Field>
-                <Field label="County" required hint="Select county to load facilities">
-                    <SearchableDropdown options={counties} value={countyId} onChange={setCountyId} placeholder="Select county..." searchPlaceholder="Search county..." />
-                </Field>
-                <Field label="Facility" required hint={!countyId ? "Select a county first" : facilitiesLoading ? "Loading facilities…" : undefined}>
-                    <SearchableDropdown
-                        options={facilities} value={facilityId} onChange={setFacilityId}
-                        disabled={!countyId || facilitiesLoading}
-                        getLabel={f => f.label ?? f.name}
-                        placeholder={facilitiesLoading ? "Loading facilities..." : "Select facility..."}
-                        searchPlaceholder="Search facility or MFL..."
-                    />
-                </Field>
+                {step === 2 && (
+                    <div>
+                        <Field label="Email Address" required error={fieldErrors.email}>
+                            <input type="email" value={email} onChange={e => { setEmail(e.target.value); clearFieldError("email"); }} style={inputStyle} />
+                        </Field>
+                        <Field label="Phone Number" required error={fieldErrors.phone}>
+                            <input type="tel" value={phone} onChange={e => { setPhone(e.target.value); clearFieldError("phone"); }} style={inputStyle} />
+                        </Field>
+                    </div>
+                )}
+
+                {step === 3 && (
+                    <div>
+                        <Field label="Cadre" required error={fieldErrors.cadre_id}>
+                            <SearchableDropdown options={cadres} value={cadreId} onChange={v => { setCadreId(v); clearFieldError("cadre_id"); }} placeholder="Select cadre..." searchPlaceholder="Search cadre..." />
+                        </Field>
+                        <Field label="Department" required error={fieldErrors.department_id}>
+                            <SearchableDropdown options={departments} value={departmentId} onChange={v => { setDeptId(v); clearFieldError("department_id"); }} placeholder="Select department..." searchPlaceholder="Search department..." />
+                        </Field>
+                        <Field label="Role" required error={fieldErrors.role}>
+                            <SearchableDropdown options={ROLE_OPTIONS} value={role} onChange={v => { setRole(v); clearFieldError("role"); }} placeholder="Select role..." />
+                        </Field>
+                    </div>
+                )}
+
+                {step === 4 && (
+                    <div>
+                        <Field label="County" required error={fieldErrors.county_id} hint="Select county to load facilities">
+                            <SearchableDropdown options={counties} value={countyId} onChange={v => { setCountyId(v); clearFieldError("county_id"); }} placeholder="Select county..." searchPlaceholder="Search county..." />
+                        </Field>
+                        <Field label="Facility" required error={fieldErrors.facility_id} hint={!countyId ? "Select a county first" : facilitiesLoading ? "Loading facilities…" : undefined}>
+                            <SearchableDropdown
+                                options={facilities} value={facilityId} onChange={v => { setFacilityId(v); clearFieldError("facility_id"); }}
+                                disabled={!countyId || facilitiesLoading}
+                                getLabel={f => f.label ?? f.name}
+                                placeholder={facilitiesLoading ? "Loading facilities..." : "Select facility..."}
+                                searchPlaceholder="Search facility or MFL..."
+                            />
+                        </Field>
+                    </div>
+                )}
             </div>
 
-            <div style={{ padding: "12px 20px", paddingBottom: "calc(12px + env(safe-area-inset-bottom, 0px))", background: T.card, borderTop: `1px solid ${T.borderLight}` }}>
-                <button onClick={handleSubmit} disabled={saving || !valid} style={{
-                    width: "100%", padding: 14, borderRadius: T.radiusSm, border: "none",
-                    background: (saving || !valid) ? T.borderLight : T.gradientPrimary,
-                    color: (saving || !valid) ? T.textMuted : "white", fontSize: 15, fontWeight: 700,
-                    cursor: (saving || !valid) ? "not-allowed" : "pointer",
+            <div style={{ padding: "12px 20px", paddingBottom: "calc(12px + env(safe-area-inset-bottom, 0px))", background: T.card, borderTop: `1px solid ${T.borderLight}`, display: "flex", gap: 10 }}>
+                {step > 1 && (
+                    <button onClick={() => setStep(s => s - 1)} style={{
+                        flex: 1, padding: 14, borderRadius: T.radiusSm,
+                        background: T.bg, border: `1px solid ${T.border}`,
+                        color: T.text, fontSize: 14, fontWeight: 600, cursor: "pointer",
+                    }}>
+                        Back
+                    </button>
+                )}
+                <button onClick={handleContinue} disabled={saving || !stepValid} style={{
+                    flex: step > 1 ? 2 : 1, padding: 14, borderRadius: T.radiusSm, border: "none",
+                    background: (saving || !stepValid) ? T.borderLight : T.gradientPrimary,
+                    color: (saving || !stepValid) ? T.textMuted : "white", fontSize: 15, fontWeight: 700,
+                    cursor: (saving || !stepValid) ? "not-allowed" : "pointer",
                 }}>
-                    {saving ? "Registering…" : "Register"}
+                    {saving ? "Registering…" : step === 4 ? "Register" : "Continue"}
                 </button>
             </div>
         </div>

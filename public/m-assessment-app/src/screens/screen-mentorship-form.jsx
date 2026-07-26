@@ -17,14 +17,16 @@ export const selectStyle = {
     paddingRight: 36,
 };
 
-export function Field({ label, required, hint, children }) {
+export function Field({ label, required, hint, error, children, fieldRef }) {
     return (
-        <div style={{ marginBottom: 16 }}>
-            <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: T.textSub, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>
+        <div ref={fieldRef} style={{ marginBottom: 16 }}>
+            <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: error ? "#DC2626" : T.textSub, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>
                 {label}{required && <span style={{ color: "#EF4444", marginLeft: 2 }}>*</span>}
             </label>
             {children}
-            {hint && <div style={{ fontSize: 11, color: T.textMuted, marginTop: 4 }}>{hint}</div>}
+            {error
+                ? <div style={{ fontSize: 11, color: "#DC2626", marginTop: 4, fontWeight: 600 }}>{error}</div>
+                : hint && <div style={{ fontSize: 11, color: T.textMuted, marginTop: 4 }}>{hint}</div>}
         </div>
     );
 }
