@@ -549,7 +549,6 @@ Route::middleware(['auth', 'throttle:admin'])->prefix('admin')->name('admin.')->
 });
 
 // ===== REDIRECTS & FALLBACKS =====
-Route::redirect('/admin', '/admin/login')->name('admin');
 Route::redirect('/resource/{slug}', '/resources/{slug}', 301);
 Route::redirect('/category/{slug}', '/resources/category/{slug}', 301);
 

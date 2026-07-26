@@ -137,11 +137,14 @@ class ListMentorshipTrainings extends ListRecords
         $user = auth()->user();
 
         return ClassParticipant::query()
+            ->whereIn('status', ['enrolled', 'active'])
             ->whereHas('mentorshipClass.training', function (Builder $query) use ($user) {
-                $query->where('type', 'facility_mentorship');
+                $query->where('type', 'facility_mentorship')
+                      ->where('is_pilot', false)
+                      ->where('status', '!=', 'cancelled');
 
                 if (! $user->hasRole(['super_admin', 'admin', 'division'])) {
-                    $query->where('mentor_id', $user->id);
+                    $query->forMentorOrCoMentor($user->id);
                 }
             });
     }

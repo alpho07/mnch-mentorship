@@ -47,11 +47,15 @@ class GlobalTrainingResource extends Resource {
     protected static ?string $recordTitleAttribute = 'title';
 
     public static function shouldRegisterNavigation(): bool {
-        return auth()->check() && auth()->user()->can('view_any_global::training');
+        return auth()->check()
+            && auth()->user()->canAccessTrainingManagement()
+            && auth()->user()->can('view_any_global::training');
     }
 
     public static function canAccess(): bool {
-        return auth()->check() && auth()->user()->can('view_any_global::training');
+        return auth()->check()
+            && auth()->user()->canAccessTrainingManagement()
+            && auth()->user()->can('view_any_global::training');
     }
 
     public static function canCreate(): bool {

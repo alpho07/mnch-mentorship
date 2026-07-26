@@ -23,12 +23,12 @@ class HeadDrmhDashboard extends Page
 
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->check() && auth()->user()->can('page_HeadDrmhDashboard');
+        return auth()->check() && auth()->user()->hasAnyRole(self::ALLOWED_ROLES);
     }
 
     public static function canAccess(): bool
     {
-        return auth()->check() && auth()->user()->can('page_HeadDrmhDashboard');
+        return auth()->check() && auth()->user()->hasAnyRole(self::ALLOWED_ROLES);
     }
 
     // ─── State ───────────────────────────────────────────────────────────────
@@ -63,14 +63,14 @@ class HeadDrmhDashboard extends Page
         $pending = ClassParticipant::query()
             ->whereNotNull('mentor_approved_at')
             ->whereNull('head_drmh_approved_at')
-            ->whereHas('mentorshipClass.training', fn ($q) => $q->where('type', 'facility_mentorship'))
+            ->whereHas('mentorshipClass.training', fn ($q) => $q->where('type', 'facility_mentorship')->where('is_pilot', false))
             ->with($with)
             ->orderByDesc('mentor_approved_at')
             ->get();
 
         $certified = ClassParticipant::query()
             ->whereNotNull('head_drmh_approved_at')
-            ->whereHas('mentorshipClass.training', fn ($q) => $q->where('type', 'facility_mentorship'))
+            ->whereHas('mentorshipClass.training', fn ($q) => $q->where('type', 'facility_mentorship')->where('is_pilot', false))
             ->with($with)
             ->orderByDesc('head_drmh_approved_at')
             ->limit(60)
@@ -79,7 +79,9 @@ class HeadDrmhDashboard extends Page
         $this->kpis = [
             'pending'               => $pending->count(),
             'certified_this_month'  => $certified->filter(fn ($p) => $p->head_drmh_approved_at && \Carbon\Carbon::parse($p->head_drmh_approved_at)->isCurrentMonth())->count(),
-            'certified_total'       => ClassParticipant::whereNotNull('head_drmh_approved_at')->count(),
+            'certified_total'       => ClassParticipant::whereNotNull('head_drmh_approved_at')
+                ->whereHas('mentorshipClass.training', fn ($q) => $q->where('type', 'facility_mentorship')->where('is_pilot', false))
+                ->count(),
             'mentorships_with_pending' => $pending->pluck('mentorshipClass.training_id')->filter()->unique()->count(),
         ];
 

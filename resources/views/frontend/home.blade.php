@@ -18,9 +18,11 @@
                     ['href' => url('analytics/dashboard'),                        'icon' => 'fas fa-map',         'label' => 'Training Map'],
                     ['href' => route('resources.index', ['sort' => 'latest']),    'icon' => 'fas fa-clock',       'label' => 'Recently Added'],
                     ['href' => route('resources.index', ['sort' => 'popular']),   'icon' => 'fas fa-fire',        'label' => 'Most Popular'],
+                    ['href' => rtrim(config('app.url'), '/') . '/' . rawurlencode('MNCH Mentorship.apk'), 'icon' => 'fas fa-download', 'label' => 'Download Mobile App'],
                 ]; @endphp
                 @foreach($quickLinks as $link)
                 <a href="{{ $link['href'] }}"
+                   @if($link['label'] === 'Download Mobile App') download @endif
                    class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-gray-600 hover:bg-primary-50 hover:text-primary-700 transition-all whitespace-nowrap flex-shrink-0 border border-transparent hover:border-primary-100">
                     <i class="{{ $link['icon'] }} text-xs text-primary-500"></i>
                     {{ $link['label'] }}

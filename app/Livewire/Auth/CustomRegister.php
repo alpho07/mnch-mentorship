@@ -245,3 +245,4 @@ class CustomRegister extends SimplePage implements HasForms
     public function hasLogo(): bool    { return false; }
 }
 
+

@@ -34,9 +34,18 @@ class TrainingResource extends Resource
     protected static ?string $pluralModelLabel = 'Trainings';
     protected static ?int $navigationSort = 1;
 
-       public static function shouldRegisterNavigation(): bool
+    public static function shouldRegisterNavigation(): bool
     {
-        return false;
+        return auth()->check()
+            && auth()->user()->canAccessTrainingManagement()
+            && auth()->user()->can('view_any_global::training');
+    }
+
+    public static function canAccess(): bool
+    {
+        return auth()->check()
+            && auth()->user()->canAccessTrainingManagement()
+            && auth()->user()->can('view_any_global::training');
     }
 
     public static function getEloquentQuery(): Builder

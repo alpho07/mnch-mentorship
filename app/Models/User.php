@@ -260,6 +260,40 @@ class User extends Authenticatable implements FilamentUser
         return (bool) $this->can_create_mentorships;
     }
 
+    public function canAccessTrainingManagement(): bool
+    {
+        $hasExplicitTrainingAccess = $this->can('view_any_mentorship::training')
+            || $this->can('view_any_global::training')
+            || $this->can('view_any_approved::training::area')
+            || $this->can('view_any_training::export')
+            || $this->can('view_any_participant::profile')
+            || $this->can('view_any_mentee::profile');
+
+        if ($this->hasRole('mentee')) {
+            return $hasExplicitTrainingAccess || $this->canCreateMentorships();
+        }
+
+        $mentorRoles = [
+            'facility_mentor',
+            'facility_mentor_lead',
+            'spoke_mentor',
+            'spoke_mentor_lead',
+            'county_mentor_lead',
+            'subcounty_mentor_lead',
+            'national_mentor',
+            'national_mentor_lead',
+            'division_lead',
+            'head_drmh',
+            'co_mentor',
+            'co-mentor',
+        ];
+
+        return $this->isAboveSite()
+            || $this->canCreateMentorships()
+            || $this->hasAnyRole($mentorRoles)
+            || $hasExplicitTrainingAccess;
+    }
+
     public function scopedCountyIds()
     {
         return $this->isAboveSite() ? County::pluck('id') : $this->counties()->pluck('id');

@@ -564,7 +564,7 @@
                                 $imnci = $hr['imnci'] ?? 0;
                                 $diabetes = $hr['type_1_diabetes'] ?? 0;
                                 $essNB = $hr['essential_newborn_care'] ?? 0;
-                                $available = $etat + $compNB + $imnci + $diabetes + $essNB;
+                                $available = $hr['total_in_facility'] ?? 0;
 
                                 $totalAvailable += $available;
                                 $totalEtat += $etat;

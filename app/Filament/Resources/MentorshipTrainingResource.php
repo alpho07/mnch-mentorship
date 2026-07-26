@@ -39,14 +39,31 @@ class MentorshipTrainingResource extends Resource
 
     protected static ?int $navigationSort = 1;
 
+    private const VISIBLE_ROLES = [
+        'super_admin',
+        'admin',
+        'division',
+        'national',
+        'facility_mentor',
+        'facility_mentor_lead',
+        'spoke_mentor',
+        'spoke_mentor_lead',
+        'county_mentor_lead',
+        'subcounty_mentor_lead',
+        'national_mentor',
+        'national_mentor_lead',
+        'division_lead',
+        'head_drmh',
+    ];
+
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->check() && static::userCanAccess(auth()->user());
+        return auth()->check() && auth()->user()->canAccessTrainingManagement() && static::userCanAccess(auth()->user());
     }
 
     public static function canAccess(): bool
     {
-        return auth()->check() && static::userCanAccess(auth()->user());
+        return auth()->check() && auth()->user()->canAccessTrainingManagement() && static::userCanAccess(auth()->user());
     }
 
     private static function userCanAccess(?User $user): bool
@@ -55,13 +72,9 @@ class MentorshipTrainingResource extends Resource
             return false;
         }
 
-        // Mentees excluded unless explicitly granted mentorship creation rights
-        if ($user->hasRole('mentee')) {
-            return $user->canCreateMentorships();
-        }
-
-        // Permission covers all authorised mentor/admin roles; flag covers edge cases
-        return $user->can('view_any_mentorship::training') || $user->canCreateMentorships();
+        return $user->hasAnyRole(self::VISIBLE_ROLES)
+            || $user->can('view_any_mentorship::training')
+            || $user->canCreateMentorships();
     }
 
     public static function canCreate(): bool

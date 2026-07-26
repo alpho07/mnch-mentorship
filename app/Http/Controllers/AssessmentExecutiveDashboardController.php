@@ -139,10 +139,10 @@ class AssessmentExecutiveDashboardController extends Controller
 
         // ── Human Resources ───────────────────────────────────────────────────
         $hrRows = DB::table('human_resource_responses')
-            ->join('cadres', 'cadres.id', '=', 'human_resource_responses.cadre_id')
+            ->join('assessment_cadres', 'assessment_cadres.id', '=', 'human_resource_responses.cadre_id')
             ->where('human_resource_responses.assessment_id', $aId)
             ->select(
-                'cadres.name as cadre',
+                'assessment_cadres.name as cadre',
                 'human_resource_responses.total_in_facility',
                 'human_resource_responses.etat_plus',
                 'human_resource_responses.comprehensive_newborn_care',
@@ -157,12 +157,39 @@ class AssessmentExecutiveDashboardController extends Controller
                 $r->coverage_pct  = $r->total_in_facility > 0
                     ? round(min($r->total_trained / $r->total_in_facility, 1) * 100, 1)
                     : 0;
+
+                // Percentage trained per area, relative to that cadre's total staff in facility
+                $pct = fn ($count) => $r->total_in_facility > 0
+                    ? round(min($count / $r->total_in_facility, 1) * 100, 1)
+                    : 0;
+                $r->etat_pct     = $pct($r->etat_plus);
+                $r->comp_nb_pct  = $pct($r->comprehensive_newborn_care);
+                $r->imnci_pct    = $pct($r->imnci);
+                $r->diabetes_pct = $pct($r->type_1_diabetes);
+                $r->ess_nb_pct   = $pct($r->essential_newborn_care);
+
                 return $r;
             });
 
         $totalStaff   = $hrRows->sum('total_in_facility');
         $totalTrained = $hrRows->sum('total_trained');
         $hrCoverage   = $totalStaff > 0 ? round(min($totalTrained / $totalStaff, 1) * 100, 1) : 0;
+
+        // Facility-wide % trained per area (weighted by staff count, not a simple average of cadre percentages)
+        $hrAreaLabels = [
+            'etat_plus'                  => 'ETAT+',
+            'comprehensive_newborn_care' => 'Comprehensive Newborn Care',
+            'imnci'                      => 'IMNCI',
+            'type_1_diabetes'            => 'Type-1 Diabetes',
+            'essential_newborn_care'     => 'Essential Newborn Care',
+        ];
+        $hrAreaTotals = collect($hrAreaLabels)->keys()->mapWithKeys(function ($field) use ($hrRows, $totalStaff) {
+            $sum = $hrRows->sum($field);
+            $pct = $totalStaff > 0 ? round(min($sum / $totalStaff, 1) * 100, 1) : 0;
+            return [$field => $pct];
+        });
+
+        $hrInsights = $this->generateHrInsights($hrRows, $hrAreaTotals, $hrAreaLabels, $hrCoverage);
 
         // ── Health Products by department ─────────────────────────────────────
         $deptScores = DB::table('assessment_commodity_responses')
@@ -219,11 +246,83 @@ class AssessmentExecutiveDashboardController extends Controller
             'totalStaff',
             'totalTrained',
             'hrCoverage',
+            'hrAreaTotals',
+            'hrAreaLabels',
+            'hrInsights',
             'deptScores',
             'categoryScores',
             'overallCommodityPct',
             'insights',
         );
+    }
+
+    /**
+     * Build HR-specific insight cards: weakest cadre, weakest training area
+     * facility-wide, and cadres with zero staff trained in that weakest area.
+     */
+    private function generateHrInsights($hrRows, $hrAreaTotals, array $hrAreaLabels, float $hrCoverage): array
+    {
+        $insights = [];
+
+        if ($hrRows->isEmpty()) {
+            return $insights;
+        }
+
+        // Weakest cadre by overall coverage
+        $weakestCadre = $hrRows->sortBy('coverage_pct')->first();
+        if ($weakestCadre->coverage_pct < 50) {
+            $type = $weakestCadre->coverage_pct < 30 ? 'danger' : 'warning';
+            $insights[] = [
+                'type' => $type,
+                'icon' => 'user-clock',
+                'text' => "{$weakestCadre->cadre} has the lowest training coverage at {$weakestCadre->coverage_pct}% — prioritise this cadre in the next mentorship cycle.",
+            ];
+        }
+
+        // Weakest training area facility-wide
+        $weakestAreaField = $hrAreaTotals->sort()->keys()->first();
+        $weakestAreaPct   = $hrAreaTotals[$weakestAreaField];
+        $weakestAreaLabel = $hrAreaLabels[$weakestAreaField];
+        if ($weakestAreaPct < 60) {
+            $type = $weakestAreaPct < 30 ? 'danger' : 'warning';
+            $insights[] = [
+                'type' => $type,
+                'icon' => 'chart-pie',
+                'text' => "{$weakestAreaLabel} is the weakest training area facility-wide at {$weakestAreaPct}% of staff trained — schedule a facility-wide {$weakestAreaLabel} refresher.",
+            ];
+        }
+
+        // Cadres with 0% trained in the weakest area
+        $zeroField = "{$weakestAreaField}_zero";
+        $pctField  = match ($weakestAreaField) {
+            'etat_plus'                  => 'etat_pct',
+            'comprehensive_newborn_care' => 'comp_nb_pct',
+            'imnci'                      => 'imnci_pct',
+            'type_1_diabetes'            => 'diabetes_pct',
+            'essential_newborn_care'     => 'ess_nb_pct',
+            default                      => null,
+        };
+        if ($pctField) {
+            $zeroCadres = $hrRows->filter(fn ($r) => $r->total_in_facility > 0 && $r->{$pctField} == 0)->pluck('cadre');
+            if ($zeroCadres->isNotEmpty()) {
+                $list = $zeroCadres->implode(', ');
+                $insights[] = [
+                    'type' => 'danger',
+                    'icon' => 'exclamation-circle',
+                    'text' => "No staff trained in {$weakestAreaLabel} for: {$list}. These cadres have zero coverage in this area.",
+                ];
+            }
+        }
+
+        if (empty($insights)) {
+            $insights[] = [
+                'type' => 'success',
+                'icon' => 'check-circle',
+                'text' => "Training coverage is healthy across all cadres and areas ({$hrCoverage}% overall).",
+            ];
+        }
+
+        return $insights;
     }
 
     private function generateInsights(

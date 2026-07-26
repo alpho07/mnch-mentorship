@@ -35,7 +35,16 @@ class ParticipantProfilePage extends Page implements Tables\Contracts\HasTable, 
     
       public static function shouldRegisterNavigation(): bool
     {
-        return false;
+        return auth()->check()
+            && auth()->user()->canAccessTrainingManagement()
+            && auth()->user()->can('view_any_participant::profile');
+    }
+
+    public static function canAccess(): bool
+    {
+        return auth()->check()
+            && auth()->user()->canAccessTrainingManagement()
+            && auth()->user()->can('view_any_participant::profile');
     }
 
     /*

@@ -27,38 +27,12 @@ class MenteeDashboard extends Page
 
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->check() && auth()->user()->can('page_MenteeDashboard');
+        return auth()->check() && auth()->user()->hasAnyRole(self::ALLOWED_ROLES);
     }
 
     public static function canAccess(): bool
     {
-        return auth()->check() && auth()->user()->can('page_MenteeDashboard');
-    }
-
-    public static function getNavigationBadge(): ?string
-    {
-        if (! auth()->check()) {
-            return null;
-        }
-        $user = auth()->user();
-        if ($user->hasRole('mentee')) {
-            // For mentees: count their active enrollments
-            $count = \App\Models\ClassParticipant::where('user_id', $user->id)
-                ->whereIn('status', ['enrolled', 'active'])
-                ->count();
-        } else {
-            // For senior roles: count all active mentees system-wide
-            $count = \App\Models\ClassParticipant::whereIn('status', ['enrolled', 'active'])
-                ->distinct('user_id')
-                ->count('user_id');
-        }
-
-        return $count > 0 ? (string) $count : null;
-    }
-
-    public static function getNavigationBadgeColor(): string
-    {
-        return 'success';
+        return auth()->check() && auth()->user()->hasAnyRole(self::ALLOWED_ROLES);
     }
 
     // ── Public state (Livewire-reactive) ─────────────────────────────────────

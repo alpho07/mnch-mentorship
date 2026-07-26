@@ -37,7 +37,16 @@ class TrainingExportResource extends Resource {
     protected static ?string $slug = 'training-exports';
 
     public static function shouldRegisterNavigation(): bool {
-        return auth()->check() && auth()->user()->can('view_any_training::export');}
+        return auth()->check()
+            && auth()->user()->canAccessTrainingManagement()
+            && auth()->user()->can('view_any_training::export');
+    }
+
+    public static function canAccess(): bool {
+        return auth()->check()
+            && auth()->user()->canAccessTrainingManagement()
+            && auth()->user()->can('view_any_training::export');
+    }
 
     public static function form(Form $form): Form {
         return $form->schema([
@@ -398,10 +407,6 @@ class TrainingExportResource extends Resource {
         ];
     }
 
-    public static function getNavigationBadge(): ?string {
-        $count = static::scopedTrainingQuery(auth()->user())->whereHas('participants')->count();
-        return $count > 0 ? (string) $count : null;
-    }
 
     // ── Role-scoped base query ────────────────────────────────────────────────
     // MOH (global) trainings are always visible to everyone.
@@ -460,10 +465,6 @@ class TrainingExportResource extends Resource {
                 ->forMentorOrCoMentor($user->id)
             )
         );
-    }
-
-    public static function getNavigationBadgeColor(): string|array|null {
-        return 'info';
     }
 
     public static function canEdit($record): bool {

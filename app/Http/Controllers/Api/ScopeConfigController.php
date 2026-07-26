@@ -43,7 +43,9 @@ class ScopeConfigController extends Controller
                 'mentorships' => [
                     'active_classes' => MentorshipClass::whereHas(
                         'training',
-                        fn ($q) => $q->where('user_id', $user->id)
+                        fn ($q) => $q->where('type', 'facility_mentorship')
+                                     ->where('is_pilot', false)
+                                     ->forMentorOrCoMentor($user->id)
                     )->where('status', 'active')->count(),
                 ],
                 'trainings' => [

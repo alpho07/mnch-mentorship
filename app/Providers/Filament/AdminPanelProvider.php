@@ -133,6 +133,21 @@ class AdminPanelProvider extends PanelProvider
                 if ($user->hasRole('mentee')) {
                     return '/admin/mentee-dashboard';
                 }
+                if ($user->hasAnyRole([
+                    'facility_mentor',
+                    'facility_mentor_lead',
+                    'spoke_mentor',
+                    'spoke_mentor_lead',
+                    'county_mentor_lead',
+                    'subcounty_mentor_lead',
+                    'national_mentor',
+                    'national_mentor_lead',
+                    'division_lead',
+                    'co_mentor',
+                    'co-mentor',
+                ])) {
+                    return '/admin/mentor-dashboard';
+                }
                 if ($user->hasRole('head_drmh')) {
                     return '/admin/head-drmh-dashboard';
                 }

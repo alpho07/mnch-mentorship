@@ -20,17 +20,23 @@ class MentorStatsWidget extends BaseWidget
 
         // Active mentorships
         $activeMentorships = Training::forMentorOrCoMentor($userId)
+            ->where('type', 'facility_mentorship')
+            ->where('is_pilot', false)
             ->where('status', 'active')
             ->count();
 
         // Total classes
         $totalClasses = MentorshipClass::whereHas('training', function ($query) use ($userId) {
-            $query->forMentorOrCoMentor($userId);
+            $query->forMentorOrCoMentor($userId)
+                  ->where('type', 'facility_mentorship')
+                  ->where('is_pilot', false);
         })->count();
 
         // Active mentees
         $activeMentees = ClassParticipant::whereHas('mentorshipClass.training', function ($query) use ($userId) {
-            $query->forMentorOrCoMentor($userId);
+            $query->forMentorOrCoMentor($userId)
+                  ->where('type', 'facility_mentorship')
+                  ->where('is_pilot', false);
         })
             ->whereIn('status', ['enrolled', 'active'])
             ->distinct('user_id')
@@ -38,7 +44,9 @@ class MentorStatsWidget extends BaseWidget
 
         // Upcoming sessions today
         $upcomingSessions = ClassSession::whereHas('classModule.mentorshipClass.training', function ($query) use ($userId) {
-            $query->forMentorOrCoMentor($userId);
+            $query->forMentorOrCoMentor($userId)
+                  ->where('type', 'facility_mentorship')
+                  ->where('is_pilot', false);
         })
             ->where('scheduled_date', today())
             ->where('status', 'scheduled')
@@ -46,14 +54,18 @@ class MentorStatsWidget extends BaseWidget
 
         // Modules in progress
         $modulesInProgress = ClassModule::whereHas('mentorshipClass.training', function ($query) use ($userId) {
-            $query->forMentorOrCoMentor($userId);
+            $query->forMentorOrCoMentor($userId)
+                  ->where('type', 'facility_mentorship')
+                  ->where('is_pilot', false);
         })
             ->where('status', 'in_progress')
             ->count();
 
         // Completed this month
         $completedThisMonth = ClassModule::whereHas('mentorshipClass.training', function ($query) use ($userId) {
-            $query->forMentorOrCoMentor($userId);
+            $query->forMentorOrCoMentor($userId)
+                  ->where('type', 'facility_mentorship')
+                  ->where('is_pilot', false);
         })
             ->where('status', 'completed')
             ->whereMonth('completed_at', now()->month)
@@ -95,6 +107,9 @@ class MentorStatsWidget extends BaseWidget
             return false;
         }
 
-        return Training::forMentorOrCoMentor(auth()->id())->exists();
+        return Training::forMentorOrCoMentor(auth()->id())
+            ->where('type', 'facility_mentorship')
+            ->where('is_pilot', false)
+            ->exists();
     }
 }

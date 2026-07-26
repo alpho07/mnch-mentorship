@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Filament\Pages\MenteeDashboard;
 use App\Models\ClassAttendance;
 use App\Models\ClassModule;
 use App\Models\ClassModuleActivityParticipant;
@@ -33,7 +34,12 @@ class MenteeClassProgressController extends Controller
 
         $participant = ClassParticipant::where('mentorship_class_id', $class->id)
             ->where('user_id', Auth::id())
-            ->firstOrFail();
+            ->first();
+
+        if (! $participant) {
+            return redirect()->to(MenteeDashboard::getUrl())
+                ->with('error', 'You are not enrolled in this class.');
+        }
 
         // Module progress — load classModule so we get attendance_token & attendance_link_active
         $moduleProgress = MenteeModuleProgress::where('class_participant_id', $participant->id)
@@ -163,7 +169,12 @@ class MenteeClassProgressController extends Controller
 
         $participant = ClassParticipant::where('mentorship_class_id', $class->id)
             ->where('user_id', Auth::id())
-            ->firstOrFail();
+            ->first();
+
+        if (! $participant) {
+            return redirect()->to(MenteeDashboard::getUrl())
+                ->with('error', 'You are not enrolled in this class.');
+        }
 
         // Gate 1: Mentor must have started this module before a mentee can access it
         if (! in_array($classModule->status, ['in_progress', 'completed'])) {

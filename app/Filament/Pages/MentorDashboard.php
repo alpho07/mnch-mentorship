@@ -39,30 +39,15 @@ class MentorDashboard extends Page
 
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->check() && auth()->user()->can('page_MentorDashboard');
+        return auth()->check() && (
+            auth()->user()->hasAnyRole(self::MENTOR_ROLES)
+            || auth()->user()->hasAnyRole(self::SENIOR_ROLES)
+        );
     }
 
     public static function canAccess(): bool
     {
-        return auth()->check() && auth()->user()->can('page_MentorDashboard');
-    }
-
-    public static function getNavigationBadge(): ?string
-    {
-        if (! auth()->check()) {
-            return null;
-        }
-        $user = auth()->user();
-        $count = Training::where('type', 'facility_mentorship')
-            ->when(! $user->hasRole(self::SENIOR_ROLES), fn ($q) => $q->forMentorOrCoMentor($user->id))
-            ->count();
-
-        return $count > 0 ? (string) $count : null;
-    }
-
-    public static function getNavigationBadgeColor(): string
-    {
-        return 'primary';
+        return auth()->check() && (auth()->user()->hasAnyRole(self::MENTOR_ROLES) || auth()->user()->hasAnyRole(self::SENIOR_ROLES));
     }
 
     // ─── Loaded state ────────────────────────────────────────────────────────

@@ -25,14 +25,33 @@ class AssessmentResource extends Resource
 
     protected static ?int $navigationSort = 1;
 
+    private const VISIBLE_ROLES = [
+        'super_admin',
+        'admin',
+        'division',
+        'national',
+        'county',
+        'subcounty',
+        'facility_mentor',
+        'facility_mentor_lead',
+        'spoke_mentor',
+        'spoke_mentor_lead',
+        'county_mentor_lead',
+        'subcounty_mentor_lead',
+        'national_mentor',
+        'national_mentor_lead',
+        'division_lead',
+        'assessor',
+    ];
+
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->check() && auth()->user()->can('view_any_assessment');
+        return auth()->check() && static::userCanAccess(auth()->user());
     }
 
     public static function canAccess(): bool
     {
-        return auth()->check() && auth()->user()->can('view_any_assessment');
+        return auth()->check() && static::userCanAccess(auth()->user());
     }
 
     public static function canCreate(): bool
@@ -48,6 +67,15 @@ class AssessmentResource extends Resource
     public static function canDelete($record): bool
     {
         return static::canAccess();
+    }
+
+    private static function userCanAccess(?\App\Models\User $user): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        return $user->hasAnyRole(self::VISIBLE_ROLES) || $user->can('view_any_assessment');
     }
 
     public static function form(Form $form): Form
@@ -366,7 +394,7 @@ class AssessmentResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        $count = Assessment::whereIn('status', ['draft', 'in_progress'])->count();
+        $count = Assessment::count();
 
         return $count > 0 ? (string) $count : null;
     }

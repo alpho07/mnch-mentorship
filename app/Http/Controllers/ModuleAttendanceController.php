@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Filament\Pages\MenteeDashboard;
 use App\Models\ClassAttendance;
 use App\Models\ClassModule;
 use App\Models\ClassParticipant;
@@ -88,12 +89,12 @@ class ModuleAttendanceController extends Controller {
                 ->first();
 
         if (!$module) {
-            return redirect()->route('mentee.dashboard')
+            return redirect()->to(MenteeDashboard::getUrl())
                             ->with('error', 'This attendance link is no longer active or is invalid.');
         }
 
         if ($module->status !== 'in_progress') {
-            return redirect()->route('mentee.dashboard')
+            return redirect()->to(MenteeDashboard::getUrl())
                             ->with('error', 'This module is not currently in progress.');
         }
 
@@ -106,7 +107,7 @@ class ModuleAttendanceController extends Controller {
                 ->first();
 
         if (!$participant) {
-            return redirect()->route('mentee.dashboard')
+            return redirect()->to(MenteeDashboard::getUrl())
                             ->with('error', 'You are not enrolled in this class.');
         }
 
