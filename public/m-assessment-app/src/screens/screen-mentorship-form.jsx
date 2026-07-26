@@ -253,18 +253,6 @@ function ProgramPickerCards({ programs, value, onChange }) {
                         <div style={{ fontSize: 11, fontWeight: 900, color: "#fff", lineHeight: 1.25, letterSpacing: "0.01em", textShadow: "0 1px 4px rgba(0,0,0,0.25)" }}>
                             {p.name}
                         </div>
-                        {/* module count */}
-                        {p.module_count != null && (
-                            <div style={{
-                                marginTop: "auto", paddingTop: 6,
-                                fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em",
-                                color: "rgba(255,255,255,0.85)",
-                                background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.28)",
-                                borderRadius: 99, padding: "3px 8px", display: "inline-block",
-                            }}>
-                                {p.module_count} module{p.module_count !== 1 ? "s" : ""}
-                            </div>
-                        )}
                     </button>
                 );
             })}
@@ -298,7 +286,8 @@ export function MentorshipFormScreen({ user, onBack, onCreated, existingMentorsh
 
     const [startDate, setStartDate]           = useState("");
     const [endDate, setEndDate]               = useState("");
-    const [maxParticipants, setMaxParticipants] = useState(20);
+    const [maxParticipants, setMaxParticipants]           = useState(20);
+    const [maxParticipantsInput, setMaxParticipantsInput] = useState("20");
     const [className, setClassName]           = useState("Class 1");
     const [classStartDate, setClassStartDate] = useState("");
     const [classEndDate, setClassEndDate]     = useState("");
@@ -582,7 +571,8 @@ export function MentorshipFormScreen({ user, onBack, onCreated, existingMentorsh
 
     const effectiveClassStartDate = classStartDate || startDate;
     const effectiveClassEndDate = classEndDate || endDate;
-    const step1Valid = programId && countyId && facilityId && startDate && endDate;
+    const step1Valid = programId && countyId && facilityId && startDate && endDate
+        && maxParticipants >= 2 && maxParticipants <= 8;
     const step2Valid = className.trim() && effectiveClassStartDate && effectiveClassEndDate;
 
     const handleUpdate = async () => {
@@ -852,14 +842,36 @@ export function MentorshipFormScreen({ user, onBack, onCreated, existingMentorsh
                                 </Field>
                             </div>
 
-                            <Field label="Number of Mentees" hint="Recommended minimum: 2. No maximum limit enforced.">
+                            <Field
+                                label="Number of Mentees"
+                                hint={
+                                    maxParticipantsInput !== "" && (maxParticipants < 2 || maxParticipants > 8)
+                                        ? null
+                                        : "Must be between 2 and 8 mentees."
+                                }
+                            >
                                 <input
                                     type="number"
-                                    value={maxParticipants}
-                                    min={1}
-                                    onChange={e => setMaxParticipants(parseInt(e.target.value) || 20)}
+                                    value={maxParticipantsInput}
+                                    onChange={e => {
+                                        const raw = e.target.value;
+                                        setMaxParticipantsInput(raw);
+                                        const n = parseInt(raw, 10);
+                                        if (!Number.isNaN(n)) setMaxParticipants(n);
+                                    }}
+                                    onBlur={() => {
+                                        const n = parseInt(maxParticipantsInput, 10);
+                                        if (Number.isNaN(n)) {
+                                            setMaxParticipantsInput(String(maxParticipants));
+                                        }
+                                    }}
                                     style={inputStyle}
                                 />
+                                {maxParticipantsInput !== "" && (maxParticipants < 2 || maxParticipants > 8) && (
+                                    <div style={{ fontSize: 11, color: "#DC2626", marginTop: 4 }}>
+                                        Enter a number between 2 and 8.
+                                    </div>
+                                )}
                             </Field>
                         </div>
                     </div>
@@ -1182,7 +1194,7 @@ export function MentorshipFormScreen({ user, onBack, onCreated, existingMentorsh
 
             {/* ── Footer Nav ── */}
             {isEditMode ? (
-                <div style={{ padding: "12px 16px", background: T.card, borderTop: `1px solid ${T.borderLight}` }}>
+                <div style={{ padding: "12px 16px", paddingBottom: "calc(12px + env(safe-area-inset-bottom, 0px))", background: T.card, borderTop: `1px solid ${T.borderLight}` }}>
                     <button
                         onClick={handleUpdate}
                         disabled={saving || !step1Valid}
@@ -1199,7 +1211,7 @@ export function MentorshipFormScreen({ user, onBack, onCreated, existingMentorsh
                     </button>
                 </div>
             ) : step < 5 && (
-                <div style={{ padding: "12px 16px", background: T.card, borderTop: `1px solid ${T.borderLight}`, display: "flex", gap: 10 }}>
+                <div style={{ padding: "12px 16px", paddingBottom: "calc(12px + env(safe-area-inset-bottom, 0px))", background: T.card, borderTop: `1px solid ${T.borderLight}`, display: "flex", gap: 10 }}>
                     {step > 1 && (
                         <button
                             onClick={() => setStep(s => s - 1)}
