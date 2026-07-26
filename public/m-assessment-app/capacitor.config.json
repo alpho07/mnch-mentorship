@@ -1,5 +1,5 @@
 {
-  "appId": "com.mnch.assessments.app",
-  "appName": "MNCH Assessments",
+  "appId": "com.mnch.mentorship.app",
+  "appName": "MNCH Mentorship",
   "webDir": "dist"
 }
