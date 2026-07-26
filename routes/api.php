@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\HealthProductsController;
 use App\Http\Controllers\Api\HumanResourceController;
 use App\Http\Controllers\Api\MentorshipController;
 use App\Http\Controllers\Api\ProfileController;
+use App\Http\Controllers\Api\RegisterLookupController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Middleware\MobileApiCors;
 
@@ -39,6 +40,14 @@ Route::prefix('v1')->name('api.v1.')->middleware(MobileApiCors::class)->group(fu
         Route::post('forgot-password', [AuthController::class, 'forgotPassword'])->name('forgot-password');
         Route::post('reset-password', [AuthController::class, 'resetPassword'])->name('reset-password');
         Route::post('verify-account/{user}', [AuthController::class, 'verifyAccount'])->name('verify-account');
+    });
+
+    // ── Register lookups — public reference data for the Register screen only ──
+    Route::prefix('register-lookups')->name('register-lookups.')->group(function () {
+        Route::get('counties', [RegisterLookupController::class, 'counties'])->name('counties');
+        Route::get('cadres', [RegisterLookupController::class, 'cadres'])->name('cadres');
+        Route::get('departments', [RegisterLookupController::class, 'departments'])->name('departments');
+        Route::get('counties/{county}/facilities', [RegisterLookupController::class, 'facilitiesByCounty'])->name('counties.facilities');
     });
 
     Route::get('health', fn () => response()->json([

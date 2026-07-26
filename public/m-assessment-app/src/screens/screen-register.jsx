@@ -31,15 +31,15 @@ export function RegisterScreen({ onRegistered, onBack }) {
     const [done, setDone]       = useState(false);
 
     useEffect(() => {
-        api.lookups.cadres().then(d => setCadres(Array.isArray(d?.data) ? d.data : Array.isArray(d) ? d : [])).catch(() => {});
-        api.lookups.departments().then(d => setDeptments(Array.isArray(d?.data) ? d.data : Array.isArray(d) ? d : [])).catch(() => {});
-        api.lookups.counties().then(d => setCounties(Array.isArray(d?.data) ? d.data : Array.isArray(d) ? d : [])).catch(() => {});
+        api.registerLookups.cadres().then(d => setCadres(Array.isArray(d?.data) ? d.data : Array.isArray(d) ? d : [])).catch(() => {});
+        api.registerLookups.departments().then(d => setDeptments(Array.isArray(d?.data) ? d.data : Array.isArray(d) ? d : [])).catch(() => {});
+        api.registerLookups.counties().then(d => setCounties(Array.isArray(d?.data) ? d.data : Array.isArray(d) ? d : [])).catch(() => {});
     }, []);
 
     useEffect(() => {
         if (!countyId) { setFacilities([]); setFacilityId(""); return; }
         setFacilitiesLoading(true);
-        api.lookups.facilitiesByCounty(countyId)
+        api.registerLookups.facilitiesByCounty(countyId)
             .then(list => {
                 const arr = (Array.isArray(list?.data) ? list.data : Array.isArray(list) ? list : [])
                     .map(f => ({ ...f, label: f?.label || (f?.mfl_code ? `${f.mfl_code} - ${f.name}` : f?.name) }))

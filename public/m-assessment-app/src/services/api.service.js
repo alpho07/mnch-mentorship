@@ -383,6 +383,15 @@ export const _rawApi = {
         userByEmail: (email) => get('/users/by-email?email=' + encodeURIComponent(email)),
         userSearch: (q, perPage = 20) => get('/users/search?q=' + encodeURIComponent(q) + '&per_page=' + encodeURIComponent(perPage)),
     },
+    // Public, unauthenticated — Register screen only. Uses MainCadre (matches
+    // RegisterRequest's validation), not the assessment_cadres-backed /cadres
+    // lookup above, which is a different table entirely.
+    registerLookups: {
+        counties: () => get('/register-lookups/counties'),
+        cadres: () => get('/register-lookups/cadres'),
+        departments: () => get('/register-lookups/departments'),
+        facilitiesByCounty: (countyId) => get('/register-lookups/counties/' + countyId + '/facilities'),
+    },
     mentorshipCreate: {
         create: (payload) => post('/mentorships', payload),
         update: (id, payload) => put('/mentorships/' + id, payload),
@@ -425,6 +434,9 @@ const api = {
     setToken: (t) => TokenStore.set(t),
     clearToken: () => TokenStore.clear(),
     getToken: () => TokenStore.get(),
+
+    // Public, unauthenticated, no offline cache — Register screen only.
+    registerLookups: _rawApi.registerLookups,
 
     // ── Auth (no offline cache — login requires network, session restore uses cached user) ──
     auth: {
