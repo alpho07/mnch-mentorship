@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { T } from "../constants.js";
+import { T, Z } from "../constants.js";
 import api from "../services/api.service.js";
 
 const STATUS_MAP = {
@@ -334,7 +334,7 @@ export function MentorshipsListScreen({ user, onOpen, onNew, onEdit }) {
 
             {onNew && (
                 <button onClick={onNew} style={{
-                    position: "fixed", bottom: 80, right: 16, zIndex: 10,
+                    position: "fixed", bottom: T.bottomSafe(80), right: 16, zIndex: Z.fab,
                     width: 52, height: 52, borderRadius: "50%",
                     background: T.gradientPrimary,
                     border: "none", color: "#fff", fontSize: 26, cursor: "pointer",

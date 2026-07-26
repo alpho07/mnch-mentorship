@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { T, GRADE_COLOR, GRADE_BG, GRADE_TEXT } from "../constants.js";
+import { T, GRADE_COLOR, GRADE_BG, GRADE_TEXT, Z } from "../constants.js";
 import { GradeBadge, StatusChip, ProgressBar } from "../components/shared-components.jsx";
 import { SectionIcon } from "../components/section-icons.jsx";
 import { NewAssessmentSheet } from "./screen-new-assessment.jsx";
@@ -207,7 +207,7 @@ export function AssessmentsListScreen({ assessments, sections, onView, loading, 
                 aria-label="New assessment"
                 style={{
                     position: "fixed",
-                    bottom: 80,
+                    bottom: T.bottomSafe(80),
                     right: 20,
                     width: 52,
                     height: 52,
@@ -219,7 +219,7 @@ export function AssessmentsListScreen({ assessments, sections, onView, loading, 
                     alignItems: "center",
                     justifyContent: "center",
                     boxShadow: T.shadowMd,
-                    zIndex: 10,
+                    zIndex: Z.fab,
                 }}
             >
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
