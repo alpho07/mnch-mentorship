@@ -166,7 +166,7 @@ function getProgramTheme(name, i) {
     return fb[i % fb.length];
 }
 
-function ProgramPickerCards({ programs, value, onChange }) {
+function ProgramPickerCards({ programs, value, onChange, disabled, disabledMessage }) {
     if (!programs || programs.length === 0) {
         return (
             <div style={{ padding: "20px 0", textAlign: "center", color: T.textMuted, fontSize: 13 }}>
@@ -175,7 +175,14 @@ function ProgramPickerCards({ programs, value, onChange }) {
         );
     }
     return (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        <div>
+            {disabled && disabledMessage && (
+                <div style={{ background: "#FFFBEB", border: "1px solid #FCD34D", borderRadius: T.radiusSm,
+                    padding: "10px 14px", marginBottom: 10, fontSize: 12, color: "#92400E", fontWeight: 600 }}>
+                    🔒 {disabledMessage}
+                </div>
+            )}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, opacity: disabled ? 0.55 : 1 }}>
             {programs.map((p, i) => {
                 const theme = getProgramTheme(p.name, i);
                 const selected = String(p.id) === String(value);
@@ -183,6 +190,7 @@ function ProgramPickerCards({ programs, value, onChange }) {
                     <button
                         key={p.id}
                         type="button"
+                        disabled={disabled}
                         onClick={() => onChange(String(p.id))}
                         style={{
                             position: "relative",
@@ -190,7 +198,7 @@ function ProgramPickerCards({ programs, value, onChange }) {
                             border: selected ? "2.5px solid rgba(255,255,255,0.9)" : "2px solid transparent",
                             borderRadius: 14,
                             padding: "12px 10px 10px",
-                            cursor: "pointer",
+                            cursor: disabled ? "not-allowed" : "pointer",
                             display: "flex",
                             flexDirection: "column",
                             alignItems: "center",
@@ -258,6 +266,7 @@ function ProgramPickerCards({ programs, value, onChange }) {
                     </button>
                 );
             })}
+            </div>
         </div>
     );
 }
@@ -268,6 +277,11 @@ export function MentorshipFormScreen({ user, onBack, onCreated, existingMentorsh
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState(null);
     const [editLoading, setEditLoading] = useState(isEditMode);
+    // Edit-mode lock state, derived from the mentorship's own classes:
+    // any completed class locks the whole mentorship; any active/in-progress
+    // class (with none completed yet) locks just the Program field.
+    const [mentorshipLocked, setMentorshipLocked] = useState(false);
+    const [programLocked, setProgramLocked]       = useState(false);
 
     // ── Step 1: Setup ──────────────────────────────────────────────────────
     const [programs, setPrograms]         = useState([]);
@@ -409,6 +423,12 @@ export function MentorshipFormScreen({ user, onBack, onCreated, existingMentorsh
                 if (t.end_date)    setEndDate(t.end_date);
                 if (t.max_participants) setMaxParticipants(t.max_participants);
                 if (t.is_pilot !== undefined) setIsPilot(!!t.is_pilot);
+
+                const classes = Array.isArray(t.classes) ? t.classes : [];
+                const hasCompleted = classes.some(c => c.status === "completed");
+                const hasActive    = classes.some(c => c.status === "active" || c.status === "in_progress");
+                setMentorshipLocked(hasCompleted);
+                setProgramLocked(hasCompleted || hasActive);
             })
             .catch(() => {})
             .finally(() => setEditLoading(false));
@@ -820,6 +840,8 @@ export function MentorshipFormScreen({ user, onBack, onCreated, existingMentorsh
                                     programs={programs}
                                     value={programId}
                                     onChange={(id) => { setProgramId(id); setSelectedModuleIds([]); }}
+                                    disabled={isEditMode && programLocked}
+                                    disabledMessage="A class is already in progress — the program can no longer be changed."
                                 />
                             </Field>
 
@@ -1197,15 +1219,21 @@ export function MentorshipFormScreen({ user, onBack, onCreated, existingMentorsh
             {/* ── Footer Nav ── */}
             {isEditMode ? (
                 <div style={{ padding: "12px 16px", paddingBottom: "calc(12px + env(safe-area-inset-bottom, 0px))", background: T.card, borderTop: `1px solid ${T.borderLight}` }}>
+                    {mentorshipLocked && (
+                        <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: T.radiusSm,
+                            padding: "10px 14px", marginBottom: 10, fontSize: 12, color: "#991B1B", fontWeight: 600 }}>
+                            🔒 This mentorship has a completed class and can no longer be edited.
+                        </div>
+                    )}
                     <button
                         onClick={handleUpdate}
-                        disabled={saving || !step1Valid}
+                        disabled={saving || !step1Valid || mentorshipLocked}
                         style={{
                             width: "100%", padding: 13, borderRadius: T.radiusSm, border: "none",
                             background: "linear-gradient(135deg, #0097A7, #26C6DA)",
                             color: "#fff", fontSize: 14, fontWeight: 700,
-                            cursor: (saving || !step1Valid) ? "not-allowed" : "pointer",
-                            opacity: (saving || !step1Valid) ? 0.6 : 1,
+                            cursor: (saving || !step1Valid || mentorshipLocked) ? "not-allowed" : "pointer",
+                            opacity: (saving || !step1Valid || mentorshipLocked) ? 0.6 : 1,
                             boxShadow: "0 4px 12px rgba(79,106,245,0.28)",
                         }}
                     >
