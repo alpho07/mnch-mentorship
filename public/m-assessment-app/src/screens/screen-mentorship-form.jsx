@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useLayoutEffect } from "react";
+import { createPortal } from "react-dom";
 import { T } from "../constants.js";
 import api from "../services/api.service.js";
 
@@ -31,6 +32,10 @@ export function Field({ label, required, hint, error, children, fieldRef }) {
     );
 }
 
+// Estimated max height of the popup panel (search box + list), used to decide
+// whether it should open below or flip above the trigger.
+const DROPDOWN_PANEL_HEIGHT = 280;
+
 export function SearchableDropdown({
     options,
     value,
@@ -43,6 +48,9 @@ export function SearchableDropdown({
 }) {
     const [open, setOpen] = useState(false);
     const [query, setQuery] = useState("");
+    const [panelPos, setPanelPos] = useState(null); // { left, right, top|bottom, openUp }
+    const triggerRef = useRef(null);
+    const wrapperRef = useRef(null);
     const selected = options.find(item => String(item.id) === String(value));
     const selectedLabel = selected ? getLabel(selected) : "";
     const filtered = options.filter(item =>
@@ -54,16 +62,57 @@ export function SearchableDropdown({
         setQuery("");
     };
 
+    // Position the portal-rendered panel against the trigger's real screen
+    // coordinates (position: fixed — immune to any ancestor's overflow
+    // clipping, unlike the old position: absolute approach, which got cut
+    // off inside scrollable step content). Flips upward when there isn't
+    // enough room below, so bottom-of-screen fields (e.g. Facility) don't
+    // render their list off-screen.
+    useLayoutEffect(() => {
+        if (!open || !triggerRef.current) return;
+
+        const reposition = () => {
+            const rect = triggerRef.current.getBoundingClientRect();
+            const spaceBelow = window.innerHeight - rect.bottom;
+            const openUp = spaceBelow < DROPDOWN_PANEL_HEIGHT && rect.top > spaceBelow;
+            setPanelPos({
+                left: rect.left,
+                width: rect.width,
+                openUp,
+                top: openUp ? undefined : rect.bottom + 4,
+                bottom: openUp ? window.innerHeight - rect.top + 4 : undefined,
+            });
+        };
+
+        reposition();
+        // Close when the background page scrolls (the panel's fixed
+        // position would otherwise drift from its trigger). Scrolling
+        // within the panel's own options list must NOT close it — capture
+        // phase sees that scroll too, so it's explicitly excluded.
+        const handleScroll = (e) => {
+            if (e.target?.closest?.("[data-dropdown-panel]")) return;
+            close();
+        };
+        window.addEventListener("scroll", handleScroll, true);
+        window.addEventListener("resize", reposition);
+        return () => {
+            window.removeEventListener("scroll", handleScroll, true);
+            window.removeEventListener("resize", reposition);
+        };
+    }, [open]);
+
     return (
         <div
+            ref={wrapperRef}
             style={{ position: "relative" }}
             onBlur={(e) => {
-                if (!e.currentTarget.contains(e.relatedTarget)) {
+                if (!wrapperRef.current?.contains(e.relatedTarget) && !e.relatedTarget?.closest('[data-dropdown-panel]')) {
                     setTimeout(close, 120);
                 }
             }}
         >
             <button
+                ref={triggerRef}
                 type="button"
                 disabled={disabled}
                 onClick={() => !disabled && setOpen(prev => !prev)}
@@ -81,22 +130,27 @@ export function SearchableDropdown({
                 </span>
             </button>
 
-            {open && (
+            {open && panelPos && createPortal(
                 <div
+                    data-dropdown-panel
+                    tabIndex={-1}
                     style={{
-                        position: "absolute",
-                        left: 0,
-                        right: 0,
-                        top: "calc(100% + 4px)",
-                        zIndex: 30,
+                        position: "fixed",
+                        left: panelPos.left,
+                        width: panelPos.width,
+                        top: panelPos.top,
+                        bottom: panelPos.bottom,
+                        zIndex: 9999,
                         background: "#fff",
                         border: `1px solid ${T.border}`,
                         borderRadius: T.radiusSm,
                         boxShadow: T.shadowMd,
                         overflow: "hidden",
+                        display: "flex",
+                        flexDirection: panelPos.openUp ? "column-reverse" : "column",
                     }}
                 >
-                    <div style={{ padding: 8, borderBottom: `1px solid ${T.borderLight}` }}>
+                    <div style={{ padding: 8, borderBottom: panelPos.openUp ? "none" : `1px solid ${T.borderLight}`, borderTop: panelPos.openUp ? `1px solid ${T.borderLight}` : "none" }}>
                         <input
                             autoFocus
                             value={query}
@@ -141,7 +195,8 @@ export function SearchableDropdown({
                             );
                         })}
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );
