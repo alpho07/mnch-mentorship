@@ -185,7 +185,25 @@ export function RegisterScreen({ onRegistered, onBack, onGoToForgotPassword }) {
     return (
         <div style={{ display: "flex", flexDirection: "column", height: "100%", background: T.bg,
             fontFamily: "-apple-system, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif" }}>
-            <div style={{ background: T.gradientHero, padding: "40px 20px 0", borderRadius: "0 0 28px 28px", margin: "0 6px" }}>
+            <div style={{ background: T.gradientHero, padding: "24px 20px 0", borderRadius: "28px", margin: "calc(6px + env(safe-area-inset-top, 0px)) 6px 0" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
+                    <div style={{
+                        width: 34, height: 34, borderRadius: 11, flexShrink: 0,
+                        background: T.gradientPrimary,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        boxShadow: "0 4px 14px rgba(79,106,245,0.4)",
+                    }}>
+                        <svg width="19" height="19" viewBox="0 0 34 34" fill="none">
+                            <rect x="13" y="2" width="8" height="30" rx="4" fill="white" fillOpacity="0.95"/>
+                            <rect x="2" y="13" width="30" height="8" rx="4" fill="white" fillOpacity="0.95"/>
+                            <circle cx="17" cy="17" r="5" fill="white"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <div style={{ color: "white", fontSize: 15, fontWeight: 800, lineHeight: 1.2, letterSpacing: -0.2 }}>MNCH Kenya</div>
+                        <div style={{ color: "rgba(255,255,255,0.55)", fontSize: 10, fontWeight: 700, letterSpacing: 0.6, textTransform: "uppercase", marginTop: 1 }}>Ministry of Health</div>
+                    </div>
+                </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
                     <button onClick={handleHeaderBack} style={{ background: "rgba(255,255,255,0.15)", border: "none", cursor: "pointer",
                         padding: "6px 10px", borderRadius: 10, color: "white", fontSize: 12, fontWeight: 600 }}>

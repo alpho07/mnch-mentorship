@@ -41,7 +41,7 @@ export function SetPasswordScreen({ mode, target, onDone, onBack }) {
     return (
         <div style={{ display: "flex", flexDirection: "column", height: "100%", background: T.bg,
             fontFamily: "-apple-system, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif" }}>
-            <div style={{ background: T.gradientHero, padding: "44px 28px 32px", borderRadius: "0 0 28px 28px", margin: "0 6px" }}>
+            <div style={{ background: T.gradientHero, padding: "44px 28px 32px", borderRadius: "28px", margin: "calc(6px + env(safe-area-inset-top, 0px)) 6px 0" }}>
                 <div style={{ color: "white", fontSize: 22, fontWeight: 800 }}>
                     {isVerify ? "Set Your Password" : "Choose a New Password"}
                 </div>

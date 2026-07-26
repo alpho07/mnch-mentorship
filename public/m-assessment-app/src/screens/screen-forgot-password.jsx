@@ -45,7 +45,7 @@ export function ForgotPasswordScreen({ onBack, initialEmail }) {
     return (
         <div style={{ display: "flex", flexDirection: "column", height: "100%", background: T.bg,
             fontFamily: "-apple-system, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif" }}>
-            <div style={{ background: T.gradientHero, padding: "40px 20px 20px", borderRadius: "0 0 28px 28px", margin: "0 6px" }}>
+            <div style={{ background: T.gradientHero, padding: "40px 20px 20px", borderRadius: "28px", margin: "calc(6px + env(safe-area-inset-top, 0px)) 6px 0" }}>
                 <button onClick={onBack} style={{ background: "rgba(255,255,255,0.15)", border: "none", cursor: "pointer",
                     padding: "6px 10px", borderRadius: 10, marginBottom: 12, color: "white", fontSize: 12, fontWeight: 600 }}>
                     ← Back

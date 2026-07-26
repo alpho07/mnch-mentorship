@@ -39,8 +39,8 @@ export function LoginScreen({ onLogin, onGoToRegister, onGoToForgotPassword }) {
                 background: T.gradientHero,
                 padding: "44px 28px 40px",
                 position: "relative", overflow: "hidden",
-                borderRadius: "0 0 28px 28px",
-                margin: "0 6px",
+                borderRadius: "28px",
+                margin: "calc(6px + env(safe-area-inset-top, 0px)) 6px 0",
             }}>
                 {/* Orbs */}
                 <div style={{ position:"absolute", width:200, height:200, borderRadius:"50%",
