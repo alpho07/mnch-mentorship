@@ -43,7 +43,7 @@
     {{-- Real user-tap link, not an auto-redirect: Chrome/Android block or
     mishandle custom-scheme navigation ("item not found") when it isn't
     triggered by an actual gesture. --}}
-    <a class="open-app" href="intent://mnchkenyamentorship.org/#Intent;scheme=https;package=com.mnch.mentorship.app;end">
+    <a class="open-app" href="{{ $appIntentUrl }}">
         Open MNCH App
     </a>
 

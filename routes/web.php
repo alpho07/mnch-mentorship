@@ -69,13 +69,27 @@ Route::middleware('guest')->group(function () {
 // here, so a guest-only route would 403 that case.
 Route::get('/app-handoff', function (\Illuminate\Http\Request $request) {
     $type = $request->query('type') === 'reset' ? 'reset' : 'verify';
+    $loginUrl = route('filament.admin.auth.login');
+
+    // action=MAIN/category=LAUNCHER matches MainActivity's launcher intent-filter
+    // directly — no data/path needed, so nothing to mismatch against the
+    // App-Links intent-filter's pathPrefix rules. Previously this pointed at
+    // https://mnchkenyamentorship.org/ (root, no path) as a VIEW intent, which
+    // didn't match either registered pathPrefix (/account/verify,
+    // /admin/set-password), so Android couldn't resolve an app and Chrome fell
+    // back to searching the Play Store for the package instead.
+    $appIntentUrl = 'intent:#Intent;action=android.intent.action.MAIN;'
+        . 'category=android.intent.category.LAUNCHER;'
+        . 'package=com.mnch.mentorship.app;'
+        . 'S.browser_fallback_url=' . urlencode($loginUrl) . ';end';
 
     return view('auth.app-handoff', [
         'heading' => $type === 'reset' ? 'Password Updated!' : 'Account Verified!',
         'message' => $type === 'reset'
             ? "Your password has been updated. Open the MNCH Mentorship app on your phone and log in with your email and new password."
             : "Welcome to MNCH Kenya! Open the MNCH Mentorship app on your phone and log in with your email and password.",
-        'loginUrl' => route('filament.admin.auth.login'),
+        'loginUrl' => $loginUrl,
+        'appIntentUrl' => $appIntentUrl,
     ]);
 })->name('app-handoff');
 
