@@ -11,6 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Duplicate of 2026_03_03_151854_create_personal_access_tokens_table.php
+        // (identical definition) — guard so fresh installs / RefreshDatabase
+        // test runs don't fail with "table already exists". Left as a no-op
+        // rather than deleted, to preserve migration history on environments
+        // where it has already run.
+        if (Schema::hasTable('personal_access_tokens')) {
+            return;
+        }
+
         Schema::create('personal_access_tokens', function (Blueprint $table) {
             $table->id();
             $table->morphs('tokenable');
