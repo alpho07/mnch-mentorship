@@ -56,6 +56,23 @@ export const T = {
     gradientGlass:   "linear-gradient(135deg, rgba(255,255,255,0.12), rgba(255,255,255,0.06))",
 };
 
+// ─── Shared z-index scale ───────────────────────────────────────────────────
+// Every fixed-position bottom/overlay element in the app must use one of
+// these instead of an ad-hoc number, so stacking order is predictable across
+// scopes (Assessments/Mentorships/Trainings) and screens.
+export const Z = {
+    navBar: 40,   // in-app bottom tab bar (per-scope)
+    fab:    45,   // floating action buttons — always above their own scope's navBar
+    header: 100,  // ScopeShell sticky header (scope tabs)
+    sheet:  200,  // full-screen sheets/modals — must beat header when they cover the top
+    toast:  300,  // sync toast, topmost transient UI
+};
+
+// bottom offset that clears both this app's own fixed bottom nav (navHeight,
+// default 64) and the OS gesture/button nav bar (env(safe-area-inset-bottom)),
+// which varies by Android device/SDK.
+T.bottomSafe = (navHeight = 64) => `calc(${navHeight}px + env(safe-area-inset-bottom, 0px))`;
+
 // ─── Grade System ─────────────────────────────────────────────────────────────
 export const GRADE_COLOR = { green: "#10B981", yellow: "#F59E0B", red: "#EF4444" };
 export const GRADE_BG = { green: "#D1FAE5", yellow: "#FEF3C7", red: "#FEE2E2" };
