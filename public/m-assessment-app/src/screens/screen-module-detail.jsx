@@ -1,6 +1,6 @@
 // src/screens/screen-module-detail.jsx
 import { useState, useEffect } from "react";
-import { T } from "../constants.js";
+import { T, Z } from "../constants.js";
 import api from "../services/api.service.js";
 
 
@@ -127,11 +127,11 @@ function AddSessionSheet({ moduleId, onAdd, onClose }) {
             {/* Backdrop */}
             <div
                 onClick={onClose}
-                style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 50 }}
+                style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: Z.sheet }}
             />
             {/* Sheet */}
             <div style={{
-                position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 51,
+                position: "fixed", left: 0, right: 0, bottom: 0, zIndex: Z.sheet + 1,
                 background: T.card, borderRadius: "20px 20px 0 0",
                 padding: "0 0 32px",
                 maxHeight: "70vh", display: "flex", flexDirection: "column",

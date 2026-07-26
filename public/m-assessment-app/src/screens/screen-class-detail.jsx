@@ -1,6 +1,6 @@
 // src/screens/screen-class-detail.jsx
 import { useState, useEffect } from "react";
-import { T } from "../constants.js";
+import { T, Z } from "../constants.js";
 import api from "../services/api.service.js";
 
 
@@ -47,7 +47,7 @@ function ClassReportSheet({ classId, onClose }) {
     const cls     = report?.class ?? {};
 
     return (
-        <div style={{ position: "fixed", inset: 0, zIndex: 60, background: T.bg, display: "flex", flexDirection: "column" }}>
+        <div style={{ position: "fixed", inset: 0, zIndex: Z.sheet, background: T.bg, display: "flex", flexDirection: "column" }}>
             {/* Hero */}
             <div style={{
                 background: "linear-gradient(160deg, #1E1B4B 0%, #3730A3 55%, #818CF8 100%)",
