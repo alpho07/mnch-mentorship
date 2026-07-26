@@ -73,3 +73,4 @@ class AccountVerificationController extends Controller {
                         ->with('success', 'Welcome to the MNCH Mentorship Platform! Your account has been verified.');
     }
 }
+

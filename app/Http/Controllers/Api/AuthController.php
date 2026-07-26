@@ -271,3 +271,4 @@ class AuthController extends Controller {
         return ['sections:read', 'profile:read'];
     }
 }
+

@@ -282,3 +282,4 @@ class MentorshipController extends Controller
         abort_if(! $isMentor && ! $isCoMentor, 403, 'Not authorised for this mentorship.');
     }
 }
+

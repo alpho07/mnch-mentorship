@@ -241,3 +241,4 @@ Route::prefix('v1')->name('api.v1.')->middleware(MobileApiCors::class)->group(fu
         Route::post('chat/assistant', [ChatController::class, 'assistant'])->name('chat.assistant');
     });
 });
+

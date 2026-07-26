@@ -122,3 +122,4 @@ class CustomResetPassword extends SimplePage {
         return false;
     }
 }
+
