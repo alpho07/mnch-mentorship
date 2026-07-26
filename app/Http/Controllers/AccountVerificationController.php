@@ -74,3 +74,4 @@ class AccountVerificationController extends Controller {
     }
 }
 
+
