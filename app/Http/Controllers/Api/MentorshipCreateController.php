@@ -102,6 +102,11 @@ class MentorshipCreateController extends Controller
         abort_if($training->type !== 'facility_mentorship', 404);
         abort_if($training->mentor_id !== $request->user()->id && !$request->user()->isAboveSite(), 403);
 
+        // Once any class under this mentorship is completed, the whole
+        // mentorship is locked — no further edits at all.
+        $hasCompletedClass = $training->mentorshipClasses()->where('status', 'completed')->exists();
+        abort_if($hasCompletedClass, 422, 'This mentorship has a completed class and can no longer be edited.');
+
         $request->validate([
             'title'            => 'sometimes|string|max:255',
             'start_date'       => 'sometimes|date',
@@ -112,6 +117,16 @@ class MentorshipCreateController extends Controller
             'facility_id'      => 'sometimes|integer|exists:facilities,id',
             'county_id'        => 'nullable|integer|exists:counties,id',
         ]);
+
+        // Once any class has started, the program is locked (changing it would
+        // orphan modules/sessions already tied to the old program's curriculum).
+        // Other fields (facility, dates, max mentees) remain editable.
+        if ($request->filled('program_id') && (int) $request->program_id !== $training->program_id) {
+            $hasActiveClass = $training->mentorshipClasses()
+                ->whereIn('status', ['active', 'in_progress'])
+                ->exists();
+            abort_if($hasActiveClass, 422, 'A class is already in progress — the program can no longer be changed.');
+        }
 
         $training->update($request->only(['title', 'start_date', 'end_date', 'max_participants', 'is_pilot', 'program_id', 'facility_id', 'county_id']));
 
