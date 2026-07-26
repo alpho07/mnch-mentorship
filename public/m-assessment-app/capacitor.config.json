@@ -1,5 +1,12 @@
 {
   "appId": "com.mnch.mentorship.app",
   "appName": "MNCH Mentorship",
-  "webDir": "dist"
+  "webDir": "dist",
+  "plugins": {
+    "StatusBar": {
+      "overlaysWebView": false,
+      "style": "DARK",
+      "backgroundColor": "#FFFFFF"
+    }
+  }
 }
