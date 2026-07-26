@@ -35,8 +35,10 @@ Route::prefix('v1')->name('api.v1.')->middleware(MobileApiCors::class)->group(fu
     // =========================================================================
     Route::prefix('auth')->name('auth.')->group(function () {
         Route::post('login', [AuthController::class, 'login'])->name('login');
+        Route::post('register', [AuthController::class, 'register'])->name('register');
         Route::post('forgot-password', [AuthController::class, 'forgotPassword'])->name('forgot-password');
         Route::post('reset-password', [AuthController::class, 'resetPassword'])->name('reset-password');
+        Route::post('verify-account/{user}', [AuthController::class, 'verifyAccount'])->name('verify-account');
     });
 
     Route::get('health', fn () => response()->json([
