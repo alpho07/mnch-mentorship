@@ -19,7 +19,7 @@ class ScopeSeeder extends Seeder
                 'gradient'   => ['#6366F1', '#4F46E5'],
                 'tabs'       => ['home', 'assessments', 'reports', 'profile'],
                 'is_active'  => true,
-                'sort_order' => 1,
+                'sort_order' => 2,
                 'roles'      => [
                     'super_admin', 'admin', 'division', 'national', 'division_lead',
                     'county', 'subcounty', 'facility_mentor', 'facility_mentor_lead',
@@ -33,7 +33,7 @@ class ScopeSeeder extends Seeder
                 'gradient'   => ['#0EA5E9', '#0284C7'],
                 'tabs'       => ['home', 'mentorships', 'classes', 'profile'],
                 'is_active'  => true,
-                'sort_order' => 2,
+                'sort_order' => 1,
                 'roles'      => [
                     'super_admin', 'admin', 'division', 'national', 'division_lead',
                     'national_mentor_lead', 'county', 'county_mentor_lead',
