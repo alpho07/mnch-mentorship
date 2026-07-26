@@ -22,6 +22,18 @@ allprojects {
         google()
         mavenCentral()
     }
+
+    // Since Kotlin 1.8, kotlin-stdlib-jdk7/jdk8 were merged into the main
+    // kotlin-stdlib artifact (their classes are now included there directly).
+    // Some transitive dependency in this project still pulls the old split
+    // artifacts (1.6.21) alongside a newer merged kotlin-stdlib (1.8.22),
+    // causing "Duplicate class" errors at build time. Excluding the old
+    // split artifacts is safe — nothing is lost, kotlin-stdlib already
+    // provides the same classes.
+    configurations.all {
+        exclude group: 'org.jetbrains.kotlin', module: 'kotlin-stdlib-jdk7'
+        exclude group: 'org.jetbrains.kotlin', module: 'kotlin-stdlib-jdk8'
+    }
 }
 
 task clean(type: Delete) {
