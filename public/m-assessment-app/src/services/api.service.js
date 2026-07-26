@@ -12,26 +12,38 @@
 
 import offlineStore from "./offline-store.js";
 import syncQueue from "./sync-queue.js";
+import { Preferences } from "@capacitor/preferences";
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'https://mnchkenyamentorship.org/api/v1';
+const TOKEN_KEY = 'mnch_token';
+
+// Every existing caller (request() below, App.jsx's session-restore check)
+// expects a synchronous get() — @capacitor/preferences is async-only, so this
+// keeps a hydrated in-memory copy as the fast synchronous source of truth and
+// persists to Preferences (native storage, more durable than localStorage
+// inside a WebView) in the background. localStorage is kept as a mirror too,
+// both as a same-tick fallback before Preferences hydration finishes and for
+// zero behavior change if this ever runs outside Capacitor (plain browser).
+let _memToken = (() => {
+    try { return localStorage.getItem(TOKEN_KEY); } catch { return null; }
+})();
+
+Preferences.get({ key: TOKEN_KEY }).then(({ value }) => {
+    if (value) _memToken = value;
+    else if (_memToken) Preferences.set({ key: TOKEN_KEY, value: _memToken }); // migrate pre-existing localStorage token
+}).catch(() => {});
 
 const TokenStore = {
-    get: () => {
-        try {
-            return localStorage.getItem('mnch_token');
-        } catch {
-            return null;
-        }
-    },
+    get: () => _memToken,
     set: (t) => {
-        try {
-            localStorage.setItem('mnch_token', t);
-        } catch { /* localStorage unavailable */ }
+        _memToken = t;
+        try { localStorage.setItem(TOKEN_KEY, t); } catch { /* localStorage unavailable */ }
+        Preferences.set({ key: TOKEN_KEY, value: t }).catch(() => {});
     },
     clear: () => {
-        try {
-            localStorage.removeItem('mnch_token');
-        } catch { /* localStorage unavailable */ }
+        _memToken = null;
+        try { localStorage.removeItem(TOKEN_KEY); } catch { /* localStorage unavailable */ }
+        Preferences.remove({ key: TOKEN_KEY }).catch(() => {});
     },
 };
 

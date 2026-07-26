@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { App as CapacitorApp } from "@capacitor/app";
+import { SplashScreen } from "@capacitor/splash-screen";
 import { LoginScreen } from "./screens/screen-login.jsx";
 import { RegisterScreen } from "./screens/screen-register.jsx";
 import { ForgotPasswordScreen } from "./screens/screen-forgot-password.jsx";
@@ -101,6 +102,14 @@ export default function App() {
             }
         });
     }, []);
+
+    // Hide the native splash (launchAutoHide:false in capacitor.config.json)
+    // only once the session-restore check above has actually resolved —
+    // avoids a flash of the login/loading screen behind the native splash
+    // on a cold start.
+    useEffect(() => {
+        if (!loading) SplashScreen.hide();
+    }, [loading]);
 
     if (loading) {
         return (
