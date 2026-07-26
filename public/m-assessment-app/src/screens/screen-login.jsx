@@ -2,7 +2,7 @@ import { useState } from "react";
 import { T } from "../constants.js";
 import api from "../services/api.service.js";
 
-export function LoginScreen({ onLogin }) {
+export function LoginScreen({ onLogin, onGoToRegister, onGoToForgotPassword }) {
     const [email, setEmail]             = useState("");
     const [password, setPassword]       = useState("");
     const [error, setError]             = useState("");
@@ -213,12 +213,20 @@ export function LoginScreen({ onLogin }) {
                     ) : "Sign In"}
                 </button>
 
-                <button type="button" style={{
+                <button type="button" onClick={onGoToForgotPassword} style={{
                     background:"none", border:"none", padding:0,
                     textAlign:"center", marginTop:16, fontSize:13, color:T.primary, fontWeight:600,
                     cursor:"pointer", width:"100%",
                 }}>
                     Forgot password?
+                </button>
+
+                <button type="button" onClick={onGoToRegister} style={{
+                    background:"none", border:"none", padding:0,
+                    textAlign:"center", marginTop:12, fontSize:13, color:T.textMuted, fontWeight:500,
+                    cursor:"pointer", width:"100%",
+                }}>
+                    Don't have an account? <span style={{ color: T.primary, fontWeight: 700 }}>Register</span>
                 </button>
             </div>
         </div>
