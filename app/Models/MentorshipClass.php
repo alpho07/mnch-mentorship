@@ -24,11 +24,13 @@ class MentorshipClass extends Model {
         'notes',
         'enrollment_token',
         'enrollment_link_active',
+        'uninvited_mentee_reminder_sent_at',
     ];
     protected $casts = [
         'start_date' => 'date',
         'end_date' => 'date',
         'enrollment_link_active' => 'boolean',
+        'uninvited_mentee_reminder_sent_at' => 'datetime',
     ];
 
     // ─────────────────────────────────────────────────────────────────────────
