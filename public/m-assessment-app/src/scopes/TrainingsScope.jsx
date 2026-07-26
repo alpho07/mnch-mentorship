@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Z } from '../constants.js';
 import { AnalyticsHomeScreen }  from '../screens/screen-analytics-home.jsx';
 import { TrainingsListScreen }  from '../screens/screen-trainings-list.jsx';
 import { TrainingDetailScreen } from '../screens/screen-training-detail.jsx';
@@ -10,7 +11,7 @@ const TABS = [
 
 function BottomNav({ active, onChange }) {
     return (
-        <nav style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#ffffff', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderTop: '1px solid #EAF6F7', boxShadow: '0 -2px 16px rgba(0,0,0,0.06)', display: 'flex', zIndex: 50, paddingBottom: 'env(safe-area-inset-bottom)' }}>
+        <nav style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#ffffff', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderTop: '1px solid #EAF6F7', boxShadow: '0 -2px 16px rgba(0,0,0,0.06)', display: 'flex', zIndex: Z.navBar, paddingBottom: 'env(safe-area-inset-bottom)' }}>
             {TABS.map(tab => (
                 <button key={tab.id} onClick={() => onChange(tab.id)} style={{ flex: 1, padding: '10px 0 8px', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, color: active === tab.id ? '#0097A7' : '#8BC8C8', fontSize: 10, fontWeight: active === tab.id ? 700 : 400, transition: 'color 0.15s' }}>
                     <span style={{ fontSize: 20 }}>{tab.icon}</span>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Z } from '../constants.js';
 import api from '../services/api.service.js';
 import { AnalyticsHomeScreen }    from '../screens/screen-analytics-home.jsx';
 import { MentorshipsListScreen }  from '../screens/screen-mentorships-list.jsx';
@@ -67,7 +68,7 @@ function BottomNav({ tabs, active, onChange }) {
             WebkitBackdropFilter: 'blur(12px)',
             borderTop: '1px solid #EAF6F7',
             boxShadow: '0 -2px 16px rgba(0,0,0,0.06)',
-            display: 'flex', zIndex: 50,
+            display: 'flex', zIndex: Z.navBar,
             paddingBottom: 'env(safe-area-inset-bottom)',
         }}>
             {tabs.map(tab => {
