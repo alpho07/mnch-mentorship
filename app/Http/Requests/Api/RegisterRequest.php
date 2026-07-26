@@ -19,7 +19,7 @@ class RegisterRequest extends FormRequest
             'last_name'     => 'required|string|max:255',
             'email'         => 'required|email|max:255|unique:users,email',
             'phone'         => 'required|string|max:20|unique:users,phone',
-            'cadre_id'      => 'required|integer|exists:main_cadres,id',
+            'cadre_id'      => 'required|integer|exists:assessment_cadres,id',
             'department_id' => 'required|integer|exists:departments,id',
             'role'          => 'required|in:mentee,facility_mentor',
             'county_id'     => 'required|integer|exists:counties,id',
