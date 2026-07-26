@@ -96,8 +96,39 @@ export function ScopeShell({ user, onLogout, onUserUpdate }) {
 
     if (!ready) {
         return (
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", background: T.bg }}>
-                <div style={{ color: T.textSub, fontSize: 14 }}>Loading…</div>
+            <div style={{
+                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                height: "100vh", background: T.gradientHero, textAlign: "center", padding: 24,
+                fontFamily: "-apple-system, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif",
+            }}>
+                <style>{`
+                    @keyframes shellLogoFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+                    @keyframes shellSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+                `}</style>
+                <div style={{
+                    width: 64, height: 64, borderRadius: 20,
+                    background: T.gradientPrimary,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    marginBottom: 20,
+                    boxShadow: "0 8px 28px rgba(79,106,245,0.40)",
+                    animation: "shellLogoFloat 4s ease-in-out infinite",
+                }}>
+                    <svg width="34" height="34" viewBox="0 0 34 34" fill="none">
+                        <rect x="13" y="2" width="8" height="30" rx="4" fill="white" fillOpacity="0.95"/>
+                        <rect x="2" y="13" width="30" height="8" rx="4" fill="white" fillOpacity="0.95"/>
+                        <circle cx="17" cy="17" r="5" fill="white"/>
+                    </svg>
+                </div>
+                <div style={{ color: "white", fontSize: 24, fontWeight: 800, letterSpacing: -0.4 }}>
+                    MNCH Kenya
+                </div>
+                <div style={{ color: "rgba(255,255,255,0.55)", fontSize: 14, fontWeight: 600, marginTop: 4 }}>
+                    Mentorship Platform
+                </div>
+                <svg width="28" height="28" viewBox="0 0 24 24" style={{ marginTop: 28, animation: "shellSpin 1s linear infinite" }}>
+                    <circle cx="12" cy="12" r="10" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="3"/>
+                    <path d="M12 2a10 10 0 019.95 9" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round"/>
+                </svg>
             </div>
         );
     }
