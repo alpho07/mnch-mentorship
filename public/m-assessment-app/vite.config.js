@@ -7,6 +7,11 @@ export default defineConfig(({ mode }) => ({
         react(),
         VitePWA({
             registerType: 'autoUpdate',
+            // Registered manually in main.jsx, gated on !Capacitor.isNativePlatform() —
+            // the native app ships its assets directly and has no use for a service
+            // worker; worse, one that's already registered survives app upgrades and
+            // silently serves stale cached JS over freshly rebuilt native builds.
+            injectRegister: false,
             includeAssets: ['icon-192.png', 'icon-512.png', 'apple-touch-icon.png'],
             manifest: {
                 name: 'MNCH Assessments',
