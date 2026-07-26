@@ -229,6 +229,15 @@ export function RegisterScreen({ onRegistered, onBack, onGoToForgotPassword }) {
             </div>
 
             <div style={{ flex: 1, overflowY: "auto", padding: "20px 20px 0" }}>
+                <div style={{
+                    background: T.primaryGhost, color: T.primary, borderRadius: T.radiusSm,
+                    padding: "10px 14px", fontSize: 12, fontWeight: 600, marginBottom: 16,
+                    display: "flex", alignItems: "center", gap: 8, lineHeight: 1.4,
+                }}>
+                    <span style={{ color: "#EF4444", fontWeight: 800 }}>*</span>
+                    <span>Fields marked with an asterisk are required</span>
+                </div>
+
                 {error && (
                     <div style={{ background: "#FEF2F2", color: "#991B1B", borderRadius: T.radiusSm,
                         padding: "12px 16px", fontSize: 13, marginBottom: 16, border: "1px solid #FECACA" }}>
