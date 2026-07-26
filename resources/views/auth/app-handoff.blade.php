@@ -20,12 +20,11 @@
         }
         h1 { font-size: 20px; font-weight: 800; margin: 0 0 8px; }
         p { font-size: 14px; color: rgba(255,255,255,0.7); margin: 0 0 28px; line-height: 1.5; max-width: 320px; }
-        .spinner {
-            width: 28px; height: 28px; border-radius: 50%;
-            border: 3px solid rgba(255,255,255,0.25); border-top-color: #fff;
-            animation: spin 1s linear infinite;
+        .open-app {
+            display: inline-block; padding: 14px 32px; border-radius: 14px;
+            background: #fff; color: #3730A3; font-weight: 800; font-size: 15px;
+            text-decoration: none; box-shadow: 0 8px 24px rgba(0,0,0,0.2);
         }
-        @keyframes spin { to { transform: rotate(360deg); } }
         .fallback { margin-top: 28px; font-size: 13px; color: rgba(255,255,255,0.55); }
         .fallback a { color: #fff; font-weight: 700; text-decoration: underline; }
     </style>
@@ -40,21 +39,18 @@
     </div>
     <h1>{{ $heading }}</h1>
     <p>{{ $message }}</p>
-    <div class="spinner"></div>
-    <div class="fallback">
-        Nothing happening? <a href="{{ $loginUrl }}">Continue in your browser instead</a>.
-    </div>
 
-    <script>
-        // Fired ~2s after page load so the confirmation message above is
-        // actually readable before the handoff happens. No Play Store
-        // fallback is set on the intent — the app isn't published there
-        // yet, so an uninstalled-app case just leaves the user on this
-        // page with the "Continue in your browser" link above.
-        setTimeout(function () {
-            window.location.href = 'intent://mnchkenyamentorship.org/#Intent;scheme=https;package=com.mnch.mentorship.app;end';
-        }, 2000);
-    </script>
+    {{-- Real user-tap link, not an auto-redirect: Chrome/Android block or
+    mishandle custom-scheme navigation ("item not found") when it isn't
+    triggered by an actual gesture. --}}
+    <a class="open-app" href="intent://mnchkenyamentorship.org/#Intent;scheme=https;package=com.mnch.mentorship.app;end">
+        Open MNCH App
+    </a>
+
+    <div class="fallback">
+        Already have the app open? Just switch back to it and log in.<br>
+        Or <a href="{{ $loginUrl }}">continue in your browser instead</a>.
+    </div>
 </body>
 </html>
 

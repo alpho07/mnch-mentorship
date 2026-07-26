@@ -95,6 +95,7 @@ class CustomResetPassword extends SimplePage {
                             TextInput::make('password')
                             ->label('New Password')
                             ->password()
+                            ->revealable()
                             ->required()
                             ->minLength(8)
                             ->rules(['regex:/[A-Z]/', 'regex:/[0-9]/'])
@@ -107,6 +108,7 @@ class CustomResetPassword extends SimplePage {
                             TextInput::make('password_confirmation')
                             ->label('Confirm New Password')
                             ->password()
+                            ->revealable()
                             ->required()
                             ->autocomplete('new-password')
                             ->extraInputAttributes(['id' => 'pw-confirm']),

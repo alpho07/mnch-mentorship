@@ -70,16 +70,30 @@
                     <label class="block text-sm font-semibold text-slate-700 mb-1.5" for="password">
                             New Password
                     </label>
-                    <input
-                            id="password"
-                            name="password"
-                            type="password"
-                            required
-                            autocomplete="new-password"
-                            class="w-full px-4 py-2.5 rounded-lg border border-slate-300 text-slate-900 text-sm placeholder-slate-400
-                            focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
-                            placeholder="Minimum 8 characters"
-                            >
+                    <div class="relative">
+                        <input
+                                id="password"
+                                name="password"
+                                type="password"
+                                required
+                                autocomplete="new-password"
+                                class="w-full px-4 py-2.5 pr-11 rounded-lg border border-slate-300 text-slate-900 text-sm placeholder-slate-400
+                                focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
+                                placeholder="Minimum 8 characters"
+                                >
+                        <button type="button" onclick="togglePasswordField('password', this)"
+                                class="absolute inset-y-0 right-0 flex items-center px-3 text-slate-400 hover:text-slate-600"
+                                aria-label="Show password">
+                            <svg class="w-5 h-5 eye-open" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+                            <svg class="w-5 h-5 eye-closed hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a10.025 10.025 0 012.132-3.542m3.42-2.88A9.958 9.958 0 0112 5c4.478 0 8.268 2.943 9.542 7a9.965 9.965 0 01-4.132 5.411M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3l18 18"/>
+                            </svg>
+                        </button>
+                    </div>
                     <p class="mt-1.5 text-xs text-slate-400">Must be at least 8 characters, include one uppercase letter and one number.</p>
                 </div>
 
@@ -87,16 +101,30 @@
                     <label class="block text-sm font-semibold text-slate-700 mb-1.5" for="password_confirmation">
                             Confirm Password
                     </label>
-                    <input
-                            id="password_confirmation"
-                            name="password_confirmation"
-                            type="password"
-                            required
-                            autocomplete="new-password"
-                            class="w-full px-4 py-2.5 rounded-lg border border-slate-300 text-slate-900 text-sm placeholder-slate-400
-                            focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
-                            placeholder="Re-enter your password"
-                            >
+                    <div class="relative">
+                        <input
+                                id="password_confirmation"
+                                name="password_confirmation"
+                                type="password"
+                                required
+                                autocomplete="new-password"
+                                class="w-full px-4 py-2.5 pr-11 rounded-lg border border-slate-300 text-slate-900 text-sm placeholder-slate-400
+                                focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
+                                placeholder="Re-enter your password"
+                                >
+                        <button type="button" onclick="togglePasswordField('password_confirmation', this)"
+                                class="absolute inset-y-0 right-0 flex items-center px-3 text-slate-400 hover:text-slate-600"
+                                aria-label="Show password">
+                            <svg class="w-5 h-5 eye-open" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+                            <svg class="w-5 h-5 eye-closed hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a10.025 10.025 0 012.132-3.542m3.42-2.88A9.958 9.958 0 0112 5c4.478 0 8.268 2.943 9.542 7a9.965 9.965 0 01-4.132 5.411M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3l18 18"/>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
 
                 <button type="submit"
@@ -114,6 +142,17 @@
         </p>
 
     </div>
+
+    <script>
+        function togglePasswordField(id, btn) {
+            const input = document.getElementById(id);
+            const isHidden = input.type === 'password';
+            input.type = isHidden ? 'text' : 'password';
+            btn.querySelector('.eye-open').classList.toggle('hidden', isHidden);
+            btn.querySelector('.eye-closed').classList.toggle('hidden', !isHidden);
+            btn.setAttribute('aria-label', isHidden ? 'Hide password' : 'Show password');
+        }
+    </script>
 
 </body>
 </html>

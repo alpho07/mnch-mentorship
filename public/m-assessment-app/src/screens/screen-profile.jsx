@@ -6,6 +6,7 @@ import api from "../services/api.service.js";
 export function ProfileScreen({ user, assessments, onUpdateUser, onLogout }) {
     const [changingPw, setChangingPw] = useState(false);
     const [pw, setPw] = useState({ current: "", newPw: "", confirm: "" });
+    const [showPw, setShowPw] = useState({ current: false, newPw: false, confirm: false });
     const [saving, setSaving] = useState(false);
     const [msg, setMsg] = useState(null);
 
@@ -188,7 +189,29 @@ export function ProfileScreen({ user, assessments, onUpdateUser, onLogout }) {
                             ].map(({ key, label }) => (
                                 <div key={key}>
                                     <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 600, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.6 }}>{label}</div>
-                                    <input type="password" value={pw[key]} onChange={e => setPw(p => ({ ...p, [key]: e.target.value }))} style={inputStyle()} />
+                                    <div style={{ position: "relative" }}>
+                                        <input type={showPw[key] ? "text" : "password"} value={pw[key]}
+                                            onChange={e => setPw(p => ({ ...p, [key]: e.target.value }))}
+                                            style={{ ...inputStyle(), paddingRight: 44 }} />
+                                        <button type="button" onClick={() => setShowPw(s => ({ ...s, [key]: !s[key] }))}
+                                            aria-label={showPw[key] ? "Hide password" : "Show password"} style={{
+                                                position: "absolute", right: 4, top: "50%", transform: "translateY(-50%)",
+                                                width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center",
+                                                background: "none", border: "none", padding: 0, cursor: "pointer", color: T.textMuted,
+                                            }}>
+                                            {showPw[key] ? (
+                                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a10.025 10.025 0 012.132-3.542m3.42-2.88A9.958 9.958 0 0112 5c4.478 0 8.268 2.943 9.542 7a9.965 9.965 0 01-4.132 5.411M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 3l18 18"/>
+                                                </svg>
+                                            ) : (
+                                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                                </svg>
+                                            )}
+                                        </button>
+                                    </div>
                                 </div>
                             ))}
                             <button onClick={handleChangePassword} disabled={saving} style={{ padding: "13px", borderRadius: T.radiusSm, background: saving ? "#D1D5DB" : T.gradientSky, color: "white", border: "none", fontSize: 14, fontWeight: 700, cursor: saving ? "not-allowed" : "pointer", boxShadow: saving ? "none" : "0 6px 20px rgba(14,165,233,0.2)", transition: "all 0.2s" }}>

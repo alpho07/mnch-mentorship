@@ -73,8 +73,8 @@ Route::get('/app-handoff', function (\Illuminate\Http\Request $request) {
     return view('auth.app-handoff', [
         'heading' => $type === 'reset' ? 'Password Updated!' : 'Account Verified!',
         'message' => $type === 'reset'
-            ? "Your password has been updated. Opening the MNCH Mentorship app to sign in…"
-            : "Welcome to MNCH Kenya! Opening the app to get you signed in…",
+            ? "Your password has been updated. Open the MNCH Mentorship app on your phone and log in with your email and new password."
+            : "Welcome to MNCH Kenya! Open the MNCH Mentorship app on your phone and log in with your email and password.",
         'loginUrl' => route('filament.admin.auth.login'),
     ]);
 })->name('app-handoff');
