@@ -472,6 +472,7 @@
                             <li><a href="{{ route('categories.index') }}" class="text-gray-400 hover:text-primary-400 text-sm transition-colors">Categories</a></li>
                             <li><a href="{{ route('resources.browse') }}" class="text-gray-400 hover:text-primary-400 text-sm transition-colors">Browse</a></li>
                             <li><a href="{{ url('analytics/dashboard') }}" class="text-gray-400 hover:text-primary-400 text-sm transition-colors">Analytics Map</a></li>
+                            <li><a href="{{ route('mentorship.guide') }}" class="text-gray-400 hover:text-primary-400 text-sm transition-colors">How Mentorship Works</a></li>
                         </ul>
                     </div>
 

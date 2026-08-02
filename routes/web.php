@@ -1,6 +1,6 @@
 <?php
 
-use App\Http\Controllers\AccountVerificationController;
+use App\Http\Controllers\AccountVerificationController; 
 use App\Http\Controllers\Analytics\KenyaHeatmapController;
 use App\Http\Controllers\Analytics\ProgressiveDashboardController;
 use App\Http\Controllers\Analytics\TrainingExplorerController;
@@ -413,6 +413,7 @@ Route::get('/{training}/participants/template', function ($trainingId) {
 
 Route::get('/', [ResourceController::class, 'home'])->name('home');
 Route::get('/user-manual', fn () => view('frontend.user-manual'))->name('manual');
+Route::get('/mentorship-guide', fn () => view('frontend.mentorship-guide'))->name('mentorship.guide');
 
 // ===== RESOURCE CENTER ROUTES =====
 Route::prefix('resources')->name('resources.')->group(function () {

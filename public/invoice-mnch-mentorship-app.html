@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Invoice — MNCH Mobile App Development</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: #ECEEF2;
+      color: #1C1C1E;
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+
+    .page {
+      max-width: 900px;
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 12px 60px rgba(79,106,245,.14);
+    }
+
+    /* ── HEADER ─────────────────────────────────────────────── */
+    .header {
+      background: linear-gradient(150deg, #1A1A2E 0%, #1E2A5E 55%, #2D3B8E 100%);
+      color: #fff;
+      padding: 48px 52px 44px;
+      position: relative;
+      overflow: hidden;
+    }
+    .header::before {
+      content:'';
+      position:absolute; top:-60px; right:-60px;
+      width:260px; height:260px; border-radius:50%;
+      background:rgba(108,99,255,.12);
+    }
+    .header::after {
+      content:'';
+      position:absolute; bottom:-80px; left:20%;
+      width:180px; height:180px; border-radius:50%;
+      background:rgba(79,106,245,.08);
+    }
+
+    .header-top {
+      display:flex; justify-content:space-between; align-items:flex-start; gap:20px;
+      position:relative; z-index:1;
+    }
+    .brand { display:flex; align-items:center; gap:14px; }
+    .brand-icon {
+      width:52px; height:52px; border-radius:16px;
+      background:linear-gradient(135deg,#4F6AF5,#6C63FF);
+      display:flex; align-items:center; justify-content:center;
+      box-shadow:0 6px 20px rgba(79,106,245,.35);
+      font-size:22px;
+    }
+    .brand-name { font-size:20px; font-weight:800; letter-spacing:-.4px; }
+    .brand-sub  { font-size:12px; opacity:.6; margin-top:3px; }
+
+    .inv-badge { text-align:right; }
+    .inv-badge .word { font-size:10px; font-weight:700; letter-spacing:2px; text-transform:uppercase; opacity:.55; }
+    .inv-badge .num  { font-size:28px; font-weight:800; margin-top:3px; letter-spacing:-.5px; }
+
+    .header-meta {
+      display:flex; gap:44px; margin-top:36px; padding-top:28px;
+      border-top:1px solid rgba(255,255,255,.12);
+      position:relative; z-index:1;
+    }
+    .hm-block .lbl { font-size:10px; font-weight:600; letter-spacing:1.6px; text-transform:uppercase; opacity:.5; }
+    .hm-block .val { font-size:14px; font-weight:700; margin-top:5px; }
+    .hm-block .val.accent { color:#A5B4FF; }
+
+    /* ── PARTIES ─────────────────────────────────────────────── */
+    .parties {
+      display:grid; grid-template-columns:1fr 1fr;
+      background:#FAFBFF; border-bottom:1px solid #E8EAEF;
+    }
+    .party { padding:28px 52px; }
+    .party + .party { border-left:1px solid #E8EAEF; }
+    .party .role { font-size:10px; font-weight:700; letter-spacing:1.8px; text-transform:uppercase; color:#4F6AF5; margin-bottom:10px; }
+    .party .name { font-size:16px; font-weight:700; }
+    .party .det  { font-size:12.5px; color:#636366; margin-top:5px; line-height:1.65; }
+
+    /* ── SCOPE STRIP ─────────────────────────────────────────── */
+    .scope-strip {
+      background:linear-gradient(135deg,#EEF0FF,#F5F3FF);
+      border-bottom:1px solid #DDE0F5;
+      padding:14px 52px;
+      font-size:12.5px; color:#3A3A6B; line-height:1.7;
+    }
+    .scope-strip strong { color:#3A54D4; }
+
+    /* ── SECTION HEADING ─────────────────────────────────────── */
+    .sh { padding:24px 36px 8px; font-size:10px; font-weight:700;
+          letter-spacing:2px; text-transform:uppercase; color:#4F6AF5; }
+
+    /* ── TABLE ───────────────────────────────────────────────── */
+    .tw { padding:0 28px 4px; }
+    table { width:100%; border-collapse:collapse; }
+
+    thead tr { background:linear-gradient(135deg,#1E2A5E,#2D3B8E); }
+    thead th {
+      padding:11px 20px;
+      font-size:10.5px; font-weight:700; letter-spacing:1.2px; text-transform:uppercase;
+      color:rgba(255,255,255,.85); text-align:left;
+    }
+    thead th:last-child { text-align:right; }
+
+    tbody tr { border-bottom:1px solid #F0F1F5; }
+    tbody tr:hover { background:#FAFBFF; }
+
+    td { padding:20px 20px; vertical-align:top; font-size:13px; }
+    td:last-child {
+      text-align:right; font-weight:700; font-size:15px;
+      white-space:nowrap; color:#1E2A5E; vertical-align:middle; width:140px;
+    }
+
+    .iname { font-weight:700; font-size:14.5px; color:#1C1C1E; margin-bottom:10px; }
+    .notes-list { list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:6px; }
+    .notes-list li {
+      font-size:12.5px; color:#636366; line-height:1.6;
+      padding-left:14px; position:relative;
+    }
+    .notes-list li::before {
+      content:'–';
+      position:absolute; left:0; color:#A5B4FF; font-weight:700;
+    }
+
+    /* ── TOTALS ──────────────────────────────────────────────── */
+    .totals-wrap { padding:4px 28px 12px; }
+    .totals { display:flex; flex-direction:column; align-items:flex-end;
+              border-top:2px solid #E8EAEF; padding-top:18px; gap:9px; }
+
+    .trow { display:flex; justify-content:flex-end; gap:40px;
+            font-size:13px; color:#636366; min-width:320px; }
+    .trow .tl { flex:1; text-align:right; padding-right:8px; }
+    .trow .ta { width:160px; text-align:right; }
+
+    .trow.sub { padding-top:8px; border-top:1px dashed #DDE0F5; margin-top:4px;
+                color:#3C3C43; font-weight:600; }
+    .trow.grand {
+      background:linear-gradient(135deg,#1E2A5E,#2D3B8E);
+      color:#fff; border-radius:12px; padding:15px 22px;
+      font-size:16px; font-weight:800; margin-top:10px; letter-spacing:-.2px;
+    }
+
+    /* ── NOTES ───────────────────────────────────────────────── */
+    .notes { padding:22px 52px 18px; }
+    .notes .sh2 { font-size:10px; font-weight:700; letter-spacing:1.8px;
+                  text-transform:uppercase; color:#4F6AF5; margin-bottom:12px; }
+    .ng { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .nc {
+      background:#FAFBFF; border:1px solid #E8EAEF;
+      border-left:3px solid #4F6AF5; border-radius:10px; padding:12px 14px;
+    }
+    .nc .nt { font-size:10px; font-weight:700; text-transform:uppercase;
+              letter-spacing:1px; color:#4F6AF5; margin-bottom:5px; }
+    .nc p   { font-size:12px; color:#636366; line-height:1.6; }
+
+    /* ── PAYMENT ─────────────────────────────────────────────── */
+    .payment { padding:0 52px 30px; }
+    .payment .sh2 { font-size:10px; font-weight:700; letter-spacing:1.8px;
+                    text-transform:uppercase; color:#4F6AF5; margin-bottom:12px; }
+    .pg { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+    .pc {
+      background:#FAFBFF; border:1px solid #E8EAEF; border-radius:10px; padding:14px 16px;
+    }
+    .pc .pk { font-size:10px; font-weight:600; text-transform:uppercase;
+              letter-spacing:1px; color:#8E8E93; }
+    .pc .pv { font-size:13px; font-weight:700; color:#1C1C1E; margin-top:4px; }
+
+    /* ── FOOTER ──────────────────────────────────────────────── */
+    .footer {
+      background:linear-gradient(150deg,#1A1A2E,#1E2A5E);
+      color:rgba(255,255,255,.6); text-align:center;
+      padding:18px 52px; font-size:11.5px; line-height:1.8;
+    }
+    .footer strong { color:#fff; }
+
+    @media print {
+      body { background:#fff; padding:0; }
+      .page { box-shadow:none; border-radius:0; }
+      @page { margin:10mm; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ══ HEADER ══ -->
+  <div class="header">
+    <div class="header-top">
+      <div class="brand">
+        <div class="brand-icon">📱</div>
+        <div>
+          <div class="brand-name">Alpho Digital Solutions</div>
+          <div class="brand-sub">Mobile &amp; Software Development · Nairobi, Kenya</div>
+        </div>
+      </div>
+      <div class="inv-badge">
+        <div class="word">Invoice</div>
+        <div class="num">INV-2026-0047</div>
+      </div>
+    </div>
+    <div class="header-meta">
+      <div class="hm-block">
+        <div class="lbl">Issue Date</div>
+        <div class="val">29 June 2026</div>
+      </div>
+      <div class="hm-block">
+        <div class="lbl">Due Date</div>
+        <div class="val">29 July 2026</div>
+      </div>
+      <div class="hm-block">
+        <div class="lbl">Currency</div>
+        <div class="val">KES — Kenyan Shilling</div>
+      </div>
+      <div class="hm-block">
+        <div class="lbl">Status</div>
+        <div class="val accent">⬤ &nbsp;Pending Payment</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ PARTIES ══ -->
+  <div class="parties">
+    <div class="party">
+      <div class="role">From</div>
+      <div class="name">Alpho Digital Solutions</div>
+      <div class="det">
+        Mobile &amp; Web Software Development<br/>
+        Nairobi, Kenya<br/>
+        alpho07@gmail.com<br/>
+        KRA PIN: A012345678X
+      </div>
+    </div>
+    <div class="party">
+      <div class="role">To</div>
+      <div class="name">MNCH Kenya Mentorship Programme</div>
+      <div class="det">
+        Ministry of Health — Healthcare Training Division<br/>
+        Nairobi, Kenya<br/>
+        mnchkenyamentorship.org<br/>
+        Ref: MNCH-APP-MOB-2026
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SCOPE STRIP ══ -->
+  <div class="scope-strip">
+    <strong>Scope:</strong> React + Capacitor cross-platform mobile application for the
+    MNCH Kenya Mentorship &amp; Assessment Platform — serves facility mentors, county leads,
+    and mentees across Kenya. Covers UI/UX, Assessment workflows, Mentorship lifecycle management,
+    Global Trainings, and a full offline-first data layer with automatic background sync.
+    Packaged as an Android APK via Capacitor (<code>com.mnch.assessments.app</code>).
+  </div>
+
+  <!-- ══ LINE ITEMS ══ -->
+  <div class="sh">Services Rendered</div>
+  <div class="tw">
+    <table>
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th style="text-align:right">Amount (KES)</th>
+        </tr>
+      </thead>
+      <tbody>
+
+        <!-- 1 -->
+        <tr>
+          <td>
+            <div class="iname">App Design, Layout &amp; Navigation</div>
+            <ul class="notes-list">
+              <li>Designed the overall look and feel of the app — colours, fonts, buttons, and spacing — so it feels clean and professional on any phone screen.</li>
+              <li>Built the main navigation structure: a header bar at the top showing the user's active area, and a bottom menu bar for switching between sections of the app.</li>
+              <li>Each user only sees the menu tabs relevant to their role — a mentor sees different options than a mentee or a county administrator.</li>
+              <li>Tapping the user's initials in the top corner opens a profile panel where they can view their details and log out.</li>
+              <li>The app shows a smooth loading screen on startup and a helpful message if a user's account has not been given access to any section yet.</li>
+            </ul>
+          </td>
+          <td>45,000</td>
+        </tr>
+
+        <!-- 2 -->
+        <tr>
+          <td>
+            <div class="iname">Facility Assessment Module</div>
+            <ul class="notes-list">
+              <li>Allows health workers to carry out structured assessments of a facility across six areas: Infrastructure, Skills Lab, Human Resources, Health Products, Information Systems, and Quality of Care.</li>
+              <li>The assessment form guides the user through one section at a time, asking only the questions that are relevant based on previous answers — so the form adapts as the user fills it in.</li>
+              <li>Includes dedicated data-entry screens for recording staff numbers by cadre and tracking availability of health commodities and medical supplies.</li>
+              <li>Once complete, the app generates a scored report showing how the facility performed in each area, colour-coded as Good, Fair, or Poor, with a visual score ring and trend chart.</li>
+              <li>The report highlights which area needs the most attention and allows the user to download it as a PDF or send it by email directly from the app.</li>
+              <li>The home dashboard shows a quick summary of all assessments carried out, recent activity, and a visual indicator of overall performance trends.</li>
+            </ul>
+          </td>
+          <td>75,000</td>
+        </tr>
+
+        <!-- 3 -->
+        <tr>
+          <td>
+            <div class="iname">Mentorship Lifecycle Module</div>
+            <ul class="notes-list">
+              <li>The largest and most involved part of the app — covers everything a mentor needs to run an on-site mentorship programme from start to finish.</li>
+              <li>Mentors can create a new mentorship programme by following a step-by-step setup wizard: choose the facility, select the training programme, assign a co-mentor, and set the dates.</li>
+              <li>Within each mentorship, mentors manage classes — they can start a class, add training modules to it, and formally close it once done.</li>
+              <li>For each module in a class, the mentor can view sessions and mark attendance for each mentee — who was present and who was absent — with the option to mark everyone at once.</li>
+              <li>Session notes can be added to record what was covered or any important observations during a training session.</li>
+              <li>Mentors can add existing staff as mentees, create new mentee accounts directly from the app, remove participants, and generate a link that allows mentees to enrol themselves without needing the app.</li>
+              <li>Mentees log in to see only their own classes, their progress through each module, and their upcoming sessions.</li>
+              <li>A reports tab gives mentors a summary of attendance rates, how many modules have been completed, and how each mentee is progressing across the programme.</li>
+            </ul>
+          </td>
+          <td>95,000</td>
+        </tr>
+
+        <!-- 4 -->
+        <tr>
+          <td>
+            <div class="iname">Global Trainings Module</div>
+            <ul class="notes-list">
+              <li>A separate section of the app for national and county-level training events that are organised centrally — different from the on-site mentorship programmes run at individual facilities.</li>
+              <li>Users can browse a list of upcoming and past trainings, see full details including dates, location, and objectives, and enrol themselves if they are eligible.</li>
+              <li>Participants can confirm their attendance for a training event directly through the app, keeping records up to date without paperwork.</li>
+              <li>This section has its own navigation and visual style, keeping it clearly separate from the mentorship area so users are never confused about which type of programme they are looking at.</li>
+            </ul>
+          </td>
+          <td>25,000</td>
+        </tr>
+
+        <!-- 5 -->
+        <tr>
+          <td>
+            <div class="iname">Offline Mode &amp; Automatic Background Sync</div>
+            <ul class="notes-list">
+              <li>The app works fully even when there is no internet connection — mentors in remote facilities can fill in assessments, mark attendance, and manage mentorships without needing data or Wi-Fi.</li>
+              <li>Everything the user does while offline is saved securely on their phone and sent to the server automatically the moment a connection becomes available, with no action needed from the user.</li>
+              <li>When the app opens, it loads instantly using data already saved on the phone — the user does not have to wait for the internet before they can start working.</li>
+              <li>If a user fills in a form offline and connectivity comes back while they are still on that screen, the data syncs in the background without interrupting what they are doing.</li>
+              <li>A small indicator appears on screen when there are unsaved changes waiting to be sent, so the user always knows the status of their data.</li>
+              <li>When new data from the server arrives — for example, a co-mentor has updated a class — the app shows a brief notification at the bottom of the screen to let the user know.</li>
+              <li>All data is stored in an organised local database on the device covering assessments, mentorships, attendance records, user information, and training schedules, so the full app experience is available at all times regardless of connectivity.</li>
+            </ul>
+          </td>
+          <td>60,000</td>
+        </tr>
+
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ══ TOTALS ══ -->
+  <div class="totals-wrap">
+    <div class="totals">
+      <div class="trow">
+        <span class="tl">App Shell, Navigation &amp; Design System</span>
+        <span class="ta">KES 45,000.00</span>
+      </div>
+      <div class="trow">
+        <span class="tl">Facility Assessment Module</span>
+        <span class="ta">KES 75,000.00</span>
+      </div>
+      <div class="trow">
+        <span class="tl">Mentorship Lifecycle Module</span>
+        <span class="ta">KES 95,000.00</span>
+      </div>
+      <div class="trow">
+        <span class="tl">Global Trainings Module</span>
+        <span class="ta">KES 25,000.00</span>
+      </div>
+      <div class="trow">
+        <span class="tl">Offline-First Data Layer &amp; Background Sync</span>
+        <span class="ta">KES 60,000.00</span>
+      </div>
+      <div class="trow sub">
+        <span class="tl">Subtotal</span>
+        <span class="ta">KES 300,000.00</span>
+      </div>
+      <div class="trow" style="color:#636366;">
+        <span class="tl">VAT (exempt — software development service)</span>
+        <span class="ta">KES 0.00</span>
+      </div>
+      <div class="trow grand">
+        <span class="tl">TOTAL DUE</span>
+        <span class="ta">KES 300,000.00</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ NOTES ══ -->
+  <div class="notes">
+    <div class="sh2">Notes &amp; Conditions</div>
+    <div class="ng">
+      <div class="nc">
+        <div class="nt">Payment Terms</div>
+        <p>Full payment due within <strong>30 days</strong> of invoice date (by 29 July 2026).
+           Overdue balances attract 2% monthly interest. Partial payments accepted with prior agreement.</p>
+      </div>
+      <div class="nc">
+        <div class="nt">Deliverables</div>
+        <p>Full React source code, Capacitor Android project, <code>dist/</code> web build,
+           and a 30-day post-delivery warranty covering bugs in delivered scope.</p>
+      </div>
+      <div class="nc">
+        <div class="nt">Offline Guarantee</div>
+        <p>The app functions fully offline for assessments, mentorship management, and attendance.
+           Data syncs automatically — field workers never lose entries due to connectivity.</p>
+      </div>
+      <div class="nc">
+        <div class="nt">Platform</div>
+        <p>Delivered as a web app (served by the Laravel backend) and as an Android APK via
+           Capacitor. iOS packaging and Play Store submission are outside this scope.</p>
+      </div>
+      <div class="nc">
+        <div class="nt">Not Included</div>
+        <p>Backend / API development, Filament admin panel, hosting, third-party service fees
+           (SMS, email), Play Store developer account, or post-warranty feature additions.</p>
+      </div>
+      <div class="nc">
+        <div class="nt">Dispute Resolution</div>
+        <p>Any disputes shall be resolved under the laws of Kenya. Nairobi courts hold
+           exclusive jurisdiction. Written notice required within 14 days of delivery.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ PAYMENT ══ -->
+  <div class="payment">
+    <div class="sh2">Payment Details</div>
+    <div class="pg">
+      <div class="pc">
+        <div class="pk">Bank</div>
+        <div class="pv">Equity Bank Kenya</div>
+      </div>
+      <div class="pc">
+        <div class="pk">Account Name</div>
+        <div class="pv">Alpho Digital Solutions</div>
+      </div>
+      <div class="pc">
+        <div class="pk">Account No.</div>
+        <div class="pv">0123456789</div>
+      </div>
+      <div class="pc">
+        <div class="pk">M-Pesa Paybill</div>
+        <div class="pv">247247</div>
+      </div>
+      <div class="pc">
+        <div class="pk">Account Ref</div>
+        <div class="pv">INV-2026-0047</div>
+      </div>
+      <div class="pc">
+        <div class="pk">Amount Due</div>
+        <div class="pv" style="color:#1E2A5E;">KES 300,000.00</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ FOOTER ══ -->
+  <div class="footer">
+    <strong>Thank you for partnering with us to strengthen healthcare mentorship across Kenya.</strong><br/>
+    Questions or remittances — quote <strong>INV-2026-0047</strong> and contact <strong>alpho07@gmail.com</strong><br/>
+    This is a system-generated invoice and is valid without a physical signature.
+  </div>
+
+</div>
+</body>
+</html>

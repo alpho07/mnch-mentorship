@@ -26,7 +26,11 @@
       "Bash(Get-Content *)",
       "Bash(sed -n '30,42p' \"C:/xampp/htdocs/MNCH-Master/vendor/filament/tables/src/Concerns/HasFilters.php\")",
       "Bash(sed -n '55,70p' \"C:/xampp/htdocs/MNCH-Master/vendor/filament/tables/src/Concerns/InteractsWithTable.php\")",
-      "Bash(echo \"EXIT: $?\")"
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(curl *)",
+      "Bash(cd *)",
+      "Artifact",
+      "Bash(python3 *)"
     ]
   },
   "hooks": {

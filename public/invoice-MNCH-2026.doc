@@ -1,0 +1,454 @@
+<html xmlns:o="urn:schemas-microsoft-com:office:office"
+      xmlns:w="urn:schemas-microsoft-com:office:word"
+      xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="ProgId" content="Word.Document"/>
+  <meta name="Generator" content="Microsoft Word 15"/>
+  <meta name="Originator" content="Microsoft Word 15"/>
+  <title>Invoice INV-16031C — MNCH Mobile App Development</title>
+  <!--[if gte mso 9]>
+  <xml>
+    <w:WordDocument>
+      <w:View>Print</w:View>
+      <w:Zoom>100</w:Zoom>
+      <w:DoNotOptimizeForBrowser/>
+    </w:WordDocument>
+  </xml>
+  <![endif]-->
+  <style>
+    @page {
+      size: A4;
+      margin: 2cm 2.2cm 2.2cm 2.2cm;
+      mso-header-margin: 1cm;
+      mso-footer-margin: 1cm;
+    }
+
+    body {
+      font-family: Calibri, 'Segoe UI', Arial, sans-serif;
+      font-size: 10.5pt;
+      color: #1C1C2E;
+      margin: 0;
+      padding: 0;
+      line-height: 1.4;
+    }
+
+    /* ── Header band ── */
+    .header-band {
+      background: #1E2A5E;
+      padding: 22pt 26pt 18pt;
+      margin-bottom: 0;
+    }
+    .header-band td { vertical-align: top; }
+    .co-name {
+      font-size: 18pt; font-weight: 700; color: #ffffff;
+      letter-spacing: -0.3pt;
+    }
+    .co-sub  { font-size: 9pt; color: rgba(255,255,255,0.6); margin-top: 2pt; }
+    .inv-label { font-size: 8pt; font-weight: 700; letter-spacing: 1.5pt;
+                 text-transform: uppercase; color: rgba(255,255,255,0.5); }
+    .inv-num   { font-size: 20pt; font-weight: 800; color: #A5B4FF; margin-top: 3pt; }
+
+    /* ── Meta strip ── */
+    .meta-strip {
+      background: #2D3B8E;
+      padding: 10pt 26pt;
+    }
+    .meta-strip td {
+      font-size: 8.5pt; color: rgba(255,255,255,0.75);
+      padding-right: 28pt; vertical-align: top;
+    }
+    .meta-lbl { font-size: 7.5pt; font-weight: 700; letter-spacing: 1pt;
+                text-transform: uppercase; color: rgba(255,255,255,0.45);
+                display: block; margin-bottom: 2pt; }
+    .meta-val { font-weight: 600; color: #fff; }
+
+    /* ── Parties ── */
+    .parties { margin-top: 0; }
+    .parties td {
+      width: 50%; padding: 14pt 26pt 12pt;
+      vertical-align: top; border-bottom: 1.5pt solid #E8EAEF;
+    }
+    .party-role {
+      font-size: 7.5pt; font-weight: 700; letter-spacing: 1.5pt;
+      text-transform: uppercase; color: #4F6AF5; margin-bottom: 5pt;
+    }
+    .party-name { font-size: 12pt; font-weight: 700; color: #1C1C2E; }
+    .party-det  { font-size: 9pt; color: #636366; margin-top: 4pt; line-height: 1.6; }
+
+    /* ── Scope note ── */
+    .scope-note {
+      background: #F0F2FF;
+      border-left: 3pt solid #4F6AF5;
+      padding: 9pt 18pt;
+      margin: 12pt 0 8pt;
+      font-size: 9pt; color: #3A3A6B; line-height: 1.6;
+    }
+
+    /* ── Section heading ── */
+    .sec-head {
+      font-size: 7.5pt; font-weight: 700; letter-spacing: 2pt;
+      text-transform: uppercase; color: #4F6AF5;
+      padding: 10pt 0 5pt;
+      border-bottom: 1pt solid #E8EAEF;
+      margin-bottom: 0;
+    }
+
+    /* ── Line items table ── */
+    .items { width: 100%; border-collapse: collapse; margin-top: 0; }
+    .items thead tr { background: #1E2A5E; }
+    .items thead th {
+      padding: 8pt 10pt; font-size: 8pt; font-weight: 700;
+      letter-spacing: 0.8pt; text-transform: uppercase;
+      color: rgba(255,255,255,.85); text-align: left;
+      border: none;
+    }
+    .items thead th.r { text-align: right; }
+    .items tbody tr { border-bottom: 1pt solid #EDEDF2; }
+    .items tbody td { padding: 11pt 10pt; vertical-align: top; border: none; }
+    .items tbody td.amt {
+      text-align: right; font-weight: 700; font-size: 11pt;
+      color: #1E2A5E; white-space: nowrap; vertical-align: top;
+      padding-top: 11pt;
+    }
+
+    .item-name { font-weight: 700; font-size: 11pt; color: #1C1C2E; margin-bottom: 7pt; }
+    .item-notes { margin: 0; padding: 0 0 0 10pt; }
+    .item-notes li {
+      font-size: 9pt; color: #555560; line-height: 1.65;
+      margin-bottom: 3pt;
+    }
+
+    /* ── Totals ── */
+    .totals { width: 100%; border-collapse: collapse; margin-top: 10pt; }
+    .totals td { padding: 4pt 10pt; font-size: 9.5pt; }
+    .totals .tl { text-align: right; color: #636366; }
+    .totals .ta { text-align: right; width: 110pt; color: #1C1C2E; font-weight: 600; }
+    .totals .sub-row td { border-top: 1pt dashed #D0D3E8; padding-top: 8pt; }
+    .totals .grand-row td {
+      background: #1E2A5E; color: #fff;
+      font-size: 11.5pt; font-weight: 800;
+      padding: 10pt 14pt;
+      border-radius: 4pt;
+    }
+    .totals .grand-row .ta { color: #A5B4FF; }
+
+    /* ── Notes cards ── */
+    .notes-grid { width: 100%; border-collapse: collapse; margin-top: 12pt; }
+    .notes-grid td {
+      width: 50%; padding: 8pt 10pt; vertical-align: top;
+    }
+    .note-card {
+      background: #F8F9FF; border: 1pt solid #E0E4F8;
+      border-left: 3pt solid #4F6AF5;
+      padding: 9pt 11pt; font-size: 8.5pt; color: #555560; line-height: 1.6;
+    }
+    .note-title { font-size: 7.5pt; font-weight: 700; letter-spacing: 1pt;
+                  text-transform: uppercase; color: #4F6AF5; margin-bottom: 4pt; }
+
+    /* ── Payment ── */
+    .pay-grid { width: 100%; border-collapse: collapse; margin-top: 8pt; }
+    .pay-grid td { padding: 7pt 10pt; width: 33.3%; vertical-align: top; }
+    .pay-card {
+      background: #F8F9FF; border: 1pt solid #E0E4F8;
+      padding: 9pt 11pt;
+    }
+    .pay-k { font-size: 7.5pt; font-weight: 700; letter-spacing: 1pt;
+             text-transform: uppercase; color: #8E8E93; margin-bottom: 3pt; }
+    .pay-v { font-size: 10pt; font-weight: 700; color: #1C1C2E; }
+
+    /* ── Footer ── */
+    .footer-band {
+      background: #1E2A5E; margin-top: 18pt;
+      padding: 12pt 26pt;
+      font-size: 8.5pt; color: rgba(255,255,255,.65);
+      text-align: center; line-height: 1.8;
+    }
+    .footer-band b { color: #fff; }
+
+    p { margin: 0; }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════  HEADER  ══════════════ -->
+<table class="header-band" width="100%" cellpadding="0" cellspacing="0">
+  <tr>
+    <td>
+      <div class="co-name">Alphonce Ochieng'</div>
+      <div class="co-sub">Mobile &amp; Software Development · Nairobi, Kenya</div>
+    </td>
+    <td align="right">
+      <div class="inv-label">Invoice</div>
+      <div class="inv-num">INV-16031C</div>
+    </td>
+  </tr>
+</table>
+
+<!-- ══════════════  META STRIP  ══════════════ -->
+<table class="meta-strip" width="100%" cellpadding="0" cellspacing="0">
+  <tr>
+    <td>
+      <span class="meta-lbl">Issue Date</span>
+      <span class="meta-val">29 June 2026</span>
+    </td>
+    <td>
+      <span class="meta-lbl">Due Date</span>
+      <span class="meta-val">29 July 2026</span>
+    </td>
+    <td>
+      <span class="meta-lbl">Reference No.</span>
+      <span class="meta-val">61438</span>
+    </td>
+    <td>
+      <span class="meta-lbl">Account Ref</span>
+      <span class="meta-val">AL00891D</span>
+    </td>
+    <td>
+      <span class="meta-lbl">Currency</span>
+      <span class="meta-val">KES</span>
+    </td>
+  </tr>
+</table>
+
+<!-- ══════════════  PARTIES  ══════════════ -->
+<table class="parties" width="100%" cellpadding="0" cellspacing="0">
+  <tr>
+    <td style="border-right: 1.5pt solid #E8EAEF;">
+      <div class="party-role">Billed From</div>
+      <div class="party-name">Alphonce Ochieng'</div>
+      <div class="party-det">
+        Mobile &amp; Software Development<br/>
+        Nairobi, Kenya<br/>
+        alpho07@gmail.com<br/>
+        +254 715 882 227
+      </div>
+    </td>
+    <td>
+      <div class="party-role">Billed To</div>
+      <div class="party-name">Brian Mokaya</div>
+      <div class="party-det">
+        MNCH Project<br/>
+        Clinton Health Access Initiative (CHAI)<br/>
+        Nairobi, Kenya<br/>
+        +254 715 657 787
+      </div>
+    </td>
+  </tr>
+</table>
+
+<!-- ══════════════  SCOPE NOTE  ══════════════ -->
+<div class="scope-note">
+  <b>Project:</b> React + Capacitor cross-platform mobile application for the MNCH Kenya
+  Mentorship &amp; Assessment Platform — serving facility mentors, county leads, and mentees
+  across Kenya. Delivered as a Progressive Web App and Android APK
+  (App ID: <i>com.mnch.assessments.app</i>).
+</div>
+
+<!-- ══════════════  LINE ITEMS  ══════════════ -->
+<div class="sec-head">Services Rendered</div>
+
+<table class="items" cellpadding="0" cellspacing="0">
+  <thead>
+    <tr>
+      <th>Item</th>
+      <th class="r" style="width:110pt;">Amount (KES)</th>
+    </tr>
+  </thead>
+  <tbody>
+
+    <!-- 1 -->
+    <tr>
+      <td>
+        <div class="item-name">App Design, Layout &amp; Navigation</div>
+        <ul class="item-notes">
+          <li>Designed the overall look and feel of the app — colours, fonts, buttons, and spacing — so it feels clean and professional on any phone screen.</li>
+          <li>Built the main navigation structure: a header bar at the top showing the user's active area, and a bottom menu bar for switching between sections.</li>
+          <li>Each user only sees the menu tabs relevant to their role — a mentor sees different options than a mentee or a county administrator.</li>
+          <li>Tapping the user's initials in the top corner opens a profile panel where they can view their details and log out.</li>
+          <li>The app shows a smooth loading screen on startup and a helpful message if a user's account has not been given access to any section yet.</li>
+        </ul>
+      </td>
+      <td class="amt">45,000.00</td>
+    </tr>
+
+    <!-- 3 -->
+    <tr>
+      <td>
+        <div class="item-name">Mentorship Lifecycle Module</div>
+        <ul class="item-notes">
+          <li>The largest part of the app — covers everything a mentor needs to run an on-site mentorship programme from start to finish.</li>
+          <li>Mentors create a new mentorship by following a step-by-step wizard: choose the facility, select the programme, assign a co-mentor, and set dates.</li>
+          <li>Within each mentorship, mentors manage classes — start a class, add training modules, and formally close it once complete.</li>
+          <li>For each module, the mentor marks attendance for each mentee (present or absent) with an option to mark everyone at once.</li>
+          <li>Session notes can be added to record what was covered or any important observations during a session.</li>
+          <li>Mentors can add existing staff as mentees, create new mentee accounts from the app, remove participants, and generate a self-enrolment link for mentees to join without the app.</li>
+          <li>Mentees see only their own classes, their progress through each module, and upcoming sessions.</li>
+          <li>A reports tab gives mentors a summary of attendance rates, modules completed, and how each mentee is progressing.</li>
+        </ul>
+      </td>
+      <td class="amt">95,000.00</td>
+    </tr>
+
+    <!-- 4 -->
+    <tr>
+      <td>
+        <div class="item-name">Global Trainings Module</div>
+        <ul class="item-notes">
+          <li>A separate section for national and county-level training events organised centrally — distinct from on-site facility mentorships.</li>
+          <li>Users browse upcoming and past trainings, view full details (dates, location, objectives), and enrol themselves if eligible.</li>
+          <li>Participants confirm their attendance directly through the app, keeping records up to date without paperwork.</li>
+          <li>Has its own navigation and visual style, keeping it clearly separate from the mentorship area to avoid confusion.</li>
+        </ul>
+      </td>
+      <td class="amt">20,000.00</td>
+    </tr>
+
+    <!-- 4 -->
+    <tr>
+      <td>
+        <div class="item-name">Offline Mode &amp; Automatic Background Sync</div>
+        <ul class="item-notes">
+          <li>The app works fully even with no internet — mentors in remote or rural facilities can fill in data, mark attendance, and manage mentorships without any data connection or Wi-Fi.</li>
+          <li>Everything the user does while offline is saved securely on their phone and sent to the server automatically the moment a connection becomes available — no action is needed from the user and nothing is ever lost.</li>
+          <li>When the app opens, it loads instantly using information already stored on the phone, so users can start working immediately without waiting for the internet.</li>
+          <li>If internet becomes available while a user is mid-task, the app syncs in the background without interrupting or slowing down what they are doing.</li>
+          <li>All types of actions work offline — submitting forms, marking attendance, writing session notes, adding mentees, starting or ending a class, and enrolling in trainings. Each of these is queued and sent to the server in the correct order once connectivity returns.</li>
+          <li>The app checks whether data on the server has changed since the last sync and only downloads what is new, keeping the process fast and not consuming unnecessary data bundles.</li>
+          <li>If a record was created on the phone while offline and the server later assigns it a permanent ID, the app silently updates its local copy so there are no duplicate records or mismatches.</li>
+          <li>A small badge on screen shows the user how many changes are still waiting to be synced, and a brief notification appears when new data from the server has been successfully received.</li>
+          <li>On log out, all locally stored data is securely wiped from the phone, ensuring no sensitive health records remain on a shared or lost device.</li>
+          <li>All data stored on the device — mentorships, classes, attendance records, user information, training schedules, and app settings — is organised into separate storage areas so the full app experience is available at all times regardless of connectivity.</li>
+        </ul>
+      </td>
+      <td class="amt">140,000.00</td>
+    </tr>
+
+  </tbody>
+</table>
+
+<!-- ══════════════  TOTALS  ══════════════ -->
+<table class="totals" cellpadding="0" cellspacing="0" align="right" width="55%">
+  <tr>
+    <td class="tl">App Design, Layout &amp; Navigation</td>
+    <td class="ta">KES 45,000.00</td>
+  </tr>
+  <tr>
+    <td class="tl">Mentorship Lifecycle Module</td>
+    <td class="ta">KES 95,000.00</td>
+  </tr>
+  <tr>
+    <td class="tl">Global Trainings Module</td>
+    <td class="ta">KES 20,000.00</td>
+  </tr>
+  <tr>
+    <td class="tl">Offline Mode &amp; Background Sync</td>
+    <td class="ta">KES 140,000.00</td>
+  </tr>
+  <tr class="sub-row">
+    <td class="tl">Subtotal</td>
+    <td class="ta">KES 300,000.00</td>
+  </tr>
+  <tr>
+    <td class="tl">VAT (exempt — software service)</td>
+    <td class="ta">KES 0.00</td>
+  </tr>
+  <tr class="grand-row">
+    <td class="tl" style="color:#fff; font-weight:800;">TOTAL DUE</td>
+    <td class="ta">KES 300,000.00</td>
+  </tr>
+</table>
+
+<br clear="all"/>
+
+<!-- ══════════════  NOTES  ══════════════ -->
+<div class="sec-head" style="margin-top:14pt;">Terms &amp; Conditions</div>
+<table class="notes-grid" cellpadding="0" cellspacing="0">
+  <tr>
+    <td>
+      <div class="note-card">
+        <div class="note-title">Payment Terms</div>
+        Full payment due within 30 days of invoice date (by 29 July 2026).
+        Overdue balances attract 2% monthly interest. Partial payments accepted with prior agreement.
+      </div>
+    </td>
+    <td>
+      <div class="note-card">
+        <div class="note-title">Deliverables</div>
+        Full React source code, Capacitor Android project, production web build,
+        and a 30-day post-delivery warranty covering bugs within the delivered scope.
+      </div>
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <div class="note-card">
+        <div class="note-title">Offline Guarantee</div>
+        The app functions fully offline for assessments, mentorship management, and attendance.
+        Data syncs automatically on reconnect — field workers never lose entries due to connectivity.
+      </div>
+    </td>
+    <td>
+      <div class="note-card">
+        <div class="note-title">Not Included</div>
+        Backend / API development, admin portal, server hosting, third-party service fees,
+        Play Store submission, or post-warranty feature additions are outside this scope.
+      </div>
+    </td>
+  </tr>
+</table>
+
+<!-- ══════════════  PAYMENT DETAILS  ══════════════ -->
+<div class="sec-head" style="margin-top:14pt;">Payment Details</div>
+<table class="pay-grid" cellpadding="0" cellspacing="0">
+  <tr>
+    <td>
+      <div class="pay-card">
+        <div class="pay-k">Bank</div>
+        <div class="pay-v">NCBA Bank Kenya</div>
+      </div>
+    </td>
+    <td>
+      <div class="pay-card">
+        <div class="pay-k">Account Name</div>
+        <div class="pay-v">Alphonce Ochieng'</div>
+      </div>
+    </td>
+    <td>
+      <div class="pay-card">
+        <div class="pay-k">Account Number</div>
+        <div class="pay-v">440001808548</div>
+      </div>
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <div class="pay-card">
+        <div class="pay-k">Branch</div>
+        <div class="pay-v">Yaya Centre</div>
+      </div>
+    </td>
+    <td>
+      <div class="pay-card">
+        <div class="pay-k">Payment Reference</div>
+        <div class="pay-v">INV-16031C</div>
+      </div>
+    </td>
+    <td>
+      <div class="pay-card">
+        <div class="pay-k">Amount Due</div>
+        <div class="pay-v" style="color:#1E2A5E;">KES 300,000.00</div>
+      </div>
+    </td>
+  </tr>
+</table>
+
+<!-- ══════════════  FOOTER  ══════════════ -->
+<div class="footer-band">
+  If you have any questions about this invoice, please contact
+  <b>Alphonce Ochieng'</b> &nbsp;·&nbsp; <b>+254 715 882 227</b> &nbsp;·&nbsp; <b>alpho07@gmail.com</b><br/>
+  This is a computer-generated invoice and is valid without a physical signature.
+</div>
+
+</body>
+</html>
