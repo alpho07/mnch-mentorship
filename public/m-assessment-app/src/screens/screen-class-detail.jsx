@@ -1,9 +1,8 @@
 // src/screens/screen-class-detail.jsx
 import { useState, useEffect } from "react";
-import { T } from "../constants.js";
+import { T, Z } from "../constants.js";
 import api from "../services/api.service.js";
 
-const TEAL = "#0097A7";
 
 const STATUS_STYLE = {
     not_started: { bg: "#F3F4F6", color: "#6B7280" },
@@ -48,13 +47,13 @@ function ClassReportSheet({ classId, onClose }) {
     const cls     = report?.class ?? {};
 
     return (
-        <div style={{ position: "fixed", inset: 0, zIndex: 60, background: T.bg, display: "flex", flexDirection: "column" }}>
+        <div style={{ position: "fixed", inset: 0, zIndex: Z.sheet, background: T.bg, display: "flex", flexDirection: "column" }}>
             {/* Hero */}
             <div style={{
-                background: "linear-gradient(160deg, #00565A 0%, #0097A7 55%, #4DD0E1 100%)",
+                background: "linear-gradient(160deg, #1E1B4B 0%, #3730A3 55%, #818CF8 100%)",
                 padding: "44px 20px 18px", position: "relative", overflow: "hidden",
             }}>
-                <div style={{ position: "absolute", width: 150, height: 150, borderRadius: "50%", background: "radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%)", top: -20, right: -20 }} />
+                <div style={{ position: "absolute", width: 150, height: 150, borderRadius: "50%", background: "radial-gradient(circle, rgba(79,106,245,0.20) 0%, transparent 70%)", top: -20, right: -20 }} />
                 <button onClick={onClose} style={{ border: "none", background: "rgba(255,255,255,0.15)", cursor: "pointer", padding: "6px 10px", borderRadius: 10, marginBottom: 14, display: "flex", alignItems: "center", gap: 4 }}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
                     <span style={{ fontSize: 12, color: "rgba(255,255,255,0.85)", fontWeight: 600 }}>Back</span>
@@ -352,7 +351,7 @@ export function ClassDetailScreen({
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
                         <span style={{ fontSize: 12, color: "rgba(255,255,255,0.8)", fontWeight: 600 }}>Back</span>
                     </button>
-                    {onEditClass && (
+                    {onEditClass && localStatus !== "completed" && (
                         <button onClick={onEditClass} style={{ marginLeft: "auto", border: "none", background: "rgba(255,255,255,0.12)", cursor: "pointer", padding: "6px 10px", borderRadius: 10, display: "flex", alignItems: "center", gap: 4 }}>
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                             <span style={{ fontSize: 12, color: "rgba(255,255,255,0.8)", fontWeight: 600 }}>Edit</span>
@@ -430,8 +429,8 @@ export function ClassDetailScreen({
                     <button
                         onClick={() => setReportOpen(true)}
                         style={{
-                            flex: 1, background: "#E0F7FA", border: `1px solid ${TEAL}`, borderRadius: T.radiusXs,
-                            color: TEAL, fontWeight: 700, fontSize: 13, padding: "9px 0",
+                            flex: 1, background: T.primaryGhost, border: `1px solid ${T.primary}`, borderRadius: T.radiusXs,
+                            color: T.primary, fontWeight: 700, fontSize: 13, padding: "9px 0",
                             cursor: "pointer",
                             display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
                         }}

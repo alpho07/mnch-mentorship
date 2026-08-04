@@ -19,7 +19,6 @@ class MentorshipController extends Controller
 
         $query = Training::query()
             ->where('type', 'facility_mentorship')
-            ->where('is_pilot', false)
             ->with([
                 'mentor:id,name',
                 'facility:id,name,mfl_code',
@@ -235,6 +234,7 @@ class MentorshipController extends Controller
     {
         $this->authoriseMentorship($request, $training);
         abort_if($class->training_id !== $training->id, 404);
+        abort_if($class->status === 'completed', 422, 'This class has been completed and can no longer be edited.');
 
         $data = $request->validate([
             'name' => 'sometimes|required|string|max:255',
@@ -262,6 +262,7 @@ class MentorshipController extends Controller
     {
         $this->authoriseMentorship($request, $training);
         abort_if($class->training_id !== $training->id, 404);
+        abort_if($class->status === 'completed', 422, 'This class has been completed and can no longer be deleted.');
         abort_if(! $class->canBeDeleted(), 422, 'Cannot delete a class that has completed sessions.');
 
         $class->delete();
@@ -281,3 +282,6 @@ class MentorshipController extends Controller
         abort_if(! $isMentor && ! $isCoMentor, 403, 'Not authorised for this mentorship.');
     }
 }
+
+
+

@@ -542,3 +542,5 @@ return new class extends Migration
         return trim(preg_replace('/\s+/', ' ', $value) ?? '');
     }
 };
+
+

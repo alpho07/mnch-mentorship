@@ -73,6 +73,14 @@ class CustomResetPassword extends SimplePage {
                 ->success()
                 ->send();
 
+        // Android browser: hand off to the app instead of the web login page.
+        // Desktop/other keeps the existing redirect untouched.
+        $isAndroidBrowser = str_contains(strtolower(request()->userAgent() ?? ''), 'android');
+        if ($isAndroidBrowser) {
+            redirect()->route('app-handoff', ['type' => 'reset']);
+            return;
+        }
+
         redirect()->route('filament.admin.auth.login');
     }
 
@@ -114,3 +122,7 @@ class CustomResetPassword extends SimplePage {
         return false;
     }
 }
+
+
+
+

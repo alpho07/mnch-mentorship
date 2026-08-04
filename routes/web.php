@@ -1,6 +1,6 @@
 <?php
 
-use App\Http\Controllers\AccountVerificationController;
+use App\Http\Controllers\AccountVerificationController; 
 use App\Http\Controllers\Analytics\KenyaHeatmapController;
 use App\Http\Controllers\Analytics\ProgressiveDashboardController;
 use App\Http\Controllers\Analytics\TrainingExplorerController;
@@ -61,6 +61,37 @@ Route::middleware('guest')->group(function () {
     Route::post('/account/verify/{user}', [AccountVerificationController::class, 'update'])
         ->name('account.verify.update');
 });
+
+// Mobile-only handoff page shown after a successful account-verify or
+// password-reset when the request came from an Android browser — fires an
+// intent:// URI to open the app for login. Not gated by `guest` middleware:
+// the account-verify flow logs the user in immediately before redirecting
+// here, so a guest-only route would 403 that case.
+Route::get('/app-handoff', function (\Illuminate\Http\Request $request) {
+    $type = $request->query('type') === 'reset' ? 'reset' : 'verify';
+    $loginUrl = route('filament.admin.auth.login');
+
+    // action=MAIN/category=LAUNCHER matches MainActivity's launcher intent-filter
+    // directly — no data/path needed, so nothing to mismatch against the
+    // App-Links intent-filter's pathPrefix rules. Previously this pointed at
+    // https://mnchkenyamentorship.org/ (root, no path) as a VIEW intent, which
+    // didn't match either registered pathPrefix (/account/verify,
+    // /admin/set-password), so Android couldn't resolve an app and Chrome fell
+    // back to searching the Play Store for the package instead.
+    $appIntentUrl = 'intent:#Intent;action=android.intent.action.MAIN;'
+        . 'category=android.intent.category.LAUNCHER;'
+        . 'package=com.mnch.mentorship.app;'
+        . 'S.browser_fallback_url=' . urlencode($loginUrl) . ';end';
+
+    return view('auth.app-handoff', [
+        'heading' => $type === 'reset' ? 'Password Updated!' : 'Account Verified!',
+        'message' => $type === 'reset'
+            ? "Your password has been updated. Open the MNCH Mentorship app on your phone and log in with your email and new password."
+            : "Welcome to MNCH Kenya! Open the MNCH Mentorship app on your phone and log in with your email and password.",
+        'loginUrl' => $loginUrl,
+        'appIntentUrl' => $appIntentUrl,
+    ]);
+})->name('app-handoff');
 
 // Livewire upload bypass — extends FileUploadController, skips signature check
 Route::post('/livewire/upload-file', [\App\Http\Controllers\LivewireUploadController::class, 'handle'])
@@ -382,6 +413,7 @@ Route::get('/{training}/participants/template', function ($trainingId) {
 
 Route::get('/', [ResourceController::class, 'home'])->name('home');
 Route::get('/user-manual', fn () => view('frontend.user-manual'))->name('manual');
+Route::get('/mentorship-guide', fn () => view('frontend.mentorship-guide'))->name('mentorship.guide');
 
 // ===== RESOURCE CENTER ROUTES =====
 Route::prefix('resources')->name('resources.')->group(function () {
@@ -581,3 +613,7 @@ Route::middleware(['web'])->prefix('analytics')->name('analytics.')->group(funct
 });
 
 // include 'api.php';
+
+
+
+

@@ -1076,3 +1076,5 @@ class ResourceController extends Controller
         return $mimeTypes;
     }
 }
+
+

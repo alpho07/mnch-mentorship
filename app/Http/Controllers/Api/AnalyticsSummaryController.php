@@ -385,3 +385,5 @@ class AnalyticsSummaryController extends Controller
         return $ins;
     }
 }
+
+

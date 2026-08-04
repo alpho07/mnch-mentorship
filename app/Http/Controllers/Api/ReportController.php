@@ -30,6 +30,7 @@ class ReportController extends Controller {
             'facility.subcounty.county',
             'sectionScores.section',
             'questionResponses.question.section',
+            'teamMembers',
         ]);
 
         $sections = AssessmentSection::active()
@@ -76,6 +77,8 @@ class ReportController extends Controller {
                         'assessment_date' => $assessment->assessment_date,
                         'assessor_name' => $assessment->assessor_name,
                         'assessor_contact' => $assessment->assessor_contact,
+                        'lead_assessor' => $this->leadAssessor($assessment),
+                        'team_members' => $this->teamMembers($assessment),
                         'status' => $assessment->status,
                         'completed_at' => $assessment->completed_at,
                         'overall_percentage' => $assessment->overall_percentage,
@@ -83,6 +86,30 @@ class ReportController extends Controller {
                     ],
                     'section_reports' => $sectionReports,
         ]);
+    }
+
+    private function leadAssessor(Assessment $assessment): array
+    {
+        $lead = $assessment->teamMembers->first(fn ($member) => $member->pivot->role === 'team_lead');
+
+        return [
+            'id' => $lead?->id ?? $assessment->assessor_id,
+            'name' => $lead?->name ?? $assessment->assessor_name,
+            'email' => $lead?->email ?? $assessment->assessor_contact,
+            'role' => 'team_lead',
+        ];
+    }
+
+    private function teamMembers(Assessment $assessment): \Illuminate\Support\Collection
+    {
+        return $assessment->teamMembers
+            ->filter(fn ($member) => $member->pivot->role === 'member')
+            ->map(fn ($member) => [
+                'id' => $member->id,
+                'name' => $member->name,
+                'email' => $member->email,
+                'role' => 'member',
+            ])->values();
     }
 
     public function summary(Request $request, Assessment $assessment): JsonResponse {

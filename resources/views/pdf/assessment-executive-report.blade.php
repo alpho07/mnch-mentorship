@@ -395,9 +395,15 @@
                     <td class="value">{{ $facilityInfo['subcounty'] }}</td>
                 </tr>
                 <tr>
-                    <td class="label">Assessor</td>
-                    <td class="value">{{ $assessment->assessor_name }}</td>
+                    <td class="label">Lead Assessor</td>
+                    <td class="value">{{ $assessment->teamLeads->first()?->name ?? $assessment->assessor_name }}</td>
                 </tr>
+                @foreach($assessment->teamMembersOnly as $member)
+                <tr>
+                    <td class="label">Team Member</td>
+                    <td class="value">{{ $member->name }}</td>
+                </tr>
+                @endforeach
             </table>
         </div>
 
@@ -564,7 +570,7 @@
                                 $imnci = $hr['imnci'] ?? 0;
                                 $diabetes = $hr['type_1_diabetes'] ?? 0;
                                 $essNB = $hr['essential_newborn_care'] ?? 0;
-                                $available = $etat + $compNB + $imnci + $diabetes + $essNB;
+                                $available = $hr['total_in_facility'] ?? 0;
 
                                 $totalAvailable += $available;
                                 $totalEtat += $etat;

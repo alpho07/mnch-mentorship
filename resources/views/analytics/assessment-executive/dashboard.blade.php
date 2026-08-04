@@ -525,7 +525,25 @@ body {
             @endforeach
         </div>
 
-        {{-- Full HR table --}}
+        {{-- HR-specific insights --}}
+        @if(!empty($hrInsights))
+        <div class="insights-wrap" style="margin-bottom:1.2rem;">
+            @foreach($hrInsights as $hi)
+            <div class="insight-card {{ $hi['type'] }}">
+                <div class="insight-icon"><i class="fas fa-{{ $hi['icon'] }}"></i></div>
+                <div>
+                    <div class="insight-text">{{ $hi['text'] }}</div>
+                </div>
+            </div>
+            @endforeach
+        </div>
+        @endif
+
+        @php
+            $pctColor = fn($pct) => $pct >= 60 ? '#16a34a' : ($pct >= 30 ? '#d97706' : '#dc2626');
+        @endphp
+
+        {{-- Full HR table: count + % trained per area --}}
         <div style="overflow-x:auto;">
         <table class="data-table">
             <thead>
@@ -537,7 +555,7 @@ body {
                     <th style="text-align:right;">IMNCI</th>
                     <th style="text-align:right;">Type-1 DM</th>
                     <th style="text-align:right;">Ess. Newborn</th>
-                    <th style="text-align:right;">Coverage</th>
+                    <th style="text-align:right;">General % Trained</th>
                 </tr>
             </thead>
             <tbody>
@@ -545,19 +563,46 @@ body {
                 <tr>
                     <td style="font-weight:600;">{{ $row->cadre }}</td>
                     <td style="text-align:right;">{{ $row->total_in_facility }}</td>
-                    <td style="text-align:right;">{{ $row->etat_plus }}</td>
-                    <td style="text-align:right;">{{ $row->comprehensive_newborn_care }}</td>
-                    <td style="text-align:right;">{{ $row->imnci }}</td>
-                    <td style="text-align:right;">{{ $row->type_1_diabetes }}</td>
-                    <td style="text-align:right;">{{ $row->essential_newborn_care }}</td>
                     <td style="text-align:right;">
-                        <span style="font-weight:700;color:{{ $row->coverage_pct >= 60 ? '#16a34a' : ($row->coverage_pct >= 30 ? '#d97706' : '#dc2626') }}">
+                        {{ $row->etat_plus }}
+                        <span style="color:{{ $pctColor($row->etat_pct) }};font-size:.75em;">({{ $row->etat_pct }}%)</span>
+                    </td>
+                    <td style="text-align:right;">
+                        {{ $row->comprehensive_newborn_care }}
+                        <span style="color:{{ $pctColor($row->comp_nb_pct) }};font-size:.75em;">({{ $row->comp_nb_pct }}%)</span>
+                    </td>
+                    <td style="text-align:right;">
+                        {{ $row->imnci }}
+                        <span style="color:{{ $pctColor($row->imnci_pct) }};font-size:.75em;">({{ $row->imnci_pct }}%)</span>
+                    </td>
+                    <td style="text-align:right;">
+                        {{ $row->type_1_diabetes }}
+                        <span style="color:{{ $pctColor($row->diabetes_pct) }};font-size:.75em;">({{ $row->diabetes_pct }}%)</span>
+                    </td>
+                    <td style="text-align:right;">
+                        {{ $row->essential_newborn_care }}
+                        <span style="color:{{ $pctColor($row->ess_nb_pct) }};font-size:.75em;">({{ $row->ess_nb_pct }}%)</span>
+                    </td>
+                    <td style="text-align:right;">
+                        <span style="font-weight:700;color:{{ $pctColor($row->coverage_pct) }}">
                             {{ $row->coverage_pct }}%
                         </span>
                     </td>
                 </tr>
                 @endforeach
             </tbody>
+            <tfoot>
+                <tr style="font-weight:700;background:#f8fafc;">
+                    <td>Facility-wide</td>
+                    <td style="text-align:right;">{{ $totalStaff }}</td>
+                    <td style="text-align:right;color:{{ $pctColor($hrAreaTotals['etat_plus']) }};">{{ $hrAreaTotals['etat_plus'] }}%</td>
+                    <td style="text-align:right;color:{{ $pctColor($hrAreaTotals['comprehensive_newborn_care']) }};">{{ $hrAreaTotals['comprehensive_newborn_care'] }}%</td>
+                    <td style="text-align:right;color:{{ $pctColor($hrAreaTotals['imnci']) }};">{{ $hrAreaTotals['imnci'] }}%</td>
+                    <td style="text-align:right;color:{{ $pctColor($hrAreaTotals['type_1_diabetes']) }};">{{ $hrAreaTotals['type_1_diabetes'] }}%</td>
+                    <td style="text-align:right;color:{{ $pctColor($hrAreaTotals['essential_newborn_care']) }};">{{ $hrAreaTotals['essential_newborn_care'] }}%</td>
+                    <td style="text-align:right;color:{{ $pctColor($hrCoverage) }};">{{ $hrCoverage }}%</td>
+                </tr>
+            </tfoot>
         </table>
         </div>
         @else
@@ -856,3 +901,5 @@ body {
 
 </body>
 </html>
+
+

@@ -246,3 +246,5 @@ class ModuleAttendanceController extends Controller {
                         ->exists();
     }
 }
+
+

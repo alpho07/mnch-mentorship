@@ -36,9 +36,15 @@
                             <span class="info-value" style="color: #1f2937;">{{ $facilityInfo['level'] ?? 'N/A' }}</span>
                         </div>-->
             <div class="info-row" style="display: flex; padding: 6px 0;">
-                <span class="info-label" style="font-weight: 600; width: 200px; color: #6b7280;">Assessor:</span>
-                <span class="info-value" style="color: #1f2937;">{{ $assessment->assessor_name }}</span>
+                <span class="info-label" style="font-weight: 600; width: 200px; color: #6b7280;">Lead Assessor:</span>
+                <span class="info-value" style="color: #1f2937;">{{ $assessment->teamLeads->first()?->name ?? $assessment->assessor_name }}</span>
             </div>
+            @foreach($assessment->teamMembersOnly as $member)
+            <div class="info-row" style="display: flex; padding: 6px 0;">
+                <span class="info-label" style="font-weight: 600; width: 200px; color: #6b7280;">Team Member:</span>
+                <span class="info-value" style="color: #1f2937;">{{ $member->name }}</span>
+            </div>
+            @endforeach
         </div>
     </div>
 
@@ -209,7 +215,7 @@ $totalEssNB = 0;
                 $diabetes = $hr['type_1_diabetes'] ?? 0;
                 $essNB = $hr['essential_newborn_care'] ?? 0;
 
-                $available = $etat + $compNB + $imnci + $diabetes + $essNB;
+                $available = $hr['total_in_facility'] ?? 0;
 
                 $totalAvailable += $available;
                 $totalEtat += $etat;

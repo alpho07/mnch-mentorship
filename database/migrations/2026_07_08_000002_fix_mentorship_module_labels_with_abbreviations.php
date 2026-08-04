@@ -37,3 +37,4 @@ return new class extends Migration
             ->update(['name' => $to]);
     }
 };
+
