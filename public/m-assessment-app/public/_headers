@@ -1,0 +1,10 @@
+# A newly deployed service worker must always be revalidated. Its precached
+# application files are versioned by Vite/Workbox, so they remain cache-safe.
+/sw.js
+  Cache-Control: no-cache, no-store, must-revalidate
+
+/workbox-*.js
+  Cache-Control: no-cache
+
+/manifest.webmanifest
+  Cache-Control: no-cache

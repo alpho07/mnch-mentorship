@@ -6,7 +6,6 @@ import { RegisterScreen } from "./screens/screen-register.jsx";
 import { ForgotPasswordScreen } from "./screens/screen-forgot-password.jsx";
 import { SetPasswordScreen } from "./screens/screen-set-password.jsx";
 import { ScopeShell } from "./components/ScopeShell.jsx";
-import { InstallPrompt } from "./components/install-prompt.jsx";
 import { T } from "./constants.js";
 import api from "./services/api.service.js";
 import offlineStore from "./services/offline-store.js";
@@ -188,9 +187,7 @@ export default function App() {
                 onLogout={() => { api.clearToken(); setUser(null); }}
                 onUserUpdate={(u) => setUser(normaliseUser(u))}
             />
-            <InstallPrompt />
         </>
     );
 }
-
 

@@ -1,0 +1,10 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# This is a client-rendered application. Serving index.html for unknown paths
+# keeps refreshes and PWA launch URLs inside the app instead of returning 404.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
