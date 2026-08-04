@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Storage;
 
@@ -63,6 +64,16 @@ class RagDocument extends Model
     public function uploader(): BelongsTo
     {
         return $this->belongsTo(User::class, 'uploaded_by');
+    }
+
+    public function chunks(): HasMany
+    {
+        return $this->hasMany(RagChunk::class);
+    }
+
+    public function outlines(): HasMany
+    {
+        return $this->hasMany(RagDocumentOutline::class);
     }
 
     public function getRouteKeyName(): string

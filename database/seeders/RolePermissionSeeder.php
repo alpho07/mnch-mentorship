@@ -26,7 +26,7 @@ class RolePermissionSeeder extends Seeder
     private const CURRICULUM_SLUGS = ['program','program::module','program::module::quiz','module','activity','methodology','rubric::management'];
     private const SETTINGS_SLUGS   = ['grade','mentee::status','partner','cadre','department'];
     private const PROFILE_SLUGS    = ['mentee::profile','participant::profile'];
-    private const KB_SLUGS         = ['resource','resource::category','resource::comment','resource::type','tag','category','topic','access::group'];
+    private const KB_SLUGS         = ['resource','resource::category','resource::comment','resource::type','tag','category','topic','access::group','rag::document'];
     private const INVENTORY_SLUGS  = ['inventory::item','stock::level','stock::request','supplier','commodity','commodity::category'];
 
     // ── Page groups ──────────────────────────────────────────────────────────
@@ -63,7 +63,8 @@ class RolePermissionSeeder extends Seeder
     ];
 
     private const PAGES_KB = [
-        'page_KnowledgeBaseArticleDetail','page_KnowledgeBasePortal',
+        'page_KnowledgeBaseArticleDetail','page_KnowledgeBasePortal','page_RagChat',
+        'use_rag_chat',
     ];
 
     private const PAGES_MENTEE = [
@@ -168,6 +169,8 @@ class RolePermissionSeeder extends Seeder
             'page_HeadDrmhDashboard',
             'page_EmoncDashboard',
             'page_HeadDrmhReviewMentee',
+            'page_RagChat',
+            'use_rag_chat',
         ];
 
         foreach ($extras as $name) {

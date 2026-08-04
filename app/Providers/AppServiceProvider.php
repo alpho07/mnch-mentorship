@@ -85,6 +85,10 @@ class AppServiceProvider extends ServiceProvider {
             return Limit::perMinute(10)->by($request->user()?->id ?: $request->ip());
         });
 
+        RateLimiter::for('rag-asks', function (Request $request) {
+            return Limit::perMinute(20)->by($request->user()?->id ?: $request->ip());
+        });
+
         RateLimiter::for('previews', function (Request $request) {
             return Limit::perMinute(20)->by($request->user()?->id ?: $request->ip());
         });
@@ -118,5 +122,4 @@ class AppServiceProvider extends ServiceProvider {
         });
     }
 }
-
 

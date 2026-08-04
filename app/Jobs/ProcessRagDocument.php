@@ -3,6 +3,8 @@
 namespace App\Jobs;
 
 use App\Models\RagDocument;
+use App\Models\RagDocumentOutline;
+use App\Services\Rag\InAppRagEngine;
 use App\Services\Rag\RagClient;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -10,8 +12,10 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use RuntimeException;
 
 class ProcessRagDocument implements ShouldQueue, ShouldBeUnique
@@ -22,6 +26,8 @@ class ProcessRagDocument implements ShouldQueue, ShouldBeUnique
     use SerializesModels;
 
     public int $tries = 3;
+
+    public int $timeout = 900;
 
     public array $backoff = [30, 120, 300];
 
@@ -37,7 +43,7 @@ class ProcessRagDocument implements ShouldQueue, ShouldBeUnique
         return (string) $this->documentId;
     }
 
-    public function handle(RagClient $client): void
+    public function handle(RagClient $client, InAppRagEngine $engine): void
     {
         $document = RagDocument::findOrFail($this->documentId);
 
@@ -76,20 +82,26 @@ class ProcessRagDocument implements ShouldQueue, ShouldBeUnique
             }
 
             $absolutePath = Storage::disk($document->disk)->path($document->path);
-            $response = $client->ingest($absolutePath, $document->title);
+            $response = config('rag.engine') === 'external'
+                ? $engine->ingest($document, $absolutePath)
+                : $client->ingest($absolutePath, $document->title);
 
-            $document->forceFill([
-                'status' => RagDocument::STATUS_READY,
-                'external_document_id' => $response['document_id'] ?? $response['id'] ?? $response['external_document_id'] ?? $document->external_document_id,
-                'page_or_slide_count' => $response['page_count'] ?? $response['slide_count'] ?? $response['page_or_slide_count'] ?? $document->page_or_slide_count,
-                'chunk_count' => $response['chunk_count'] ?? $response['chunks'] ?? $document->chunk_count,
-                'metadata' => array_merge($document->metadata ?? [], [
-                    'ingest_response' => $this->metadataSummary($response),
-                ]),
-                'processed_at' => now(),
-                'failed_at' => null,
-                'error_message' => null,
-            ])->save();
+            DB::transaction(function () use ($document, $response): void {
+                $document->forceFill([
+                    'status' => RagDocument::STATUS_READY,
+                    'external_document_id' => $response['document_id'] ?? $response['id'] ?? $response['external_document_id'] ?? $document->external_document_id,
+                    'page_or_slide_count' => $response['page_count'] ?? $response['slide_count'] ?? $response['page_or_slide_count'] ?? $response['units'] ?? $document->page_or_slide_count,
+                    'chunk_count' => $response['chunk_count'] ?? $response['chunks'] ?? $document->chunk_count,
+                    'metadata' => array_merge($document->metadata ?? [], [
+                        'ingest_response' => $this->metadataSummary($response),
+                    ]),
+                    'processed_at' => now(),
+                    'failed_at' => null,
+                    'error_message' => null,
+                ])->save();
+
+                $this->storeOutline($document, $response['outline'] ?? []);
+            });
         } catch (\Throwable $e) {
             $message = $client->sanitizeError($e->getMessage());
             $this->markFailed($document, $message);
@@ -125,8 +137,35 @@ class ProcessRagDocument implements ShouldQueue, ShouldBeUnique
     private function metadataSummary(array $response): array
     {
         return collect($response)
-            ->except(['content', 'text', 'chunks'])
+            ->except(['content', 'text', 'chunks', 'outline'])
             ->take(20)
             ->all();
+    }
+
+    private function storeOutline(RagDocument $document, mixed $outline): void
+    {
+        $document->outlines()->delete();
+
+        if (! is_array($outline)) {
+            return;
+        }
+
+        foreach (array_values($outline) as $index => $entry) {
+            if (! is_array($entry) || blank($entry['title'] ?? null)) {
+                continue;
+            }
+
+            RagDocumentOutline::create([
+                'rag_document_id' => $document->id,
+                'sort_order' => $index,
+                'level' => max(1, min(6, (int) ($entry['level'] ?? 1))),
+                'type' => Str::limit((string) ($entry['type'] ?? 'heading'), 32, ''),
+                'title' => Str::limit(strip_tags((string) $entry['title']), 500, ''),
+                'locator_type' => filled($entry['locator_type'] ?? null) ? Str::limit((string) $entry['locator_type'], 32, '') : null,
+                'locator' => filled($entry['locator'] ?? null) ? Str::limit((string) $entry['locator'], 64, '') : null,
+                'content' => filled($entry['content'] ?? null) ? Str::limit(strip_tags((string) $entry['content']), 2000) : null,
+                'metadata' => is_array($entry['metadata'] ?? null) ? $entry['metadata'] : null,
+            ]);
+        }
     }
 }

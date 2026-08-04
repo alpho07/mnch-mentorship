@@ -15,6 +15,8 @@ use App\Http\Controllers\Frontend\SearchController;
 use App\Http\Controllers\MenteeClassProgressController;
 use App\Http\Controllers\MenteeEnrollmentController;
 use App\Http\Controllers\ModuleAttendanceController;
+use App\Http\Controllers\RagDocumentDownloadController;
+use App\Http\Controllers\RagMediaController;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Route;
 /*
@@ -41,6 +43,16 @@ Route::middleware(['auth'])->prefix('admin/reports')->name('reports.')->group(fu
     Route::get('/class/{class}/mentor-certificate', [\App\Http\Controllers\ClassReportController::class, 'mentorCertificate'])->name('class.mentor-certificate');
     Route::get('/class/{class}/mentor-certificate/preview', [\App\Http\Controllers\ClassReportController::class, 'mentorCertificateHtml'])->name('class.mentor-certificate.preview');
 });
+
+Route::middleware(['auth', 'throttle:downloads'])
+    ->get('/admin/rag/documents/{document}/download', RagDocumentDownloadController::class)
+    ->name('rag.documents.download');
+
+Route::middleware(['auth', 'throttle:downloads'])
+    ->get('/admin/rag/media/{externalDocumentId}/{filename}', RagMediaController::class)
+    ->whereUuid('externalDocumentId')
+    ->where('filename', '[A-Za-z0-9._-]+')
+    ->name('rag.media.show');
 
 Route::get('/certificates/{class}/{participant}/verify', [\App\Http\Controllers\ClassReportController::class, 'verifyCertificate'])->name('certificates.verify');
 Route::get('/certificates/{class}/{participant}/badge', [\App\Http\Controllers\ClassReportController::class, 'badge'])->name('certificates.badge');
@@ -613,7 +625,5 @@ Route::middleware(['web'])->prefix('analytics')->name('analytics.')->group(funct
 });
 
 // include 'api.php';
-
-
 
 
