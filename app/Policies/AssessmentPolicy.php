@@ -23,7 +23,7 @@ class AssessmentPolicy
      */
     public function view(User $user, Assessment $assessment): bool
     {
-        return $user->can('view_assessment');
+        return $assessment->canBeViewedBy($user->id);
     }
 
     /**
@@ -39,7 +39,7 @@ class AssessmentPolicy
      */
     public function update(User $user, Assessment $assessment): bool
     {
-        return $user->can('update_assessment');
+        return $assessment->canBeEditedBy($user->id);
     }
 
     /**

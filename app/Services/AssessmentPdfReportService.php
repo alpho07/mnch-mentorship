@@ -44,6 +44,7 @@ class AssessmentPdfReportService {
         $assessment->load([
             'facility.subcounty.county',
             'assessor',
+            'teamMembers',
             'sectionScores.section',
             'questionResponses.question.section',
             'humanResourceResponses.cadre',

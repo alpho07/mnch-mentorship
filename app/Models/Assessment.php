@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -72,6 +73,16 @@ class Assessment extends Model {
             }
         });
 
+        static::created(function (self $assessment) {
+            if ($assessment->assessor_id && ! $assessment->teamMembers()->whereKey($assessment->assessor_id)->exists()) {
+                $assessment->teamMembers()->attach($assessment->assessor_id, [
+                    'role' => 'team_lead',
+                    'added_by' => $assessment->assessor_id,
+                    'added_at' => now(),
+                ]);
+            }
+        });
+
         static::updating(function ($assessment) {
             if (auth()->check()) {
                 $assessment->updated_by = auth()->id();
@@ -105,6 +116,25 @@ class Assessment extends Model {
 
     public function feedbackGivenBy(): BelongsTo {
         return $this->belongsTo(User::class, 'feedback_given_by');
+    }
+
+    public function locker(): BelongsTo {
+        return $this->belongsTo(User::class, 'locked_by');
+    }
+
+    public function teamMembers(): BelongsToMany {
+        return $this->belongsToMany(User::class, 'assessment_team')
+            ->using(AssessmentTeamMember::class)
+            ->withPivot(['role', 'added_by', 'added_at'])
+            ->withTimestamps();
+    }
+
+    public function teamLeads(): BelongsToMany {
+        return $this->teamMembers()->wherePivot('role', 'team_lead');
+    }
+
+    public function teamMembersOnly(): BelongsToMany {
+        return $this->teamMembers()->wherePivot('role', 'member');
     }
 
     // Dynamic Question Responses (Infrastructure, Skills Lab, Info Systems, Quality)
@@ -237,5 +267,68 @@ class Assessment extends Model {
             'red' => 'Poor (<50%)',
             default => 'Not Graded',
         };
+    }
+
+    public function isTeamMember(int $userId): bool {
+        return $this->teamMembers()->whereKey($userId)->exists();
+    }
+
+    public function isTeamLead(int $userId): bool {
+        return $this->teamLeads()->whereKey($userId)->exists();
+    }
+
+    public function canBeViewedBy(?int $userId): bool {
+        if (! $userId) {
+            return false;
+        }
+
+        if ($this->isAssessmentAdministrator($userId)) {
+            return true;
+        }
+
+        return $this->assessor_id === $userId
+            || $this->created_by === $userId
+            || $this->isTeamMember($userId);
+    }
+
+    public function canBeEditedBy(?int $userId): bool {
+        return ! $this->isLocked() && $this->canBeViewedBy($userId);
+    }
+
+    public function canManageTeam(?int $userId): bool {
+        if ($userId === null || $this->isAssessmentAdministrator($userId)) {
+            return $userId !== null;
+        }
+
+        if ($this->isTeamLead($userId)) {
+            return true;
+        }
+
+        // Assessments created before team management was introduced have no
+        // pivot row. Their original assessor may initialise the team once.
+        return $this->teamLeads()->doesntExist()
+            && ($this->assessor_id === $userId || $this->created_by === $userId);
+    }
+
+    public function canToggleLock(?int $userId): bool {
+        return $this->canManageTeam($userId);
+    }
+
+    public function isLocked(): bool {
+        return (bool) $this->is_locked;
+    }
+
+    public function lock(int $userId): void {
+        $this->update(['is_locked' => true, 'locked_at' => now(), 'locked_by' => $userId]);
+    }
+
+    public function unlock(): void {
+        $this->update(['is_locked' => false, 'locked_at' => null, 'locked_by' => null]);
+    }
+
+    private function isAssessmentAdministrator(int $userId): bool {
+        $user = User::find($userId);
+
+        return $user && ($user->isAboveSite() || $user->hasRole('admin'));
     }
 }

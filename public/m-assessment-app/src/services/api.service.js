@@ -310,6 +310,9 @@ export const _rawApi = {
             put('/assessments/' + assessmentId + '/sections/' + sectionCode + '/progress', {done}),
         create: (facility_id, assessment_type, assessment_date) =>
             post('/assessments', {facility_id, assessment_type, assessment_date}),
+        team: (assessmentId) => get('/assessments/' + assessmentId + '/team'),
+        eligibleTeamMembers: (assessmentId) => get('/assessments/' + assessmentId + '/team/eligible'),
+        addTeamMembers: (assessmentId, memberIds) => post('/assessments/' + assessmentId + '/team', {member_ids: memberIds}),
     },
     humanResources: {
         get: (assessmentId) => get('/assessments/' + assessmentId + '/human-resources'),
@@ -744,6 +747,9 @@ const api = {
                 throw e;
             }
         },
+        team: _rawApi.assessments.team,
+        eligibleTeamMembers: _rawApi.assessments.eligibleTeamMembers,
+        addTeamMembers: _rawApi.assessments.addTeamMembers,
     },
 
     // ── Human Resources (cached reads, queued writes) ────────────────────────
@@ -2005,5 +2011,4 @@ document.addEventListener('resume', () => {
 });
 
 export default api;
-
 

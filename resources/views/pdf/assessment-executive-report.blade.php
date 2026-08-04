@@ -395,9 +395,15 @@
                     <td class="value">{{ $facilityInfo['subcounty'] }}</td>
                 </tr>
                 <tr>
-                    <td class="label">Assessor</td>
-                    <td class="value">{{ $assessment->assessor_name }}</td>
+                    <td class="label">Lead Assessor</td>
+                    <td class="value">{{ $assessment->teamLeads->first()?->name ?? $assessment->assessor_name }}</td>
                 </tr>
+                @foreach($assessment->teamMembersOnly as $member)
+                <tr>
+                    <td class="label">Team Member</td>
+                    <td class="value">{{ $member->name }}</td>
+                </tr>
+                @endforeach
             </table>
         </div>
 
@@ -695,4 +701,3 @@
     </div>
 </body>
 </html>
-

@@ -26,7 +26,9 @@ class AssessmentDashboard extends Page {
     public ?string $completionFilter = null;
 
     public function mount(int|string $record): void {
-        $this->record = Assessment::findOrFail( $this->record->id);
+        $this->record = Assessment::findOrFail($record);
+
+        abort_unless($this->record->canBeViewedBy(auth()->id()), 403);
 
         if (!$this->record->section_progress) {
             $this->record->section_progress = [
