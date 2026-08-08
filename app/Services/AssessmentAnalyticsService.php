@@ -327,10 +327,27 @@ class AssessmentAnalyticsService
                       LIMIT 1) as room_answer"
                 ),
                 DB::raw(
-                    '(SELECT COUNT(*) FROM trainings t
+                    '(SELECT COUNT(DISTINCT t.id) FROM trainings t
                       WHERE t.facility_id = assessments.facility_id
                       AND t.type = "facility_mentorship"
-                      AND t.deleted_at IS NULL) as mentorship_count'
+                      AND t.deleted_at IS NULL
+                      AND EXISTS (
+                          SELECT 1
+                          FROM mentorship_classes mc
+                          JOIN class_participants cp
+                            ON cp.mentorship_class_id = mc.id
+                          WHERE mc.training_id = t.id
+                          AND mc.status = "active"
+                          AND mc.deleted_at IS NULL
+                          AND EXISTS (
+                              SELECT 1
+                              FROM class_modules cm
+                              WHERE cm.mentorship_class_id = mc.id
+                          )
+                          AND cp.status IN ("enrolled", "active")
+                          GROUP BY mc.id
+                          HAVING COUNT(DISTINCT cp.user_id) > 1
+                      )) as mentorship_count'
                 ),
             ])
             ->orderBy('assessments.assessment_date', 'desc')

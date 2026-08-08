@@ -25,7 +25,7 @@ class DocumentTextExtractor
 
     private function pdf(string $path): array
     {
-        $pdf = (new PdfParser())->parseFile($path);
+        $pdf = (new PdfParser)->parseFile($path);
         $chunks = [];
 
         foreach ($pdf->getPages() as $index => $page) {
@@ -170,6 +170,10 @@ class DocumentTextExtractor
                     ];
                 }
 
+                if ($offset + mb_strlen($part) >= $length) {
+                    break;
+                }
+
                 $step = max(1, mb_strlen($part) - $overlap);
                 $offset += $step;
             }
@@ -193,7 +197,7 @@ class DocumentTextExtractor
 
     private function openZip(string $path): ZipArchive
     {
-        $zip = new ZipArchive();
+        $zip = new ZipArchive;
 
         if ($zip->open($path) !== true) {
             throw new RuntimeException('Could not read Office document archive.');

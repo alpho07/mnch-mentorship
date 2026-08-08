@@ -10,3 +10,4 @@ Artisan::command('inspire', function () {
 
 Schedule::command('mentorships:auto-close')->dailyAt('00:05');
 Schedule::command('mentorships:remind-uninvited-mentees')->dailyAt('08:00');
+Schedule::command('rag:lexicon')->dailyAt('02:40')->withoutOverlapping();

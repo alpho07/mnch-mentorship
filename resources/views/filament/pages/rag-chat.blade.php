@@ -136,6 +136,23 @@
             overflow-wrap: anywhere;
         }
 
+        .rag-chat-waiting {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            color: rgb(71 85 105);
+            font-size: 13px;
+            font-weight: 650;
+        }
+
+        .dark .rag-chat-waiting {
+            color: rgb(203 213 225);
+        }
+
+        .rag-chat-waiting-label {
+            min-width: 0;
+        }
+
         .rag-chat-markdown {
             overflow-wrap: anywhere;
         }
@@ -440,18 +457,12 @@
             color: rgb(209 213 219);
         }
 
-        .rag-chat-citation summary {
+        .rag-chat-citation-header {
             display: grid;
             grid-template-columns: auto minmax(0, 1fr) auto;
             gap: 9px;
             align-items: center;
             padding: 9px 10px;
-            cursor: pointer;
-            list-style: none;
-        }
-
-        .rag-chat-citation summary::-webkit-details-marker {
-            display: none;
         }
 
         .rag-chat-citation-number {
@@ -763,18 +774,11 @@
 
     <div
         class="rag-chat-shell"
-        x-data="{
-            scrollThread() {
-                const el = document.getElementById('rag-thread');
-                this.$el.scrollIntoView({ block: 'end', behavior: 'smooth' });
-                if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
-            },
-            scheduleScroll() {
-                this.$nextTick(() => this.scrollThread());
-                setTimeout(() => this.scrollThread(), 80);
-                setTimeout(() => this.scrollThread(), 220);
-            },
-        }"
+        x-data="ragChatStream({
+            conversationId: @js($conversationId),
+            streamUrl: @js(route('rag.chat.stream')),
+            csrfToken: @js(csrf_token()),
+        })"
         x-init="$nextTick(() => scrollThread())"
         x-on:rag-message-added.window="scheduleScroll()"
     >
@@ -893,7 +897,6 @@
                                                     $locator = Str::headline($source['locator_type']).' '.$source['locator'];
                                                 }
 
-                                                $excerpt = $source['content'] ?? $source['excerpt'] ?? $source['text'] ?? null;
                                                 $mediaItems = collect($source['media'] ?? [])->filter(fn ($media) => ! empty($media['url']))->values();
                                                 $mediaCount = $mediaItems->count();
                                                 $mediaLayout = match (true) {
@@ -905,8 +908,8 @@
                                                 };
                                             @endphp
 
-                                            <details class="rag-chat-citation" @if ($loop->first) open @endif>
-                                                <summary>
+                                            <div class="rag-chat-citation">
+                                                <div class="rag-chat-citation-header">
                                                     <span class="rag-chat-citation-number">[{{ $loop->iteration }}]</span>
 
                                                     <span class="rag-chat-citation-heading">
@@ -919,14 +922,7 @@
                                                         @endif
                                                     </span>
 
-                                                    <span class="rag-chat-citation-toggle">View</span>
-                                            </summary>
-
-                                                @if (filled($excerpt))
-                                                    <div class="rag-chat-citation-content">
-                                                        {!! \App\Support\RagSourceFormatter::html($excerpt) !!}
-                                                    </div>
-                                                @endif
+                                                </div>
 
                                                 @if ($mediaCount > 0)
                                                     <div class="rag-chat-source-media {{ $mediaLayout }}">
@@ -962,7 +958,7 @@
                                                         </div>
                                                     </div>
                                                 @endif
-                                            </details>
+                                            </div>
                                         @endforeach
                                     </div>
                                 </section>
@@ -970,7 +966,7 @@
                         </article>
                     </div>
                 @empty
-                    <div class="flex h-full items-center justify-center">
+                    <div class="flex h-full items-center justify-center" data-rag-empty-state>
                         <div class="max-w-xl text-center">
                             <h2 class="text-xl font-semibold text-gray-950 dark:text-white">Ask the knowledge base</h2>
                             <div class="mt-5 grid gap-2 sm:grid-cols-2">
@@ -982,7 +978,7 @@
                                 ] as $prompt)
                                     <button
                                         type="button"
-                                        wire:click="$set('question', @js($prompt))"
+                                        x-on:click="question = @js($prompt); $nextTick(() => document.querySelector('[data-rag-chat-input]')?.focus())"
                                         class="rounded-lg border border-gray-200 bg-white px-3 py-2 text-left text-sm text-gray-700 shadow-sm transition hover:border-primary-300 hover:text-primary-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
                                     >
                                         {{ $prompt }}
@@ -1012,9 +1008,8 @@
             </div>
 
             <form
-                wire:submit.prevent="send"
+                x-on:submit.prevent="sendStream()"
                 class="rag-chat-composer"
-                x-on:submit="scheduleScroll()"
             >
                 @if ($error)
                     <div class="mb-3 rounded-lg border border-danger-200 bg-danger-50 p-3 text-sm text-danger-700 dark:border-danger-900 dark:bg-danger-950/30 dark:text-danger-300">
@@ -1026,22 +1021,20 @@
                     <label>
                         <span class="sr-only">Question</span>
                         <textarea
-                            wire:model.live="question"
+                            x-model="question"
                             data-rag-chat-input
                             rows="1"
                             maxlength="4000"
                             class="rag-chat-textarea"
                             placeholder="Message the knowledge base..."
-                            wire:loading.attr="disabled"
-                            wire:target="send"
+                            x-bind:disabled="isStreaming"
                         ></textarea>
                     </label>
 
                     <x-filament::button
                         type="submit"
                         icon="heroicon-o-paper-airplane"
-                        wire:loading.attr="disabled"
-                        wire:target="send"
+                        x-bind:disabled="isStreaming"
                     >
                         Send
                     </x-filament::button>
@@ -1051,6 +1044,256 @@
     </div>
 
     <script>
+        window.ragChatStream = ({ conversationId, streamUrl, csrfToken }) => ({
+            question: '',
+            isStreaming: false,
+            conversationId,
+            streamUrl,
+            csrfToken,
+            scrollThread() {
+                const el = document.getElementById('rag-thread');
+                this.$el.scrollIntoView({ block: 'end', behavior: 'smooth' });
+                if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+            },
+            scheduleScroll() {
+                this.$nextTick(() => this.scrollThread());
+                setTimeout(() => this.scrollThread(), 80);
+                setTimeout(() => this.scrollThread(), 220);
+            },
+            appendMessage(role, content = '', pending = false) {
+                const thread = document.getElementById('rag-thread');
+                if (! thread) return null;
+                thread.querySelector('[data-rag-empty-state]')?.remove();
+
+                const row = document.createElement('div');
+                row.className = `rag-chat-row ${role === 'user' ? 'rag-chat-row-user' : ''}`;
+
+                const article = document.createElement('article');
+                article.className = `rag-chat-message ${role === 'user' ? 'rag-chat-message-user' : 'rag-chat-message-assistant'}`;
+
+                const label = document.createElement('div');
+                label.className = 'rag-chat-role';
+                label.textContent = role === 'user' ? 'Question' : 'Answer';
+
+                const text = document.createElement('div');
+                text.className = role === 'assistant' ? 'rag-chat-markdown' : 'rag-chat-text';
+                text.dataset.ragStreamContent = '';
+
+                if (role === 'assistant' && pending) {
+                    const waiting = document.createElement('div');
+                    waiting.className = 'rag-chat-waiting';
+                    waiting.innerHTML = `
+                        <span class="rag-thinking" aria-hidden="true">
+                            <span class="rag-thinking-dot"></span>
+                            <span class="rag-thinking-dot"></span>
+                            <span class="rag-thinking-dot"></span>
+                        </span>
+                        <span class="rag-chat-waiting-label">Thinking...</span>
+                    `;
+
+                    const waitingLabel = waiting.querySelector('.rag-chat-waiting-label');
+                    const statuses = ['Thinking...', 'Thinking some more...', 'Almost done...'];
+                    let statusIndex = 0;
+                    text.dataset.rawAnswer = '';
+                    text.dataset.hasAnswer = 'false';
+                    text.appendChild(waiting);
+                    text._waiting = waiting;
+                    text._waitingTimer = window.setInterval(() => {
+                        statusIndex = Math.min(statusIndex + 1, statuses.length - 1);
+                        if (waitingLabel) waitingLabel.textContent = statuses[statusIndex];
+                    }, 4500);
+                } else if (role === 'assistant') {
+                    text.dataset.rawAnswer = content;
+                    text.dataset.hasAnswer = content ? 'true' : 'false';
+                    this.renderStreamedAnswer(text);
+                } else {
+                    text.textContent = content;
+                }
+
+                article.append(label, text);
+                row.appendChild(article);
+                thread.appendChild(row);
+                this.scheduleScroll();
+
+                return text;
+            },
+            escapeHtml(value) {
+                return String(value)
+                    .replaceAll('&', '&amp;')
+                    .replaceAll('<', '&lt;')
+                    .replaceAll('>', '&gt;')
+                    .replaceAll('"', '&quot;')
+                    .replaceAll('\'', '&#039;');
+            },
+            inlineFormat(value) {
+                return this.escapeHtml(value)
+                    .replace(/`([^`]+)`/g, '<code>$1</code>')
+                    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+                    .replace(/\[(\d{1,2})\]/g, '<span class="rag-chat-inline-citation" title="Source $1">[$1]</span>');
+            },
+            formattedAnswer(value) {
+                const lines = String(value || '').replace(/\r\n/g, '\n').split('\n');
+                const blocks = [];
+                let paragraph = [];
+                let list = null;
+
+                const flushParagraph = () => {
+                    if (! paragraph.length) return;
+                    blocks.push(`<p>${this.inlineFormat(paragraph.join(' '))}</p>`);
+                    paragraph = [];
+                };
+
+                const flushList = () => {
+                    if (! list) return;
+                    const tag = list.type === 'ol' ? 'ol' : 'ul';
+                    blocks.push(`<${tag}>${list.items.map((item) => `<li>${this.inlineFormat(item)}</li>`).join('')}</${tag}>`);
+                    list = null;
+                };
+
+                for (const rawLine of lines) {
+                    const line = rawLine.trim();
+                    if (! line) {
+                        flushParagraph();
+                        flushList();
+                        continue;
+                    }
+
+                    const bullet = line.match(/^[-*]\s+(.+)$/);
+                    const numbered = line.match(/^\d+[.)]\s+(.+)$/);
+
+                    if (bullet || numbered) {
+                        flushParagraph();
+                        const type = numbered ? 'ol' : 'ul';
+                        if (! list || list.type !== type) {
+                            flushList();
+                            list = { type, items: [] };
+                        }
+                        list.items.push((bullet?.[1] || numbered?.[1] || '').trim());
+                        continue;
+                    }
+
+                    flushList();
+                    paragraph.push(line);
+                }
+
+                flushParagraph();
+                flushList();
+
+                return blocks.join('') || '<p></p>';
+            },
+            renderStreamedAnswer(target) {
+                if (! target) return;
+                target.innerHTML = this.formattedAnswer(target.dataset.rawAnswer || '');
+            },
+            stopWaiting(target) {
+                if (! target || target.dataset.hasAnswer === 'true') return;
+                if (target._waitingTimer) {
+                    window.clearInterval(target._waitingTimer);
+                    target._waitingTimer = null;
+                }
+                target.dataset.hasAnswer = 'true';
+                target.innerHTML = '';
+            },
+            parseEvent(raw) {
+                const lines = raw.split('\n');
+                let event = 'message';
+                let data = '';
+
+                for (const line of lines) {
+                    if (line.startsWith('event:')) event = line.slice(6).trim();
+                    if (line.startsWith('data:')) data += line.slice(5).trim();
+                }
+
+                return { event, data: data ? JSON.parse(data) : {} };
+            },
+            async sendStream() {
+                const text = this.question.trim();
+                if (! text || this.isStreaming) return;
+
+                this.isStreaming = true;
+                this.question = '';
+                this.appendMessage('user', text);
+                const assistantTarget = this.appendMessage('assistant', '', true);
+                let buffer = '';
+
+                try {
+                    const response = await fetch(this.streamUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'text/event-stream',
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': this.csrfToken,
+                        },
+                        body: JSON.stringify({
+                            question: text,
+                            conversation_id: this.$wire.conversationId || this.conversationId,
+                        }),
+                    });
+
+                    if (! response.ok || ! response.body) {
+                        throw new Error(`Request failed with status ${response.status}`);
+                    }
+
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+
+                    while (true) {
+                        const { value, done } = await reader.read();
+                        if (done) break;
+
+                        buffer += decoder.decode(value, { stream: true });
+                        const events = buffer.split('\n\n');
+                        buffer = events.pop() || '';
+
+                        for (const raw of events) {
+                            if (! raw.trim()) continue;
+                            const parsed = this.parseEvent(raw);
+
+                            if (parsed.event === 'start') {
+                                this.conversationId = parsed.data.conversation_id || this.conversationId;
+                            }
+
+                            if (parsed.event === 'delta' && assistantTarget) {
+                                this.stopWaiting(assistantTarget);
+                                assistantTarget.dataset.rawAnswer = `${assistantTarget.dataset.rawAnswer || ''}${parsed.data.text || ''}`;
+                                this.renderStreamedAnswer(assistantTarget);
+                                this.scheduleScroll();
+                            }
+
+                            if (parsed.event === 'error') {
+                                throw new Error(parsed.data.message || 'Streaming failed.');
+                            }
+
+                            if (parsed.event === 'done') {
+                                this.conversationId = parsed.data.conversation_id || this.conversationId;
+                            }
+                        }
+                    }
+                } catch (error) {
+                    if (assistantTarget) {
+                        this.stopWaiting(assistantTarget);
+                        assistantTarget.textContent = 'I could not get an answer from the knowledge service.';
+                    }
+                    console.error(error);
+                } finally {
+                    if (assistantTarget?._waitingTimer) {
+                        window.clearInterval(assistantTarget._waitingTimer);
+                    }
+                    this.isStreaming = false;
+
+                    // The stream learns the newly-created conversation before Livewire does.
+                    // Persist that id first so the refresh keeps the active thread selected.
+                    const activeConversationId = Number(this.conversationId || 0);
+                    if (activeConversationId && Number(this.$wire.conversationId || 0) !== activeConversationId) {
+                        await this.$wire.set('conversationId', activeConversationId);
+                    }
+
+                    await this.$wire.$refresh();
+                    window.dispatchEvent(new CustomEvent('rag-message-added'));
+                }
+            },
+        });
+
         (() => {
             const selector = '[data-rag-chat-input]';
             const maxRows = 6;

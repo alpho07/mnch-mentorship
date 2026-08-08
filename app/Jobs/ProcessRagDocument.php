@@ -6,6 +6,7 @@ use App\Models\RagDocument;
 use App\Models\RagDocumentOutline;
 use App\Services\Rag\InAppRagEngine;
 use App\Services\Rag\RagClient;
+use App\Services\Rag\Settings\RagSettings;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -18,7 +19,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use RuntimeException;
 
-class ProcessRagDocument implements ShouldQueue, ShouldBeUnique
+class ProcessRagDocument implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable;
     use InteractsWithQueue;
@@ -43,7 +44,7 @@ class ProcessRagDocument implements ShouldQueue, ShouldBeUnique
         return (string) $this->documentId;
     }
 
-    public function handle(RagClient $client, InAppRagEngine $engine): void
+    public function handle(RagClient $client, InAppRagEngine $engine, RagSettings $settings): void
     {
         $document = RagDocument::findOrFail($this->documentId);
 
@@ -82,7 +83,7 @@ class ProcessRagDocument implements ShouldQueue, ShouldBeUnique
             }
 
             $absolutePath = Storage::disk($document->disk)->path($document->path);
-            $response = config('rag.engine') === 'external'
+            $response = $this->shouldUseInAppIngestion($document)
                 ? $engine->ingest($document, $absolutePath)
                 : $client->ingest($absolutePath, $document->title);
 
@@ -102,6 +103,9 @@ class ProcessRagDocument implements ShouldQueue, ShouldBeUnique
 
                 $this->storeOutline($document, $response['outline'] ?? []);
             });
+
+            $settings->bumpCorpusVersion('RAG document processed: '.$document->id);
+            BuildRagLexicon::dispatch();
         } catch (\Throwable $e) {
             $message = $client->sanitizeError($e->getMessage());
             $this->markFailed($document, $message);
@@ -132,6 +136,17 @@ class ProcessRagDocument implements ShouldQueue, ShouldBeUnique
             'failed_at' => now(),
             'error_message' => $message,
         ])->save();
+
+        app(RagSettings::class)->bumpCorpusVersion('RAG document failed: '.$document->id);
+    }
+
+    private function shouldUseInAppIngestion(RagDocument $document): bool
+    {
+        if (config('rag.engine') === 'external') {
+            return true;
+        }
+
+        return ! in_array(strtolower((string) $document->extension), ['pdf', 'pptx'], true);
     }
 
     private function metadataSummary(array $response): array

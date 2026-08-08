@@ -1,6 +1,6 @@
 <?php
 
-use App\Http\Controllers\AccountVerificationController; 
+use App\Http\Controllers\AccountVerificationController;
 use App\Http\Controllers\Analytics\KenyaHeatmapController;
 use App\Http\Controllers\Analytics\ProgressiveDashboardController;
 use App\Http\Controllers\Analytics\TrainingExplorerController;
@@ -15,6 +15,7 @@ use App\Http\Controllers\Frontend\SearchController;
 use App\Http\Controllers\MenteeClassProgressController;
 use App\Http\Controllers\MenteeEnrollmentController;
 use App\Http\Controllers\ModuleAttendanceController;
+use App\Http\Controllers\RagChatStreamController;
 use App\Http\Controllers\RagDocumentDownloadController;
 use App\Http\Controllers\RagMediaController;
 use Illuminate\Support\Facades\Mail;
@@ -54,6 +55,10 @@ Route::middleware(['auth', 'throttle:downloads'])
     ->where('filename', '[A-Za-z0-9._-]+')
     ->name('rag.media.show');
 
+Route::middleware(['auth'])
+    ->post('/admin/rag/chat/stream', RagChatStreamController::class)
+    ->name('rag.chat.stream');
+
 Route::get('/certificates/{class}/{participant}/verify', [\App\Http\Controllers\ClassReportController::class, 'verifyCertificate'])->name('certificates.verify');
 Route::get('/certificates/{class}/{participant}/badge', [\App\Http\Controllers\ClassReportController::class, 'badge'])->name('certificates.badge');
 
@@ -91,15 +96,15 @@ Route::get('/app-handoff', function (\Illuminate\Http\Request $request) {
     // /admin/set-password), so Android couldn't resolve an app and Chrome fell
     // back to searching the Play Store for the package instead.
     $appIntentUrl = 'intent:#Intent;action=android.intent.action.MAIN;'
-        . 'category=android.intent.category.LAUNCHER;'
-        . 'package=com.mnch.mentorship.app;'
-        . 'S.browser_fallback_url=' . urlencode($loginUrl) . ';end';
+        .'category=android.intent.category.LAUNCHER;'
+        .'package=com.mnch.mentorship.app;'
+        .'S.browser_fallback_url='.urlencode($loginUrl).';end';
 
     return view('auth.app-handoff', [
         'heading' => $type === 'reset' ? 'Password Updated!' : 'Account Verified!',
         'message' => $type === 'reset'
-            ? "Your password has been updated. Open the MNCH Mentorship app on your phone and log in with your email and new password."
-            : "Welcome to MNCH Kenya! Open the MNCH Mentorship app on your phone and log in with your email and password.",
+            ? 'Your password has been updated. Open the MNCH Mentorship app on your phone and log in with your email and new password.'
+            : 'Welcome to MNCH Kenya! Open the MNCH Mentorship app on your phone and log in with your email and password.',
         'loginUrl' => $loginUrl,
         'appIntentUrl' => $appIntentUrl,
     ]);
@@ -625,5 +630,3 @@ Route::middleware(['web'])->prefix('analytics')->name('analytics.')->group(funct
 });
 
 // include 'api.php';
-
-
