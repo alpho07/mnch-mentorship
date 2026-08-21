@@ -49,7 +49,7 @@
 
                 {{-- Ministry of Health Logo --}}
                 <div class="moh-logo-wrap">
-                    <img src="{{ asset('moh_logo.png') }}" alt="Ministry of Health — Republic of Kenya" class="moh-logo-img">
+                    <img src="{{ asset('images/moh_logo.webp') }}" alt="Ministry of Health — Republic of Kenya" class="moh-logo-img">
                 </div>
 
                 <h1 class="auth-h1">Create Account</h1>

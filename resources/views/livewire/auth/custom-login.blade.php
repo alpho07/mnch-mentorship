@@ -99,7 +99,7 @@
 
                 {{-- Ministry of Health Logo --}}
                 <div class="moh-logo-wrap">
-                    <img src="{{ asset('moh_logo.png') }}" alt="Ministry of Health — Republic of Kenya" class="moh-logo-img">
+                    <img src="{{ asset('images/moh_logo.webp') }}" alt="Ministry of Health — Republic of Kenya" class="moh-logo-img">
                 </div>
 
                 <h1 class="auth-h1">Welcome back</h1>
@@ -184,7 +184,7 @@
         /* ── Hero (left) ─────────────────────────────────────────────────── */
         .auth-hero{flex:0 0 52%;position:relative;overflow:hidden;overflow-y:auto;display:flex;align-items:flex-start;scrollbar-width:none}
         .auth-hero::-webkit-scrollbar{display:none}
-        .hero-bg{position:fixed;left:0;top:0;width:52%;height:100vh;background:url('https://images.unsplash.com/photo-1584515933487-779824d29309?w=1200&q=80') center/cover no-repeat}
+        .hero-bg{position:fixed;left:0;top:0;width:52%;height:100vh;background:url('{{ asset('images/mnch-mentorship-login-hero.webp') }}') center/cover no-repeat}
         .hero-gradient{position:fixed;left:0;top:0;width:52%;height:100vh;background:linear-gradient(135deg,rgba(8,28,90,.96) 0%,rgba(18,69,168,.91) 45%,rgba(37,99,235,.86) 100%)}
 
         .hero-orb{position:fixed;border-radius:50%;pointer-events:none;background:radial-gradient(circle,rgba(147,197,253,.13) 0%,transparent 70%)}
@@ -350,5 +350,3 @@
         }
     </style>
 </div>
-
-

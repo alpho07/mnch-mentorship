@@ -82,7 +82,7 @@ class ResourceController extends Controller
 
             $ongoingMentorships = Training::where('type', 'facility_mentorship')
                 ->live()
-                ->where('status', '!=', 'cancelled')
+                ->whereNotIn('status', ['cancelled', 'draft'])
                 ->where('start_date', '<=', $now)
                 ->where('end_date', '>=', $now)
                 ->with(['county', 'facility'])
@@ -92,7 +92,7 @@ class ResourceController extends Controller
 
             $upcomingMentorships = Training::where('type', 'facility_mentorship')
                 ->live()
-                ->where('status', '!=', 'cancelled')
+                ->whereNotIn('status', ['cancelled', 'draft'])
                 ->where('start_date', '>', $now)
                 ->with(['county', 'facility'])
                 ->orderBy('start_date')
@@ -101,7 +101,7 @@ class ResourceController extends Controller
 
             $closedMentorships = Training::where('type', 'facility_mentorship')
                 ->live()
-                ->where('status', '!=', 'cancelled')
+                ->whereNotIn('status', ['cancelled', 'draft'])
                 ->where('end_date', '<', $now)
                 ->where('end_date', '>=', $now->copy()->subDays(30))
                 ->with(['county', 'facility'])
@@ -112,7 +112,7 @@ class ResourceController extends Controller
             // EmONC mentorships with null dates — derive status from classes
             $emoncNoDates = Training::where('type', 'facility_mentorship')
                 ->live()
-                ->where('status', '!=', 'cancelled')
+                ->whereNotIn('status', ['cancelled', 'draft'])
                 ->whereNull('start_date')
                 ->whereNull('end_date')
                 ->whereHas('program', fn ($q) => $q->whereRaw("LOWER(name) LIKE '%emonc%'")
@@ -150,7 +150,7 @@ class ResourceController extends Controller
 
         $upcomingBase = Training::query()
             ->whereIn('type', ['global_training', 'facility_mentorship'])
-            ->whereNotIn('status', ['cancelled', 'completed'])
+            ->whereNotIn('status', ['cancelled', 'completed', 'draft'])
             ->whereDate('start_date', '>=', $today);
 
         $upcomingTrainingsCount = (clone $upcomingBase)
@@ -174,7 +174,7 @@ class ResourceController extends Controller
         $activeMentorships = Training::query()
             ->where('type', 'facility_mentorship')
             ->live()
-            ->whereNotIn('status', ['cancelled', 'completed'])
+            ->whereNotIn('status', ['cancelled', 'completed', 'draft'])
             ->where(function ($query) {
                 $query->whereIn('status', ['active', 'ongoing'])
                     ->orWhereHas('mentorshipClasses', fn($classQuery) => $classQuery->where('status', 'active'));
@@ -183,17 +183,18 @@ class ResourceController extends Controller
 
         $activeClasses = MentorshipClass::query()
             ->where('status', 'active')
-            ->whereHas('training', fn($query) => $query->where('type', 'facility_mentorship')->live())
+            ->whereHas('training', fn($query) => $query->where('type', 'facility_mentorship')->live()->where('status', '!=', 'draft'))
             ->count();
 
         $mentorshipMentees = ClassParticipant::query()
-            ->whereHas('mentorshipClass.training', fn($query) => $query->where('type', 'facility_mentorship')->live())
+            ->whereHas('mentorshipClass.training', fn($query) => $query->where('type', 'facility_mentorship')->live()->where('status', '!=', 'draft'))
             ->distinct('class_participants.user_id')
             ->count('class_participants.user_id');
 
         $mentoredFacilities = Training::query()
             ->where('type', 'facility_mentorship')
             ->live()
+            ->where('status', '!=', 'draft')
             ->whereNotNull('facility_id')
             ->distinct('facility_id')
             ->count('facility_id');
@@ -1076,5 +1077,4 @@ class ResourceController extends Controller
         return $mimeTypes;
     }
 }
-
 
